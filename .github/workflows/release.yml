@@ -9,7 +9,8 @@
 #
 # A push to release-files checks those files and publishes the release, tagged
 # v<version>-build<N> (for example v1.0-build227) at MAIN_COMMIT. If that release already
-# exists, nothing is published. The APK is attached twice: under its own name, and as
+# exists, only its description is updated
+# from RELEASE_NOTES.md (its files are left as they are). The APK is attached twice: under its own name, and as
 # PocketRocketFlightLab.apk so that .../releases/latest/download/PocketRocketFlightLab.apk
 # always gets the newest one.
 #
@@ -65,7 +66,8 @@ jobs:
           set -euo pipefail
           TAG="v${V}-build${N}"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            echo "::notice::Release $TAG already exists; nothing to publish."; exit 0
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file RELEASE_NOTES.md
+            echo "::notice::Release $TAG already exists; only its description was updated."; exit 0
           fi
           SHA=$(tr -d '[:space:]' < MAIN_COMMIT)
           gh api "repos/$GITHUB_REPOSITORY/commits/$SHA" --jq .sha > /dev/null || { echo "::error::MAIN_COMMIT $SHA isn't in the repository"; exit 1; }
