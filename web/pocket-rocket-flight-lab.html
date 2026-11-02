@@ -388,7 +388,10 @@ html.typing .runbar{visibility:hidden}
 .rlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .ritem{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);background:var(--field)}.ritem:first-child{border-top:0}
 .exhead{margin:12px 0 4px;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.wex{grid-column:1/-1}.exrow{display:flex;align-items:center;justify-content:space-between;gap:8px}.ropen small.exb{display:block;white-space:normal;line-height:1.3;margin-top:2px}
+#bpbody.bpgate .grid,#bpbody.bpgate #bpmode,#bpbody.bpgate #bpout,#bpbody.bpgate #bpnote{display:none}
+.bpack{display:flex;flex-direction:column;gap:10px;margin:12px 0 0;padding:12px;border:1.5px solid var(--bad);border-radius:10px;background:var(--field)}
+.bpack label{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;line-height:1.4}.bpack input{margin-top:3px;flex:none;width:18px;height:18px}.bpack .btn{align-self:flex-start}
+.legalver{font-size:.75rem;color:var(--muted);margin-top:14px}.wex{grid-column:1/-1}.exrow{display:flex;align-items:center;justify-content:space-between;gap:8px}.ropen small.exb{display:block;white-space:normal;line-height:1.3;margin-top:2px}
 .ritem .ropen{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 12px;color:var(--ink);font:inherit;cursor:pointer}
 .ritem .ropen:hover,.ritem .ropen:focus-visible{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .ritem b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -491,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">231</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">232</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -744,6 +747,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
           <div class="fld bpmanual"><label for="bp-pin">Pin size</label><div class="in"><select id="bp-pin"><option value="2-56">#2-56 nylon (≈35 lbf)</option><option value="4-40">#4-40 nylon (≈50 lbf)</option></select></div></div>
         </div>
         <p class="note" id="bpweigh" style="margin:12px 0 0"><b style="color:var(--bad)">WARNING:</b> <span style="color:var(--bad)">Black powder is an explosive and can be very dangerous. Exercise extreme caution when storing, handling, and using it.</span> Weigh black powder on a scale, or use a powder measure set to the grains shown (powder measures are marked in grains of black powder by volume).</p>
+        <div class="bpack" id="bpack" hidden><label><input type="checkbox" id="bpackchk"><span>I understand that black powder is an explosive, that these charge sizes are estimates, and that I will follow the law and safety codes for energetics and ground test every charge before flight.</span></label><button type="button" class="btn" id="bpackok" disabled>Show charge sizes</button></div>
         <button type="button" class="linkbtn" id="bpmode" style="margin-top:8px" hidden></button>
         <div id="bpout" style="margin-top:12px"></div>
         <p class="note" id="bpnote" style="margin:8px 0 0"></p>
@@ -960,14 +964,27 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <p>This app produces simplified computer estimates. Its predictions of altitude, velocity, stability, drift, descent rate, and other values may be inaccurate or wrong, and motor and design data may contain errors. Do not rely on this app as your only basis for any safety decision. Verify your rocket's stability, weight, and recovery system yourself before every flight.</p>
       <h3>Certification and regulations</h3>
       <p>You are solely responsible for holding the certification required for the motors you use, such as NAR or Tripoli high-power certification at the appropriate level, and for following all laws, regulations, safety codes, and rules that apply where you fly. These include FAA regulations and any required waivers, NFPA rocketry safety codes, local fire restrictions and burn bans, landowner permission, and the instructions of the Range Safety Officer and launch organizers.</p>
+      <h3>Users under 18</h3>
+      <p>If you are under 18, you may use this app only with the permission of a parent or legal guardian who has read and accepted this disclaimer, and only with an adult supervising any rocketry you do.</p>
+      <h3>Not professional advice; no endorsement</h3>
+      <p>This app and its results are not engineering or other professional advice. The app is not reviewed, certified, approved, or endorsed by the NAR, Tripoli, the FAA, the NFPA, or any motor or component maker. The Range Safety Officer's decision always overrides anything this app shows.</p>
+      <h3>Ejection charges and energetic materials</h3>
+      <p>Ejection charge sizes from this app are estimates. Black powder and similar materials are explosives: obtain, store, handle, and use them only as the law allows and under the safety codes that apply, and ground test every charge in the real rocket before flight.</p>
       <h3>Assumption of risk</h3>
       <p>You knowingly and voluntarily accept all risks of rocketry, including the risks of building, preparing, launching, and recovering rockets, and all risks of relying on this app's estimates, data, and results. You are solely responsible for every decision you make about your rocket and its flights.</p>
       <h3>No warranty and limitation of liability</h3>
       <p>This app is provided “as is,” without warranty of any kind. To the fullest extent permitted by law, the author, Dustin Lee, is not liable for any injury, death, property damage or destruction, loss, or other harm arising from the use or misuse of this app or its results. You use this app entirely at your own risk.</p>
       <h3>Indemnity</h3>
       <p>To the fullest extent permitted by law, you agree to defend, indemnify, and hold harmless the author, Dustin Lee, from and against any claims, demands, damages, losses, liabilities, costs, and expenses, including reasonable attorneys' fees, brought by you or any third party and arising from or related to your use or misuse of this app or its results, or your violation of this disclaimer or of any law or safety code.</p>
+      <h3>Donations</h3>
+      <p>Donations to the author are voluntary gifts. They do not buy a license, product, service, support, warranty, or any other right, and they do not change anything in this disclaimer.</p>
+      <h3>Governing law and venue</h3>
+      <p>This disclaimer and any dispute arising from it or from the app are governed by the laws of the State of Utah, without regard to its conflict-of-laws rules. Any such dispute will be brought only in the state courts located in Davis County, Utah, or the United States District Court for the District of Utah, and you consent to their jurisdiction.</p>
+      <h3>Severability and survival</h3>
+      <p>If any part of this disclaimer is found invalid or unenforceable, that part will be enforced to the fullest extent the law allows, and the rest stays in full effect. This disclaimer continues to apply after you stop using the app.</p>
+      <p class="legalver">Disclaimer version <span id="legalver"></span></p>
       <div class="accept">
-        <label for="legalchk"><input type="checkbox" id="legalchk"><span>I have read this disclaimer. I understand the risks, I will hold the required certifications, and I will follow all applicable regulations and safety codes. I use this app entirely at my own risk, accept full responsibility for how I use it and its results, and agree that the app and its developer, Dustin Lee, are not liable for any injury, damage, or loss arising from its use or misuse.</span></label>
+        <label for="legalchk"><input type="checkbox" id="legalchk"><span>I have read this disclaimer. I understand the risks, I will hold the required certifications, and I will follow all applicable regulations and safety codes. I use this app entirely at my own risk, accept full responsibility for how I use it and its results, and agree that the app and its developer, Dustin Lee, are not liable for any injury, damage, or loss arising from its use or misuse. If I am under 18, my parent or legal guardian has read and accepted this disclaimer and an adult supervises my rocketry.</span></label>
       </div>
     </div>
     <div class="foot">
@@ -980,7 +997,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="231";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="232";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -1504,6 +1521,8 @@ function bpCompartments(){try{
     c.key=`${c.kind}|${c.tubes.join("+")}|${c.holds.join("+")}`;});
   return out;}catch(e){return [];}}
 function bpRender(){const out=document.getElementById("bpout");if(!out)return;
+  // nothing is sized until the black powder warning has been acknowledged once
+  {const ack=!!store.get("rfs-bp-ack",null), b=document.getElementById("bpbody");if(b)b.classList.toggle("bpgate",!ack);document.getElementById("bpack").hidden=ack;if(!ack){out.innerHTML="";return;}}
   const v=BP.get(), aft=bpAftTube();
   // follow the design's aft body tube until you type your own diameter; a different aft tube takes over again
   if(aft&&(!v.dManual||v.dKey!==aft.key)){if(v.d!==aft.id||v.dKey!==aft.key){v.d=aft.id;v.dKey=aft.key;v.dManual=false;BP.set(v);}}
@@ -1535,6 +1554,9 @@ function bpRender(){const out=document.getElementById("bpout");if(!out)return;
 // each compartment's own settings: pressure, shear pins, and what fires its charge
 function bpCompSet(v,c){const all=bpDesign().comps;return Object.assign({p:15*6894.757,n:0,pin:"2-56",src:c.aft&&(typeof D!=="undefined"&&D.deployMode==="motor")?"motor":"alt"},all[c.key]||{});}
 // the charge for each compartment of the design
+{const c=document.getElementById("bpackchk"),b=document.getElementById("bpackok");
+  c.addEventListener("change",()=>{b.disabled=!c.checked;});
+  b.addEventListener("click",()=>{if(!c.checked)return;store.set("rfs-bp-ack",{when:new Date().toISOString()});bpRender();});}
 function bpRenderComps(comps,v,out){
   const toIn3=x=>x/(IN*IN*IN), gr=x=>(x*15.4324).toFixed(1), g2=x=>x<1?x.toFixed(2):x.toFixed(1);
   const vol=x=>units==="imp"?`${toIn3(x).toFixed(1)} in³`:`${(x*1e6).toFixed(0)} cm³`, L=x=>`${fmt(x,"len")} ${uname("len")}`, Dm=x=>`${fmt(x,"small")} ${uname("small")}`;
@@ -7307,7 +7329,7 @@ function buildReportPdf(){
     font("normal",7);col(C.muted);const ringV=niceTicks(0,toDisp(ext,"alt"),2).filter(v=>v>0)[0];if(ringV){const r=fromDisp(ringV,"alt")*kk;col(C.line,"draw");doc.circle(cx,cy,r,"S");T(`${ringV} ${uname("alt")}`,cx+r*0.71+2,cy-r*0.71-2);}
     y=Math.max(yy+30,y+S+10);}
   // ---- the safety and liability terms agreed to when the app is first opened
-  const legal=[...document.querySelectorAll("#legal .body h3, #legal .body p")].map(e=>[e.tagName==="H3",e.textContent.replace(/\s+/g," ").trim()]);
+  const legal=[...document.querySelectorAll("#legal .body h3, #legal .body p:not(.legalver)")].map(e=>[e.tagName==="H3",e.textContent.replace(/\s+/g," ").trim()]);
   const agreed=(document.querySelector('label[for="legalchk"] span')||{}).textContent||"";
   // quiet fine print: light gray, regular weight, one column across the bottom of the last page,
   // each section's title run into its paragraph
@@ -7477,7 +7499,7 @@ document.getElementById("simsave").onclick=async()=>{
     prToast(ok&&/added/.test(sn)?`Saved this run into ${SOURCE.name}.`:ok&&sn?sn:t||"Not saved.");}
   finally{b.disabled=!SOURCE;}};
 (function(){
-  const KEY="rfs-disclaimer-v2", dlg=document.getElementById("legal"), chk=document.getElementById("legalchk"), ok=document.getElementById("legalok");
+  const KEY="rfs-disclaimer-v2", LEGAL_VER="2026-11-02", dlg=document.getElementById("legal"), chk=document.getElementById("legalchk"), ok=document.getElementById("legalok");
   let lastFocus=null;
   const open=(required)=>{lastFocus=document.activeElement;dlg.hidden=false;dlg.dataset.required=required?"1":"";
     // once agreed to, the box stays ticked (and can't be unticked) until a new build asks again
@@ -7493,7 +7515,8 @@ document.getElementById("simsave").onclick=async()=>{
     hint.textContent=readAll?"Tick the box to continue.":"Scroll to the end, then tick the box to continue.";};
   body.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",()=>{if(!dlg.hidden)update();});
   chk.addEventListener("change",()=>{if(chk.checked)chk.disabled=true;update();}); // a tick can't be taken back
-  ok.addEventListener("click",()=>{if(!chk.checked)return;store.set(KEY,{accepted:true,when:new Date().toISOString(),build:APP_BUILD});close();});
+  ok.addEventListener("click",()=>{if(!chk.checked)return;store.set(KEY,{accepted:true,when:new Date().toISOString(),build:APP_BUILD,version:LEGAL_VER});close();});
+  document.getElementById("legalver").textContent=LEGAL_VER;
   dlg.addEventListener("keydown",e=>{if(e.key==="Escape"&&!dlg.dataset.required){e.preventDefault();close();}
     if(e.key==="Tab"){const f=[...dlg.querySelectorAll("button,input,[tabindex]")].filter(x=>!x.disabled);if(!f.length)return;
       const a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
@@ -7507,7 +7530,7 @@ document.getElementById("simsave").onclick=async()=>{
   ab.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();abClose();}});
   // each new build (a new version installed) asks for the agreement again before the app can be used
   const rec=store.get(KEY,null);
-  if(!rec||!rec.accepted||String(rec.build||"")!==String(APP_BUILD))open(true);
+  if(!rec||!rec.accepted||String(rec.build||"")!==String(APP_BUILD)||rec.version!==LEGAL_VER)open(true);
 })();
 document.getElementById("exportbtn").onclick=exportPdf;
 /* ---------- landing dispersion (Monte Carlo) ----------

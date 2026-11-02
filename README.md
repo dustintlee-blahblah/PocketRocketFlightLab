@@ -23,6 +23,12 @@ By Dustin Lee. Free software under the [GNU General Public License v3.0 or later
 Get the newest Android app (`PocketRocketFlightLab.apk`) and the web version from the
 [Releases page](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases/latest).
 
+**Before you use it:** rocketry is dangerous, and this app's results are computer estimates that can be
+wrong. Use it at your own risk, verify your rocket's stability and recovery yourself, hold the
+certification your motors require, and follow the safety codes and your Range Safety Officer. Users
+under 18 need a parent or guardian's permission and adult supervision. The app shows its full safety and
+liability disclaimer, which you must accept, the first time it opens.
+
 ## Support the app
 
 Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its
