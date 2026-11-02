@@ -1,0 +1,19 @@
+# signing keys and their passwords: never commit these
+*.p12
+*.jks
+*.keystore
+*.pem
+*.der
+keystore.properties
+keys/
+
+# build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+*.apk
+*.aab
+.DS_Store

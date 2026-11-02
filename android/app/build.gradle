@@ -1,0 +1,88 @@
+/*
+ * Pocket Rocket Flight Lab - Android app
+ * Copyright (C) 2026 Dustin Lee
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The app is a WebView showing the same single-page web app as ../../web/pocket-rocket-flight-lab.html.
+ * Before each build, generateWebAsset copies that page into the app's assets, with its web fonts and
+ * PDF library switched to the copies bundled in src/main/assets so the app works offline.
+ */
+plugins {
+    id "com.android.application"
+}
+
+// Release signing: put your own keystore details in android/keystore.properties (never commit it).
+// See keystore.properties.example. Without it, release builds are left unsigned.
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file("keystore.properties")
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+
+android {
+    namespace "com.dustinlee.pocketrocketpro"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.dustinlee.pocketrocketpro"
+        minSdk 24
+        targetSdk 34
+        versionCode 225
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile rootProject.file(keystoreProps["storeFile"])
+                storePassword keystoreProps["storePassword"]
+                keyAlias keystoreProps["keyAlias"]
+                keyPassword keystoreProps["keyPassword"]
+                storeType keystoreProps.getProperty("storeType", "pkcs12")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystoreFile.exists()) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main.assets.srcDirs += ["$buildDir/generated/webAsset"]
+    }
+}
+
+// The web page, made self-contained for the app: Google Fonts links removed (the fonts are bundled, see
+// src/main/fontface.css) and jsPDF loaded from the bundled copy instead of the CDN.
+tasks.register("generateWebAsset") {
+    def page = rootProject.file("../web/pocket-rocket-flight-lab.html")
+    def fontCss = file("src/main/fontface.css")
+    def out = file("$buildDir/generated/webAsset/index.html")
+    inputs.files(page, fontCss)
+    outputs.file(out)
+    doLast {
+        def web = page.getText("UTF-8")
+        int styleAt = web.indexOf("<style>")
+        if (styleAt < 0) throw new GradleException("No <style> in ${page}")
+        def head = web.substring(0, styleAt)
+        head = head.replaceAll(/<meta name="claude:viewport-fit-sides"[^>]*>\n?/, "")
+        head = head.replaceAll(/<link rel="(preconnect|stylesheet)" href="https:\/\/fonts[^>]*>\n?/, "")
+        def rest = web.substring(styleAt + 7)
+        rest = rest.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>',
+                            '<script src="jspdf.umd.min.js"></script>')
+        def pre = '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n' +
+                  '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+        def html = pre + head + "<style>" + fontCss.getText("UTF-8") + rest
+        if (html.contains("fonts.googleapis") || (html =~ /<script src="https?:\/\//).find())
+            throw new GradleException("The app page still loads something from the internet at startup")
+        out.parentFile.mkdirs()
+        out.setText(html, "UTF-8")
+    }
+}
+tasks.named("preBuild") { dependsOn("generateWebAsset") }
