@@ -478,7 +478,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">225</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">226</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -959,7 +959,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="225";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="226";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -6962,7 +6962,7 @@ async function saveDesignFile(asNew,opts={}){
   {const bp=BLD&&BLD.bp;if(bp&&(Object.keys(bp.comps||{}).length||Object.keys(bp.splits||{}).length))extras.push({name:BP_ORK,data:new TextEncoder().encode(JSON.stringify({app:"Pocket Rocket Flight Lab",version:1,comps:bp.comps||{},splits:bp.splits||{}}))});}
   const fileBytes=zipStore([{name:"rocket.ork",data:bytes},...extras]);
   // the web viewer can only hand out common file types, so the design comes wrapped in a .zip there
-  const wrap=!isAndroidApp();
+  const wrap=!isAndroidApp()&&!(downloadsNS&&downloadsNS.browser);
   const saveName=wrap?fname+".zip":fname, data=wrap?zipStore([{name:fname,data:fileBytes}]):fileBytes;
   btn.disabled=true;let ok=false;
   try{
@@ -7082,10 +7082,18 @@ renderSavePanel();
 
 /* ---------- PDF flight report ---------- */
 let downloadsNS=null;
+function browserDownloads(){
+  const types={pdf:"application/pdf",ork:"application/octet-stream",zip:"application/zip",mp4:"video/mp4",webm:"video/webm",csv:"text/csv",json:"application/json",png:"image/png",eng:"text/plain",txt:"text/plain",html:"text/html"};
+  return {browser:true,save:async({filename,data})=>{const ext=(String(filename).split(".").pop()||"").toLowerCase();
+    const url=URL.createObjectURL(new Blob([data],{type:types[ext]||"application/octet-stream"}));
+    const a=document.createElement("a");a.href=url;a.download=filename;a.rel="noopener";a.style.display="none";document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);return {status:"saved"};}};}
 function bufToB64(buf){const u=new Uint8Array(buf);let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);}
 (async()=>{try{
   if(window.PocketRocketApp&&window.PocketRocketApp.saveFile){downloadsNS={save:async({filename,data})=>{window.PocketRocketApp.saveFile(filename,bufToB64(data));return {status:"delivered"};}};}
   else if(window.claude&&window.claude.use){downloadsNS=await window.claude.use("downloads");}}catch(e){downloadsNS=null;}
+  // opened straight in a browser (from a file or a web site): an ordinary download
+  if(!downloadsNS)downloadsNS=browserDownloads();
   const b=document.getElementById("exportwrap");if(b)b.hidden=!downloadsNS||!lastSim;})();
 function pdfSafe(s){return String(s??"").replace(/≥/g,">=").replace(/≤/g,"<=").replace(/×/g,"x").replace(/µ/g,"u").replace(/[^\x20-\x7E -ÿ–—‘’“”•·]/g,"");}
 function buildReportPdf(){
