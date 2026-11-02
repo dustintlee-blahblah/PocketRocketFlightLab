@@ -62,6 +62,12 @@ header.top{position:relative}
 .setfld input,.setfld select{font:inherit;font-size:.95rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:40px;width:100%;box-sizing:border-box}
 .setpair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .setnote{margin:0;font-size:.78rem;color:var(--muted);line-height:1.35}
+.venmobtn{appearance:none;border:0;border-radius:10px;background:#008CFF;color:#fff;font:600 .95rem var(--f-body,inherit);padding:10px 16px;min-height:42px;cursor:pointer;align-self:flex-start}
+.venmobtn:hover{background:#0074D4}.venmobtn.small{padding:6px 12px;min-height:34px;font-size:.85rem;flex:none}
+.supheart{color:var(--accent);font-size:.95rem}
+.supline{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:.86rem;color:var(--muted)}
+.supline>span{flex:1;min-width:0;line-height:1.35}
+.supx{appearance:none;border:0;background:none;color:var(--muted);font-size:1.3rem;line-height:1;padding:4px 6px;cursor:pointer;flex:none}
 .profsum{font-size:.8rem;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .swatches{display:flex;flex-wrap:wrap;gap:8px}
 .sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--field);background:var(--c);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;position:relative}
@@ -478,7 +484,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">226</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">227</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -534,6 +540,12 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <button type="button" class="linkbtn setreset" id="s-colreset">Reset to the default colors</button>
       </div>
       <label class="setrow setchk"><span>Swipe left or right to change tabs</span><input type="checkbox" id="s-swipe"></label>
+      <button type="button" class="setrow setitem" id="s-supbtn" aria-expanded="false" aria-controls="s-sup"><span>Support the app</span><span class="setdots"><span class="supheart" aria-hidden="true">♥</span><b aria-hidden="true">›</b></span></button>
+      <div class="setsub" id="s-sup" hidden>
+        <p class="setnote" style="font-size:.86rem;color:var(--ink)">Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its development.</p>
+        <button type="button" class="venmobtn" data-venmo>Donate with Venmo</button>
+        <p class="setnote">Opens Venmo to @PocketRocketFlightLab. Venmo works in the US only. Thank you!</p>
+      </div>
       <div class="setlinks"><button type="button" class="linkbtn" id="s-legal">Safety and liability disclaimer</button><button type="button" class="linkbtn" id="s-about">About and licenses</button></div>
     </div>
   </header>
@@ -613,6 +625,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 
 
 
+    <div class="supline" id="supline" hidden><span>Enjoying Pocket Rocket Flight Lab? You can support it with a donation.</span><button type="button" class="venmobtn small" data-venmo>Venmo</button><button type="button" class="supx" id="supx" aria-label="Don’t show this again">×</button></div>
     <div class="panel exportp" id="exportwrap" hidden>
       <div class="row" style="justify-content:space-between">
         <div style="min-width:0;flex:1"><h2 style="margin:0">Flight report</h2><p class="note" style="margin:2px 0 0">A PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.</p></div>
@@ -959,7 +972,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="226";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="227";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -1702,7 +1715,7 @@ function runNow(){
     const tb=mountTooBig(D,b);if(tb){showMountWarn(tb,D.twoStage?stg:null,b);return;}}
   for(const [mm,b,stg,Dx] of [[curMotor(),false,"sustainer",D],...(D.twoStage?[[curBoost(),true,"booster",D]]:[]),...(isThree(D)?[[curFirst(),true,"first",s1View(D)]]:[])]){
     const fit=motorFit(mm,Dx,b);if(fit&&fit.status==="big"){showFitWarn(mm,fit,D.twoStage?stg:null);return;}}
-  runAll();markFresh();
+  runAll();markFresh();if(typeof supNote==="function")supNote("run");
   if(document.getElementById("v-results").hidden)showTab("results");
   window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
 }
@@ -3721,7 +3734,7 @@ function renderResults(){
   document.getElementById("chartpanel").hidden=!lastSim;document.getElementById("animpanel").hidden=!lastSim;
   document.getElementById("windpanel").hidden=!lastSim;if(!lastSim){const rp=document.getElementById("rsopanel");if(rp)rp.hidden=true;}
   {const mp=document.getElementById("mcpanel");if(mp)mp.hidden=!lastSim;if(typeof renderMC==="function")renderMC();}
-  document.getElementById("exportwrap").hidden=!lastSim||!downloadsNS;
+  document.getElementById("exportwrap").hidden=!lastSim||!downloadsNS;if(typeof supRender==="function")supRender();
   {const r=document.getElementById("simsaverow");if(r){r.hidden=!lastSim||!downloadsNS;const n=document.getElementById("simsavenote");
     if(n)n.textContent=SOURCE&&SOURCE.format==="rkt"?`Saves the design as ${SOURCE.name.replace(/\.rkt$/i,"")}.ork, an OpenRocket file, with this run in its simulations. The original .rkt isn’t changed.`:SOURCE?`Adds this run to the simulations in ${SOURCE.name}, so OpenRocket shows its results next to its own. Any unsaved design changes are saved with it.`:"Save the design to a file first (Rocket tab), then runs can be saved into it.";
     const b=document.getElementById("simsave");if(b)b.disabled=!SOURCE;}}
@@ -7400,12 +7413,29 @@ async function exportPdf(){
     const res=await downloadsNS.save({filename:name,data:doc.output("arraybuffer")});
     msg.textContent=res.status==="saved"?`Saved ${name}.`:"Choose where to save the PDF.";
     if(res.status==="saved")prToast("Report saved.");
+    if(res.status==="saved"||res.status==="delivered")supNote("report");
   }catch(e){
     const c=e&&e.code;
     msg.textContent=c==="declined"?"Save cancelled.":c==="rate_limited"?"A save prompt is already open. Finish it, then try again.":(c==="unavailable"||c==="not_granted"||c==="capability_disabled"||c==="capability_removed")?"Saving files isn’t available in this view.":`Couldn’t build the PDF${e&&e.message?": "+e.message:"."}`;
     if(c==="unavailable"||c==="not_granted"||c==="capability_disabled"||c==="capability_removed")document.getElementById("exportwrap").hidden=true;
   }finally{btn.disabled=false;btn.textContent="Export PDF report";}
 }
+/* ---------- donations (Venmo) ----------
+   A "Support the app" card in Settings is always there. Once, after someone has got real use from the app (their 10th
+   launch, or their first saved flight report), a single line shows above the flight report; closing it or tapping
+   through means it never shows again. Nothing pops up or gets in the way. */
+const VENMO_URL="https://venmo.com/u/PocketRocketFlightLab";
+function openVenmo(){const A=window.PocketRocketApp;
+  try{if(A&&typeof A.openExternal==="function"&&A.openExternal(VENMO_URL))return;}catch(e){}
+  const w=window.open(VENMO_URL,"_blank","noopener");
+  if(!w){const a=document.createElement("a");a.href=VENMO_URL;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();}}
+function supDone(){store.set("rfs-support",{done:true});const l=document.getElementById("supline");if(l)l.hidden=true;}
+function supRender(){const l=document.getElementById("supline");if(!l)return;const v=store.get("rfs-support",{});
+  l.hidden=!lastSim||!!v.done||!((v.runs||0)>=10||v.report);}
+function supNote(k){const v=store.get("rfs-support",{});if(v.done)return;if(k==="run")v.runs=(v.runs||0)+1;else v[k]=true;store.set("rfs-support",v);supRender();}
+document.querySelectorAll("[data-venmo]").forEach(b=>b.addEventListener("click",()=>{openVenmo();if(b.closest("#supline"))supDone();}));
+document.getElementById("supx").onclick=supDone;
+{const b=document.getElementById("s-supbtn"),p=document.getElementById("s-sup");b.onclick=()=>{const o=p.hidden;p.hidden=!o;b.setAttribute("aria-expanded",String(o));};}
 document.getElementById("runbtn").onclick=runNow;
 document.getElementById("emptylaunch").onclick=runNow;
 document.getElementById("simsave").onclick=async()=>{
