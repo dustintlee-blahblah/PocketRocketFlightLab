@@ -63,10 +63,15 @@ header.top{position:relative}
 .setpair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .setnote{margin:0;font-size:.78rem;color:var(--muted);line-height:1.35}
 .venmobtn{appearance:none;border:0;border-radius:10px;background:#008CFF;color:#fff;font:600 .95rem var(--f-body,inherit);padding:10px 16px;min-height:42px;cursor:pointer;align-self:flex-start}
-.venmobtn:hover{background:#0074D4}.venmobtn.small{padding:6px 12px;min-height:34px;font-size:.85rem;flex:none}
-.supheart{color:var(--accent);font-size:.95rem}
-.supline{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:.86rem;color:var(--muted)}
-.supline>span{flex:1;min-width:0;line-height:1.35}
+.venmobtn:hover{background:#0074D4}.venmobtn.small{padding:6px 14px;min-height:34px;font-size:.85rem;flex:none}
+.ppbtn{background:#003087}.ppbtn:hover{background:#00246B}
+.donbtns{display:flex;flex-wrap:wrap;gap:8px}
+.supheart{color:var(--accent);font-size:1rem}
+/* the Support row stands apart from the settings around it */
+.setitem.supitem{margin:4px 0;padding:10px 12px;border:1.5px solid var(--accent);border-radius:10px;background:var(--field);background:color-mix(in srgb,var(--accent) 10%,var(--panel));font-weight:600}
+.supdon{font-size:.8rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.supline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:.86rem;color:var(--muted)}
+.supline>span{flex:1;min-width:0;line-height:1.35}.supline>.donbtns{flex-basis:100%}
 .supx{appearance:none;border:0;background:none;color:var(--muted);font-size:1.3rem;line-height:1;padding:4px 6px;cursor:pointer;flex:none}
 .profsum{font-size:.8rem;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .swatches{display:flex;flex-wrap:wrap;gap:8px}
@@ -484,7 +489,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">227</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">228</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -540,11 +545,11 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <button type="button" class="linkbtn setreset" id="s-colreset">Reset to the default colors</button>
       </div>
       <label class="setrow setchk"><span>Swipe left or right to change tabs</span><input type="checkbox" id="s-swipe"></label>
-      <button type="button" class="setrow setitem" id="s-supbtn" aria-expanded="false" aria-controls="s-sup"><span>Support the app</span><span class="setdots"><span class="supheart" aria-hidden="true">♥</span><b aria-hidden="true">›</b></span></button>
+      <button type="button" class="setrow setitem supitem" id="s-supbtn" aria-expanded="false" aria-controls="s-sup"><span><span class="supheart" aria-hidden="true">♥</span> Support the app</span><span class="setdots"><span class="supdon">Donate</span><b aria-hidden="true">›</b></span></button>
       <div class="setsub" id="s-sup" hidden>
         <p class="setnote" style="font-size:.86rem;color:var(--ink)">Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its development.</p>
-        <button type="button" class="venmobtn" data-venmo>Donate with Venmo</button>
-        <p class="setnote">Opens Venmo to @PocketRocketFlightLab. Venmo works in the US only. Thank you!</p>
+        <div class="donbtns"><button type="button" class="venmobtn" data-venmo>Donate with Venmo</button><button type="button" class="venmobtn ppbtn" data-paypal>Donate with PayPal</button></div>
+        <p class="setnote">Venmo (@PocketRocketFlightLab) works in the US only; PayPal works in most countries. Thank you!</p>
       </div>
       <div class="setlinks"><button type="button" class="linkbtn" id="s-legal">Safety and liability disclaimer</button><button type="button" class="linkbtn" id="s-about">About and licenses</button></div>
     </div>
@@ -625,7 +630,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 
 
 
-    <div class="supline" id="supline" hidden><span>Enjoying Pocket Rocket Flight Lab? You can support it with a donation.</span><button type="button" class="venmobtn small" data-venmo>Venmo</button><button type="button" class="supx" id="supx" aria-label="Don’t show this again">×</button></div>
+    <div class="supline" id="supline" hidden><span>Enjoying Pocket Rocket Flight Lab? You can support it with a donation.</span><button type="button" class="supx" id="supx" aria-label="Don’t show this again">×</button><div class="donbtns"><button type="button" class="venmobtn small" data-venmo>Venmo</button><button type="button" class="venmobtn small ppbtn" data-paypal>PayPal</button></div></div>
     <div class="panel exportp" id="exportwrap" hidden>
       <div class="row" style="justify-content:space-between">
         <div style="min-width:0;flex:1"><h2 style="margin:0">Flight report</h2><p class="note" style="margin:2px 0 0">A PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.</p></div>
@@ -972,7 +977,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="227";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="228";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -7424,16 +7429,16 @@ async function exportPdf(){
    A "Support the app" card in Settings is always there. Once, after someone has got real use from the app (their 10th
    launch, or their first saved flight report), a single line shows above the flight report; closing it or tapping
    through means it never shows again. Nothing pops up or gets in the way. */
-const VENMO_URL="https://venmo.com/u/PocketRocketFlightLab";
-function openVenmo(){const A=window.PocketRocketApp;
-  try{if(A&&typeof A.openExternal==="function"&&A.openExternal(VENMO_URL))return;}catch(e){}
-  const w=window.open(VENMO_URL,"_blank","noopener");
-  if(!w){const a=document.createElement("a");a.href=VENMO_URL;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();}}
+const VENMO_URL="https://venmo.com/u/PocketRocketFlightLab", PAYPAL_URL="https://www.paypal.com/qrcodes/p2pqrc/6SFLPUHMKC9FY";
+function openLink(url){const A=window.PocketRocketApp;
+  try{if(A&&typeof A.openExternal==="function"&&A.openExternal(url))return;}catch(e){}
+  const w=window.open(url,"_blank","noopener");
+  if(!w){const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();}}
 function supDone(){store.set("rfs-support",{done:true});const l=document.getElementById("supline");if(l)l.hidden=true;}
 function supRender(){const l=document.getElementById("supline");if(!l)return;const v=store.get("rfs-support",{});
   l.hidden=!lastSim||!!v.done||!((v.runs||0)>=10||v.report);}
 function supNote(k){const v=store.get("rfs-support",{});if(v.done)return;if(k==="run")v.runs=(v.runs||0)+1;else v[k]=true;store.set("rfs-support",v);supRender();}
-document.querySelectorAll("[data-venmo]").forEach(b=>b.addEventListener("click",()=>{openVenmo();if(b.closest("#supline"))supDone();}));
+document.querySelectorAll("[data-venmo],[data-paypal]").forEach(b=>b.addEventListener("click",()=>{openLink(b.hasAttribute("data-paypal")?PAYPAL_URL:VENMO_URL);if(b.closest("#supline"))supDone();}));
 document.getElementById("supx").onclick=supDone;
 {const b=document.getElementById("s-supbtn"),p=document.getElementById("s-sup");b.onclick=()=>{const o=p.hidden;p.hidden=!o;b.setAttribute("aria-expanded",String(o));};}
 document.getElementById("runbtn").onclick=runNow;
