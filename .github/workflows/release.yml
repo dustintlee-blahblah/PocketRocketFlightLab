@@ -1,0 +1,77 @@
+# Publishes a GitHub release for Pocket Rocket Flight Lab.
+#
+# The built files live on the "release-files" branch, which holds only the newest
+# release's files (it's replaced each time, so old APKs don't pile up in the history):
+#   PocketRocketFlightLab-v<version>-build<N>.apk   the signed Android app
+#   pocket-rocket-flight-lab-v<version>-build<N>.html   the web version
+#   RELEASE_NOTES.md                                the release's description
+#   MAIN_COMMIT                                     the commit on main the release is built from
+#
+# A push to release-files checks those files and publishes the release, tagged
+# v<version>-build<N> (for example v1.0-build227) at MAIN_COMMIT. If that release already
+# exists, only its description is updated
+# from RELEASE_NOTES.md (its files are left as they are). The APK is attached twice: under its own name, and as
+# PocketRocketFlightLab.apk so that .../releases/latest/download/PocketRocketFlightLab.apk
+# always gets the newest one.
+#
+# GitHub runs the copy of this file that's on the release-files branch; keep it the same
+# as the one on main.
+
+name: Release
+
+on:
+  push:
+    branches: ["release-files"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the release files
+        uses: actions/checkout@v5
+        with:
+          ref: release-files
+          path: files
+
+      - name: Check the files
+        id: check
+        working-directory: files
+        run: |
+          set -euo pipefail
+          APK=$(ls PocketRocketFlightLab-v*-build*.apk | head -n 1)
+          V=${APK#PocketRocketFlightLab-v}; V=${V%%-build*}
+          N=${APK##*-build}; N=${N%.apk}
+          HTML="pocket-rocket-flight-lab-v${V}-build${N}.html"
+          for f in "$APK" "$HTML" RELEASE_NOTES.md MAIN_COMMIT; do
+            [ -s "$f" ] || { echo "::error::$f is missing from the release-files branch"; exit 1; }
+          done
+          grep -Eq "APP_BUILD ?= ?\"${N}\"" "$HTML" || { echo "::error::$HTML isn't build $N"; exit 1; }
+          if grep -q "BETA DEMO" "$HTML"; then echo "::error::$HTML is the beta demo copy"; exit 1; fi
+          unzip -tq "$APK" > /dev/null || { echo "::error::$APK is damaged"; exit 1; }
+          echo "Files for version $V, build $N look good."
+          { echo "version=$V"; echo "build=$N"; echo "apk=$APK"; echo "html=$HTML"; } >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        working-directory: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.check.outputs.version }}
+          N: ${{ steps.check.outputs.build }}
+          APK: ${{ steps.check.outputs.apk }}
+          HTML: ${{ steps.check.outputs.html }}
+        run: |
+          set -euo pipefail
+          TAG="v${V}-build${N}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file RELEASE_NOTES.md
+            echo "::notice::Release $TAG already exists; only its description was updated."; exit 0
+          fi
+          SHA=$(tr -d '[:space:]' < MAIN_COMMIT)
+          gh api "repos/$GITHUB_REPOSITORY/commits/$SHA" --jq .sha > /dev/null || { echo "::error::MAIN_COMMIT $SHA isn't in the repository"; exit 1; }
+          cp "$APK" PocketRocketFlightLab.apk
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SHA" --latest \
+            --title "Pocket Rocket Flight Lab ${V} (build ${N})" --notes-file RELEASE_NOTES.md \
+            PocketRocketFlightLab.apk "$APK" "$HTML"

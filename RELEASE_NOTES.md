@@ -1,0 +1,125 @@
+A flight simulator for hobby and high-power rockets that runs on your phone. Open an OpenRocket (.ork) or RockSim (.rkt) design, or build one in the app, pick a motor, set the day's conditions, and get the predicted flight: apogee, speeds, stability, staging, recovery, drift and landing dispersion, an RSO checklist and a PDF flight report. Works offline; only Get weather uses the internet.
+
+### What's new in build 272
+**Overrides**
+- **Each override has its own Override switch** beside its field: weight, CG, turning inertia and Cd for the whole rocket (and each stage), and a part's weight and Cd. Off, the field shows the calculated value and the flight uses it; on, it uses your value, starting from the calculated one. The "enter 0 to calculate" rule is gone.
+- **An override switched off keeps its value**: it's left out of a saved .ork (as OpenRocket stores it) and kept with the app's settings in the file, so it comes back when you reopen it.
+
+**Accuracy**
+- **Nozzle size from the motor's thrust**: the altitude thrust correction now sizes each motor's nozzle exit from its average thrust instead of its diameter, which overstated it for slow-burning motors. Against OpenRocket, launches from fields above 1 km went from about 4.5% high to 1.5%.
+- **Free-form fins are placed by their root chord**, as OpenRocket and RockSim place them. Fins whose tips sweep past the root's trailing edge were placed too far forward, which moved the CP forward (the Performance Rocketry Gizmo XL read unstable; its CP now matches OpenRocket's).
+- **A shroud line length of 0 in a file means no lines** (it was read as lines as long as the chute is wide).
+
+### Also new in build 269
+**Opening stored runs**
+- **The launch site is selected** when you open a saved run or a file's saved settings: by the site's name (now saved with the file and each run), or by one of your saved sites at the same place.
+- **OpenRocket runs bring their own weather**: OpenRocket's multi-level wind (ground wind and winds aloft), the run's air pressure and humidity, or OpenRocket's standard air. A run with OpenRocket's average wind clears the winds aloft, so it flies as it did in OpenRocket.
+
+**Code**
+- The flight simulation's main loop is split into named steps (no change in results).
+
+### Also new in build 268
+**Accuracy**
+- **Off-rail velocity is read at the exact end of the rail**, worked out within the simulation step. Before, it was read at the end of the step where the rocket left the rail, a little past the rail's end (usually under 1% high). Nothing else in the flight changes.
+
+### Also new in build 267
+**Flight chart**
+- **Touch the chart to read its values**: a vertical line appears where you touch, with each line's value where it crosses (the prediction, a logged flight, the booster) and the time. Drag sideways to move it; touch the line again to clear it.
+
+### Also new in build 266
+**Results**
+- **New readouts**: average acceleration to burnout, drogue descent velocity and landing velocity (over the ground, as OpenRocket's ground hit velocity, with its vertical part). Max velocity is now called Max ascent velocity.
+- **The results table is grouped**: speed and acceleration, ascent, stability, recovery, and descent and landing.
+- **Drogue descent velocity** is the fastest the rocket falls once the drogue is fully open, until the main deploys. Only the readout changed; the simulated flight is the same.
+
+**Flight animation**
+- **A 3, 2, 1 countdown** over the rocket on the pad before liftoff (on opening, Restart, or Play after the end). The readout stays blank during the countdown.
+
+### Also new in build 261
+**RockSim files**
+- **Parachutes and streamers deploy as the RockSim file sets them**: at the motor's ejection charge, a time after launch or apogee, at apogee, or at an altitude, from the run you open (or the design's own settings). Before, the largest parachute was guessed to be the main and everything else opened at apogee.
+- **RockSim's stage mass and CG overrides** are used only when the file has them switched on, as in RockSim; values left over in the file are ignored.
+
+### Also new in build 260
+**Choose a stored run when opening a file**
+- **Opening an .ork or .rkt now asks how to open it**: the design only (keeping your launch settings), the design with the settings saved with it, or any of its stored runs, in a scrollable list showing each run's motors, apogee, wind and whether it's out of date. Picking a run brings in its motor configuration and launch conditions, and its apogee for comparison.
+- Runs saved from the app keep all their launch settings and the time they were saved, shown in the list.
+
+**Rocket tab**
+- **Turning inertia** now shows the value calculated from the parts, and flights use it (before, an even-weight estimate was used). Type a measured value to replace it; clear the field to go back.
+- **Design notes** has a text box for your own notes, saved in the .ork with each motor configuration.
+
+### Also new in build 258
+**Overwrite or save a copy**
+- **Save changes and Save this run now ask** whether to write over the open .ork file or save a copy under a new name (or cancel).
+- **If the file can't be written over** (for example, it was opened from another app, or moved), a pop-up says why and offers a copy, instead of quietly making a new "(1)" file. To write over the original, open it with Open .ork / .rkt, then save.
+- Writing over a file now also works with storage apps that refused it before.
+
+### Also new in build 257
+**Everything saved in the design file**
+- **Save changes keeps everything for the rocket in the .ork**: every launch and range setting, the Get weather date, winds aloft, the motor configuration and motors chosen, motor temperature and delays, dispersion and imperfection settings, the flight log and the drag calibration. OpenRocket ignores the extra and opens the file as usual.
+- **Uploaded motors the design flies are saved with it**, and added to your uploaded motors when the file is opened on another device.
+- **Opening a file saved with different settings** shows a pop-up listing what differs (site, weather, winds aloft, rail, drag calibration and so on), and you choose to use the file's settings or keep your own. Logged flights in the file are added to the flight log.
+- **Changing any launch or range setting now counts as an unsaved change**, so you're reminded to save it.
+- **Save this run** saves the run with its own launch conditions, and each saved run is named with the date and time, so every run is distinct in OpenRocket's list. Runs add up; none are overwritten.
+- Save changes also writes the launch site's longitude.
+
+**Results**
+- The "Likely … ft" apogee range under the predicted apogee is gone. The RSO Checklist still checks the top of the likely range against the cloud ceiling, and the PDF report still lists it.
+
+**Weather for any date**
+- **Get weather** (renamed from Get forecast) now works for any launch date from 1940 to 16 days ahead, and picks the source from the date on its own: NOAA's GFS forecast from two days ago on, archived GFS forecasts back to March 2021, and the ERA5 reanalysis back to 1940.
+- **Winds aloft** are filled in from March 2021 on. For older dates (or anywhere the service has none), a pop-up says so and the Winds aloft table is cleared, so the wind above the ground is estimated from the ground wind. You can still type winds aloft in by hand.
+- Older records have no visibility, chance of precipitation or cloud base; those fields are left as they were, and the result says which.
+- **The result now appears in a pop-up**: what was filled in, one item to a line, or why the weather couldn't be fetched.
+
+**Parachutes**
+- **Parachutes open over a distance, not a fixed time**, as measured in parachute tests: a chute opening fast fills quickly, one opening slowly near apogee takes longer. The rocket no longer seems to fall fast under a chute just after apogee.
+
+### Also new since build 227
+**Build 251**
+**Motor delay and ejection charges**
+- **Motor Delay**, a new section on the Motor tab above Motor temperature: one ejection delay setting per stage, chosen from the delays the motor is sold with, **Plugged**, or a custom time. Opening an OpenRocket or RockSim file sets it from the file. Changing motors keeps the delay if the new motor offers it, and otherwise moves to the nearest one.
+- **Plugged is separate from 0 s.** A 0 s delay fires at burnout (booster motors use it to separate stages or light the next motor); plugged means no charge. RockSim's negative ejection delays read as plugged, as RockSim simulates them.
+- **A chute set to open at the motor ejection charge stays packed when the motor is plugged**, and the rocket comes down ballistically. As in OpenRocket, a motor charge only opens chutes set to ejection; if a live charge fires while a chute set to open another way is still packed, the results warn you.
+- **Ballistic descents are more realistic:** the rocket no longer slides down tail-first. It settles nose-down or tumbles as the physics and drag say it should.
+- **Separately mounted motors** (outboard or pod motors) each get their own delay charge, listed under Motor Delay and simulated.
+- **Motor configurations:** an OpenRocket file with several motor configurations gets a picker on the Motor tab, and the design reopens with the one you choose.
+- **Builder:** a chute deployed at ejection has a "Delay after the charge" field.
+
+**Animation**
+- A ballistic rocket turns nose-down after apogee.
+- A short flash in the rocket body shows each ejection or motor delay charge firing.
+- The standing safety cone label is gone; a warning appears only if the rocket leaves the cone under power.
+
+**Accuracy**
+- **Swept fins near and above Mach 1:** fins swept well back no longer get a transonic drag bump that tests don't show. Checked against two NACA reports: RM E50D28, the RM-10 missile's 60° fins, and RM A53D02, a fin-stabilized body flown from Mach 0.6 to 10. Fins swept 30° or less are unchanged. Rockets with fins swept between about 40° and 60° will show a little less drag near Mach 1.
+
+**Open-source code**
+- The source is split into files by area with a build step, fully commented, formatted and lint-clean, with a regression test that proves a change leaves every result the same, and drag benchmarks against NACA data. Unused code, including the old hidden quick-entry form, is gone. Apart from the changes above, the app works the same.
+
+**Earlier builds**
+- **Above Mach 0.8 (build 237):** fin lift from supersonic theory, so stability above Mach 1 is within about 2% of body length of NASA data on a slender rocket; the drag rise of sharp-edged fins through Mach 1; beveled and double-wedge fin edges; and an RSO checklist item for flights reaching Mach 0.9 or more.
+- **A stronger safety and liability disclaimer**, which everyone accepts again on first opening the app after updating from build 231 or earlier. It adds: users under 18 need a parent or guardian's acceptance and adult supervision; the app isn't professional advice or endorsed by any rocketry organization, and the RSO always overrides it; ejection charge sizes are estimates; donations are gifts; Utah law governs; and if one part is found unenforceable, the rest still stands.
+- **Ejection Charge Calculator:** charge sizes appear only after you acknowledge the black powder warning once.
+- **Example rockets:** five real designs to learn with, from a Big Bertha model rocket to dual-deploy high power (LOC Goblin, LOC IV X2 for an L1 certification flight, LOC IV X2 dual deploy, Punisher 3). Find them on the Get started screen, or under **Open Recent**.
+- **Donate with PayPal** as well as Venmo, from **Settings → Support the app**.
+- **Flight report:** if this copy of the app has no profile yet, the report panel says so, with a link to Settings → Profile.
+
+### Before you install
+Rocketry is dangerous, and this app's results are computer estimates that can be wrong. Use it at your own risk: verify your rocket's stability and recovery yourself, hold the certification your motors require, and follow the safety codes and your Range Safety Officer. Users under 18 need a parent or guardian's permission and adult supervision. The app shows its full safety and liability disclaimer, which you must accept, when it first opens.
+
+### Install on Android
+1. On your phone, download **PocketRocketFlightLab.apk** below.
+2. Open it. The first time, Android asks you to allow installs from your browser or file manager: allow it, then tap **Install**.
+3. Updating later: install the new APK over the old one. Your designs and settings are kept.
+
+### Use it in a browser
+Download **pocket-rocket-flight-lab-v1.0-build251.html** and open it in Chrome, Edge, Firefox or Safari, on a computer or phone.
+
+### Files
+- PocketRocketFlightLab.apk: the Android app (always the newest; same file as the one below)
+- PocketRocketFlightLab-v1.0-build251.apk: the Android app, build 251
+- pocket-rocket-flight-lab-v1.0-build251.html: the web version
+
+Free software under the GNU GPL v3, provided without warranty.
