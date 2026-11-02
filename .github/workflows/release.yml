@@ -5,18 +5,21 @@
 #   PocketRocketFlightLab-v<version>-build<N>.apk   the signed Android app
 #   pocket-rocket-flight-lab-v<version>-build<N>.html   the web version
 #   RELEASE_NOTES.md                                the release's description
+#   MAIN_COMMIT                                     the commit on main the release is built from
 #
-# - A push to release-files checks those files (no release is made).
-# - Pushing a tag named v<version>-build<N> (for example v1.0-build227) publishes the
-#   release from them. The APK is attached twice: under its own name, and as
-#   PocketRocketFlightLab.apk so that
-#   .../releases/latest/download/PocketRocketFlightLab.apk always gets the newest one.
+# A push to release-files checks those files and publishes the release, tagged
+# v<version>-build<N> (for example v1.0-build227) at MAIN_COMMIT. If that release already
+# exists, nothing is published. The APK is attached twice: under its own name, and as
+# PocketRocketFlightLab.apk so that .../releases/latest/download/PocketRocketFlightLab.apk
+# always gets the newest one.
+#
+# GitHub runs the copy of this file that's on the release-files branch; keep it the same
+# as the one on main.
 
 name: Release
 
 on:
   push:
-    tags: ["v*-build*"]
     branches: ["release-files"]
 
 permissions:
@@ -41,7 +44,7 @@ jobs:
           V=${APK#PocketRocketFlightLab-v}; V=${V%%-build*}
           N=${APK##*-build}; N=${N%.apk}
           HTML="pocket-rocket-flight-lab-v${V}-build${N}.html"
-          for f in "$APK" "$HTML" RELEASE_NOTES.md; do
+          for f in "$APK" "$HTML" RELEASE_NOTES.md MAIN_COMMIT; do
             [ -s "$f" ] || { echo "::error::$f is missing from the release-files branch"; exit 1; }
           done
           grep -q "APP_BUILD=\"${N}\"" "$HTML" || { echo "::error::$HTML isn't build $N"; exit 1; }
@@ -51,19 +54,22 @@ jobs:
           { echo "version=$V"; echo "build=$N"; echo "apk=$APK"; echo "html=$HTML"; } >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
-        if: github.ref_type == 'tag'
         working-directory: files
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
           V: ${{ steps.check.outputs.version }}
           N: ${{ steps.check.outputs.build }}
           APK: ${{ steps.check.outputs.apk }}
           HTML: ${{ steps.check.outputs.html }}
         run: |
           set -euo pipefail
-          [ "$TAG" = "v${V}-build${N}" ] || { echo "::error::Tag $TAG doesn't match the files on release-files (v${V}-build${N})"; exit 1; }
+          TAG="v${V}-build${N}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists; nothing to publish."; exit 0
+          fi
+          SHA=$(tr -d '[:space:]' < MAIN_COMMIT)
+          gh api "repos/$GITHUB_REPOSITORY/commits/$SHA" --jq .sha > /dev/null || { echo "::error::MAIN_COMMIT $SHA isn't in the repository"; exit 1; }
           cp "$APK" PocketRocketFlightLab.apk
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --latest \
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SHA" --latest \
             --title "Pocket Rocket Flight Lab ${V} (build ${N})" --notes-file RELEASE_NOTES.md \
             PocketRocketFlightLab.apk "$APK" "$HTML"
