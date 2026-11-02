@@ -1,0 +1,69 @@
+# Publishes a GitHub release for Pocket Rocket Flight Lab.
+#
+# The built files live on the "release-files" branch, which holds only the newest
+# release's files (it's replaced each time, so old APKs don't pile up in the history):
+#   PocketRocketFlightLab-v<version>-build<N>.apk   the signed Android app
+#   pocket-rocket-flight-lab-v<version>-build<N>.html   the web version
+#   RELEASE_NOTES.md                                the release's description
+#
+# - A push to release-files checks those files (no release is made).
+# - Pushing a tag named v<version>-build<N> (for example v1.0-build227) publishes the
+#   release from them. The APK is attached twice: under its own name, and as
+#   PocketRocketFlightLab.apk so that
+#   .../releases/latest/download/PocketRocketFlightLab.apk always gets the newest one.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*-build*"]
+    branches: ["release-files"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the release files
+        uses: actions/checkout@v4
+        with:
+          ref: release-files
+          path: files
+
+      - name: Check the files
+        id: check
+        working-directory: files
+        run: |
+          set -euo pipefail
+          APK=$(ls PocketRocketFlightLab-v*-build*.apk | head -n 1)
+          V=${APK#PocketRocketFlightLab-v}; V=${V%%-build*}
+          N=${APK##*-build}; N=${N%.apk}
+          HTML="pocket-rocket-flight-lab-v${V}-build${N}.html"
+          for f in "$APK" "$HTML" RELEASE_NOTES.md; do
+            [ -s "$f" ] || { echo "::error::$f is missing from the release-files branch"; exit 1; }
+          done
+          grep -q "APP_BUILD=\"${N}\"" "$HTML" || { echo "::error::$HTML isn't build $N"; exit 1; }
+          if grep -q "BETA DEMO" "$HTML"; then echo "::error::$HTML is the beta demo copy"; exit 1; fi
+          unzip -tq "$APK" > /dev/null || { echo "::error::$APK is damaged"; exit 1; }
+          echo "Files for version $V, build $N look good."
+          { echo "version=$V"; echo "build=$N"; echo "apk=$APK"; echo "html=$HTML"; } >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        working-directory: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          V: ${{ steps.check.outputs.version }}
+          N: ${{ steps.check.outputs.build }}
+          APK: ${{ steps.check.outputs.apk }}
+          HTML: ${{ steps.check.outputs.html }}
+        run: |
+          set -euo pipefail
+          [ "$TAG" = "v${V}-build${N}" ] || { echo "::error::Tag $TAG doesn't match the files on release-files (v${V}-build${N})"; exit 1; }
+          cp "$APK" PocketRocketFlightLab.apk
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --latest \
+            --title "Pocket Rocket Flight Lab ${V} (build ${N})" --notes-file RELEASE_NOTES.md \
+            PocketRocketFlightLab.apk "$APK" "$HTML"
