@@ -18,6 +18,17 @@ By Dustin Lee. Free software under the [GNU General Public License v3.0 or later
   Works, Apogee) and drag calibration to real flights
 - Weather forecast for the launch site, including winds aloft to about 100,000 ft
 
+## Download
+
+Get the newest Android app (`PocketRocketFlightLab.apk`) and the web version from the
+[Releases page](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases/latest).
+
+## Support the app
+
+Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its
+development on Venmo: [@PocketRocketFlightLab](https://venmo.com/u/PocketRocketFlightLab) (US only).
+Thank you!
+
 ## Repository layout
 
 ```
