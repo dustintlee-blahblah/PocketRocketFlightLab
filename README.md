@@ -26,8 +26,8 @@ Get the newest Android app (`PocketRocketFlightLab.apk`) and the web version fro
 ## Support the app
 
 Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its
-development on Venmo: [@PocketRocketFlightLab](https://venmo.com/u/PocketRocketFlightLab) (US only).
-Thank you!
+development on Venmo: [@PocketRocketFlightLab](https://venmo.com/u/PocketRocketFlightLab) (US only), or with
+[PayPal](https://www.paypal.com/qrcodes/p2pqrc/6SFLPUHMKC9FY) (most countries). Thank you!
 
 ## Repository layout
 
