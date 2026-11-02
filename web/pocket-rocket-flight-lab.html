@@ -489,7 +489,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">228</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">229</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -636,6 +636,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <div style="min-width:0;flex:1"><h2 style="margin:0">Flight report</h2><p class="note" style="margin:2px 0 0">A PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.</p></div>
         <button class="btn" id="exportbtn">Export PDF report</button>
       </div>
+      <p class="note" id="exportprof" style="margin:6px 0 0" hidden>Your name, club and certification won’t be on the report: this copy of the app doesn’t have your profile yet. Each copy (the Android app, each web browser) keeps its own settings. <button type="button" class="linkbtn" id="exportprofbtn">Add them in Settings → Profile</button></p>
       <p class="note" id="exportmsg" aria-live="polite"></p>
       <div class="row simsaverow" id="simsaverow" hidden><div style="min-width:0;flex:1"><h2 style="margin:0">Save this Flight to the .ork file</h2><p class="note" style="margin:2px 0 0" id="simsavenote">Adds this run to the file’s simulations, so OpenRocket or RockSim shows its results next to their own.</p></div>
         <button class="btn ghost" id="simsave" type="button">Save this run</button></div>
@@ -977,7 +978,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="228";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="229";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -3739,7 +3740,7 @@ function renderResults(){
   document.getElementById("chartpanel").hidden=!lastSim;document.getElementById("animpanel").hidden=!lastSim;
   document.getElementById("windpanel").hidden=!lastSim;if(!lastSim){const rp=document.getElementById("rsopanel");if(rp)rp.hidden=true;}
   {const mp=document.getElementById("mcpanel");if(mp)mp.hidden=!lastSim;if(typeof renderMC==="function")renderMC();}
-  document.getElementById("exportwrap").hidden=!lastSim||!downloadsNS;if(typeof supRender==="function")supRender();
+  document.getElementById("exportwrap").hidden=!lastSim||!downloadsNS;if(typeof supRender==="function")supRender();if(typeof profNoteRender==="function")profNoteRender();
   {const r=document.getElementById("simsaverow");if(r){r.hidden=!lastSim||!downloadsNS;const n=document.getElementById("simsavenote");
     if(n)n.textContent=SOURCE&&SOURCE.format==="rkt"?`Saves the design as ${SOURCE.name.replace(/\.rkt$/i,"")}.ork, an OpenRocket file, with this run in its simulations. The original .rkt isn’t changed.`:SOURCE?`Adds this run to the simulations in ${SOURCE.name}, so OpenRocket shows its results next to its own. Any unsaved design changes are saved with it.`:"Save the design to a file first (Rocket tab), then runs can be saved into it.";
     const b=document.getElementById("simsave");if(b)b.disabled=!SOURCE;}}
@@ -5258,7 +5259,10 @@ function setUnits(u){units=u;store.set("rfs-units",u);for(const [id,v] of [["u-i
     const sum=()=>{document.getElementById("s-profsum").textContent=[PROFILE.name,PROFILE.cert?(PROFILE.cert==="none"?"":PROFILE.cert):""].filter(Boolean).join(" · ");};
     for(const [k,id] of Object.entries(F)){const el=document.getElementById(id);el.value=PROFILE[k]||"";
       el.addEventListener(el.tagName==="SELECT"?"change":"input",()=>{PROFILE[k]=el.value.trim();store.set("rfs-profile",PROFILE);sum();if(k==="cert"){try{renderRSO();}catch(e){}}});}
-    sum();pb.onclick=()=>{pp.hidden=!pp.hidden;pb.setAttribute("aria-expanded",!pp.hidden);};}
+    sum();pb.onclick=()=>{pp.hidden=!pp.hidden;pb.setAttribute("aria-expanded",!pp.hidden);};
+    // straight to the profile, from the note on the flight report
+    window.prOpenProfile=()=>{open(true);pp.hidden=false;pb.setAttribute("aria-expanded",true);setTimeout(()=>{const n=document.getElementById("p-name");if(n){n.focus();n.scrollIntoView({block:"center"});}},60);};
+    for(const id of Object.values(F))document.getElementById(id).addEventListener("change",()=>{try{profNoteRender();}catch(e){}});}
   const cb=document.getElementById("s-colorbtn"),cp=document.getElementById("s-colors");
   cb.onclick=()=>{cp.hidden=!cp.hidden;cb.setAttribute("aria-expanded",!cp.hidden);};
   // the colours are adjusted a little for dark backgrounds, so follow the phone's light/dark switch
@@ -7434,6 +7438,10 @@ function openLink(url){const A=window.PocketRocketApp;
   try{if(A&&typeof A.openExternal==="function"&&A.openExternal(url))return;}catch(e){}
   const w=window.open(url,"_blank","noopener");
   if(!w){const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();}}
+// the flight report shows the flier's profile; say so when this copy of the app has none
+function profNoteRender(){const n=document.getElementById("exportprof");if(!n)return;
+  n.hidden=!!(PROFILE.name||PROFILE.club||PROFILE.nar||PROFILE.tra||PROFILE.cert);}
+document.getElementById("exportprofbtn").addEventListener("click",e=>{e.stopPropagation();if(window.prOpenProfile)window.prOpenProfile();});
 function supDone(){store.set("rfs-support",{done:true});const l=document.getElementById("supline");if(l)l.hidden=true;}
 function supRender(){const l=document.getElementById("supline");if(!l)return;const v=store.get("rfs-support",{});
   l.hidden=!lastSim||!!v.done||!((v.runs||0)>=10||v.report);}
