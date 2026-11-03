@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">239</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">240</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -1009,7 +1009,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="239";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="240";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -2357,6 +2357,9 @@ function simulate(D,L,m,mb,opts={}){
   const thW=+L.thermalW||0, draft=z=>thW?thW*Math.min(1,Math.max(0,z/30))*Math.min(1,Math.max(0,(3500-z)/1000)):0;
   // a chute set to open at the motor ejection charge opens when the motor's delay (Motor tab) runs out: there's one delay
   const depMode=D.deployMode||"apogee", depDelay=depMode==="motor"?Math.max(0,D.ejDelay??0):Math.max(0,D.deployDelay||0);
+  // a chute set to open at the motor ejection charge on a plugged motor never opens: the rocket falls ballistic (a dual
+  // deploy main set to an altitude still opens there)
+  const plugSkip=depMode==="motor"&&D.ejDelay==null;
   const chuteA=(d,cd)=>cd*Math.PI*(d/2)**2;
   const dual=D.recovery!=="single", drogueDia=dual?D.drogueDia:0, mainAlt=dual?D.mainAlt:Infinity;
   const CdAdrogue=chuteA(drogueDia,D.drogueCd), CdAmain=chuteA(D.mainDia,D.mainCd), noChute=!(CdAmain+CdAdrogue>0);
@@ -2575,10 +2578,12 @@ function simulate(D,L,m,mb,opts={}){
         // the altimeter's main charge only fires on the way down: below the main altitude after apogee
         else if(mainAlt>=z&&st.tApo!=null){phase="main";st.tMain=t;}
         else phase=drogueDia>0?"drogue":"free";
-      }else if(!noChute&&(phase==="drogue"||phase==="free")&&z<=mainAlt&&st.tApo!=null){phase="main";st.tMain=t;}
+      }else if(!noChute&&(phase==="drogue"||phase==="free"||phase==="flight"&&plugSkip&&dual)&&z<=mainAlt&&st.tApo!=null){
+        if(phase==="flight"){st.tDeploy=t;st.vDeploy=airSp(z,vx,vy,vz,t);st.altDeploy=z;} // a plugged motor's drogue never came out: the main is the first to open
+        phase="main";st.tMain=t;}
     }
     if(XC.length&&phase!=="rail")for(const c of XC){if(c.open)continue;
-      const due=c.ev==="altitude"?st.tApo!=null&&z<=c.alt:c.ev==="launch"?t>=c.dd:c.ev==="ejection"?(D.ejDelay!=null&&ignOK?t>=susEnd()+D.ejDelay+c.dd:st.tApo!=null&&t>=st.tApo+c.dd):st.tApo!=null&&t>=st.tApo+c.dd;
+      const due=c.ev==="altitude"?st.tApo!=null&&z<=c.alt:c.ev==="launch"?t>=c.dd:c.ev==="ejection"?D.ejDelay!=null&&ignOK&&t>=susEnd()+D.ejDelay+c.dd:st.tApo!=null&&t>=st.tApo+c.dd;
       if(due){const W=windVec(z,t), va=Math.hypot(vx-W[0],vy-W[1],vz);c.open={t,v:va,tf:Math.max(FILL_N*c.d/Math.max(va,1),0.05)};(st.extraOpen||(st.extraOpen=[])).push({t,alt:z,ev:c.ev});}}
     if(phase!==prevPh){const W=windVec(z,t), va=Math.hypot(vx-W[0],vy-W[1],vz);
       if(phase==="drogue"&&!openD)openD={t,v:va,tf:Math.max(FILL_N*drogueDia/Math.max(va,1),0.05)};
@@ -2620,7 +2625,7 @@ function simulate(D,L,m,mb,opts={}){
   if(D.ejDelay!=null&&ignOK){const te=susEnd()+D.ejDelay;if(st.tLand==null||te<=st.tLand+1e-6)st.tEject=te;}
   // a charge within 1.5 s of apogee, pushing on a drogue or single chute, is the usual motor backup: no warning
   if(st.ejLive){if(st.tApo!=null)st.ejLive.dt=st.ejLive.t-st.tApo;if(st.ejLive.packed!=="main"&&st.ejLive.dt!=null&&Math.abs(st.ejLive.dt)<=1.5)st.ejLive=null;}
-  st.tb=staged?susEnd():MS.tb;st.landMass=mLand;st.depMode=depMode;st.depDelay=depDelay;
+  st.tb=staged?susEnd():MS.tb;st.landMass=mLand;st.depMode=depMode;st.depDelay=depDelay;if(plugSkip&&!st.noChute)st.plugSkip=true;
   // the apogee the rocket would reach if nothing opened early: the reference for chute timing and the ideal delay
   st.tApoFree=st.tApo;
   if(!opts.noRef&&(depMode!=="apogee"||depDelay>0||st.ejLive)){const ref=simulate({...D,deployMode:"apogee",deployDelay:0,ejDelay:null},L,m,mb,{noRef:true}).st;st.tApoFree=ref.tApo;st.maxAltFree=ref.maxAlt;}
@@ -2650,7 +2655,7 @@ function flyBooster(D,L,mb,start,windVec,out,key="b"){
   let t=start.t, s=start.s.slice(0,6), ph="coast", apo=s[1], tApo=null, tDep=null;
   // the stage's chute opens on its own event: apogee plus a delay, an altitude on the way down, the motor's ejection charge, or a timer
   const ev=D.bChuteEv||"apogee", dd=Math.max(0,D.bChuteDelay||0), dAlt=D.bChuteAlt||0;
-  const due=()=>ev==="altitude"?tApo!=null&&s[1]<=dAlt:ev==="launch"?t>=dd:ev==="ejection"?(start.ej!=null?t>=start.ej:tApo!=null&&t>=tApo):tApo!=null&&t>=tApo+dd;
+  const due=()=>ev==="altitude"?tApo!=null&&s[1]<=dAlt:ev==="launch"?t>=dd:ev==="ejection"?start.ej!=null&&t>=start.ej:tApo!=null&&t>=tApo+dd;
   // the earth's rotation (Coriolis), as for the main flight
   const OM=7.2921159e-5, latR=(L.lat??40)*Math.PI/180, hdg=(((L.windDir??270)+180)%360)*Math.PI/180;
   const Ox=OM*Math.cos(latR)*Math.cos(hdg), Oy=OM*Math.cos(latR)*Math.sin(hdg), Oz=OM*Math.sin(latR);
@@ -3073,8 +3078,8 @@ function parseOrk(xml){
     const big=a=>a.length?a.reduce((p,q)=>q.d>p.d?q:p):null, first=big(apo);
     nd.deployMode="apogee";nd.deployDelay=0;
     if(first){SRC.first=first.oi;const dd=Math.max(0,first.dd||0), mo=twoStage?sMotor[0]:motor;
-      if(first.ev==="ejection"){if(mo&&mo.ej!=null){nd.deployMode="motor";nd.deployDelay=mo.ej+dd;}
-        else notes.push("The chute is set to open at motor ejection, but the motor is plugged or has no delay, so it opens at apogee instead.");}
+      if(first.ev==="ejection"){nd.deployMode="motor";nd.deployDelay=mo&&mo.ej!=null?mo.ej+dd:0;
+        if(!(mo&&mo.ej!=null))notes.push("The chute is set to open at the motor ejection charge, but the motor is plugged, so that chute never opens. Choose a delay under Motor Delay on the Motor tab, or set the chute to open at apogee.");}
       else if(first.ev==="launch"){nd.deployMode="timer";nd.deployDelay=dd;}
       else if(first.ev==="apogee")nd.deployDelay=dd;
       else if(first.ev!=="altitude")notes.push(`The chute is set to open on “${first.ev}”; it was modeled as opening at apogee.`);}
@@ -3873,8 +3878,8 @@ function stageTimeline(st){
   else if(st.ign&&!sameS)add(st.ign.t,"Sustainer lights","sustainer");
   if(!noS&&st.tb!=null)add(st.tb,"Sustainer burns out","sustainer");
   add(st.tApo,"Apogee","all");
-  if(st.tDeploy!=null)add(st.tDeploy,st.single?"Chute opens":"Drogue opens","all");
-  if(st.tMain!=null&&st.tMain!==st.tDeploy)add(st.tMain,"Main opens","all");
+  if(st.tDeploy!=null&&!st.plugSkip)add(st.tDeploy,st.single?"Chute opens":"Drogue opens","all");
+  if(st.tMain!=null&&(st.tMain!==st.tDeploy||st.plugSkip))add(st.tMain,"Main opens","all");
   if(st.tLand!=null)add(st.tLand,"Sustainer lands","sustainer");
   return ev.sort((a,b)=>a.t-b.t).map(e=>({...e,alt:altAt(e.t)}));}
 function renderStaging(st,S){
@@ -3932,7 +3937,7 @@ function chargeEvents(st,D,outs){
   if(st.tEject!=null)out.push({t:st.tEject,name:`${st.staged?"Sustainer motor":"Motor"} delay charge`,motor:true,delay:D.ejDelay??0});
   if(st.tBEject!=null)out.push({t:st.tBEject,name:"Booster motor delay charge",motor:true,delay:D.bEjDelay??0,booster:true});
   if(st.tB1Eject!=null)out.push({t:st.tB1Eject,name:"First-stage motor delay charge",motor:true,delay:D.s1&&D.s1.bEjDelay||0,booster:true});
-  if(st.noChute||st.depMode==="motor")return out.sort((a,b)=>a.t-b.t); // no chutes, or the chute rides on the motor's charge
+  if(st.noChute||st.depMode==="motor"&&!st.plugSkip)return out.sort((a,b)=>a.t-b.t); // no chutes, or the chute rides on the motor's charge
   // the altimeter or timer charges still fire when they're due, even when the motor's charge already put a chute out
   const tFirst=tDep;
   const first=st.single?(st.depMode==="timer"?"Timer charge":"Apogee charge"):noDrogue?"Apogee charge":"Drogue charge";
@@ -4044,13 +4049,13 @@ function rsoChecks(st,S,m,D,LL){
   // deployment timing
   const ideal=(st.tApoFree??st.tApo)!=null&&st.tb!=null?Math.max(0,(st.tApoFree??st.tApo)-st.tb):null;
   if(st.noChute)add("bad","Recovery","None","No parachute or streamer: it comes down ballistic. Add recovery.");
-  else if(st.noDeploy)add("bad","Deployment","Never","The rocket lands before the chute opens.");
+  else if(st.noDeploy)add("bad","Deployment","Never",st.plugSkip?"The chute is set to open at the motor ejection charge, but the motor is plugged: nothing opens and the rocket comes down ballistic.":"The rocket lands before the chute opens.");
   else{
     if(D.ejDelay!=null&&ideal!=null&&!st.ignAfterApogee){const diff=D.ejDelay-ideal, alt=st.depMode!=="motor";
       const ok=Math.abs(diff)<=1.5;
       add(ok?"good":alt?"warn":(Math.abs(diff)>3?"bad":"warn"),`${st.staged?"Sustainer motor":"Motor"} ejection delay`,`${+D.ejDelay.toFixed(1)} s · ideal ${ideal.toFixed(1)} s`,
         ok?"Fires within 1.5 s of apogee.":`Fires ${Math.abs(diff).toFixed(1)} s ${diff<0?"before":"after"} apogee. ${alt?"With an altimeter doing deployment, use a plugged motor or a delay as backup set near the ideal.":"Drill or choose a delay closer to the ideal."}`);}
-    else if(D.ejDelay==null&&st.depMode==="motor")add("bad","Motor ejection delay","Plugged","Deployment is set to the motor charge, but the motor has no ejection charge.");
+    else if(D.ejDelay==null&&st.depMode==="motor")add("bad","Motor ejection delay","Plugged",`${st.single?"The parachute":"The drogue"} is set to open at the motor ejection charge, but the motor is plugged, so it never opens and the rocket comes down ballistic${!st.single&&st.tMain!=null?" until the main opens":""}. Choose a delay under Motor Delay on the Motor tab, or set the chute to open at apogee with an altimeter.`);
     if(st.ejLive){const f=ejLiveFlag(st);add(f[0],"Motor charge and packed chute",`Fires ${st.ejLive.dt==null?"before apogee":st.ejLive.dt<0?(-st.ejLive.dt).toFixed(1)+" s before apogee":st.ejLive.dt.toFixed(1)+" s after apogee"}`,f[1]);}
     const v=st.vDeploy??st.vApo;
     if(v!=null)add(v<=15?"good":v<=30?"warn":"bad",st.single?"Speed when the chute opens":"Speed when the drogue opens",sp(v),
@@ -4214,7 +4219,8 @@ function resultFlags(st,S,m,D){
      if(st.powerTilt!=null&&!st.tumble)flags.push(st.powerTilt<=cone?["good",`Stays inside the ${cone}° safety cone under power (up to ${st.powerTilt.toFixed(0)}° from vertical)`]
        :["bad",`Leaves the ${cone}° safety cone under power: ${st.powerTilt.toFixed(0)}° from vertical while the motor is still burning. A low, fast flight path can reach spectators or the parking area. Wait for less wind, use a faster motor or longer rail, or reduce the rail angle.`]);}
     if(st.noChute)flags.push(["bad",`No parachute or streamer: the rocket comes down tumbling at about ${st.tumbleRate?fmt(st.tumbleRate,"speed"):"—"} ${uname("speed")}. Add recovery under the Rocket tab.`]);
-    else if(st.noDeploy)flags.push(["bad",st.depMode==="motor"&&st.ignAfterApogee?"The sustainer never lights, so its ejection charge never fires and the chute stays packed.":"The rocket hits the ground before the chute opens."]);
+    else if(st.noDeploy)flags.push(["bad",st.plugSkip?"The chute is set to open at the motor ejection charge, but the motor is plugged (Motor tab, Motor Delay): nothing opens and the rocket comes down ballistic.":st.depMode==="motor"&&st.ignAfterApogee?"The sustainer never lights, so its ejection charge never fires and the chute stays packed.":"The rocket hits the ground before the chute opens."]);
+    else if(st.plugSkip)flags.push(["bad",`The drogue is set to open at the motor ejection charge, but the motor is plugged (Motor tab, Motor Delay): it stays packed and the rocket falls ballistic from apogee until the main opens at ${fmt(st.altDeploy??0,"alt")} ${uname("alt")}, at ${fmt(st.vDeploy??0,"speed")} ${uname("speed")}.`]);
     else if(st.tDeploy!=null&&st.tApo!=null&&(st.depMode!=="apogee"||st.depDelay>0)){const dt=st.tDeploy-(st.tApoFree??st.tApo), v=st.vDeploy;
       const when=Math.abs(dt)<0.1?"at apogee":dt<0?`${(-dt).toFixed(1)} s before apogee`:`${dt.toFixed(1)} s after apogee`;
       if(Math.abs(dt)<=1.5)flags.push(["good",`Chute opens ${when} at ${fmt(v,"speed")} ${uname("speed")}`]);
