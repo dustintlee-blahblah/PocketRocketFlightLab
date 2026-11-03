@@ -1,9 +1,29 @@
+/**
+ * The flight simulation: stage geometry, motor thrust curves, fin flutter, and simulate(), which flies a design from
+ * the pad to landing.
+ *
+ * simulate() integrates position, velocity, the rocket's axis and its pitch, yaw and roll rates (six degrees of
+ * freedom) with a fourth-order Runge-Kutta step, through these phases: on the rail, free flight (powered and coasting,
+ * tumbling if it goes unstable), and under drogue and main parachutes. It handles two and three stages (each lower
+ * stage dropping off and flown down on its own by flyBooster), clusters and airstarts, wind with height and gusts,
+ * the earth's rotation, motor charges and every deployment setting. Units are SI throughout (m, s, kg, N, rad).
+ */
 /* ---------- two-stage geometry ---------- */
+/**
+ * Body sections of the booster (a plain tube when the design has no section list).
+ * @param {object} D design
+ * @returns {object[]} sections, x from the booster's front
+ */
 function boosterSegments(D) {
   if (D.bSegments && D.bSegments.length) return D.bSegments;
   const r = D.bDiameter / 2;
   return [{ kind: "tube", x: 0, len: D.bLength, r1: r, r2: r }];
 }
+/**
+ * The booster's fin sets in the common fin-set form (see finSetsOf).
+ * @param {object} D design
+ * @returns {object[]}
+ */
 function boosterFinSets(D) {
   return [
     {
@@ -25,6 +45,11 @@ function boosterFinSets(D) {
     ...xfinSets(D.bExtraFins, D.bFinFinish ?? D.finish),
   ];
 }
+/**
+ * The sustainer and booster joined into one airframe, for the aerodynamics of the whole stack before separation.
+ * @param {object} D two-stage design
+ * @returns {object} a design-like object for aero()
+ */
 function stackDesign(D) {
   const Ls = D.length;
   const segs = [...bodySegments(D).map((s) => ({ ...s })), ...boosterSegments(D).map((s) => ({ ...s, x: s.x + Ls }))];
@@ -41,13 +66,30 @@ function stackDesign(D) {
     cdOverride: 0,
   };
 }
-// three stages: the first (bottom) stage under the booster-and-sustainer stack; D.s1 holds its parts in the booster's field names
+/**
+ * Whether a design is a three-stage rocket (a first stage under the booster, in D.s1).
+ *
+ * three stages: the first (bottom) stage under the booster-and-sustainer stack; D.s1 holds its parts in the booster's field names
+ */
 const isThree = (D) => !!(D && D.twoStage && D.threeStage && D.s1 && D.s1.bLength > 0);
+/**
+ * All three stages joined into one airframe (first stage under the two-stage stack).
+ * @param {object} D three-stage design
+ * @returns {object} a design-like object for aero()
+ */
 function stackDesign3(D) {
   const S2 = stackDesign(D);
   return stackDesign({ ...S2, ...D.s1, railPreset: D.railPreset });
 }
+/**
+ * The whole stack of a two- or three-stage design, as one airframe.
+ */
 const fullStack = (D) => (isThree(D) ? stackDesign3(D) : stackDesign(D));
+/**
+ * The booster on its own, as a design-like object for aero(), for its flight after separation.
+ * @param {object} D two-stage design
+ * @returns {object}
+ */
 function boosterDesign(D) {
   return {
     length: D.bLength,
@@ -64,6 +106,15 @@ function boosterDesign(D) {
     noseLen: 0,
   };
 }
+/**
+ * Static stability of the whole stack at liftoff and at burnout of the motor lighting first.
+ * @param {object} D two- or three-stage design
+ * @param {object} mS sustainer motor
+ * @param {object} mB booster motor
+ * @param {object} [m1] first-stage motor (three stages; defaults to the one chosen)
+ * @returns {{cp:number, cgL:number, cgB:number, marginL:number, marginB:number, d:number}} positions in m from the
+ *   nose tip, margins in calibers of d (the largest body diameter)
+ */
 function stackStability(D, mS, mB, m1) {
   // a three-stage rocket at liftoff: all three stages, the first stage's motor the one burning
   const three = isThree(D);
@@ -97,6 +148,14 @@ function stackStability(D, mS, mB, m1) {
     cgB = cgWith(mBurn.totalMass - mBurn.propMass);
   return { cp, cgL, cgB, marginL: (cp - cgL) / d, marginB: (cp - cgB) / d, d };
 }
+/**
+ * A motor's thrust curve as functions of time from ignition.
+ * A cluster (m.members) adds each motor's thrust and mass, each starting at its own ignition delay.
+ * @param {object} m motor: t (s) and F (N) thrust-curve points, totalMass and propMass (kg); or a cluster
+ * @returns {{tb:number, Itot:number, thrust:function(number):number, mass:function(number):number, peak:number}}
+ *   burn time (s), total impulse (N·s), thrust (N) and motor mass (kg) at time t, and peak thrust (N). Propellant
+ *   burns in proportion to the impulse delivered.
+ */
 function motorModel(m) {
   // a cluster: each motor's own thrust and burn, started at its own ignition time (an airstart starts later)
   if (m.members) {
@@ -137,6 +196,11 @@ function motorModel(m) {
 /* fin flutter: Martin's flutter-speed formula (NACA TN 4197, 1958), as commonly applied to rocket fins:
    Vf = a·√( G / ( 1.337·AR³·p·(λ + 1) / (2·(AR + 2)·(t/c)³) ) ), with G and p in the same units.
    G is the fin material's shear modulus; the values below are approximate handbook figures, on the low side. */
+/**
+ * Shear modulus of a fin set's material, for the flutter estimate.
+ * @param {object} f fin set (mat: material name, rho: density)
+ * @returns {{G:number, est:boolean}} G in Pa; est is true when it was judged from the density (unknown material)
+ */
 function finShearG(f) {
   const n = (f.mat || "").toLowerCase(),
     r = f.rho || 0;
@@ -156,6 +220,13 @@ function finShearG(f) {
   for (const [re, G] of T) if (re.test(n)) return { G, est: false };
   return { G: r > 2400 ? 26e9 : r > 1500 ? 3e9 : r > 900 ? 0.9e9 : r > 300 ? 0.6e9 : 0.1e9, est: true }; // unknown material: judged from its density
 }
+/**
+ * Fin flutter speed by Martin's formula (NACA TN 4197).
+ * @param {object} f fin set with its geometry (a root, b tip, s span, t thickness, area)
+ * @param {object} atm the air at the height of interest, from atmosphere()
+ * @returns {object|null} vf (flutter speed, m/s), the terms used, the shear modulus and whether it was estimated;
+ *   null when the fin's size is incomplete
+ */
 function flutterSpeed(f, atm) {
   const cr = f.a,
     ct = Math.max(f.b || 0, 0),
@@ -177,7 +248,14 @@ function flutterSpeed(f, atm) {
     mat: f.mat || "",
   };
 }
-// where the rail guides are: from the design's buttons or lugs, or typical button spots (55% and 92% of the length)
+/**
+ * Where the rocket's rail guides are, for rail friction: the aft guide's position and the gap to the front one.
+ * From the design's rail buttons or lug, or typical spots (55% and 92% of the length).
+ * @param {object} D design
+ * @returns {{aft:number, gap:number}} m from the nose tip, m
+ *
+ * where the rail guides are: from the design's buttons or lugs, or typical button spots (55% and 92% of the length)
+ */
 function railGuides(D) {
   const L = D.length;
   if (D.railPreset === "custom" && (D.buttons || []).length > 1) {
@@ -190,8 +268,27 @@ function railGuides(D) {
   }
   return { aft: 0.92 * L, gap: 0.37 * L };
 }
+/**
+ * TIPOFF: pitch rate given to the rocket at rail exit (rad/s). TUMBLE_COS: the cosine of the angle of attack
+ * past which the rocket is taken to be tumbling (0 = broadside).
+ */
 var TIPOFF = 0.1,
   TUMBLE_COS = 0; // pitch rate at rail exit (rad/s); cos of the angle of attack treated as tumbling
+/**
+ * Fly a design from the pad to landing.
+ *
+ * @param {object} D design
+ * @param {object} L launch conditions (site, weather, rail, wind, imperfections, Monte Carlo variations)
+ * @param {object} m sustainer (or only) motor, or a cluster; see flightMotor()
+ * @param {object|null} mb booster motor for two- and three-stage designs, else null
+ * @param {object} [opts]
+ * @param {object} [opts.mb1] first-stage motor of a three-stage design (defaults to the one chosen)
+ * @param {boolean} [opts.noRef] skip the extra reference flight (with the chute held until apogee) used to judge
+ *   deployment timing
+ * @returns {{out:object, st:object}} out: the flight's time series (t, alt, vel, acc, thrust, drift, cross, pitch,
+ *   aoa, va, ax, az, roll, and the dropped stages' paths); st: its events and summary (apogee, speeds, Mach, off-rail
+ *   speed, stability through the flight, burnout, deployment and landing times, drift, charge times, warnings)
+ */
 function simulate(D, L, m, mb, opts = {}) {
   const g = 9.80665,
     staged = !!(D.twoStage && mb && D.bLength > 0);
@@ -436,6 +533,10 @@ function simulate(D, L, m, mb, opts = {}) {
   const L12 = staged ? Lsus + D.bLength : 0,
     xN1 = three ? L12 + (S1.bMountAft ?? S1.bLength) + (S1.bOverhang || 0) : 0,
     xM1 = three ? xN1 - mb1.len / 2 : 0;
+  /**
+   * Mass properties at a time: CG (m from the nose tip), pitch moment of inertia about it (kg·m²), the
+   * rate propellant is burning (kg/s) and the nozzle position, for whatever is still attached.
+   */
   function inertia(t) {
     const it = [[D.dryMass, D.cgEmpty, airInertia(D.dryInertia, D.inertiaMass, D.dryMass, Lsus)]];
     if (stack(t)) {
@@ -477,6 +578,9 @@ function simulate(D, L, m, mb, opts = {}) {
   const IxxS = airRoll(D.rollInertia, D.dryMass, Gs.R),
     IxxB = staged ? airRoll(D.bRollInertia, D.bDryMass, D.bDiameter / 2) : 0,
     IxxC = three ? airRoll(S1.bRollInertia, S1.bDryMass, S1.bDiameter / 2) : 0;
+  /**
+   * Roll moment of inertia (kg·m²) of whatever is attached at time t.
+   */
   function rollI(t) {
     const rm = (m.dia || 0.029) / 2;
     if (stack1(t)) {
@@ -492,7 +596,14 @@ function simulate(D, L, m, mb, opts = {}) {
     }
     return IxxS + 0.5 * (ignOK ? MS.mass(t - tIgn) : m.totalMass) * rm * rm;
   }
-  // state: x, z, vx, vz, y, vy, rocket axis (bx, by, bz), pitch/yaw angular velocity (wx, wy, wz), roll rate p and roll angle
+  /**
+   * The equations of motion: the time derivative of the state s in phase ph ("rail", "flight", "drogue",
+   * "main" or "free"). The state is [x, z, vx, vz, y, vy, bx, by, bz, wx, wy, wz, p, roll angle]: position (x
+   * downrange, y crossrange, z up), velocity, the rocket's axis (unit vector), its pitch/yaw angular velocity, the roll
+   * rate and roll angle. The last element of the returned array is the axial acceleration, for the readout.
+   *
+   * state: x, z, vx, vz, y, vy, rocket axis (bx, by, bz), pitch/yaw angular velocity (wx, wy, wz), roll rate p and roll angle
+   */
   function deriv(t, s, ph) {
     const [x, z, vx, vz, y, vy, bx, by, bz, wx, wy, wz, p] = s,
       mm = mass(t),
@@ -782,6 +893,9 @@ function simulate(D, L, m, mb, opts = {}) {
       Fd / mm,
     ]; // under a chute the spin dies away
   }
+  /**
+   * Natural pitch frequency (rad/s) at a state, to keep the time step short enough.
+   */
   function pitchRate(t, s) {
     // natural pitch frequency, to keep the time step small enough
     const [x, z, vx, vz, y, vy] = s,
@@ -1288,6 +1402,19 @@ function simulate(D, L, m, mb, opts = {}) {
   }
   return { out, st };
 }
+/**
+ * Fly a dropped stage down on its own from separation: a point mass with drag (nose first if it's stable,
+ * tumbling if not) and its parachute on its own deployment setting.
+ * @param {object} D the stage's design (the booster fields of a design, or the first stage's)
+ * @param {object} L launch conditions
+ * @param {object} mb its motor
+ * @param {object} start separation: t, state s, and ej (time its motor's charge fires, or null)
+ * @param {function} windVec the wind at a height and time, from the main flight
+ * @param {object} out the main flight's time series, to which its path is added under key+"t", key+"alt", key+"xp"
+ * @param {string} [key="b"] "b" for the booster, "b1" for the first stage
+ * @returns {object} its apogee, landing time and place, descent rate, deployment time, mass, stability and any live
+ *   charge that fired while its chute was packed (ejLive)
+ */
 function flyBooster(D, L, mb, start, windVec, out, key = "b") {
   const g = 9.80665,
     GB = aero(boosterDesign(D)),

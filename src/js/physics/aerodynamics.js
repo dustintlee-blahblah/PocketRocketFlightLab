@@ -1,3 +1,12 @@
+/**
+ * Aerodynamics: drag (component build-up) and stability (Barrowman normal force and center of pressure), with
+ * Mach number effects, fin lift and roll terms.
+ *
+ * aero(D) turns a design into the geometry the rest of the code uses (body sections, fin sets, protuberances,
+ * reference area); cdParts() gives the zero-angle drag at a speed; cnaParts()/cnaPartsM() the normal-force slope and
+ * center of pressure; rollParts() the fin-cant roll forcing and roll damping; stability() the static margin.
+ * Sources for each term are given where it is computed.
+ */
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
    Skin friction: Prandtl–Schlichting turbulent flat-plate law, boundary layer turbulent from the tip (Schlichting, Boundary-Layer Theory),
      fully rough plate law (White, Viscous Fluid Flow) blended in by roughness Reynolds number between Nikuradse's smooth (k+≈5)
@@ -14,7 +23,16 @@
      boundary-layer profile.
    Tumbling: Allen–Perkins crossflow drag averaged over all pitch angles.
    Air viscosity: Sutherland's law. */
+/**
+ * Ratio of specific heats for air.
+ */
 const GAM = 1.4;
+/**
+ * Pressure coefficient at a stagnation point: isentropic below Mach 1, behind a normal shock (Rayleigh pitot
+ * formula) above it.
+ * @param {number} M Mach number
+ * @returns {number}
+ */
 function stagCp(M) {
   // pressure coefficient at a stagnation point
   if (M < 0.05) return 1 + (M * M) / 4;
@@ -25,9 +43,24 @@ function stagCp(M) {
       (GAM + 1);
   return (2 / (GAM * M2)) * (p02 - 1);
 }
+/**
+ * Base drag coefficient on the base area at Mach M (Fleeman's correlation).
+ */
 const baseCp = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M); // Fleeman base-drag coefficient (based on base area)
+/**
+ * Smoothstep: 0 below 0, 1 above 1, an S-curve between. Used to blend models across a range.
+ */
 const smooth01 = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+/**
+ * Transonic blend weight: 0 below Mach 0.8, rising smoothly to 1 at Mach 1.
+ */
 const transonic = (M) => smooth01((M - 0.8) / 0.2); // 0 below Mach 0.8, 1 at Mach 1
+/**
+ * Supersonic wave drag of a cone (Bonney's correlation, as given by Fleeman).
+ * @param {number} M Mach number
+ * @param {number} sig cone half-angle, rad
+ * @returns {number} drag coefficient on the cone's base area
+ */
 function bonneyCd(M, sig) {
   // cone wave drag, sig = half-angle in radians
   const d = (sig * 180) / Math.PI;
@@ -158,7 +191,12 @@ const NOSE_TR100 = {
     [3.6, 0.16],
   ],
 };
-// fig. 11, Mach 1.4: nose pressure drag against nose fineness l/d (second-order theory and data), normalized at l/d = 3
+/**
+ * NASA TR R-100 fig. 11: nose pressure drag at Mach 1.4 against nose fineness (length/diameter), as
+ * [fineness, CD]; finenessScale() normalizes it to fineness 3.
+ *
+ * fig. 11, Mach 1.4: nose pressure drag against nose fineness l/d (second-order theory and data), normalized at l/d = 3
+ */
 const NOSE_FINENESS = [
   [1, 0.5],
   [1.5, 0.36],
@@ -172,6 +210,12 @@ const NOSE_FINENESS = [
   [8, 0.024],
   [9, 0.021],
 ];
+/**
+ * Linear interpolation in a sorted [x, y] table, flat beyond its ends.
+ * @param {number[][]} pts table rows [x, y]
+ * @param {number} x
+ * @returns {number}
+ */
 function tblAt(pts, x) {
   // linear interpolation, flat beyond the ends; past the last Mach point sharp shapes follow the x^3/4 trend
   if (x <= pts[0][0]) return pts[0][1];
@@ -183,6 +227,12 @@ function tblAt(pts, x) {
     }
   return pts[pts.length - 1][1];
 }
+/**
+ * Nose pressure drag at a fineness ratio, relative to fineness 3 (NASA TR R-100 fig. 11, log–log
+ * interpolation; beyond fineness 9 it falls as fineness^-1.5).
+ * @param {number} f nose length / diameter
+ * @returns {number} multiplier on a fineness-3 drag value
+ */
 function finenessScale(f) {
   const P = NOSE_FINENESS;
   f = Math.max(f, 1);
@@ -199,6 +249,13 @@ function finenessScale(f) {
     }
   return 1;
 }
+/**
+ * A fineness-3 nose's pressure drag from the NOSE_TR100 curves, extended past the last measured Mach number
+ * (cones by Bonney's correlation, other shapes by the trend of a similar measured shape).
+ * @param {string} name curve name in NOSE_TR100
+ * @param {number} M Mach number
+ * @returns {number} CD on the base area
+ */
 function curveCd(name, M) {
   // fineness-3 curve, extended past its last Mach point
   const pts = NOSE_TR100[name],
@@ -210,7 +267,17 @@ function curveCd(name, M) {
     return name === "ell" || name === "x14" ? end : (end * tblAt(NOSE_TR100.vk, M)) / tblAt(NOSE_TR100.vk, last);
   return (end * tblAt(NOSE_TR100.x34, M)) / tblAt(NOSE_TR100.x34, last);
 }
+/**
+ * Linear blend of a and b: a at w = 0, b at w = 1.
+ */
 const mix = (a, b, w) => a * (1 - w) + b * w;
+/**
+ * Pressure drag of a fineness-3 nose of any shape the app supports, interpolated between the measured shapes.
+ * @param {string} shape nose shape (see noseR)
+ * @param {number} param shape parameter
+ * @param {number} M Mach number
+ * @returns {number} CD on the base area (scale with finenessScale for other fineness ratios)
+ */
 function noseCdTR100(shape, param, M) {
   // fineness-3 value for any nose shape the app supports
   switch (shape) {
@@ -242,6 +309,15 @@ function noseCdTR100(shape, param, M) {
   }
   return curveCd("par", M);
 }
+/**
+ * Flat-plate skin-friction coefficient, with surface roughness and compressibility.
+ * @param {number} Re Reynolds number on the surface's own length
+ * @param {number} Lc that length, m
+ * @param {number} k roughness height, m
+ * @param {number} M Mach number
+ * @param {string} mode "natural" for natural laminar-to-turbulent transition; otherwise turbulent from the start
+ * @returns {number} Cf on the wetted area
+ */
 function plateCf(Re, Lc, k, M, mode) {
   // flat-plate skin friction: turbulent (or natural transition), with roughness and compressibility
   // The boundary layer is taken as turbulent from the nose tip: on a real rocket the tip, joints, lugs and paint trip it early.
@@ -259,6 +335,11 @@ function plateCf(Re, Lc, k, M, mode) {
   const w = kPlus > 0 ? smooth01(Math.log(kPlus / 5) / Math.log(70 / 5)) : 0;
   return (smoothCf + w * Math.max(roughCf - smoothCf, 0)) * Math.pow(1 + 0.144 * M * M, -0.65);
 }
+/**
+ * Drag coefficient of a short cylinder in crossflow (a rail button), on its frontal area.
+ * @param {number} M Mach number
+ * @returns {number}
+ */
 function cylinderCd(M) {
   // cylinder in crossflow (rail button): Hoerner's subsonic 1.2 scaled by stagnation pressure;
   // supersonic by modified Newtonian (2/3·Cp,max) plus base pressure, blended over Mach 1.0–1.3
@@ -268,23 +349,48 @@ function cylinderCd(M) {
   const t = smooth01((M - 1) / 0.3);
   return (1 - t) * sub(1) + t * sup(M);
 }
+/**
+ * How much of the free-stream dynamic pressure a protuberance feels inside the body's boundary layer: the mean
+ * (u/U)² over its height in a 1/7-power turbulent profile.
+ * @param {number} h protuberance height, m
+ * @param {number} x its distance from the nose tip (where the boundary layer starts), m
+ * @param {number} v airspeed, m/s
+ * @param {number} nu kinematic viscosity, m²/s
+ * @returns {number} 0–1
+ */
 function blFactor(h, x, v, nu) {
   // mean (u/U)² over a protuberance of height h inside a 1/7-power turbulent boundary layer
   x = Math.max(x, 0.01);
   const del = 0.37 * x * Math.pow(Math.max((v * x) / nu, 1e3), -0.2);
   return h <= del ? (7 / 9) * Math.pow(h / del, 2 / 7) : 1 - ((2 / 9) * del) / h;
 }
+/**
+ * Standard rail buttons, by rail size: outer and inner diameter, height, flange and base thickness (m).
+ */
 const RAIL_PRESETS = {
   // outer dia, inner dia, total height, flange, base (m)
   1010: { od: 0.0097, id: 0.008, h: 0.0097, fl: 0.002, bs: 0.002, label: "1010 buttons ×2" },
   1515: { od: 0.0157, id: 0.0081, h: 0.0127, fl: 0.0025, bs: 0.0025, label: "1515 buttons ×2" },
 };
+/**
+ * Radius of a body section at a distance from its front: constant for a tube, the nose profile for a nose or
+ * an expanding transition, the reversed profile for a shrinking transition (boattail).
+ * @param {object} sg body section {kind, x, len, r1, r2, shape, param}
+ * @param {number} x distance from the section's front, m
+ * @returns {number} radius, m
+ */
 function segR(sg, x) {
   // radius of a body section at distance x from its front
   if (sg.kind === "tube" || Math.abs(sg.r2 - sg.r1) < 1e-9) return sg.r1;
   if (sg.r1 < sg.r2) return sg.r1 + noseR(sg.shape, sg.param, x, sg.r2 - sg.r1, sg.len);
   return sg.r2 + noseR(sg.shape, sg.param, sg.len - x, sg.r1 - sg.r2, sg.len);
 }
+/**
+ * The body as a list of sections (nose, tubes, transitions) from the nose tip back. A design from a file or the
+ * builder has them in D.segments; a quick-form design is built from its nose, body and tail cone fields.
+ * @param {object} D design
+ * @returns {object[]} sections {kind, x, len, r1, r2, shape, param}
+ */
 function bodySegments(D) {
   if (D.segments && D.segments.length) return D.segments;
   const R = D.diameter / 2,
@@ -298,12 +404,24 @@ function bodySegments(D) {
   if (tl > 0) segs.push({ kind: "trans", x: L - tl, len: tl, r1: R, r2: Rt, shape: "conical", param: 0 });
   return segs;
 }
+/**
+ * Body radius at a distance from the nose tip.
+ * @param {object} A aerodynamic model from aero()
+ * @param {number} x m from the nose tip
+ * @returns {number} m
+ */
 function radiusAt(A, x) {
   for (const sg of A.segs) {
     if (x >= sg.x - 1e-9 && x <= sg.x + sg.len + 1e-9) return segR(sg, Math.min(Math.max(x - sg.x, 0), sg.len));
   }
   return A.R;
 }
+/**
+ * All fin sets of a design in one form {n, a (root), b (tip), s (span), sw (sweep), t, xLead, edge, ...}:
+ * D.finSets when the design has them, otherwise the main set from the quick-form fields plus any extra sets.
+ * @param {object} D design
+ * @returns {object[]}
+ */
 function finSetsOf(D) {
   if (D.finSets) return D.finSets;
   return [
@@ -327,6 +445,12 @@ function finSetsOf(D) {
   ];
 }
 /* extra fin sets: {n,root,tip,span,sweep,t,pos (root leading edge from the front of the stage),edge} */
+/**
+ * Extra fin sets in the common fin-set form used by finSetsOf().
+ * @param {object[]} list extra fin sets
+ * @param {string} rs surface finish
+ * @returns {object[]}
+ */
 function xfinSets(list, rs) {
   return (list || []).map((f) => ({
     n: f.n,
@@ -345,7 +469,13 @@ function xfinSets(list, rs) {
     cant: f.cant || 0,
   }));
 }
-// a fin's outline for drawing: the shape from the design file when there is one, otherwise the trapezoid
+/**
+ * A fin's outline as [x along the root, y out from the body] points.
+ * @param {object} f fin set
+ * @returns {number[][]}
+ *
+ * a fin's outline for drawing: the shape from the design file when there is one, otherwise the trapezoid
+ */
 function finOutline(f) {
   return f.pts && f.pts.length > 2
     ? f.pts
@@ -356,8 +486,17 @@ function finOutline(f) {
         [f.a, 0],
       ];
 }
-// fin properties from its outline, by thin spanwise strips: exact for any shape (a trapezoid gives Barrowman's closed forms).
-// Sweep angles are strip averages of the local mid-chord and leading-edge slopes (Barrowman 1967, applied strip by strip to any outline).
+/**
+ * A fin's geometric properties from its outline, by thin spanwise strips.
+ * @param {object} f fin set
+ * @returns {{area:number, span:number, mac:number, xcp:number, cnX:number, edgeH:number, yMac:number, I1:number,
+ *   I2:number}|null} area (m²), span, mean aerodynamic chord, the quarter-MAC point from the root leading edge (Barrowman's
+ *   fin CP), the term X of Barrowman's lift formula, the leading-edge height weighted by cos² of its sweep, the MAC's
+ *   spanwise station, and the first and second moments of area about the root; null for a degenerate outline
+ *
+ * fin properties from its outline, by thin spanwise strips: exact for any shape (a trapezoid gives Barrowman's closed forms).
+ * Sweep angles are strip averages of the local mid-chord and leading-edge slopes (Barrowman 1967, applied strip by strip to any outline).
+ */
 function finGeom(f) {
   const ol = finOutline(f),
     span = Math.max(...ol.map((p) => p[1])),
@@ -429,7 +568,18 @@ function finGeom(f) {
   };
 }
 
+/**
+ * aero() results by design, so repeated calls for the same design are free.
+ */
 const aeroCache = new Map();
+/**
+ * The aerodynamic model of a design: everything the drag and stability code needs, worked out once.
+ * @param {object} D design
+ * @returns {object} segs (body sections with areas and volumes), R (max radius), Aref (reference area), L (length),
+ *   fins (fin sets with their geometry), buttons, lugs, fore/aft (forebody and afterbody drag items), baseArea,
+ *   sideArea and xPlan (planform area and its centroid), tumbleCdA, ffBody (body form factor), and the drag settings
+ *   (override, scale, otherCd, blMode)
+ */
 function aero(D) {
   const key = JSON.stringify([
     D.blMode,
@@ -623,10 +773,23 @@ function aero(D) {
   aeroCache.set(key, val);
   return val;
 }
+/**
+ * Kinematic viscosity of the air (Sutherland's law for the dynamic viscosity).
+ * @param {{T:number, rho:number}} atm the air, from atmosphere()
+ * @returns {number} m²/s
+ */
 function kinVisc(atm) {
   const mu = (1.458e-6 * Math.pow(atm.T, 1.5)) / (atm.T + 110.4);
   return mu / atm.rho;
 } // Sutherland's law
+/**
+ * Zero-angle drag coefficient of the rocket at a speed, split into friction, pressure and base drag.
+ * @param {object} A aerodynamic model from aero()
+ * @param {number} v airspeed, m/s
+ * @param {object} atm the air, from atmosphere()
+ * @param {number} [nozzleArea=0] nozzle exit area while a motor burns, m² (its exhaust fills that much of the base)
+ * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref
+ */
 function cdParts(A, v, atm, nozzleArea = 0) {
   // a fixed Cd for the whole rocket (from the design file): used as it is, scaled by any calibration to a real flight
   if (A.override > 0) return { cd: A.override * (A.scale || 1), friction: 0, pressure: 0, base: 0, override: true };
@@ -748,7 +911,17 @@ const FIN_SUB_M = 0.9,
   FIN_SUP_M = 1.5,
   FIN_SUP_K_SHARP = 4,
   FIN_SUP_K_BLUNT = 2.5;
+/**
+ * The supersonic fin lift constant for a fin set's edge shape (FIN_SUP_K_SHARP or FIN_SUP_K_BLUNT).
+ */
 const finSupK = (f) => (f.edge === "square" ? FIN_SUP_K_BLUNT : FIN_SUP_K_SHARP);
+/**
+ * A fin set's normal-force slope at a Mach number relative to its incompressible value, and how far its center
+ * of pressure moves aft.
+ * @param {object} f fin set (from aero())
+ * @param {number} M Mach number
+ * @returns {{k:number, dx:number}} slope ratio, and CP shift aft (m)
+ */
 function finLiftRatio(f, M) {
   // fin normal-force slope at Mach M over its incompressible value, and the fin CP shift aft (m)
   const X = f.cnX,
@@ -773,7 +946,14 @@ function finLiftRatio(f, M) {
   const w = smooth01((M - FIN_SUB_M) / (FIN_SUP_M - FIN_SUB_M));
   return { k: sub(FIN_SUB_M) * (1 - w) + sup(FIN_SUP_M) * w, dx: cpS(FIN_SUP_M) * w };
 }
-// 2-D lift slope of a fin strip against its incompressible 2π, for roll damping
+/**
+ * Two-dimensional lift slope of a fin strip at a Mach number, relative to 2π (Prandtl–Glauert below Mach 1,
+ * Ackeret above, blended between). Used for roll damping.
+ * @param {number} M
+ * @returns {number}
+ *
+ * 2-D lift slope of a fin strip against its incompressible 2π, for roll damping
+ */
 function stripLiftRatio(M) {
   const sub = (m) => 1 / Math.sqrt(1 - m * m),
     sup = (m) => 4 / Math.sqrt(m * m - 1) / (2 * Math.PI);
@@ -782,7 +962,14 @@ function stripLiftRatio(M) {
   const w = smooth01((M - FIN_SUB_M) / (FIN_SUP_M - FIN_SUB_M));
   return sub(FIN_SUB_M) * (1 - w) + sup(FIN_SUP_M) * w;
 }
-// the normal-force parts at a given Mach number, cached in steps of 0.01 Mach
+/**
+ * cnaParts() cached per design in 0.01-Mach steps.
+ * @param {object} A aerodynamic model
+ * @param {number} M Mach number
+ * @returns {object} see cnaParts
+ *
+ * the normal-force parts at a given Mach number, cached in steps of 0.01 Mach
+ */
 function cnaPartsM(A, M) {
   A._cnM = A._cnM || new Map();
   const key = Math.round(Math.max(M, 0) * 100);
@@ -792,6 +979,12 @@ function cnaPartsM(A, M) {
   A._cnM.set(key, r);
   return r;
 }
+/**
+ * rollParts() cached per design in 0.01-Mach steps.
+ * @param {object} A aerodynamic model
+ * @param {number} M Mach number
+ * @returns {object} see rollParts
+ */
 function rollPartsM(A, M) {
   A._rpM = A._rpM || new Map();
   const key = Math.round(Math.max(M, 0) * 100);
@@ -801,6 +994,14 @@ function rollPartsM(A, M) {
   A._rpM.set(key, r);
   return r;
 }
+/**
+ * Normal-force slope of each component (Barrowman) and where it acts, at a Mach number.
+ * @param {object} A aerodynamic model from aero()
+ * @param {number} [M=0] Mach number
+ * @returns {{parts:{cn:number, x:number, fin?:boolean}[], cn:number, cp:number, cnFin:number, momFin:number,
+ *   finPlan:number}} each part's CNα (per radian, on A.Aref) and position (m from the nose tip); the total CNα and
+ *   center of pressure; the fins' share of CNα and of its moment; and the fins' planform area term
+ */
 function cnaParts(A, M = 0) {
   // Barrowman normal-force slope (per radian) of each component and where it acts, at Mach M
   const d = 2 * A.R,
@@ -832,8 +1033,16 @@ function cnaParts(A, M = 0) {
     finPlan: A.fins.reduce((t, f) => t + (f.n * f.area) / Math.PI, 0),
   };
 }
-// each fin set's roll terms: moment = q·Aref·(force − damp·p/V). A fin's own normal-force slope CNα1 = 8(s/d)²/(1+√(1+X²))
-// (the set's Barrowman slope is N/2 of it); cant tilts each fin's chord, and spinning at p meets each strip at an angle p·r/V
+/**
+ * Fin-cant roll forcing and roll damping of all fin sets, at a Mach number. The roll moment is
+ * q·Aref·(force − damp·p/V), with p the roll rate.
+ * @param {object} A aerodynamic model
+ * @param {number} [M=0] Mach number
+ * @returns {{force:number, damp:number}}
+ *
+ * each fin set's roll terms: moment = q·Aref·(force − damp·p/V). A fin's own normal-force slope CNα1 = 8(s/d)²/(1+√(1+X²))
+ * (the set's Barrowman slope is N/2 of it); cant tilts each fin's chord, and spinning at p meets each strip at an angle p·r/V
+ */
 function rollParts(A, M = 0) {
   const d = 2 * A.R;
   let force = 0,
@@ -855,6 +1064,11 @@ function rollParts(A, M = 0) {
   }
   return { force, damp };
 }
+/**
+ * Subsonic (low-speed) center of pressure by Barrowman's method.
+ * @param {object} A aerodynamic model
+ * @returns {number} m from the nose tip
+ */
 function cpOf(A) {
   const d = 2 * A.R;
   let CN = 0,
@@ -879,6 +1093,13 @@ function cpOf(A) {
   }
   return CN > 0 ? CNx / CN : A.L / 2;
 }
+/**
+ * Static stability with a motor: the center of pressure, the CG at liftoff and at burnout, and the margins.
+ * @param {object} D design
+ * @param {object} m motor (with len, totalMass, propMass)
+ * @returns {{cp:number, cgL:number, cgB:number, marginL:number, marginB:number}} positions in m from the nose tip;
+ *   margins in calibers (body diameters)
+ */
 function stability(D, m) {
   const A = aero(D),
     d = 2 * A.R,

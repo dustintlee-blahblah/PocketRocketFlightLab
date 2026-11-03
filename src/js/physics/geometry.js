@@ -1,4 +1,14 @@
+/**
+ * Body geometry: nose-cone and transition profiles, and a small interpolation table class.
+ *
+ * Nose shape definitions follow Crowell, The Descriptive Geometry of Nose Cones (1996).
+ */
 /* ---------- body geometry (nose-cone shape definitions: Crowell, The Descriptive Geometry of Nose Cones, 1996) ---------- */
+/**
+ * The nose shape of a quick-form design (D.noseShape, "shape:param"), with old one-word values mapped to it.
+ * @param {object} D design
+ * @returns {{shape:string, param:number}}
+ */
 function noseSpec(D) {
   let s = String(D.noseShape || "ogive:1");
   const legacy = { ogive: "ogive:1", conical: "conical:0", parabolic: "parabolic:1", elliptical: "ellipsoid:0" };
@@ -6,6 +16,16 @@ function noseSpec(D) {
   const [shape, p] = s.split(":");
   return { shape, param: parseFloat(p) || 0 };
 }
+/**
+ * Radius of a nose cone (or transition) profile at a distance from its tip.
+ * @param {string} shape "conical", "ogive", "ellipsoid", "power", "parabolic" or "haack"
+ * @param {number} param shape parameter: ogive 1 = tangent, 0 = cone; power-series exponent; parabolic K;
+ *   Haack C (0 = von Kármán, 1/3 = LV-Haack)
+ * @param {number} x distance from the tip, m
+ * @param {number} R base radius, m
+ * @param {number} L length, m
+ * @returns {number} radius at x, m
+ */
 function noseR(shape, param, x, R, L) {
   // radius at distance x from the tip
   x = Math.min(Math.max(x, 0), L);
@@ -38,6 +58,10 @@ function noseR(shape, param, x, R, L) {
   }
   return (R * x) / L;
 }
+/**
+ * A table of (x, y) points read by straight-line interpolation, flat beyond its ends. Points can be added one at
+ * a time (repeated x values keep the last); the sorted list is cached until the next add.
+ */
 class LinInterp {
   constructor(xs = [], ys = []) {
     this.p = new Map();

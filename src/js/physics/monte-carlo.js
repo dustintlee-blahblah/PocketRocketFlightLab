@@ -1,13 +1,26 @@
+/**
+ * Landing dispersion (Monte Carlo): many flights with their inputs varied, their apogees and landing points, the
+ * likely apogee range shown on the Results tab, and the landing-ellipse drawing.
+ */
 /* ---------- landing dispersion (Monte Carlo) ----------
    Each flight draws its inputs from normal distributions (seeded, so a run repeats): surface and aloft wind speed (scaled
    together) and direction (shifted together), motor impulse, rocket weight, drag, rail angle, and a thrust misalignment
    in a random direction. Landing points are turned into compass east/north so flights with different wind directions
    line up. The ellipses come from the covariance of the landing points (1σ and 2σ). */
+/**
+ * lastMC: the last dispersion run's results (apogee statistics, landing ellipses, the flights' points), tied to
+ * the run of the simulation it was flown for (when). mcBusy/mcStop/mcAgain: a run in progress, a request to stop it,
+ * and a request to start again once it stops.
+ */
 let lastMC = null,
   mcBusy = false,
   mcStop = false,
   mcAgain = false;
-// after each run of the simulation, the dispersion flies in the background (a newer run replaces one still going)
+/**
+ * Start a dispersion run in the background after a simulation run (replacing one still going).
+ *
+ * after each run of the simulation, the dispersion flies in the background (a newer run replaces one still going)
+ */
 function mcAuto() {
   if (!lastSim) return;
   if (mcBusy) {
@@ -19,6 +32,11 @@ function mcAuto() {
     if (lastSim && !mcBusy) runMC();
   }, 80);
 }
+/**
+ * A small seeded random-number generator (mulberry32), so a dispersion run repeats exactly.
+ * @param {number} seed
+ * @returns {{u:function():number, n:function():number}} u: uniform in [0, 1); n: standard normal (Box–Muller)
+ */
 function mcRng(seed) {
   let a = seed >>> 0;
   const u = () => {
@@ -37,6 +55,11 @@ function mcRng(seed) {
     },
   };
 }
+/**
+ * Fly the dispersion run for the last simulation: L.mcN flights, each with its wind, direction, impulse, weight,
+ * drag, rail angle, thrust misalignment, roll, delay and chute drag drawn at random; then the apogee statistics and
+ * the 68% and 95% landing ellipses. Yields to the page between flights so it stays responsive and can be cancelled.
+ */
 async function runMC() {
   if (mcBusy || !lastSim) return;
   readFields();
@@ -190,6 +213,11 @@ async function runMC() {
   renderMC();
   renderRSO();
 }
+/**
+ * Compass bearing (0–180°) of an axis given as an angle from east, counterclockwise.
+ * @param {number} angE rad
+ * @returns {number} degrees
+ */
 function mcBearing(angE) {
   // the compass bearing of an axis given as an angle from east (counterclockwise)
   return (((90 - (angE * 180) / Math.PI) % 180) + 180) % 180;
@@ -199,6 +227,12 @@ function mcBearing(angE) {
    amateur rocket simulators generally compare with real flights, as 90% half-widths: 6% for a weighed rocket below Mach 0.8;
    12% low and 7% high when the weight and CG are only estimated (built rockets usually come out heavier); 3% once the drag
    has been calibrated to one of your own flights; plus 5% at Mach 0.8 or faster, where drag is least certain. */
+/**
+ * The likely apogee range: the dispersion run's spread combined with an allowance for the model itself.
+ * @param {object} st the flight's summary (from simulate)
+ * @param {object} D design
+ * @returns {object|null} lo and hi (m), the percentages and what went into them; null without a valid flight
+ */
 function apoRange(st, D) {
   if (!st || st.error || !(st.maxAlt > 0)) return null;
   const cal = D.dragScale > 0 && Math.abs(D.dragScale - 1) > 1e-6,
@@ -218,12 +252,23 @@ function apoRange(st, D) {
     A = st.maxAlt;
   return { lo: A * (1 - lo), hi: A * (1 + hi), loPct: lo, hiPct: hi, mLo, mHi, cLo, cHi, mc: !!mc, cal, est, fast };
 }
-// a range end, rounded in the units shown: to 10 above 1,000, otherwise to 1
+/**
+ * An end of the apogee range in the units shown, rounded (to 10 above 1,000).
+ * @param {number} v m
+ * @returns {string}
+ *
+ * a range end, rounded in the units shown: to 10 above 1,000, otherwise to 1
+ */
 function apoRound(v) {
   const d = toDisp(v, "alt"),
     q = Math.abs(d) >= 1000 ? 10 : 1;
   return (Math.round(d / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
+/**
+ * The explanation shown in the apogee range's info box.
+ * @param {object} R from apoRange()
+ * @returns {string}
+ */
 function apoRangeInfo(R) {
   const p = (x) => `${Math.round(x * 100)}%`;
   return (
@@ -233,6 +278,9 @@ function apoRangeInfo(R) {
     `Combined root-sum-square. The model figures are estimates, not measured from your rockets. The RSO Checklist uses the top of the range.`
   );
 }
+/**
+ * Show the likely apogee range under the predicted apogee on the Results tab.
+ */
 function renderApoRange() {
   const el = document.getElementById("aporange");
   if (!el) return;
@@ -245,6 +293,9 @@ function renderApoRange() {
   el.hidden = false;
   el.innerHTML = `<span>Likely <b>${r(R.lo)}–${r(R.hi)} ${uname("alt")}</b>${R.mc ? "" : " · dispersion pending"}</span>${infoBtn("Likely apogee range", apoRangeInfo(R))}`;
 }
+/**
+ * Show the dispersion run's results (statistics and the landing map) on the Results tab.
+ */
 function renderMC() {
   const out = document.getElementById("mcout");
   if (!out) return;
@@ -277,10 +328,22 @@ function renderMC() {
     `The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, ${Math.round(M.in68 * 100)}% and ${Math.round(M.in95 * 100)}% of the ${M.n} landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±${Math.round((L.mcWind || 0) * 100)}%, wind direction ±${L.mcDir || 0}°, impulse ±${+((L.mcImp || 0) * 100).toFixed(1)}%, weight ±${+((L.mcMass || 0) * 100).toFixed(1)}%, drag ±${Math.round((L.mcCd || 0) * 100)}%, rail angle ±${L.mcAngle || 0}°, thrust misalignment ${L.mcMis || 0}° (1σ).`;
   drawMC();
 }
+/**
+ * Draw the landing map on the Results tab's canvas.
+ */
 function drawMC() {
   if (typeof series !== "undefined" && series === "land") drawChart();
 }
-// the landing bullseye, drawn as the chart's Landing view: every dispersion landing seen from above, north up, with the 68% and 95% ellipses
+/**
+ * Draw the landing map: the pad, every flight's landing point, the 68% and 95% ellipses and a scale, on any
+ * canvas (the Results tab, or the PDF report's image).
+ * @param {HTMLCanvasElement} cv
+ * @param {CanvasRenderingContext2D} c
+ * @param {number} W width, px
+ * @param {number} H height, px
+ *
+ * the landing bullseye, drawn as the chart's Landing view: every dispersion landing seen from above, north up, with the 68% and 95% ellipses
+ */
 function drawMCInto(cv, c, W, H) {
   c.clearRect(0, 0, W, H);
   const leg = document.getElementById("chartlegend");
@@ -369,9 +432,18 @@ document.getElementById("mccancel").onclick = () => {
 
 /* landing ellipses: for landing points spread in two directions, an ellipse k standard deviations out holds 1 − e^(−k²/2) of them,
    so the 68% and 95% ellipses are 1.51 and 2.45 standard deviations out (not 1 and 2, which hold only 39% and 86%) */
+/**
+ * How many standard deviations out the 68% and 95% landing ellipses are, for points spread in two directions.
+ */
 const MC_K68 = Math.sqrt(-2 * Math.log(1 - 0.68)),
   MC_K95 = Math.sqrt(-2 * Math.log(1 - 0.95));
-// farthest point of the 95% landing ellipse from the pad
+/**
+ * The farthest point of the 95% landing ellipse from the pad.
+ * @param {object} M dispersion results (me, mn: mean east and north; a1, b1: the ellipse's 1σ axes; ang: its angle)
+ * @returns {number} m
+ *
+ * farthest point of the 95% landing ellipse from the pad
+ */
 function mcFar95(M) {
   let f = 0;
   for (let i = 0; i < 72; i++) {
