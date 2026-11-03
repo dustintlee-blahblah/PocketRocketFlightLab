@@ -1,6 +1,6 @@
 /**
- * The form field lists: launch conditions, range settings, imperfections and the dispersion spreads. (The rocket
- * itself is edited in the parts builder on the Rocket tab.)
+ * The forms: the field lists (launch conditions, range settings, imperfections and the dispersion spreads) and
+ * drawing them (renderForms). The rocket itself is edited in the parts builder on the Rocket tab.
  */
 /* ---------- forms ---------- */
 /**
@@ -133,3 +133,108 @@ const FIELDS = {
   ],
   "g-motortemp": [["motorDT", "Motor temperature above air", "dtemp", "L", 0]],
 };
+/**
+ * Draws every form group in FIELDS with the current values and units, and the notes that go with them.
+ */
+function renderForms() {
+  if (typeof mtSummary === "function") setTimeout(mtSummary, 0);
+  try {
+    bpRender();
+  } catch (e) {}
+  renderInertiaNote();
+  renderTitle();
+  renderRecNote();
+  for (const [gid, list] of Object.entries(FIELDS)) {
+    const g = document.getElementById(gid);
+    g.innerHTML = "";
+    for (const [k, lab, dim, , decOverride, opts] of list) {
+      const O = L,
+        id = "f-" + k;
+      const wrap = document.createElement("div");
+      wrap.className = "fld";
+      // the rail's lean direction only applies to a rail set to lean a fixed way
+      const off = L.railMode !== "fixed" && k === "railDir";
+      if (off) wrap.classList.add("off");
+      let html = `<div class="lh"><label for="${id}">${lab}</label>${infoBtn(lab, fieldInfo(k))}</div><div class="in">`;
+      if (dim === "sel") {
+        html +=
+          `<select id="${id}">` +
+          opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("") +
+          `</select>`;
+      } else {
+        // pressure and humidity left unset show blank (standard air, dry) rather than a 0 that reads like a measurement
+        const blank = (k === "pressure" || k === "humidity") && !(O[k] > 0),
+          ph = k === "pressure" ? "Standard" : k === "humidity" || k === "dewC" ? "Not set" : "";
+        const val =
+          O[k] == null || blank
+            ? ""
+            : dim === "int"
+              ? O[k]
+              : +toDisp(O[k], dim).toFixed(
+                  decOverride ??
+                    (dim === "temp"
+                      ? 1
+                      : Math.max(DIMS[units][dim]?.[2] ?? 2, dim === "len" && units === "imp" ? 2 : 0)),
+                );
+        html +=
+          `<input id="${id}" type="number" inputmode="decimal" step="any" value="${val}"${ph ? ` placeholder="${ph}"` : ""}>` +
+          (dim !== "int" && uname(dim) ? `<span class="u">${uname(dim)}</span>` : "");
+      }
+      wrap.innerHTML = html + "</div>";
+      g.appendChild(wrap);
+      const el = wrap.querySelector("input,select");
+      if (off) el.disabled = true;
+      if (dim === "sel") {
+        const cur = String(O[k]);
+        const match = [...el.options].find(
+          (o) =>
+            o.value === cur ||
+            (o.value !== "" && !isNaN(+o.value) && !isNaN(+cur) && Math.abs(+o.value - +cur) < 1e-12),
+        );
+        if (match) el.value = match.value;
+        el.addEventListener("change", () => {
+          if (RANGE_KEYS.includes(k)) {
+            L[k] = el.value;
+            store.set("rfs-launch", L);
+            el.dataset.shown = el.value;
+            renderRSO();
+            siteRender();
+            return;
+          }
+          O[k] = k === "clusterFail" ? el.value === "true" : isNaN(+el.value) ? el.value : +el.value;
+          if (k === "railMode") renderForms();
+          changed();
+        });
+      } else {
+        el.addEventListener("input", () => {
+          const v = parseFloat(el.value);
+          if (el.value.trim() === "" && ["pressure", "humidity", "dewC"].includes(k)) {
+            O[k] = k === "dewC" ? null : 0;
+            el.dataset.shown = "";
+            changed();
+            return;
+          } // cleared: back to standard air
+          if (!isFinite(v)) return;
+          O[k] = dim === "int" ? Math.max(1, Math.round(v)) : fromDisp(v, dim);
+          // the dispersion spreads don't change the flight itself: keep the results, just remember the setting
+          if (RANGE_KEYS.includes(k)) {
+            store.set("rfs-launch", L);
+            el.dataset.shown = el.value;
+            renderRSO();
+            siteRender();
+            return;
+          }
+          changed();
+        });
+      }
+      el.dataset.shown = el.value;
+    }
+  }
+  renderSavePanel();
+  renderMountNote();
+  if (typeof renderAloft === "function") renderAloft();
+  {
+    const sp = document.getElementById("stagelockpanel");
+    if (sp) sp.hidden = !D.twoStage;
+  }
+}

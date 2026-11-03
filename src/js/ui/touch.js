@@ -1,6 +1,5 @@
 /**
- * Touch screens: a field being typed in hides the launch bar until the keyboard closes. And the Android app's report
- * of where a new design was saved (prSavedAs).
+ * Touch screens: a field being typed in hides the launch bar until the keyboard closes.
  */
 // on touch screens, a field being typed in hides the launch bar until the keyboard closes
 {
@@ -62,17 +61,3 @@
     });
   }
 }
-// the Android app reports the place on the phone a new design was saved to
-window.prSavedAs = async (uri) => {
-  if (!uri || !SOURCE) return;
-  const old = SOURCE.recentId ? await recentGet(SOURCE.recentId) : null;
-  if (old && old.id !== uri) await recentDel(old.id);
-  await recentPut({
-    ...(old || { name: SOURCE.name, rocket: D.name || "", data: null }),
-    id: uri,
-    uri,
-    when: Date.now(),
-  });
-  setSource({ ...SOURCE, recentId: uri });
-  renderRecent();
-};

@@ -1,6 +1,6 @@
 /**
  * The Rocket tab's parts builder: the parts tree, the editor for the selected part, the side view of the rocket,
- * undo and redo, and turning the parts into the flight design (see the note below).
+ * undo and redo, the New design button, and turning the parts into the flight design (see the note below).
  */
 /* ---------- Rocket tab: the parts builder ----------
    The parts list (BLD) is the design. The flight code's summary (D) is worked out from it every time it
@@ -1765,3 +1765,15 @@ window.addEventListener("resize", () => {
     bldDrawFinEdit();
   }
 });
+// the Rocket tab's New design, Undo and Redo buttons
+document.getElementById("handdesign").onclick = bldNewDesign;
+document.getElementById("bldundo").onclick = () => bldUndoStep(-1);
+document.getElementById("bldredo").onclick = () => bldUndoStep(1);
+document.getElementById("newdesign").onclick = () => {
+  // starting over closes the open design: offer to save its changes first
+  confirmUnsaved(() => {
+    document.getElementById("savemsg").innerHTML = "";
+    bldNewDesign();
+    window.scrollTo({ top: 0 });
+  }, "starting a new design");
+};

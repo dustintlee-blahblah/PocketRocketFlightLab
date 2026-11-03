@@ -15,7 +15,6 @@ function changed() {
   store.set("rfs-launch", L);
   markStale();
   siteRender();
-  windProfNote();
   drawProfile();
   renderDragTable();
   renderInertiaNote();
@@ -56,19 +55,6 @@ function renderRecNote() {
     }
     noteEl.textContent = txt;
   }
-}
-/* airframe turning inertia (pitch moment of inertia about its own CG, without motors): from the design file or typed in,
-   scaled with the weight if that changes later; otherwise the weight spread evenly along the airframe */
-/**
- * Airframe pitch moment of inertia about its own CG, without motors (see the note above).
- * @param {number} I0 inertia from the design file or typed in (0 if none), kg·m²
- * @param {number} m0 dry mass that I0 was given for, kg
- * @param {number} m current dry mass, kg
- * @param {number} len airframe length, m
- * @returns {number} kg·m²
- */
-function airInertia(I0, m0, m, len) {
-  return I0 > 0 ? I0 * (m0 > 0 ? m / m0 : 1) : (m * len * len) / 12;
 }
 /**
  * Writes the note under the inertia field: the value used and where it comes from.
@@ -263,3 +249,6 @@ function runNow() {
   if (document.getElementById("v-results").hidden) showTab("results");
   window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
+// the Launch buttons (the launch bar, and the one on the empty Results tab)
+document.getElementById("runbtn").onclick = runNow;
+document.getElementById("emptylaunch").onclick = runNow;

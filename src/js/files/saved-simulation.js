@@ -516,3 +516,20 @@ async function saveDesignFile(asNew, opts = {}) {
   renderSavePanel();
   return ok;
 }
+// Save this run: the last run written into the design file as a saved simulation
+document.getElementById("simsave").onclick = async () => {
+  if (!SOURCE) {
+    prToast("Save the design to a file first (Rocket tab), then runs can be saved into it.");
+    return;
+  }
+  const b = document.getElementById("simsave");
+  b.disabled = true;
+  try {
+    const ok = await saveDesignFile(false, { addSim: true });
+    const t = (document.getElementById("savemsg").textContent || "").trim();
+    const sn = (window.prLastSimNote || "").trim();
+    prToast(ok && /added/.test(sn) ? `Saved this run into ${SOURCE.name}.` : ok && sn ? sn : t || "Not saved.");
+  } finally {
+    b.disabled = !SOURCE;
+  }
+};

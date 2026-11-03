@@ -248,13 +248,6 @@ function siteCoordSet() {
   );
 }
 /**
- * Removes the old wind-profile note (kept so older callers still work).
- */
-function windProfNote() {
-  const n = document.getElementById("windprofnote");
-  if (n) n.remove();
-}
-/**
  * Opens directions to the site (see the note above).
  *
  * the site's coordinates handed to the map app: on Android a geo: link (the phone's default map app); in a browser,
@@ -301,7 +294,6 @@ document.getElementById("sitedir").onclick = siteDirections;
  */
 function wxSiteNote() {
   siteCoordRender();
-  windProfNote();
   const el = document.getElementById("wxsite");
   if (!el) return;
   const la = L.lat,

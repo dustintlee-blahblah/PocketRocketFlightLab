@@ -1328,3 +1328,4 @@ async function exportPdf() {
     btn.textContent = "Export PDF report";
   }
 }
+document.getElementById("exportbtn").onclick = exportPdf;

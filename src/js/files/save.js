@@ -1,5 +1,6 @@
 /**
- * The save-message pop-up, and the open design's source file (SOURCE) and chosen motor configuration (ORK_CFG).
+ * The save-message pop-up, the open design's source file (SOURCE) and chosen motor configuration (ORK_CFG), and which
+ * settings count as changes to the design file.
  */
 /* ---------- centered pop-up for save messages (the Android app calls this too) ---------- */
 let prToastT = null;
@@ -55,3 +56,111 @@ function setSource(s) {
     }
   }
 }
+/**
+ * Design keys that are derived or file-only, so a difference in them isn't a change.
+ */
+const SAVE_IGNORE = new Set([
+  "dragScale",
+  "mountDia",
+  "bMountDia",
+  "finPts",
+  "bFinPts",
+  "inertiaMass",
+  "inertiaSource",
+  "bInertiaMass",
+  "bInertiaSource",
+  "segments",
+  "bSegments",
+  "transitions",
+  "orkApogee",
+  "orkMotor",
+  "refSource",
+  "finFinish",
+  "bFinFinish",
+]);
+/**
+ * Range settings, which only feed the RSO Checklist (changing them keeps the results).
+ */
+const RANGE_KEYS = [
+  "waiver",
+  "waiverRef",
+  "recRadius",
+  "cert",
+  "flightType",
+  "railType",
+  "ceiling",
+  "cloudLow",
+  "cloudMid",
+  "cloudHigh",
+  "cloudProf",
+  "vis",
+  "precip",
+  "dewC",
+]; // read live by the RSO Checklist: changing them doesn't change the flight
+/**
+ * Keys the design file doesn't carry (app-only settings), so changing them isn't an unsaved change.
+ */
+const SAVE_NOT = {
+  common: [
+    "waiver",
+    "waiverRef",
+    "recRadius",
+    "cert",
+    "flightType",
+    "ignMinAlt",
+    "ignMaxTilt",
+    "blMode",
+    "lon",
+    "pressure",
+    "humidity",
+    "motorDT",
+    "aloft",
+    "tempAloft",
+    "aloftSrc",
+    "wxSet",
+    "ceiling",
+    "cloudLow",
+    "cloudMid",
+    "cloudHigh",
+    "cloudProf",
+    "vis",
+    "precip",
+    "dewC",
+    "thrustMis",
+    "finMis",
+    "cgOff",
+    "clusterFail",
+    "mcN",
+    "mcWind",
+    "mcDir",
+    "mcImp",
+    "mcMass",
+    "mcCd",
+    "mcAngle",
+    "mcMis",
+    "mcDelay",
+    "mcChute",
+    "mcThermal",
+    "thermalW",
+    "mountSel",
+    "bMountSel",
+    "cone",
+    "dryInertia",
+    "bDryInertia",
+    "railPreset",
+    "buttons",
+    "lugs",
+    "otherCd",
+    "cdOverride",
+    "nozzleDia",
+    "finCdOverride",
+    "bFinCdOverride",
+    "windRef",
+    "windProfile",
+    "recovery",
+    "bRecovery",
+    "bDiameter",
+    "bExtraMotors",
+  ],
+  ork: ["extraMotors"],
+};

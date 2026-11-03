@@ -1,6 +1,6 @@
 /**
- * Unsaved changes and the Save buttons: what counts as a change, the title asterisk, opening files, new and sample
- * designs, and naming a file on its first save.
+ * Unsaved changes and the Save buttons: what counts as a change, the title asterisk, the prompt to save before the
+ * file picker opens, the Save changes and Save a copy buttons, and naming a file on its first save.
  */
 /* ---------- unsaved changes: asked about before another file is opened ---------- */
 /**
@@ -128,48 +128,6 @@ function setActive(on) {
       drawProfile();
     });
 }
-document.getElementById("handdesign").onclick = bldNewDesign;
-// a sample: the basic rocket on a 29 mm G motor, flown straight away so the Results tab shows what the app predicts
-const sampleBtn = document.getElementById("sampledesign");
-if (sampleBtn)
-  sampleBtn.onclick = () => {
-    bldNewDesign();
-    BLD.name = "Sample rocket";
-    bldSave();
-    bldDerive();
-    // a G motor that passes the whole RSO checklist on this rocket, so the sample shows a clean flight
-    const gs = allMotors()
-      .filter((m) => Math.abs(m.dia - 0.029) < 0.0008 && mstats(m).cls === "G")
-      .sort((a, b) => Math.abs(mstats(a).I - 100) - Math.abs(mstats(b).I - 100));
-    const g =
-      gs.slice(0, 12).find((m) => {
-        try {
-          return !cmpFly(m).bad.length;
-        } catch (e) {
-          return false;
-        }
-      }) || gs[0];
-    if (g) {
-      motorId = g.id;
-      store.set("rfs-motor", motorId);
-    }
-    document.getElementById("orkreport").innerHTML =
-      `<div class="report"><b>Sample rocket.</b> A basic rocket: nose cone, body tube, three fins, a 29 mm motor mount and a parachute. Change any part below, pick another motor on the Motor tab, or open your own design file.</div>`;
-    markClean();
-    bldRender();
-    changed();
-    runNow();
-  };
-document.getElementById("bldundo").onclick = () => bldUndoStep(-1);
-document.getElementById("bldredo").onclick = () => bldUndoStep(1);
-document.getElementById("newdesign").onclick = () => {
-  // starting over closes the open design: offer to save its changes first
-  confirmUnsaved(() => {
-    document.getElementById("savemsg").innerHTML = "";
-    bldNewDesign();
-    window.scrollTo({ top: 0 });
-  }, "starting a new design");
-};
 /**
  * Shows the Save changes button while there's something to save, worded for the file's format.
  */

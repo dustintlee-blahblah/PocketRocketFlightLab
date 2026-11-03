@@ -43,7 +43,7 @@ build.js                            joins src/ into the single page the app ship
 web/pocket-rocket-flight-lab.html   the built app: one HTML file (HTML, CSS and JavaScript)
 android/                            Android app: a WebView around the same page, built with Gradle
 tests/golden.js                     regression test: proves a change leaves every result the same
-tools/                              one-off maintenance scripts
+tools/                              maintenance scripts (unused-code check, a one-off split record)
 LICENSE                             GNU GPL v3
 THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library and data
 ```
@@ -53,15 +53,16 @@ THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library a
 `src/data/`:
 
 ```
-src/js/core/        start-up and on-device storage
+src/js/core/        start-up, on-device storage, small shared helpers, units
 src/js/physics/     atmosphere, body geometry, aerodynamics (drag and stability), the flight simulation,
                     landing dispersion (Monte Carlo)
 src/js/motors/      the motor catalog, thrust curve files, clusters
-src/js/design/      the default design, extra fin sets
+src/js/design/      the default design and the saved state loaded at start-up
 src/js/recovery/    the ejection charge calculator
-src/js/files/       OpenRocket and RockSim import, saving, recent files, the built-in examples
+src/js/files/       opening files, OpenRocket and RockSim import, saving, recent files, the built-in examples
 src/js/builder/     the rocket builder: its parts model and its .ork reading, writing and merging
-src/js/ui/          the tabs, forms, results, RSO Checklist, Motor tab, settings
+src/js/ui/          the tabs, forms, charts and drawings, results, RSO Checklist, Motor tab, settings,
+                    the disclaimer
 src/js/animation/   the flight animation and its video export
 src/js/flightlog/   the flight log, altimeter files, drag calibration
 src/js/report/      the PDF flight report
@@ -75,10 +76,10 @@ The files are plain scripts that share one global scope, in the order `src/index
 Requirements: Node.js 18 or later. For the regression test, also Playwright with its Chromium browser.
 
 ```
-npm install            # Prettier and ESLint
+npm install            # Prettier, ESLint and the Babel parser the unused-code check uses
 node build.js          # src/ -> web/pocket-rocket-flight-lab.html
 npm run format         # Prettier (print width 120)
-npm run lint           # ESLint
+npm run lint           # ESLint, then tools/unused-globals.js (top-level names nothing uses)
 ```
 
 Edit the files in `src/`, then build; don't edit `web/pocket-rocket-flight-lab.html` by hand.
