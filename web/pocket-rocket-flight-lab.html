@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">242</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">243</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -1009,7 +1009,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="242";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="243";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -4477,9 +4477,9 @@ function animDraw(target){
     c.save();c.beginPath();c.moveTo(p0,gy);c.lineTo(p0-dx,gy-dz*K);c.lineTo(p0+dx,gy-dz*K);c.closePath();c.fillStyle=`rgba(${col},${outside?0.14:0.1})`;c.fill();
     c.setLineDash([7,5]);c.lineWidth=1.4;c.strokeStyle=`rgba(${outside?"200,40,30":"255,255,255"},${outside?0.95:0.8})`;
     c.beginPath();c.moveTo(p0,gy);c.lineTo(p0-dx,gy-dz*K);c.moveTo(p0,gy);c.lineTo(p0+dx,gy-dz*K);c.stroke();c.setLineDash([]);
-    // label inside the cone, below the event notices at the top
-    {c.font="600 11px "+css("--f-body").split(",")[0].replace(/"/g,"")+", sans-serif";c.textAlign="center";c.textBaseline="middle";
-      const txt=`${+cone.toFixed(1)}° safety cone${outside?": outside under power!":""}`, tw=c.measureText(txt).width, ly=58, lx=Math.min(Math.max(p0,tw/2+8),W-tw/2-8);
+    // no standing label: a warning appears only while the rocket is outside the cone under power
+    if(outside){c.font="600 11px "+css("--f-body").split(",")[0].replace(/"/g,"")+", sans-serif";c.textAlign="center";c.textBaseline="middle";
+      const txt=`Outside the ${+cone.toFixed(1)}° safety cone under power!`, tw=c.measureText(txt).width, ly=58, lx=Math.min(Math.max(p0,tw/2+8),W-tw/2-8);
       c.fillStyle=outside?"rgba(150,25,15,.75)":"rgba(20,30,40,.4)";c.beginPath();c.roundRect?c.roundRect(lx-tw/2-5,ly-9,tw+10,18,5):c.rect(lx-tw/2-5,ly-9,tw+10,18);c.fill();
       c.fillStyle="#fff";c.fillText(txt,lx,ly);}
     c.restore();}
