@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">238</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">239</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -809,14 +809,14 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <button class="btn ghost addmot" id="addmotor" type="button">+ Add a motor</button>
     </div>
     <div class="panel" id="mdelaypanel">
-      <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and a chute set on the Rocket tab to open at the motor ejection charge opens then.
+      <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and chutes set on the Rocket tab to open at the motor ejection charge open then. As in OpenRocket, chutes set to open some other way (apogee, an altitude, a timer) stay packed until then; the Results tab and the RSO Checklist warn when a live charge fires while one of them is still packed, since a real charge can blow it out early.
 
-The list shows the delays the motor is sold with. Plugged means no ejection charge (an altimeter handles deployment). Custom is for any other time, such as a reload delay you drill shorter.
+The list shows the delays the motor is sold with. 0 s fires at burnout (booster motors use it to separate stages or light the next motor). Plugged means no ejection charge at all (an altimeter handles deployment). Custom is for any other time, such as a reload delay you drill shorter.
 
 Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing another motor keeps the delay if the new motor comes with it, and otherwise moves it to the nearest delay the new motor offers (a custom time is kept). The Results tab and the RSO Checklist show the ideal delay for the flight." aria-label="About Motor Delay">i</button></h2>
       <div class="grid">
         <div class="fld"><label for="mdsel" id="mdlab">Ejection delay</label><div class="in"><select id="mdsel"></select></div></div>
-        <div class="fld" id="mdcustf" hidden><label for="mdcust">Custom delay</label><div class="in"><input id="mdcust" type="number" inputmode="decimal" step="0.1" min="0.1"><span class="u">s</span></div></div>
+        <div class="fld" id="mdcustf" hidden><label for="mdcust">Custom delay</label><div class="in"><input id="mdcust" type="number" inputmode="decimal" step="0.1" min="0"><span class="u">s</span></div></div>
       </div>
       <p class="note" id="mdnote"></p>
     </div>
@@ -1009,7 +1009,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="238";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="239";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -2559,14 +2559,16 @@ function simulate(D,L,m,mb,opts={}){
         st.tApo=t;st.maxAlt=z;st.xApo=x;st.windApo=Math.hypot(...windVec(z));st.vApo=sp;
         if(depMode==="apogee")tDep=t+depDelay;
       }
-      // the motor's delay charge fires: the chute nearest the tail comes out right away, whatever else is set
+      /* the motor's delay charge fires. As in OpenRocket, it opens only the chutes set to open at the motor ejection charge
+         (the first chute through tDep, others through their own events). A live charge that fires while a chute set to
+         open some other way is still packed is recorded for a safety warning: in the real rocket it could blow that
+         chute out early or damage the rocket. */
       if(!ejDone&&D.ejDelay!=null&&ignOK&&t>=susEnd()+D.ejDelay-1e-9){ejDone=true;
+        // the charge pushes on the compartment nearest the tail: what's packed there matters
         const aftMain=!dual||D.aftChute==="main"||!(drogueDia>0);
-        if(phase==="flight"&&!noChute){st.tDeploy=t;st.vDeploy=airSp(z,vx,vy,vz,t);st.altDeploy=z;st.ejDeploy=aftMain?"main":"drogue";
-          // a main set to open lower stays packed (a chute release or altimeter holds it); the drogue, if any, comes out now
-          if(aftMain&&dual&&mainAlt<z){st.ejHeld={alt:z,planned:mainAlt};st.ejDeploy=drogueDia>0?"drogue":"held";phase=drogueDia>0?"drogue":"free";}
-          else if(aftMain){phase="main";st.tMain=t;}else phase="drogue";}
-        else if(!noChute&&(phase==="drogue"||phase==="free")&&aftMain){if(mainAlt<z)st.ejHeld={alt:z,planned:mainAlt};else{phase="main";st.tMain=t;}}}
+        if(!noChute&&depMode!=="motor"){
+          if(phase==="flight")st.ejLive={t,alt:z,v:airSp(z,vx,vy,vz,t),dt:st.tApo!=null?t-st.tApo:null,packed:!dual?"chute":aftMain?"main":"drogue"};
+          else if(dual&&aftMain&&(phase==="flight"||phase==="drogue"||phase==="free")&&!(mainAlt>=z))st.ejLive={t,alt:z,v:airSp(z,vx,vy,vz,t),dt:st.tApo!=null?t-st.tApo:null,packed:"main"};}}
       if(phase==="flight"&&(tDep!=null&&t>=tDep-1e-9||noChute&&st.tApo!=null)){ // the first chute opens (or, with none, it starts tumbling at apogee)
         st.tDeploy=t;st.vDeploy=airSp(z,vx,vy,vz,t);st.altDeploy=z;
         if(noChute){phase="free";st.noChute=true;} // nothing to open: it tumbles down
@@ -2616,10 +2618,12 @@ function simulate(D,L,m,mb,opts={}){
   st.mainRate=noChute&&!XCtot?null:term(CdAmain+CdAdrogue+XCtot);st.tumbleRate=term(Gs.tumbleCdA);st.noChute=noChute;
   // the sustainer's (or only) motor's ejection charge, if it lit and the charge fires before landing
   if(D.ejDelay!=null&&ignOK){const te=susEnd()+D.ejDelay;if(st.tLand==null||te<=st.tLand+1e-6)st.tEject=te;}
+  // a charge within 1.5 s of apogee, pushing on a drogue or single chute, is the usual motor backup: no warning
+  if(st.ejLive){if(st.tApo!=null)st.ejLive.dt=st.ejLive.t-st.tApo;if(st.ejLive.packed!=="main"&&st.ejLive.dt!=null&&Math.abs(st.ejLive.dt)<=1.5)st.ejLive=null;}
   st.tb=staged?susEnd():MS.tb;st.landMass=mLand;st.depMode=depMode;st.depDelay=depDelay;
   // the apogee the rocket would reach if nothing opened early: the reference for chute timing and the ideal delay
   st.tApoFree=st.tApo;
-  if(!opts.noRef&&(depMode!=="apogee"||depDelay>0||st.ejDeploy)){const ref=simulate({...D,deployMode:"apogee",deployDelay:0,ejDelay:null},L,m,mb,{noRef:true}).st;st.tApoFree=ref.tApo;st.maxAltFree=ref.maxAlt;}
+  if(!opts.noRef&&(depMode!=="apogee"||depDelay>0||st.ejLive)){const ref=simulate({...D,deployMode:"apogee",deployDelay:0,ejDelay:null},L,m,mb,{noRef:true}).st;st.tApoFree=ref.tApo;st.maxAltFree=ref.maxAlt;}
   st.liftMass=D.dryMass+m.totalMass+(staged?D.bDryMass+mb.totalMass:0)+(three?S1.bDryMass+mb1.totalMass:0);
   st.Itot=MS.Itot;
   const MT=three?M1:staged?MB:MS;
@@ -3427,7 +3431,7 @@ function bldToOrk(model,L,opts={}){
   const motorMount=(k,si)=>{
     const upper=sep&&si<model.stages.length-1, ign=upper?(k.ign&&k.ign!=="automatic"&&k.ign!=="launch"?k.ign:"burnout"):(k.ign&&k.ign!=="burnout"?k.ign:"automatic");
     const idly=upper?(model.stages[si].ignDelay||0):(k.ignDelay||0);
-    const mo=k.motor?`<motor configid="${cfg}"><type>${e(k.motor.type||orkMotorType(k.motor))}</type><manufacturer>${e(k.motor.mfr)}</manufacturer><designation>${e(k.motor.name)}</designation><diameter>${n(k.motor.dia)}</diameter><length>${n(k.motor.len)}</length><delay>${k.delay==null||!(k.delay>0)?"none":n(k.delay)}</delay></motor>`:"";
+    const mo=k.motor?`<motor configid="${cfg}"><type>${e(k.motor.type||orkMotorType(k.motor))}</type><manufacturer>${e(k.motor.mfr)}</manufacturer><designation>${e(k.motor.name)}</designation><diameter>${n(k.motor.dia)}</diameter><length>${n(k.motor.len)}</length><delay>${k.delay==null||!(k.delay>=0)?"none":n(k.delay)}</delay></motor>`:"";
     return `<motormount><ignitionevent>${ign}</ignitionevent><ignitiondelay>${n(idly)}</ignitiondelay><overhang>${n(k.overhang||0)}</overhang>${mo}</motormount>`;};
   // OpenRocket doesn't take fins on a transition (a boattail): they're written on the body tube next to it, at the same place from the nose tip
   for(const b of lay.bodies){if(b.p.type!=="transition")continue;const fins=b.kids.filter(c=>c.k.type==="fins");if(!fins.length)continue;
@@ -3916,6 +3920,13 @@ function firstTiles(st){const f=st.first||{}, same=Math.abs((st.tIgnMid??0)-(st.
     [`First-stage landing${f.drift!=null&&driftDir(f.drift,f.driftY)?", "+driftDir(f.drift,f.driftY):""}`,f.drift!=null?fmt(Math.hypot(f.drift,f.driftY||0),"alt"):"—",f.drift!=null?`${uname("alt")} · ${bigDist(f.drift,f.driftY)}`:""],
     [f.chute?"First-stage descent (chute)":"First-stage descent (free fall)",f.rate?fmt(f.rate,"speed"):"—",uname("speed")]];}
 // every ejection charge in the flight, in order: the motors' delay charges, and the altimeter, timer or apogee charge for each chute
+/* a live motor charge that fires while a chute set to open some other way (apogee, altitude, timer) is still packed: the
+   simulation follows the design, as OpenRocket does, but in the real rocket the charge could blow that chute out early or
+   damage the rocket */
+function ejLiveFlag(st){const e=st.ejLive, what=e.packed==="main"?"main":e.packed==="drogue"?"drogue":"parachute";
+  const when=e.dt==null?"before apogee":Math.abs(e.dt)<0.1?"at apogee":e.dt<0?`${(-e.dt).toFixed(1)} s before apogee`:`${e.dt.toFixed(1)} s after apogee`;
+  const fast=e.v>30||e.packed==="main"&&e.dt!=null&&e.dt>0;
+  return [fast?"bad":"warn",`The motor’s ejection charge fires ${when} (${fmt(e.alt,"alt")} ${uname("alt")}, ${fmt(e.v,"speed")} ${uname("speed")}) while the ${what} is still packed${e.packed==="main"?" for its lower altitude":""}. The simulation opens it as the design sets it, but a live charge can blow it out early or damage the rocket. Use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal.`];}
 function chargeEvents(st,D,outs){
   const out=[], tDep=st.tDeploy, noDrogue=!st.single&&!(D.drogueDia>0), mainAtDep=st.single||(st.tMain!=null&&tDep!=null&&st.tMain<=tDep+1e-6);
   if(st.tEject!=null)out.push({t:st.tEject,name:`${st.staged?"Sustainer motor":"Motor"} delay charge`,motor:true,delay:D.ejDelay??0});
@@ -3923,15 +3934,13 @@ function chargeEvents(st,D,outs){
   if(st.tB1Eject!=null)out.push({t:st.tB1Eject,name:"First-stage motor delay charge",motor:true,delay:D.s1&&D.s1.bEjDelay||0,booster:true});
   if(st.noChute||st.depMode==="motor")return out.sort((a,b)=>a.t-b.t); // no chutes, or the chute rides on the motor's charge
   // the altimeter or timer charges still fire when they're due, even when the motor's charge already put a chute out
-  const dd=st.depDelay||0, tFirst=st.ejDeploy?(st.depMode==="timer"?dd:st.tApo!=null?st.tApo+dd:null):tDep;
+  const tFirst=tDep;
   const first=st.single?(st.depMode==="timer"?"Timer charge":"Apogee charge"):noDrogue?"Apogee charge":"Drogue charge";
-  if(tFirst!=null&&(st.tLand==null||tFirst<=st.tLand))out.push({t:tFirst,name:st.ejDeploy||st.single||!mainAtDep?first:"Main charge"});
+  if(tFirst!=null&&(st.tLand==null||tFirst<=st.tLand))out.push({t:tFirst,name:st.single||!mainAtDep?first:"Main charge"});
   if(!st.single){
     // the main charge: when the rocket comes down through the main altitude (or at apogee, if it never got that high)
-    let tm=!st.ejMain&&!mainAtDep?st.tMain:null;
-    if(st.ejMain&&outs&&st.tApo!=null){const i=outs.t.findIndex((t,j)=>t>st.tApo&&outs.alt[j]<=D.mainAlt);tm=i>=0?outs.t[i]:null;}
-    if(st.ejDeploy==="drogue"&&mainAtDep&&st.tMain!=null)tm=st.tMain;
-    if(tm!=null&&!(mainAtDep&&!st.ejDeploy))out.push({t:tm,name:"Main charge"});}
+    const tm=!mainAtDep?st.tMain:null;
+    if(tm!=null)out.push({t:tm,name:"Main charge"});}
   return out.sort((a,b)=>a.t-b.t);
 }
 function resultTiles(st,S){
@@ -4042,6 +4051,7 @@ function rsoChecks(st,S,m,D,LL){
       add(ok?"good":alt?"warn":(Math.abs(diff)>3?"bad":"warn"),`${st.staged?"Sustainer motor":"Motor"} ejection delay`,`${+D.ejDelay.toFixed(1)} s · ideal ${ideal.toFixed(1)} s`,
         ok?"Fires within 1.5 s of apogee.":`Fires ${Math.abs(diff).toFixed(1)} s ${diff<0?"before":"after"} apogee. ${alt?"With an altimeter doing deployment, use a plugged motor or a delay as backup set near the ideal.":"Drill or choose a delay closer to the ideal."}`);}
     else if(D.ejDelay==null&&st.depMode==="motor")add("bad","Motor ejection delay","Plugged","Deployment is set to the motor charge, but the motor has no ejection charge.");
+    if(st.ejLive){const f=ejLiveFlag(st);add(f[0],"Motor charge and packed chute",`Fires ${st.ejLive.dt==null?"before apogee":st.ejLive.dt<0?(-st.ejLive.dt).toFixed(1)+" s before apogee":st.ejLive.dt.toFixed(1)+" s after apogee"}`,f[1]);}
     const v=st.vDeploy??st.vApo;
     if(v!=null)add(v<=15?"good":v<=30?"warn":"bad",st.single?"Speed when the chute opens":"Speed when the drogue opens",sp(v),
       v<=15?"Slow, near apogee: a gentle opening.":v<=30?"Opens while still moving; check the shock cord and attachment points.":"Opens fast: risk of zippering or a broken shock cord. Set deployment closer to apogee.");
@@ -4205,16 +4215,11 @@ function resultFlags(st,S,m,D){
        :["bad",`Leaves the ${cone}° safety cone under power: ${st.powerTilt.toFixed(0)}° from vertical while the motor is still burning. A low, fast flight path can reach spectators or the parking area. Wait for less wind, use a faster motor or longer rail, or reduce the rail angle.`]);}
     if(st.noChute)flags.push(["bad",`No parachute or streamer: the rocket comes down tumbling at about ${st.tumbleRate?fmt(st.tumbleRate,"speed"):"—"} ${uname("speed")}. Add recovery under the Rocket tab.`]);
     else if(st.noDeploy)flags.push(["bad",st.depMode==="motor"&&st.ignAfterApogee?"The sustainer never lights, so its ejection charge never fires and the chute stays packed.":"The rocket hits the ground before the chute opens."]);
-    else if(st.tDeploy!=null&&st.tApo!=null&&(st.depMode!=="apogee"||st.depDelay>0||st.ejDeploy)){const dt=st.tDeploy-(st.tApoFree??st.tApo), v=st.vDeploy;
+    else if(st.tDeploy!=null&&st.tApo!=null&&(st.depMode!=="apogee"||st.depDelay>0)){const dt=st.tDeploy-(st.tApoFree??st.tApo), v=st.vDeploy;
       const when=Math.abs(dt)<0.1?"at apogee":dt<0?`${(-dt).toFixed(1)} s before apogee`:`${dt.toFixed(1)} s after apogee`;
-      if(st.ejDeploy&&st.depMode!=="motor"){const what=st.ejDeploy==="main"&&!st.single?"main":st.ejDeploy==="drogue"?"drogue":"chute";
-        flags.push([Math.abs(dt)<=1.5?"good":v>30?"bad":"warn",`The motor’s delay charge fires ${when} and deploys the ${what}${what==="chute"?"":", the chute nearest the tail,"} at ${fmt(v,"speed")} ${uname("speed")}${Math.abs(dt)>1.5?". Use a delay closer to the ideal motor delay for apogee, or a plugged motor if the altimeter handles deployment":""}.`]);}
-      else
       if(Math.abs(dt)<=1.5)flags.push(["good",`Chute opens ${when} at ${fmt(v,"speed")} ${uname("speed")}`]);
       else flags.push([v>30?"bad":"warn",`Chute opens ${when}, at ${fmt(v,"speed")} ${uname("speed")}${dt>0?` and ${fmt(st.maxAlt-st.altDeploy,"alt")} ${uname("alt")} below apogee`:""}. ${st.depMode==="motor"?"Use a delay closer to the ideal motor delay for apogee.":"Adjust the timing."}`]);}
-    if(st.ejHeld&&!st.single&&!st.noChute)flags.push(["warn",`The motor’s delay charge fires at ${fmt(st.ejHeld.alt,"alt")} ${uname("alt")}, above the main’s ${fmt(st.ejHeld.planned,"alt")} ${uname("alt")} setting. The main was flown opening at ${fmt(st.ejHeld.planned,"alt")} ${uname("alt")}, as the design sets it; that needs a chute release or an altimeter holding it. Without one, the main opens at ${fmt(st.ejHeld.alt,"alt")} ${uname("alt")} and the rocket drifts much farther.`]);
-    if(st.ejMain&&!st.single&&!st.noChute&&st.ejDeploy!=="main")flags.push(["warn",`The motor’s delay charge deploys the main (the chute nearest the tail) at ${fmt(st.ejMain.alt,"alt")} ${uname("alt")}, above its ${fmt(st.ejMain.planned,"alt")} ${uname("alt")} setting, so the rocket drifts farther. Use a longer delay or a plugged motor.`]);
-    else if(st.ejMain&&!st.single&&!st.noChute&&st.ejDeploy==="main")flags.push(["warn",`The motor’s delay charge deploys the main (the chute nearest the tail) at ${fmt(st.ejMain.alt,"alt")} ${uname("alt")}, instead of at ${fmt(st.ejMain.planned,"alt")} ${uname("alt")}, so the rocket drifts farther. Use a plugged motor if the altimeter handles deployment.`]);
+    if(st.ejLive&&!st.noChute)flags.push(ejLiveFlag(st));
     // roll lock-in (roll resonance): the roll rate at the pitch frequency
     if(st.rollLock&&st.rollLock.dur>=0.25)flags.push([st.rollLock.dur>=0.6&&st.rollLock.v>30?"bad":"warn",`Roll lock-in risk: the roll rate stays near the rocket’s pitch frequency (${st.rollLock.f.toFixed(1)} Hz) for ${st.rollLock.dur.toFixed(1)} s from T+${st.rollLock.t.toFixed(1)} s, at ${fmt(st.rollLock.v,"speed")} ${uname("speed")}. Any small fin misalignment or mass imbalance is then driven into a growing coning motion that costs altitude and can damage the rocket. Change the fin cant so the roll rate stays well away from the pitch frequency.`]);
     else if(st.rollCross)flags.push(["warn",`The roll rate passes through the pitch frequency (${st.rollCross.f.toFixed(1)} Hz) at T+${st.rollCross.t.toFixed(1)} s, at ${fmt(st.rollCross.v,"speed")} ${uname("speed")}. A quick pass like this is usually harmless; lingering there is what causes roll lock-in.`]);
@@ -5048,17 +5053,17 @@ function mdHost(tg){
   const st=tg==="sustainer"?BLD.stages[0]:tg==="first"?BLD.stages[2]:BLD.stages.length===3&&mounted.length===3?BLD.stages[1]:BLD.stages[BLD.stages.length-1];
   return st?bldMounts(st)[0]||null:null;}
 function mdMotor(tg){return tg==="first"?curFirst():tg==="booster"?curBoost():curMotor();}
-// a delay of 0 (or none) is plugged, as when the design is flown
-function mdGet(tg){const h=mdHost(tg), v=h?h.delay:tg==="first"?D.s1&&D.s1.bEjDelay:tg==="booster"?D.bEjDelay:D.ejDelay;return v==null||!(+v>0)?null:+v;}
+// null is plugged; 0 is a charge at burnout
+function mdGet(tg){const h=mdHost(tg), v=h?h.delay:tg==="first"?D.s1&&D.s1.bEjDelay:tg==="booster"?D.bEjDelay:D.ejDelay;return v==null||!(+v>=0)?null:+v;}
 function mdSet(tg,v){v=v==null||!isFinite(v)?null:Math.max(0,Math.round(v*10)/10);const h=mdHost(tg);
   if(h){if(mdGet(tg)===v&&(h.delay==null)===(v==null))return;h.delay=v;bldChanged(true);}
   else{if(tg==="first"){if(D.s1)D.s1.bEjDelay=v;}else if(tg==="booster")D.bEjDelay=v;else D.ejDelay=v;changed();}
   mdRender();}
-// the delays a motor is sold with, in seconds, and whether it comes plugged. A 0 s "delay" is a booster motor's charge for
-// lighting the stage above, not for deployment, so it isn't offered (a 0 in a design file reads as plugged, as before);
+// the delays a motor is sold with, in seconds, and whether it comes plugged. 0 s is a real charge at burnout (booster
+// motors use it to separate stages or light the next motor), kept apart from plugged (no charge), as OpenRocket does;
 // catalog placeholders of 60 s or more are left out
 function mdStock(m){const p=String(m&&m.delays||"").split(/[-,\s]+/).filter(Boolean);
-  return {list:[...new Set(p.map(Number).filter(x=>isFinite(x)&&x>0&&x<60))].sort((a,b)=>a-b),plugged:p.some(x=>/^p$/i.test(x)||x==="0")};}
+  return {list:[...new Set(p.map(Number).filter(x=>isFinite(x)&&x>=0&&x<60))].sort((a,b)=>a-b),plugged:p.some(x=>/^p$/i.test(x))};}
 // a new motor: a stock delay of the old motor moves to the nearest one the new motor offers; plugged and custom times stay
 function mdSnap(tg,oldM,newM){if(!oldM||!newM||oldM.id===newM.id)return;const v=mdGet(tg);if(v==null)return;
   const a=mdStock(oldM).list, b=mdStock(newM).list;if(!b.length||b.includes(v)||(a.length&&!a.includes(v)))return;
@@ -5067,7 +5072,7 @@ function mdSnap(tg,oldM,newM){if(!oldM||!newM||oldM.id===newM.id)return;const v=
 function mdRender(){
   const sel=document.getElementById("mdsel");if(!sel)return;const tg=mdTarget(), m=mdMotor(tg), v=mdGet(tg), sk=mdStock(m), two=!!D.twoStage;
   const custom=v!=null&&!sk.list.includes(v);
-  sel.innerHTML=sk.list.map(x=>`<option value="${x}">${x} s</option>`).join("")+`<option value="P">Plugged (no ejection charge)</option><option value="C">Custom time…</option>`;
+  sel.innerHTML=sk.list.map(x=>`<option value="${x}">${x} s${x===0?" (fires at burnout)":""}</option>`).join("")+`<option value="P">Plugged (no ejection charge)</option><option value="C">Custom time…</option>`;
   sel.value=v==null?"P":custom?"C":String(v);
   document.getElementById("mdlab").textContent=two?`${TGT_NAME[tg]} motor ejection delay`:"Ejection delay";
   const cf=document.getElementById("mdcustf"), ci=document.getElementById("mdcust");cf.hidden=!(custom||sel.dataset.custom==="1");
@@ -5079,7 +5084,7 @@ function mdRender(){
   sel.addEventListener("change",()=>{const tg=mdTarget();
     if(sel.value==="C"){sel.dataset.custom="1";cf.hidden=false;const v=mdGet(tg);ci.value=v==null?"":v;ci.focus();return;}
     sel.dataset.custom="";mdSet(tg,sel.value==="P"?null:parseFloat(sel.value));});
-  ci.addEventListener("change",()=>{const x=parseFloat(ci.value);if(!isFinite(x)||x<=0)return;sel.dataset.custom="1";mdSet(mdTarget(),x);});}
+  ci.addEventListener("change",()=>{const x=parseFloat(ci.value);if(!isFinite(x)||x<0)return;sel.dataset.custom="1";mdSet(mdTarget(),x);});}
 // the Motor tab's side view of the stages, with the one being chosen shaded
 function mtargetRanges(){const L0=D.length, L1=L0+(D.bLength||0);const r=[["sustainer",0,L0],["booster",L0,L1]];if(isThree(D))r.push(["first",L1,L1+D.s1.bLength]);return r;}
 function drawMtarget(){
