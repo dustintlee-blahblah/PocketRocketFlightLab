@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">235</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">236</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -997,7 +997,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="235";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="236";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -1005,6 +1005,19 @@ const IN=0.0254, FT=0.3048, LB=0.45359237;
    thin sharp-edged section from linear theory, Cd = K·(t/c)²/β with K from its slopes (Ackeret: K = 4/c·∫(dy/dx)²dx·c²/t²):
    double wedge (diamond) K = 4; biconvex (circular-arc) airfoil K = 16/3; a flat plate beveled over 20% of the chord at
    each edge K = 2/0.2 = 10. Below Mach 1 the sharp types are all streamlined: no leading-edge or trailing-edge base drag. */
+/* the fins' transonic drag rise. Thin-airfoil theory only applies once the flow is fully supersonic; between about Mach 0.85
+   and 1.5 shocks stand on the fin surfaces and the drag of a fin set rises far above it. NASA wind-tunnel data for the
+   Arcas sounding rocket (TN D-4013, fins on against fins off, two body lengths; TN D-4014 above Mach 1.5) shows the four
+   double-wedge fins' drag rising by about 0.29 (on the body's reference area) from Mach 0.85 to a peak just past Mach 1,
+   then falling back by Mach 1.3 with a tail that fades out by about Mach 3. Per unit fin planform area that is
+   finTransonicCd, scaled with thickness by transonic similarity (wave drag ∝ (t/c)^(5/3), von Kármán) from the Arcas
+   fins' 4.3%. Nothing changes below Mach 0.85. This is for sharp-edged sections (airfoil, beveled, double wedge), the
+   kind measured: square and rounded edges have their own blunt-edge drag model above, which already rises through Mach 1,
+   and adding this to them would count the same shocks twice. */
+function finTransonicCd(M,tc){
+  if(M<=0.85||!(tc>0))return 0;
+  const g=M<1.02?smooth01((M-0.85)/0.15):0.75*Math.exp(-(M-1.02)/0.2)+0.25*Math.exp(-(M-1.02)/0.8);
+  return 9.36*Math.pow(Math.min(tc,0.12),5/3)*g;}
 const FIN_EDGES=[["square","Square"],["rounded","Rounded"],["airfoil","Airfoil (streamlined)"],["beveled","Beveled (tapered leading and trailing edges)"],["doublewedge","Double wedge (diamond)"]];
 const finWaveK=e=>e==="doublewedge"?4:e==="beveled"?10:16/3;
 // OpenRocket and RockSim know square, rounded and airfoil only: the closest of those goes into their files
@@ -2090,6 +2103,7 @@ function cdParts(A,v,atm,nozzleArea=0){
     else if(f.edge==="rounded"){pressure+=(2/3)*stagCp(Mn)*trF*c2*edge;base+=0.5*cb*edge;}
     else{const beta=Math.max(Math.sqrt(Math.max(Mn*Mn-1,0)),0.4);
       pressure+=trF*finWaveK(f.edge)*f.tc*f.tc/beta*c2*f.n*f.area/S;}
+    if(!finBlunt(f.edge))pressure+=finTransonicCd(M,f.tc)*f.n*f.area/S;
   }
   for(const bt of A.buttons)if(bt.cdo>0)ovr+=bt.cdo;else pressure+=cylinderCd(M)*blFactor(bt.h,bt.x,v,nu)*bt.front/S;
   for(const lg of A.lugs){
