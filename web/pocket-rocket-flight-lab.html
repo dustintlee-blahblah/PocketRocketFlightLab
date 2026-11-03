@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">244</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">245</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -1009,7 +1009,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="244";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="245";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -2449,7 +2449,17 @@ function simulate(D,L,m,mb,opts={}){
       /* fins stall: past about 18° angle of attack their lift stops growing with angle, so the linear fin term fades to 60%
          by 35°; above that the fins act like flat plates (Hoerner), whose normal force the remaining term approximates */
       const ald=al*180/Math.PI, ks=ald<=18?1:ald>=35?0.6:1-0.4*smooth01((ald-18)/17);
-      const cnB=C.cn-C.cnFin, cnLin=(cnB+ks*C.cnFin)*sa*ca, cnX=CROSS*G.sideArea/G.Aref*sa*sa, cnXf=0;
+      /* the normal force always opposes the crossflow: sin α·|cos α|. (With sin α·cos α it reversed past 90°, which held a
+         rocket falling tail first there as if that were stable: a stable rocket weathervanes into the flow and comes down
+         nose first, through broadside on the way.) */
+      /* past the stall the fins also act as flat plates across the flow (Hoerner, Cd ≈ 1.17 on the area they show, 2/π of
+         each fin on average over roll, as in the tumbling drag), at the fins: what swings a rocket that has turned far
+         from the flow, at apogee or falling, back nose first */
+      /* tail first (past 90°) the body's own lift, made where its cross-section grows along the flow (the nose), changes sign:
+         the nose is now at the back end of the flow, where the section shrinks. The fins lead, and still lift against the
+         crossflow. */
+      const sb=ca>=0?1:-1, cnB=C.cn-C.cnFin, cnLin=(sb*cnB+ks*C.cnFin)*sa*Math.abs(ca), cnX=CROSS*G.sideArea/G.Aref*sa*sa,
+        cnXf=ald<=18?0:smooth01((ald-18)/17)*1.17*(2/Math.PI)*G.fins.reduce((a,f)=>a+f.n*f.area,0)/G.Aref*sa*sa;
       const xFin=C.cnFin>0?C.momFin/C.cnFin:G.L, xLin=cnB+ks*C.cnFin>0?(C.cn*C.cp-(1-ks)*C.momFin)/(cnB+ks*C.cnFin):C.cp;
       const N=q*G.Aref*(cnLin+cnX+cnXf), FA=q*G.Aref*cd0*ca;
       // normal force: across the body, along the crossflow
@@ -2458,7 +2468,8 @@ function simulate(D,L,m,mb,opts={}){
       // the restoring moment turns the axis toward the airflow, about k = b × u
       let kx=by*uz-bz*uy, ky=bz*ux-bx*uz, kz=bx*uy-by*ux; const kl=Math.hypot(kx,ky,kz);
       if(kl>1e-12){kx/=kl;ky/=kl;kz/=kl;}else{kx=ky=kz=0;}
-      const Mp=q*G.Aref*(cnLin*(xLin-J.cg)+cnX*(G.xPlan-J.cg)+cnXf*(xFin-J.cg));
+      const linM=sb>0?cnLin*(xLin-J.cg):sa*Math.abs(ca)*(-(C.cn*C.cp-C.momFin-cnB*J.cg)+ks*(C.momFin-C.cnFin*J.cg));
+      const Mp=q*G.Aref*(linM+cnX*(G.xPlan-J.cg)+cnXf*(xFin-J.cg));
       const C2=0.5*atm.rho*vr*G.Aref*C.parts.reduce((a,p)=>a+p.cn*(p.x-J.cg)**2,0)+J.mdot*(J.xN-J.cg)**2;
       // roll: fin cant against the fins' roll damping, about the rocket's axis
       const RP=rollPartsM(G,vr/atm.a), Ix=rollI(t), Mroll=q*G.Aref*(RP.force-RP.damp*p/Math.max(vr,1));
@@ -2562,6 +2573,11 @@ function simulate(D,L,m,mb,opts={}){
         if(three&&t<tOff){midOK=false;st.midAfterApogee=true;}
         if(staged&&(t<tIgn||!midOK)){ignOK=false;st.ignAfterApogee=true;if(depMode==="motor")tDep=null;}
         st.tApo=t;st.maxAlt=z;st.xApo=x;st.windApo=Math.hypot(...windVec(z));st.vApo=sp;
+        /* a perfectly straight climb in still air reaches apogee with the axis exactly along the fall line, a balance no
+           real rocket holds: a small turn rate (about 3°/s) stands in for its asymmetries, so the falling rocket's own
+           aerodynamics decide how it comes down */
+        if(phase==="flight"&&!tumbling&&Math.hypot(s[9],s[10],s[11])<0.05){const [bx_,by_,bz_]=[s[6],s[7],s[8]];let kx=0,ky=bz_,kz=-by_,kl=Math.hypot(kx,ky,kz);
+          if(kl<1e-6){kx=-bz_;ky=0;kz=bx_;kl=Math.hypot(kx,kz)||1;}s[9]+=0.05*kx/kl;s[10]+=0.05*ky/kl;s[11]+=0.05*kz/kl;}
         if(depMode==="apogee")tDep=t+depDelay;
       }
       /* the motor's delay charge fires. As in OpenRocket, it opens only the chutes set to open at the motor ejection charge
@@ -4444,13 +4460,7 @@ function animDraw(target){
   // dual deployment with no drogue: nothing opens until the main
   const noDrogue=!st.single&&!(RD.drogueDia>0), mainOpenAtDep=st.single||(st.tMain!=null&&tDep!=null&&st.tMain<=tDep+1e-6);
   const freefall=chute&&!mainOpen&&noDrogue;
-  /* coming down ballistic (nothing open after apogee: a plugged motor, a delay that hasn't fired, or a dual deploy with no
-     drogue before the main): the nose swings over to point along the fall, down, over the first 1.5 s past apogee */
-  if(!landed&&!st.noChute&&!(st.tumble&&t>=st.tumble.t)&&st.tApo!=null&&t>st.tApo&&(!chute||freefall)){
-    const dt=0.05, vx=-(animAt(out.t,out.drift,t+dt)-animAt(out.t,out.drift,t-dt))/(2*dt), vz=(animAt(out.t,out.alt,t+dt)-animAt(out.t,out.alt,t-dt))/(2*dt), vm=Math.hypot(vx,vz);
-    if(vm>0.5&&vz<0){const w=smooth01((t-st.tApo)/1.5), dx=vx/vm, dz=vz/vm;let nx=bx*(1-w)+dx*w, nz=bz*(1-w)+dz*w;
-      if(Math.hypot(nx,nz)<0.2){nx=bx*(1-w)+(dx+ (bx>=0?0.3:-0.3))*w;nz=bz*(1-w)+dz*w;} // swing over sideways, not through zero
-      const q=Math.hypot(nx,nz)||1;bx=nx/q;bz=nz/q;}}
+  // coming down ballistic, the drawn attitude is the simulated one: a stable rocket swings over and falls nose first
   const staged=st.staged&&st.tSep!=null&&t>=st.tSep;
   const boost=st.staged&&!staged?true:false;
   // booster after separation
