@@ -1,3 +1,7 @@
+/**
+ * Saving the builder's design over an OpenRocket file without losing what the builder doesn't keep (see the notes
+ * below).
+ */
 /* ---------- saving over an OpenRocket file ----------
    The rocket is rewritten from the builder; anything the builder doesn't keep (part colors and decals, comments,
    other motor configurations and their deployment settings, simulations, photo settings) is carried over
@@ -7,20 +11,45 @@
    Only what differs between those two goes into the original file; everything else in it stays exactly as it was:
    fields the app doesn't use, "auto" sizes, positions measured from the middle, parts nested inside inner tubes,
    the order of parts, other flight configurations and parts the app can't show. */
+/**
+ * Three-way merge into the original document: what differs between base and new goes into the original.
+ * @param {Document} od original document (changed in place)
+ * @param {Element} oRocket original rocket
+ * @param {Element} bRocket base rocket (the design as opened, written by the builder)
+ * @param {Element} nRocket new rocket (the design now)
+ * @param {string} cfg motor configuration id
+ * @returns {{changed:boolean}}
+ */
 function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   const K = (el) => [...el.children],
     tag = (el) => el.tagName;
+  /**
+   * A component's id.
+   */
   const idOf = (el) => {
     const i = K(el).find((c) => tag(c) === "id");
     return i ? i.textContent.trim() : null;
   };
+  /**
+   * True for a component element.
+   */
   const isComp = (el) => tag(el) !== "motormount" && !!idOf(el);
+  /**
+   * A component's subcomponents element, or null.
+   */
   const subs = (el) => K(el).find((c) => tag(c) === "subcomponents") || null;
+  /**
+   * A component's child components.
+   */
   const compKids = (el) => {
     const s = subs(el);
     return s ? K(s).filter(isComp) : [];
   };
-  // the rocket itself is matched as the rocket, whatever its id
+  /**
+   * Every component in a rocket by key, with its parent and order.
+   *
+   * the rocket itself is matched as the rocket, whatever its id
+   */
   const index = (root) => {
     const m = new Map(),
       par = new Map();
@@ -38,6 +67,9 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
     walk(root, "ROOT");
     return { m, par };
   };
+  /**
+   * A component's key: its id, or ROOT for the rocket.
+   */
   const keyOf = (el, root) => (el === root ? "ROOT" : idOf(el));
   const O = index(oRocket),
     B = index(bRocket),
@@ -45,8 +77,15 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   // a file whose parts have no ids of their own (very old files) can't be matched part by part
   const known = [...B.m.keys()].filter((i) => i !== "ROOT" && O.m.has(i)).length;
   if (B.m.size > 1 && known < 0.6 * (B.m.size - 1)) return false;
+  /**
+   * An element as text, without namespace declarations.
+   */
   const ser = (el) => (el ? new XMLSerializer().serializeToString(el).replace(/\s+xmlns="[^"]*"/g, "") : null);
-  // an element's fields: its direct children (not its parts), keyed by name, flight configuration and repeat count
+  /**
+   * An element's fields: its direct children (not its parts), keyed by name, configuration and repeat.
+   *
+   * an element's fields: its direct children (not its parts), keyed by name, flight configuration and repeat count
+   */
   const fields = (el) => {
     const out = new Map(),
       n = {};
@@ -69,7 +108,14 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   };
   const NESTED = new Set(["motormount"]),
     NESTED_CFG = new Set(["motor"]);
+  /**
+   * An element copied into the original document.
+   */
   const imp = (el) => od.importNode(el, true);
+  /**
+   * Writes the fields that changed between base and new into the original element.
+   * @returns {boolean} true if anything changed
+   */
   const mergeFields = (oEl, bEl, nEl) => {
     const fo = fields(oEl),
       fb = fields(bEl),
@@ -179,8 +225,12 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
       } else if (mergeFields(oEl, bEl, nEl)) changed = true;
     }
   }
-  // structure: each part the app knows sits under the parent the new design gives it, in the new design's order;
-  // parts the app doesn't know keep their place among their neighbours
+  /**
+   * A component's subcomponents element, created if missing.
+   *
+   * structure: each part the app knows sits under the parent the new design gives it, in the new design's order;
+   * parts the app doesn't know keep their place among their neighbours
+   */
   const ensureSubs = (el) => {
     let s = subs(el);
     if (!s) {
@@ -189,6 +239,9 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
     }
     return s;
   };
+  /**
+   * Puts each part the app knows under the parent the new design gives it, in the new design's order.
+   */
   const place = (nParent) => {
     const pid = keyOf(nParent, nRocket),
       oP = O.m.get(pid);
@@ -229,6 +282,17 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   place(nRocket);
   return { changed };
 }
+/**
+ * The text to save over an OpenRocket file: the three-way merge when the design as opened is known, else the
+ * rocket rewritten with the original's other content carried over.
+ * @param {string} origXml the original file
+ * @param {string} newXml the design now, as .ork
+ * @param {string} cfg motor configuration id
+ * @param {object} Lnew launch conditions now
+ * @param {object} Lold launch conditions as opened
+ * @param {string} [baseXml] the design as opened, as .ork
+ * @returns {string} XML
+ */
 function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
   const P = new DOMParser(),
     od = P.parseFromString(origXml, "application/xml"),
@@ -399,11 +463,22 @@ function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
     for (const s of od.getElementsByTagName("simulation")) s.setAttribute("status", "outdated");
   return new XMLSerializer().serializeToString(od);
 }
-// RockSim parts, numbered in file order; the importer gives each builder part the same number, so a save can find it again
-// a RockSim part's id in the converted design: a fixed UUID from its place in the file (OpenRocket needs UUIDs, and the same file always gets the same ids)
+/**
+ * A RockSim part's id in the converted design: a fixed UUID from its place in the file.
+ * @param {number} i
+ * @returns {string}
+ *
+ * RockSim parts, numbered in file order; the importer gives each builder part the same number, so a save can find it again
+ * a RockSim part's id in the converted design: a fixed UUID from its place in the file (OpenRocket needs UUIDs, and the same file always gets the same ids)
+ */
 function rktPartId(i) {
   return "00000000-0000-4000-8000-" + (0x52000000000 + (i | 0)).toString(16).padStart(12, "0");
 }
+/**
+ * RockSim parts numbered in file order.
+ * @param {Element} design
+ * @returns {Map<Element, number>}
+ */
 function rktIndex(design) {
   const m = new Map();
   let i = 0;

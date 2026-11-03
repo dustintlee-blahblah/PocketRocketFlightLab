@@ -1,18 +1,40 @@
+/**
+ * Writing the builder's design as an OpenRocket .ork document.
+ */
 /* ---------- the .ork file ---------- */
-// OpenRocket finds a motor by its type as well as its name: single-use, reload or hybrid
+/**
+ * The motor type OpenRocket uses to find a motor along with its name: single-use, reload or hybrid.
+ * @param {object} km mount's motor {id, name, mfr}
+ * @returns {string}
+ *
+ * OpenRocket finds a motor by its type as well as its name: single-use, reload or hybrid
+ */
 function orkMotorType(km) {
   const m =
     (km.id && findMotor(km.id)) ||
     allMotors().find((x) => x.name === km.name && (!km.mfr || (x.mfr || x.brand) === km.mfr));
   return !m ? "reload" : m.sys === "SU" || m.sys === "DMS" ? "single" : m.sys === "Hybrid" ? "hybrid" : "reload";
 }
+/**
+ * The design as .ork XML: stages, parts, motor configuration, deployment and launch conditions.
+ * @param {object} model builder model
+ * @param {object} L launch conditions
+ * @param {object} [opts] options (configuration id, ...)
+ * @returns {string} XML
+ */
 function bldToOrk(model, L, opts = {}) {
+  /**
+   * A number as text, rounded to 10 significant digits.
+   */
   const n = (v) => String(+(+v).toPrecision(10)),
     e = (s) =>
       String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const cfg = model.cfg || (model.cfg = bldId()),
     lay = bldLayout(model),
     S = model.settings || bldSettings();
+  /**
+   * A material element.
+   */
   const matX = (k, type, list) => {
     const std = list.find((x) => x[0] === k.mat);
     const d = k.dens != null && isFinite(k.dens) ? k.dens : (std || list[0])[1];
@@ -21,10 +43,16 @@ function bldToOrk(model, L, opts = {}) {
   const bulk = (k) => matX(k, "bulk", BLD_BULK),
     surf = (k) => matX(k, "surface", BLD_SURF),
     line = (k) => matX(k, "line", BLD_LINE);
+  /**
+   * A fin set element.
+   */
   const fin = (k) => {
     const f = k.finish || S.finish;
     return f ? `<finish>${e(f)}</finish>` : "";
   };
+  /**
+   * Fields of a part opened from a file that the builder doesn't edit, written back as they were.
+   */
   const known = (k) =>
     (k.cdo != null && isFinite(k.cdo)
       ? `<overridecd>${n(k.cdo)}</overridecd><overridesubcomponentscd>${!!k.cdoAll}</overridesubcomponentscd>`
@@ -35,12 +63,24 @@ function bldToOrk(model, L, opts = {}) {
     (k.knownCg != null && isFinite(k.knownCg)
       ? `<overridecg>${n(k.knownCg)}</overridecg><overridesubcomponentscg>${!!k.knownAll}</overridesubcomponentscg>`
       : "");
+  /**
+   * A part's position element.
+   */
   const pos = (k) =>
     `<axialoffset method="${k.ref === "top" ? "top" : "bottom"}">${n(k.ref === "top" ? k.pos : -k.pos)}</axialoffset>`;
+  /**
+   * The name, id and position every part starts with.
+   */
   const head = (k) => `<name>${e(k.name)}</name><id>${k.id}</id>${pos(k)}${known(k)}`;
   const sep = model.stages.length > 1;
+  /**
+   * A recovery part's deployment elements.
+   */
   const deploy = (k) =>
     `<deployevent>${e(k.deploy || "apogee")}</deployevent><deployaltitude>${n(k.alt || 0)}</deployaltitude><deploydelay>${n(k.delay || 0)}</deploydelay>`;
+  /**
+   * A motor mount element with its motor and ignition.
+   */
   const motorMount = (k, si) => {
     const upper = sep && si < model.stages.length - 1,
       ign = upper
@@ -67,6 +107,9 @@ function bldToOrk(model, L, opts = {}) {
     b.kids = b.kids.filter((c) => c.k.type !== "fins");
     host.kids = [...host.kids, ...fins.map((c) => ({ ...c, abs: true }))];
   }
+  /**
+   * One attached or inner part as XML.
+   */
   const kidXml = (c, b) => {
     const x = kidXml0(c, b);
     return c.abs
@@ -131,6 +174,9 @@ function bldToOrk(model, L, opts = {}) {
     }
     return "";
   };
+  /**
+   * One body part with its attached parts.
+   */
   const bodyXml = (b) => {
     const p = b.p,
       kids = b.kids.map((c) => kidXml(c, b)).join(""),

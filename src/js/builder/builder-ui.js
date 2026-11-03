@@ -1,11 +1,22 @@
+/**
+ * The Rocket tab's parts builder: the parts tree, the editor for the selected part, the side view of the rocket,
+ * undo and redo, and turning the parts into the flight design (see the note below).
+ */
 /* ---------- Rocket tab: the parts builder ----------
    The parts list (BLD) is the design. The flight code's summary (D) is worked out from it every time it
    changes, by writing the parts as an OpenRocket file and reading that back. */
+/**
+ * BLD: the builder model (the design's parts); bldSel: the selected part's id; bldT: the debounce timer for typing;
+ * bldHits: clickable areas of the side view; bldNewSure: when New design was last tapped.
+ */
 var BLD = null,
   bldSel = null,
   bldT = null,
   bldHits = [],
   bldNewSure = 0;
+/**
+ * Nose and transition shapes offered: [shape, label].
+ */
 const BLD_SHAPES = [
   ["ogive", "Ogive"],
   ["conical", "Conical"],
@@ -14,7 +25,13 @@ const BLD_SHAPES = [
   ["parabolic", "Parabolic"],
   ["haack", "Haack series"],
 ];
+/**
+ * Standard motor diameters, mm.
+ */
 const BLD_SIZES = [13, 18, 24, 29, 38, 54, 75, 98, 152];
+/**
+ * Cluster layouts offered for a motor mount: [OpenRocket name, label].
+ */
 const BLD_CLUSTERS = [
   ["single", "Single"],
   ["double", "2 motors"],
@@ -25,6 +42,9 @@ const BLD_CLUSTERS = [
   ["6-ring", "6 in a ring"],
   ["7-ring", "7 (6 around 1)"],
 ];
+/**
+ * Deployment events offered for a recovery part: [event, label].
+ */
 const BLD_DEPLOY = [
   ["apogee", "At apogee"],
   ["ejection", "Motor ejection charge"],
@@ -32,13 +52,22 @@ const BLD_DEPLOY = [
   ["launch", "On a timer after liftoff"],
 ];
 const BLD_ROOT = "__rocket";
-// the fields each part shows: [key, label, kind, dim or options]
+/**
+ * The fields a part shows in the editor: [key, label, kind, dimension or options].
+ * @param {object} p part
+ * @returns {Array[]}
+ *
+ * the fields each part shows: [key, label, kind, dim or options]
+ */
 function bldFields(p) {
   const posF = [["pos", "Position", "pos"]],
     kw = [
       ["known", p.knownCalc ? "Weight from RockSim’s calculation" : "Measured weight", "num", "smass"],
       ...(p.known > 0 ? [["knownAll", "Includes the parts attached to it", "check"]] : []),
     ];
+  /**
+   * The material field of a part.
+   */
   const mat = (k) => [["mat", "Material", k || "bulk"]];
   const param = ["power", "parabolic", "haack", "ogive"].includes(p.shape)
     ? [["param", "Shape parameter", "num", "none"]]
@@ -275,6 +304,10 @@ function bldFields(p) {
   }
   return [];
 }
+/**
+ * The fields of the rocket itself: name, finish, inertia, drag adjustments.
+ * @returns {Array[]}
+ */
 function bldRootFields() {
   const two = BLD.stages.length > 1,
     s0 = BLD.stages[0];
@@ -303,6 +336,12 @@ function bldRootFields() {
     ],
   ];
 }
+/**
+ * The fields of a stage: name, separation and ignition settings.
+ * @param {object} st stage
+ * @param {number} si its index
+ * @returns {Array[]}
+ */
 function bldStageFields(st, si) {
   const n = BLD.stages.length,
     upper = n > 1 && si < n - 1,
@@ -323,6 +362,11 @@ function bldStageFields(st, si) {
     ],
   ];
 }
+/**
+ * Finds a part (or stage, or the rocket) by id, with where it sits.
+ * @param {string} id
+ * @returns {object|null} {p, si, pi, st, parent, ki} for a part, {stage, si} for a stage, {root} for the rocket
+ */
 function bldFind(id) {
   if (id === BLD_ROOT) return { root: true };
   for (const [si, st] of BLD.stages.entries()) {
@@ -335,14 +379,24 @@ function bldFind(id) {
   }
   return null;
 }
+/**
+ * Keeps the builder model on the device.
+ */
 function bldSave() {
   try {
     localStorage.setItem("rfs-builder", JSON.stringify(BLD));
   } catch (e) {}
 }
-// the primary motor mount of each stage holds the motor chosen on the Motor tab
+/**
+ * Puts the motors chosen on the Motor tab into each stage's primary motor mount.
+ *
+ * the primary motor mount of each stage holds the motor chosen on the Motor tab
+ */
 function bldSyncMotors() {
   if (!BLD) return;
+  /**
+   * Sets a stage's primary mount's motor, unless it's held by a choice already made there.
+   */
   const put = (st, m, hold) => {
     const k = bldMounts(st)[0];
     if (!k || !m) return;
@@ -366,7 +420,11 @@ function bldSyncMotors() {
     put(BLD.stages[2], findMotor(firstId), h[2]);
   } else if (BLD.stages.length > 1) put(BLD.stages[BLD.stages.length - 1], findMotor(boostId), h[1]);
 }
-// the flight code's summary, worked out from the parts
+/**
+ * Works out the flight design D from the parts (written as .ork and read back), keeping app-only settings.
+ *
+ * the flight code's summary, worked out from the parts
+ */
 function bldDerive() {
   bldSyncMotors();
   const prev = D,
@@ -385,11 +443,18 @@ function bldDerive() {
   }
   // RockSim gives a mount's motor size directly: keep it while the mount is the size it came with
   if (BLD.mountHint) {
+    /**
+     * True if two sizes are within 2.5 mm.
+     */
     const near = (a, b) => a && b && Math.abs(a - b) < 0.0025;
     if (near(nd.mountDia, BLD.mountHint[0])) nd.mountDia = BLD.mountHint[0];
     if (near(nd.bMountDia, BLD.mountHint[1])) nd.bMountDia = BLD.mountHint[1];
   }
-  // clusters: the extra motors match the main one, unless they were chosen separately on the Motor tab
+  /**
+   * A stage's extra motors for the cluster, matching the main motor unless they were chosen separately.
+   *
+   * clusters: the extra motors match the main one, unless they were chosen separately on the Motor tab
+   */
   const ex = (list, key) => {
     const want = (list || []).reduce((a, e) => a + (e.count || 1), 0),
       had = ((prev && prev[key]) || []).reduce((a, e) => a + (e.n || 1), 0);
@@ -427,6 +492,9 @@ function bldDerive() {
   applyCal();
   return r;
 }
+/**
+ * bldDerive, with any error shown in the builder.
+ */
 function bldApply() {
   try {
     bldDerive();
@@ -437,8 +505,17 @@ function bldApply() {
   changed();
 }
 /* undo and redo for builder changes: a snapshot before each change; typing into one field counts as one change */
+/**
+ * Undo history: snapshots before each change (typing into one field counts as one change).
+ */
 const BLD_UNDO = { ref: null, cur: null, past: [], future: [], t: 0, key: null, max: 40 };
+/**
+ * A snapshot of the builder model (without the ejection charge settings).
+ */
 const bldSnap = () => JSON.stringify(BLD, (k, v) => (k === "bp" ? undefined : v));
+/**
+ * Starts a fresh history when another design is opened.
+ */
 function bldHistSync() {
   if (!BLD) return;
   if (BLD_UNDO.ref !== BLD) {
@@ -449,6 +526,10 @@ function bldHistSync() {
     BLD_UNDO.key = null;
   }
 }
+/**
+ * Records a change in the history (typing in the same field within a moment joins the last change).
+ * @param {boolean} full the change is complete (not mid-typing)
+ */
 function bldHistNote(full) {
   if (!BLD) return;
   if (BLD_UNDO.ref !== BLD) {
@@ -469,6 +550,10 @@ function bldHistNote(full) {
   BLD_UNDO.key = full ? null : bldSel;
   bldUndoUI();
 }
+/**
+ * Undo (-1) or redo (+1).
+ * @param {number} dir
+ */
 function bldUndoStep(dir) {
   bldHistSync();
   const from = dir < 0 ? BLD_UNDO.past : BLD_UNDO.future,
@@ -492,6 +577,9 @@ function bldUndoStep(dir) {
     renderMotors();
   }
 }
+/**
+ * Enables the Undo and Redo buttons when there's something to undo or redo.
+ */
 function bldUndoUI() {
   const u = document.getElementById("bldundo"),
     r = document.getElementById("bldredo");
@@ -507,6 +595,10 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
   bldUndoStep(e.key.toLowerCase() === "y" || e.shiftKey ? 1 : -1);
 });
+/**
+ * After a builder edit: saves, records history, and (for a complete change) rebuilds the design and redraws.
+ * @param {boolean} full
+ */
 function bldChanged(full) {
   bldSave();
   bldHistNote(full);
@@ -522,7 +614,11 @@ function bldChanged(full) {
     }, 140);
   }
 }
-// the fin being edited, drawn to scale with its root, tip, span and sweep and its distance to the end of the tube it's on
+/**
+ * Draws the fin being edited to scale, with its distance to the end of its tube.
+ *
+ * the fin being edited, drawn to scale with its root, tip, span and sweep and its distance to the end of the tube it's on
+ */
 function bldDrawFinEdit() {
   const cv = document.getElementById("bldfinview");
   if (!cv) return;
@@ -572,6 +668,9 @@ function bldDrawFinEdit() {
   }
   drawFinsInto("bldfinview", "bldfinnote", FS);
 }
+/**
+ * Redraws the whole builder: tree, add buttons, editor, side view and undo state.
+ */
 function bldRender() {
   try {
     bpRender();
@@ -585,6 +684,11 @@ function bldRender() {
   bldRenderEdit();
   bldDraw();
 }
+/**
+ * A one-line size summary of a part, for the tree.
+ * @param {object} p part
+ * @returns {string}
+ */
 const bldSum = (p) => {
   const L_ = (v) => `${fmt(v, "len")} ${uname("len")}`;
   switch (p.type) {
@@ -612,6 +716,9 @@ const bldSum = (p) => {
       return "";
   }
 };
+/**
+ * Draws the parts tree: the rocket, its stages and their parts.
+ */
 function bldRenderTree() {
   const el = document.getElementById("bldtree");
   if (!el) return;
@@ -637,9 +744,19 @@ function bldRenderTree() {
   );
 }
 let bldAddOpen = false;
-// the Motor tab follows the mount size typed in the builder: it shows that size of motor
-// which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage (bottom)
+/**
+ * Which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage.
+ * @param {number} si stage index
+ * @returns {string}
+ *
+ * the Motor tab follows the mount size typed in the builder: it shows that size of motor
+ * which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage (bottom)
+ */
 const bldTgt = (si) => (!(si > 0) ? "sustainer" : BLD && BLD.stages.length === 3 && si === 2 ? "first" : "booster");
+/**
+ * Points the Motor tab at the motor size of a mount being edited.
+ * @param {object} p mount part
+ */
 function bldMountFilterFor(p) {
   const f = p && bldFind(p.id);
   if (!f) return;
@@ -647,6 +764,9 @@ function bldMountFilterFor(p) {
   if (typeof mountFilter === "function") mountFilter();
   if (typeof renderMotors === "function") renderMotors();
 }
+/**
+ * Draws the buttons for the parts that can be added where the selection is.
+ */
 function bldRenderAdd() {
   const el = document.getElementById("bldadd");
   if (!el) return;
@@ -726,6 +846,10 @@ function bldRenderAdd() {
       }),
   );
 }
+/**
+ * Adds a part: a body part after the selection, or an attached part on the selected body part.
+ * @param {string} type
+ */
 function bldAdd(type) {
   const f = bldSel ? bldFind(bldSel) : null,
     si = f && f.si != null ? f.si : 0,
@@ -754,6 +878,9 @@ function bldAdd(type) {
   }
   bldChanged(true);
 }
+/**
+ * Draws the editor for the selected part, stage or rocket.
+ */
 function bldRenderEdit() {
   const el = document.getElementById("bldedit");
   if (!el) return;
@@ -871,6 +998,12 @@ function bldRenderEdit() {
       }),
   );
 }
+/**
+ * The HTML of one editor field.
+ * @param {object} F field {key, label, kind, dim}
+ * @param {*} val its value
+ * @returns {string}
+ */
 function bldFieldHtml(F, val) {
   const id = "bf-" + F.key,
     wide = F.kind === "pts" || F.kind === "motor" || F.kind === "pos" || F.kind === "check";
@@ -963,6 +1096,13 @@ function bldFieldHtml(F, val) {
     ? `<div class="fld wide"><div class="chkrow">${inp}${ib}</div></div>`
     : `<div class="fld${wide ? " wide" : ""}"><div class="lh"><label for="${id}">${esc(label)}</label>${ib}</div>${inp}</div>`;
 }
+/**
+ * Connects the editor's inputs to the part they edit.
+ * @param {HTMLElement} el editor
+ * @param {object} p part, stage or rocket
+ * @param {string} mode "root", "stage" or "part"
+ * @param {number} si stage index
+ */
 function bldWire(el, p, mode, si) {
   const spec = mode === "root" ? bldRootFields() : mode === "stage" ? bldStageFields(p, si) : bldFields(p);
   el.querySelectorAll("[id^=bf-]").forEach((inp) => {
@@ -1147,6 +1287,9 @@ function bldWire(el, p, mode, si) {
       inp.addEventListener("change", () => bldMountFilterFor(p));
   });
 }
+/**
+ * Draws the side view of the rocket with its parts, CG and CP, and records the clickable areas.
+ */
 function bldDraw() {
   const cv = document.getElementById("bldcv");
   if (!cv || !BLD || !cv.getBoundingClientRect().width) return;
@@ -1562,6 +1705,10 @@ function bldDraw() {
     st.innerHTML = `<span class="bad">${esc(e.message || String(e))}</span>`;
   }
 }
+/**
+ * Selects the part tapped on in the side view.
+ * @param {MouseEvent} ev
+ */
 function bldPick(ev) {
   const cv = document.getElementById("bldcv"),
     rc = cv.getBoundingClientRect(),
@@ -1582,7 +1729,11 @@ function bldPick(ev) {
     document.getElementById("bldedit").scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 }
-// a new design from scratch: a basic flyable rocket to change
+/**
+ * Starts a new design from scratch: a basic flyable rocket with a 29 mm motor.
+ *
+ * a new design from scratch: a basic flyable rocket to change
+ */
 function bldNewDesign() {
   BLD = bldDefault();
   bldSel = BLD.stages[0].parts[0].id;

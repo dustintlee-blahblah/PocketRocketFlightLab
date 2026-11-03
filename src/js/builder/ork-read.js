@@ -1,27 +1,56 @@
+/**
+ * Reading a design file into builder parts (see the note below).
+ */
 /* ---------- reading a design file into builder parts ----------
    .rkt files arrive already converted to .ork text. Parts the builder can't edit (pods, tube fins,
    engine blocks...) are kept exactly as written, so they still fly and still save. */
+/**
+ * Reads .ork XML into a builder model.
+ * @param {string} xml
+ * @param {object} [info] the importer's result for the same file (motors, configuration...)
+ * @returns {object} builder model
+ * @throws {Error} if there is no rocket in the file
+ */
 function bldFromOrk(xml, info) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];
   if (!rocket) throw new Error("No rocket was found in this file.");
+  /**
+   * The first child element with a tag name.
+   */
   const kid = (el, tag) => [...el.children].find((c) => c.tagName === tag);
+  /**
+   * The trimmed text of a child element, or null.
+   */
   const txt = (el, tag) => {
     const c = kid(el, tag);
     return c ? c.textContent.trim() : null;
   };
+  /**
+   * The first number in a child element's text, or def.
+   */
   const num = (el, tag, def = 0) => {
     const s = txt(el, tag);
     if (s == null) return def;
     const mm = s.match(/-?\d+(\.\d+)?(e-?\d+)?/i);
     return mm ? parseFloat(mm[0]) : def;
   };
+  /**
+   * True if a child element's value is "auto".
+   */
   const isAuto = (el, tag) => /^\s*auto/i.test(txt(el, tag) || "");
+  /**
+   * A component's subcomponents.
+   */
   const subs = (el) => {
     const s = kid(el, "subcomponents");
     return s ? [...s.children] : [];
   };
-  // a part kept as written, minus its own position (the builder writes that, in this body part's frame)
+  /**
+   * A part kept as written, without its own position.
+   *
+   * a part kept as written, minus its own position (the builder writes that, in this body part's frame)
+   */
   const ser = (el) => {
     const c = el.cloneNode(true);
     [...c.children]
@@ -29,6 +58,9 @@ function bldFromOrk(xml, info) {
       .forEach((k) => c.removeChild(k));
     return new XMLSerializer().serializeToString(c).replace(/ xmlns="[^"]*"/g, "");
   };
+  /**
+   * A component's position method and value.
+   */
   const offset = (c) => {
     const ao = kid(c, "axialoffset"),
       po = kid(c, "position");
@@ -40,10 +72,16 @@ function bldFromOrk(xml, info) {
         }
       : { method: "top", val: 0 };
   };
+  /**
+   * A free-form fin's outline as "x,y" lines.
+   */
   const ptsOf = (c) => {
     const fp = kid(c, "finpoints");
     return fp ? [...fp.children].map((p) => [parseFloat(p.getAttribute("x")), parseFloat(p.getAttribute("y"))]) : [];
   };
+  /**
+   * A component's length along the body.
+   */
   const lenOf = (c) => {
     switch (c.tagName) {
       case "trapezoidfinset":
@@ -62,6 +100,9 @@ function bldFromOrk(xml, info) {
         return num(c, "length");
     }
   };
+  /**
+   * A component's forward end from its parent's front.
+   */
   const place = (c, px, plen) => {
     const o = offset(c),
       len = lenOf(c);
@@ -76,6 +117,9 @@ function bldFromOrk(xml, info) {
         return px + o.val;
     }
   };
+  /**
+   * A part's material name and density.
+   */
   const mat = (c, tag = "material") => {
     const m = kid(c, tag);
     if (!m) return {};
@@ -85,6 +129,9 @@ function bldFromOrk(xml, info) {
       std = all.find((x) => x[0] === nm && Math.abs(x[1] - d) < 1e-9);
     return std ? { mat: nm } : { mat: nm || "Material", dens: d };
   };
+  /**
+   * The fields every part has: id, name, material, mass and CG overrides, Cd override.
+   */
   const common = (c) => {
     const o = { id: txt(c, "id") || bldId(), name: txt(c, "name") || BLD_NAMES.raw, ...mat(c) };
     const f = txt(c, "finish");
@@ -121,8 +168,14 @@ function bldFromOrk(xml, info) {
     simCfg ||
     (cfgEl.find((c) => c.getAttribute("default") === "true") || cfgEl[0])?.getAttribute("configid") ||
     bldId();
+  /**
+   * The element for the motor configuration in use (else the default).
+   */
   const forCfg = (el, tag) =>
     [...el.children].filter((c) => c.tagName === tag).find((c) => c.getAttribute("configid") === cfg);
+  /**
+   * A recovery part's deployment: event, altitude, delay.
+   */
   const dep = (e) => {
     const dc = forCfg(e, "deploymentconfiguration"),
       g = (t, d) =>
@@ -139,6 +192,9 @@ function bldFromOrk(xml, info) {
       delay: g("deploydelay"),
     };
   };
+  /**
+   * A motor mount's settings and motor.
+   */
   const mountOf = (mm, k) => {
     const motors = [...mm.children].filter((c) => c.tagName === "motor"),
       mo = motors.find((m) => m.getAttribute("configid") === cfg) || motors[0];
@@ -180,11 +236,18 @@ function bldFromOrk(xml, info) {
   const bodies = stages.flatMap((s) =>
     subs(s).filter((c) => ["nosecone", "bodytube", "transition"].includes(c.tagName)),
   );
-  // the same rules the flight code uses: an automatic radius follows the part before it, else the next stated one
+  /**
+   * The cached number after "auto".
+   *
+   * the same rules the flight code uses: an automatic radius follows the part before it, else the next stated one
+   */
   const autoNum = (el, tag) => {
     const m = (txt(el, tag) || "").match(/-?\d+(\.\d+)?(e-?\d+)?/i);
     return m ? parseFloat(m[0]) : 0;
   };
+  /**
+   * The next stated radius aft of a part.
+   */
   const nextExplicit = (e) => {
     const i = bodies.indexOf(e);
     for (let j = i + 1; j < bodies.length; j++) {
@@ -639,7 +702,13 @@ function bldFromOrk(xml, info) {
   }
   return model;
 }
-// checks that would make the file wrong or unflyable
+/**
+ * Checks that would make the design wrong or unflyable (no motor mount, a mount wider than its tube...).
+ * @param {object} model
+ * @returns {string[]}
+ *
+ * checks that would make the file wrong or unflyable
+ */
 function bldProblems(model) {
   const out = [];
   model.stages.forEach((st, si) => {

@@ -1,7 +1,13 @@
+/**
+ * The rocket builder's parts model: part types, materials, new parts and the layout of a design.
+ */
 /* ---------- rocket builder: parts model, .ork import and export ----------
    A design is a list of stages; each stage is a front-to-back list of body parts (nose cone, body tubes,
    transitions), and each body part holds the parts attached to it or packed inside it. Lengths in metres.
    Parts opened from a file keep their file id, so saving can carry over what the builder doesn't edit. */
+/**
+ * Bulk materials: [name, density kg/m³].
+ */
 const BLD_BULK = [
   ["Cardboard", 680],
   ["Kraft phenolic", 950],
@@ -18,18 +24,30 @@ const BLD_BULK = [
   ["G10 fiberglass", 1800],
   ["Aluminum", 2700],
 ];
+/**
+ * Surface materials (parachute cloth, streamers): [name, kg/m²].
+ */
 const BLD_SURF = [
   ["Ripstop nylon", 0.067],
   ["Mylar", 0.021],
   ["Polyethylene (thin)", 0.01],
 ];
+/**
+ * Line materials (shock cords): [name, kg/m].
+ */
 const BLD_LINE = [
   ["Kevlar 1/4 in", 0.0105],
   ["Tubular nylon 1/2 in", 0.013],
   ["Tubular nylon 1 in", 0.03],
   ["Elastic 1/4 in", 0.0013],
 ];
+/**
+ * The part types that make up the outside of the body.
+ */
 const BLD_BODY = ["nose", "tube", "transition"];
+/**
+ * Default names of the part types.
+ */
 const BLD_NAMES = {
   nose: "Nose cone",
   tube: "Body tube",
@@ -48,6 +66,9 @@ const BLD_NAMES = {
   mass: "Mass",
   raw: "Part from file",
 };
+/**
+ * Surface finishes offered: [OpenRocket name, label].
+ */
 const BLD_FINISH = [
   ["mirror", "Mirror (0 µm)"],
   ["finishpolished", "Finish-polished (0.5 µm)"],
@@ -59,12 +80,23 @@ const BLD_FINISH = [
   ["roughunfinished", "Rough unfinished (250 µm)"],
   ["rough", "Rough (500 µm)"],
 ];
-// OpenRocket requires every part id to be a UUID
+/**
+ * A new random part id (OpenRocket requires every part id to be a UUID).
+ *
+ * OpenRocket requires every part id to be a UUID
+ */
 const bldId = () =>
   globalThis.crypto && crypto.randomUUID
     ? crypto.randomUUID()
     : "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
-// a new part with sensible sizes for the body it goes on (R = body radius)
+/**
+ * A new part with sensible sizes for the body it goes on.
+ * @param {string} type part type ("nose", "tube", "fins", "chute", "mount"...)
+ * @param {number} [R=0.0333] the body radius, m
+ * @returns {object} part
+ *
+ * a new part with sensible sizes for the body it goes on (R = body radius)
+ */
 function bldNew(type, R = 0.0333) {
   const id = bldId(),
     name = BLD_NAMES[type];
@@ -224,10 +256,19 @@ function bldNew(type, R = 0.0333) {
       return { id, type, name: "Mass", mass: 0.03, len: 0.03, ref: "top", pos: 0.02, known: 0 };
   }
 }
+/**
+ * Design-wide builder settings that aren't parts (finish, inertia, drag adjustments), at their defaults.
+ * @returns {object}
+ */
 function bldSettings() {
   return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
 }
-// a complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one chute
+/**
+ * A complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one parachute.
+ * @returns {object} builder model
+ *
+ * a complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one chute
+ */
 function bldDefault() {
   const R = 0.0333,
     nose = bldNew("nose", R),
@@ -247,12 +288,24 @@ function bldDefault() {
     stages: [{ id: bldId(), name: "Sustainer", sepDelay: 0, ignDelay: 0, parts: [nose, tube] }],
   };
 }
+/**
+ * A material [name, density] from a list by name (the first one if not found).
+ */
 const bldMat = (list, name) => {
   const m = list.find((x) => x[0] === name) || list[0];
   return m;
 };
+/**
+ * The outside radius of a body part (the smaller end of a transition).
+ */
 const bldBodyR = (p) => (p.type === "tube" ? p.od / 2 : p.type === "nose" ? p.dia / 2 : Math.min(p.dia1, p.dia2) / 2);
-// where everything sits, front to back
+/**
+ * Where everything sits, front to back: each body part with its stage, position and radius.
+ * @param {object} model builder model
+ * @returns {{bodies:object[], len:number, ...}}
+ *
+ * where everything sits, front to back
+ */
 function bldLayout(model) {
   const out = [];
   let x = 0;
@@ -291,6 +344,11 @@ function bldLayout(model) {
   });
   return { bodies: out, length: x, maxR: Math.max(0.001, ...out.map((b) => Math.max(b.r1, b.r2))) };
 }
+/**
+ * A part's length along the body (fin root chord, packed length...).
+ * @param {object} k part
+ * @returns {number} m
+ */
 function bldLen(k) {
   switch (k.type) {
     case "fins":
@@ -307,7 +365,13 @@ function bldLen(k) {
       return k.len || 0;
   }
 }
-// free-form fin outline from "x,y" lines (metres); the root runs along y = 0
+/**
+ * A free-form fin outline from its "x,y" lines (meters); the root runs along y = 0.
+ * @param {object} k fin part
+ * @returns {{pts:number[][], root:number, span:number}}
+ *
+ * free-form fin outline from "x,y" lines (metres); the root runs along y = 0
+ */
 function bldPts(k) {
   const pts = String(k.pts || "")
     .split(/[\n;]+/)
@@ -323,20 +387,41 @@ function bldPts(k) {
   const xs = pts.map((p) => p[0]);
   return { pts, root: Math.max(...xs) - Math.min(...xs) };
 }
-// the motor mount's inside size, rounded to the motor size it takes
+/**
+ * A motor mount's inside diameter, rounded to the motor size it takes.
+ * @param {object} k mount part
+ * @returns {number} mm
+ *
+ * the motor mount's inside size, rounded to the motor size it takes
+ */
 function bldMountMM(k) {
   return Math.round((k.od - 2 * k.wall) * 1000);
 }
+/**
+ * Rail button sizes by rail: outside diameter, height and weight.
+ */
 const BLD_BUTTONS = {
   1010: { od: 0.0102, id: 0.0064, h: 0.0097, fl: 0.0021, bs: 0.0021, label: "1010 (small)" },
   1515: { od: 0.0157, id: 0.0081, h: 0.0127, fl: 0.0025, bs: 0.0025, label: "1515 (large)" },
 };
-// the motor tube's outside radius in a body part: the ring's hole size
+/**
+ * The motor tube's outside radius inside a body part (the centering rings' hole size).
+ * @param {object} b body part from bldLayout
+ * @returns {number} m
+ *
+ * the motor tube's outside radius in a body part: the ring's hole size
+ */
 function bldMountR(b) {
   const m = (b.p.kids || []).find((k) => k.type === "mount" || k.type === "inner");
   return m ? m.od / 2 : Math.max(b.ri * 0.5, 0.005);
 }
-// every motor mount in a stage (inner tubes with a motor, or a body tube flown as its own mount)
+/**
+ * Every motor mount in a stage (inner tubes with a motor, or body tubes flown as their own mount).
+ * @param {object} st stage
+ * @returns {object[]}
+ *
+ * every motor mount in a stage (inner tubes with a motor, or a body tube flown as its own mount)
+ */
 function bldMounts(st) {
   return st.parts.flatMap((p) => [...(p.mm ? [p.mm] : []), ...(p.kids || []).filter((k) => k.type === "mount")]);
 }
