@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">240</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">241</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -1009,7 +1009,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="240";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="241";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -4438,6 +4438,13 @@ function animDraw(target){
   // dual deployment with no drogue: nothing opens until the main
   const noDrogue=!st.single&&!(RD.drogueDia>0), mainOpenAtDep=st.single||(st.tMain!=null&&tDep!=null&&st.tMain<=tDep+1e-6);
   const freefall=chute&&!mainOpen&&noDrogue;
+  /* coming down ballistic (nothing open after apogee: a plugged motor, a delay that hasn't fired, or a dual deploy with no
+     drogue before the main): the nose swings over to point along the fall, down, over the first 1.5 s past apogee */
+  if(!landed&&!st.noChute&&!(st.tumble&&t>=st.tumble.t)&&st.tApo!=null&&t>st.tApo&&(!chute||freefall)){
+    const dt=0.05, vx=-(animAt(out.t,out.drift,t+dt)-animAt(out.t,out.drift,t-dt))/(2*dt), vz=(animAt(out.t,out.alt,t+dt)-animAt(out.t,out.alt,t-dt))/(2*dt), vm=Math.hypot(vx,vz);
+    if(vm>0.5&&vz<0){const w=smooth01((t-st.tApo)/1.5), dx=vx/vm, dz=vz/vm;let nx=bx*(1-w)+dx*w, nz=bz*(1-w)+dz*w;
+      if(Math.hypot(nx,nz)<0.2){nx=bx*(1-w)+(dx+ (bx>=0?0.3:-0.3))*w;nz=bz*(1-w)+dz*w;} // swing over sideways, not through zero
+      const q=Math.hypot(nx,nz)||1;bx=nx/q;bz=nz/q;}}
   const staged=st.staged&&st.tSep!=null&&t>=st.tSep;
   const boost=st.staged&&!staged?true:false;
   // booster after separation
