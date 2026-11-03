@@ -1,6 +1,21 @@
+/**
+ * The flight animation: a side view along the wind, played from the last run's time history.
+ */
 /* ---------- flight animation (side view along the wind) ---------- */
+/**
+ * Animation state: open, current time (s), playback speed, playing, animation frame id, last frame time, camera.
+ */
 const ANIM = { on: false, t: 0, speed: 1, playing: false, raf: 0, last: 0, cam: null };
-// the rocket's outline in its own frame: x from the nose tip, r out from the axis
+/**
+ * The rocket's outline in its own frame, for drawing: x from the nose tip, r out from the axis.
+ * @param {object} DD design (or stack)
+ * @param {number} [x0=0] start of the part to outline, m from the nose tip
+ * @param {number} [x1=Infinity] end of it
+ * @returns {{body:number[][], fins:object[], len:number, R:number}} body outline points, fin outlines, length and
+ *   radius, m
+ *
+ * the rocket's outline in its own frame: x from the nose tip, r out from the axis
+ */
 function animShape(DD, x0 = 0, x1 = Infinity) {
   const AE = aero(DD),
     body = [],
@@ -22,6 +37,9 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
     R = Math.max(...body.map((p) => p[1]), 0.005);
   return { body, fins, len, R };
 }
+/**
+ * Opens the animation for the last run: the shapes of each stage, the time span and the camera.
+ */
 function animOpen() {
   if (!lastSim) return;
   const { out, st, D: RD } = lastSim,
@@ -59,6 +77,9 @@ function animOpen() {
   document.getElementById("animscrub").max = String(ANIM.tEnd);
   animPlay(true);
 }
+/**
+ * Closes the animation and stops playback.
+ */
 function animClose() {
   if (VID.busy) VID.cancel = true;
   document.getElementById("animvidbox").hidden = true;
@@ -67,6 +88,10 @@ function animClose() {
   cancelAnimationFrame(ANIM.raf);
   document.getElementById("animmodal").hidden = true;
 }
+/**
+ * Starts or pauses playback (from the start again after the end).
+ * @param {boolean} on
+ */
 function animPlay(on) {
   ANIM.playing = on;
   document.getElementById("animplay").textContent = on ? "Pause" : "Play";
@@ -77,6 +102,10 @@ function animPlay(on) {
     ANIM.raf = requestAnimationFrame(animTick);
   }
 }
+/**
+ * One animation frame: advances the time while playing and draws.
+ * @param {number} now frame time, ms
+ */
 function animTick(now) {
   if (!ANIM.on || (typeof VID !== "undefined" && VID.busy)) return; // a video being made owns the animation
   if (ANIM.playing) {
@@ -87,7 +116,15 @@ function animTick(now) {
   animDraw();
   if (ANIM.playing) ANIM.raf = requestAnimationFrame(animTick);
 }
-// linear interpolation of a recorded series at time t
+/**
+ * Straight-line interpolation of a recorded series at a time (held at its ends).
+ * @param {number[]} ts times, s (ascending)
+ * @param {number[]} ys values
+ * @param {number} t
+ * @returns {number}
+ *
+ * linear interpolation of a recorded series at time t
+ */
 function animAt(ts, ys, t) {
   if (!ts.length) return 0;
   if (t <= ts[0]) return ys[0];

@@ -1,8 +1,27 @@
+/**
+ * The animation's scenery (sky, sun, clouds, mountains, tree line, field, windsock, smoke) and the frame drawing.
+ * Positions in the world are meters; K is pixels per meter, CX the world x at the center of the view, gy the ground's
+ * screen y.
+ */
 /* ---------- animation scenery: sky, sun, clouds, mountains, tree line, field, windsock, smoke ---------- */
+/**
+ * A repeatable pseudo-random number 0–1 for an index (scenery that doesn't change between frames).
+ */
 const SCN_R = (i) => {
   const v = Math.sin(i * 127.1 + 311.7) * 43758.5453;
   return v - Math.floor(v);
 };
+/**
+ * Draws the sky, sun, clouds and mountains.
+ * @param {CanvasRenderingContext2D} c
+ * @param {number} W width, px
+ * @param {number} H height, px
+ * @param {number} gy ground line, px
+ * @param {number} K scale, px/m
+ * @param {number} CX world x at the center, m
+ * @param {number} t flight time, s
+ * @param {number} wind wind speed at the ground, m/s
+ */
 function animScenery(c, W, H, gy, K, CX, t, wind) {
   // sky: deep blue overhead, hazy pale near the horizon
   const g = c.createLinearGradient(0, 0, 0, gy);
@@ -66,7 +85,11 @@ function animScenery(c, W, H, gy, K, CX, t, wind) {
     c.filter = "none";
     c.restore();
   }
-  // two mountain ranges, the far one bluer and snow-capped; they shift only a little as the view follows the rocket
+  /**
+   * Draws one mountain range.
+   *
+   * two mountain ranges, the far one bluer and snow-capped; they shift only a little as the view follows the rocket
+   */
   const ridge = (hmax, f, seed, col1, col2, snow) => {
     const sh = -CX * K * f,
       hh = Math.min(hmax, gy * 0.5);
@@ -114,6 +137,11 @@ function animScenery(c, W, H, gy, K, CX, t, wind) {
   }
   c.fill();
 }
+/**
+ * Draws the field, tree line, launch pad and windsock.
+ * @param {number} padX the pad's world x, m
+ * (other parameters as animScenery)
+ */
 function animGround(c, W, H, gy, K, CX, padX, t, wind) {
   // the field: hazy where it meets the trees, darker and richer close up, with mown stripes in perspective
   const gg = c.createLinearGradient(0, gy, 0, H);
@@ -187,6 +215,18 @@ function animGround(c, W, H, gy, K, CX, padX, t, wind) {
   }
   c.restore();
 }
+/**
+ * Draws the motor's smoke trail up to time t.
+ * @param {CanvasRenderingContext2D} c
+ * @param {object} out time history
+ * @param {object} st flight summary
+ * @param {object} RD design
+ * @param {number} t flight time, s
+ * @param {function} SX world x to screen x
+ * @param {function} SY world height to screen y
+ * @param {number} K scale, px/m
+ * @param {number} wind m/s
+ */
 function animSmoke(c, out, st, RD, t, SX, SY, K, wind) {
   if (!out.t.length) return;
   const tEj = st.tEject != null ? st.tEject : null,
@@ -249,7 +289,12 @@ function animSmoke(c, out, st, RD, t, SX, SY, K, wind) {
     c.fill();
   }
 }
-// draws one frame: on the screen, or (for a video) on a given canvas, with the readout drawn into the picture
+/**
+ * Draws one frame: on the screen, or (for a video) on a given canvas with the readout drawn into the picture.
+ * @param {HTMLCanvasElement} [target]
+ *
+ * draws one frame: on the screen, or (for a video) on a given canvas, with the readout drawn into the picture
+ */
 function animDraw(target) {
   const video = !!target;
   const { c, W, H } = target || setupCanvas(document.getElementById("animcv"));
@@ -317,6 +362,9 @@ function animDraw(target) {
   const K = ANIM.cam.k,
     CX = ANIM.cam.cx,
     gy = H - 50;
+  /**
+   * World x to screen x (and SY: height to screen y).
+   */
   const SX = (wx) => W / 2 + (wx - CX) * K,
     SY = (wz) => gy - wz * K;
   // sky, getting deeper with height
@@ -446,13 +494,20 @@ function animDraw(target) {
   const ink = dark ? "#e8edf1" : "#15202a",
     body = dark ? "#3a4a57" : "#f4f6f8",
     acc = window.PR_ACCENT ? "#" + window.PR_ACCENT.hex.slice(1) : "#D9501C";
+  /**
+   * Draws a stage's outline at a point, pointing along (ux, uz).
+   */
   const drawShape = (S, px, py, ux, uz, sizePx) => {
     const sc = sizePx / S.len,
       ang = Math.atan2(-uz, ux); // screen angle of the nose direction
     c.save();
     c.translate(px, py);
     c.rotate(ang);
-    // local frame: +x toward the nose; the shape's x runs from the nose, so flip it
+    /**
+     * A shape point in the drawing's local frame.
+     *
+     * local frame: +x toward the nose; the shape's x runs from the nose, so flip it
+     */
     const P = ([xx, rr]) => [(S.len / 2 - xx) * sc, rr * sc];
     c.fillStyle = body;
     c.strokeStyle = ink;

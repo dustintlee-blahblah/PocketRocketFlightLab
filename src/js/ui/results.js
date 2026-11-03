@@ -1,5 +1,15 @@
+/**
+ * Results: running the flight (with the wind table and Monte Carlo inputs), and the Results tab's tiles, staging
+ * timeline and ejection charge list.
+ */
 /* ---------- rendering ---------- */
+/**
+ * The last run: {st, out, S, m, mb, D, L, windTable, ...}, or null when results are out of date.
+ */
 let lastSim = null;
+/**
+ * Runs the flight for the current design, motors and conditions, plus the wind table, and shows the results.
+ */
 function runAll() {
   const m = flightMotor(),
     mb = D.twoStage ? flightBoost() : null,
@@ -36,6 +46,9 @@ function runAll() {
   renderResults();
   if (!st.error) mcAuto();
 }
+/**
+ * Draws the Results tab from lastSim (or its empty state).
+ */
 function renderResults() {
   document.getElementById("flightempty").hidden = !!lastSim;
   document.getElementById("chartpanel").hidden = !lastSim;
@@ -125,15 +138,32 @@ function renderResults() {
   drawProfile();
 }
 
+/**
+ * A horizontal distance in miles or kilometers.
+ * @param {number} x m
+ * @param {number} [y=0] m
+ * @returns {string}
+ */
 function bigDist(x, y = 0) {
   const v = Math.hypot(x, y || 0);
   return units === "imp" ? `${(v / 1609.344).toFixed(2)} mi` : `${(v / 1000).toFixed(2)} km`;
 }
+/**
+ * The 16-point compass name of a bearing.
+ * @param {number} b degrees
+ * @returns {string}
+ */
 function compass(b) {
   return ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][
     Math.round((((b % 360) + 360) % 360) / 22.5) % 16
   ];
 }
+/**
+ * Where the rocket lands relative to the wind ("downwind", "upwind", "crosswind"), with its compass bearing.
+ * @param {number} x downrange, m
+ * @param {number} [y=0] crossrange, m
+ * @returns {string}
+ */
 function driftDir(x, y = 0) {
   // landing direction relative to the wind, with its compass bearing from the pad
   if (Math.hypot(x, y || 0) < 0.5) return "";
@@ -145,11 +175,22 @@ function driftDir(x, y = 0) {
 }
 /* the Staging panel: the flight's sequence as a timeline, then one stage's figures at a time */
 let stageView = null;
+/**
+ * Each stage's color in the staging timeline.
+ */
 const STAGE_COL = { first: "var(--muted)", booster: "var(--gulf-ink)", sustainer: "var(--accent)", all: "var(--ink)" };
+/**
+ * The flight's events in order (ignitions, burnouts, separations, apogees, charges, chutes, landings).
+ * @param {object} st flight summary
+ * @returns {{t:number, txt:string, who:string, off:number, alt:number}[]}
+ */
 function stageTimeline(st) {
   const RS = lastSim || {},
     altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),
     ev = [];
+  /**
+   * Adds an event (t in seconds; off: shown offset from another time).
+   */
   const add = (t, txt, who, off) => {
     if (t != null && isFinite(t)) ev.push({ t, txt, who, off });
   };
@@ -192,6 +233,11 @@ function stageTimeline(st) {
   if (st.tLand != null) add(st.tLand, "Sustainer lands", "sustainer");
   return ev.sort((a, b) => a.t - b.t).map((e) => ({ ...e, alt: altAt(e.t) }));
 }
+/**
+ * Draws the Staging panel: the timeline, then one stage's figures at a time.
+ * @param {object} st
+ * @param {object} S stability
+ */
 function renderStaging(st, S) {
   const tl = document.getElementById("stagetl");
   tl.innerHTML = stageTimeline(st)
@@ -217,7 +263,14 @@ function renderStaging(st, S) {
     .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
     .join("");
 }
-// the stage figures, grouped by stage in flight order
+/**
+ * The staging figures grouped by stage, in flight order.
+ * @param {object} st
+ * @param {object} SU the sustainer's stability after separation
+ * @returns {object}
+ *
+ * the stage figures, grouped by stage in flight order
+ */
 function stageGroups(st, SU) {
   const T = stageTiles(st, SU),
     by = (...names) => T.filter((r) => names.some((n) => r[0].startsWith(n)));
@@ -243,6 +296,12 @@ function stageGroups(st, SU) {
   for (const k of Object.keys(g)) if (!g[k].length) delete g[k];
   return g;
 }
+/**
+ * The staging figures: [label, value, unit] tiles.
+ * @param {object} st
+ * @param {object} SU
+ * @returns {Array[]}
+ */
 function stageTiles(st, SU) {
   const b = st.booster || {};
   const same = Math.abs((st.tIgn ?? 0) - (st.tSep ?? 0)) < 0.05;
@@ -275,7 +334,13 @@ function stageTiles(st, SU) {
     ],
   ];
 }
-// a three-stage rocket: the first stage's own drop, and the booster lighting after it
+/**
+ * A three-stage rocket's first-stage figures.
+ * @param {object} st
+ * @returns {Array[]}
+ *
+ * a three-stage rocket: the first stage's own drop, and the booster lighting after it
+ */
 function firstTiles(st) {
   const f = st.first || {},
     same = Math.abs((st.tIgnMid ?? 0) - (st.tSep1 ?? 0)) < 0.05;
@@ -312,6 +377,12 @@ function firstTiles(st) {
 /* a live motor charge that fires while a chute set to open some other way (apogee, altitude, timer) is still packed: the
    simulation follows the design, as OpenRocket does, but in the real rocket the charge could blow that chute out early or
    damage the rocket */
+/**
+ * The warning for a live motor charge that fires while a chute set to open another way is still packed.
+ * @param {object} st
+ * @param {string} [stage] the stage's name
+ * @returns {Array} a result flag
+ */
 function ejLiveFlag(st, stage) {
   const e = st.ejLive,
     what =
@@ -331,6 +402,14 @@ function ejLiveFlag(st, stage) {
     `The ${stage ? stage + " " : ""}motor’s ejection charge fires ${when} (${fmt(e.alt, "alt")} ${uname("alt")}, ${fmt(e.v, "speed")} ${uname("speed")}) while the ${what} is still packed${e.packed === "main" ? " for its lower altitude" : ""}. The simulation opens it as the design sets it, but a live charge can blow it out early or damage the rocket. Use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal.`,
   ];
 }
+/**
+ * Every ejection charge in the flight, in order: the motors' delay charges, and the altimeter, timer or apogee
+ * charge for each chute.
+ * @param {object} st
+ * @param {object} D design
+ * @param {object} outs the flight's time histories
+ * @returns {object[]}
+ */
 function chargeEvents(st, D, outs) {
   const out = [],
     tDep = st.tDeploy,
@@ -375,6 +454,12 @@ function chargeEvents(st, D, outs) {
   }
   return out.sort((a, b) => a.t - b.t);
 }
+/**
+ * The main results tiles: [label, value, unit, note].
+ * @param {object} st
+ * @param {object} S
+ * @returns {Array[]}
+ */
 function resultTiles(st, S) {
   const RS = lastSim || {},
     altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null);

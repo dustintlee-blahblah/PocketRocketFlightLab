@@ -1,7 +1,22 @@
+/**
+ * The RSO checklist (the go/no-go items a range safety officer asks about), the results flags, the wind table and the
+ * chart series.
+ */
 /* ---------- RSO checklist: the go/no-go items a range safety officer asks about, from the last run ---------- */
 /* high power under FAA Part 101 / NAR and Tripoli: any motor over 160 N·s (H and up), more than 320 N·s in all, more than
    125 g of propellant, or a liftoff weight over 1,500 g */
+/**
+ * Whether a flight is high power (see the note above), and why.
+ * @param {object} st flight summary
+ * @param {object} m sustainer motor
+ * @param {object} [mb] booster motor
+ * @param {object} [m1] first-stage motor
+ * @returns {{hpr:boolean, I:number, prop:number, mass:number}} total impulse N·s, propellant and liftoff mass kg
+ */
 function hprFlight(st, m, mb, m1) {
+  /**
+   * The single motors in a motor or cluster.
+   */
   const ex = (x) => (!x ? [] : x.members ? x.members.flatMap((e) => Array(e.n).fill(e.m)) : [x]),
     all = [...ex(m), ...ex(mb), ...ex(m1)];
   const I = all.map((x) => mstats(x).I),
@@ -10,8 +25,16 @@ function hprFlight(st, m, mb, m1) {
     mass = (st && st.liftMass) || 0;
   return { hpr: I.some((v) => v > 160) || tot > 320 || prop > 0.125 || mass > 1.5, I: tot, prop, mass };
 }
-// the most cloud cover at any height from the pad up to z (above the pad): from the forecast's level-by-level cover, or else
-// from the low (up to about 3 km above sea level), mid (3–8 km) and high (above 8 km) bands
+/**
+ * The most cloud cover from the pad up to a height (see the note above).
+ * @param {object} LL launch conditions
+ * @param {number} z height above the pad, m
+ * @returns {{c:number, z:number, from:string}|null} cover 0–1, its height, and whether it came from the forecast's
+ *   levels or the cloud bands (null with no cloud)
+ *
+ * the most cloud cover at any height from the pad up to z (above the pad): from the forecast's level-by-level cover, or else
+ * from the low (up to about 3 km above sea level), mid (3–8 km) and high (above 8 km) bands
+ */
 function cloudBelow(LL, z) {
   const P = LL.cloudProf;
   if (Array.isArray(P) && P.length) {
@@ -39,7 +62,13 @@ function cloudBelow(LL, z) {
   for (const [c, b] of B) if (z >= Math.max(0, b) && c > best.c) best = { c, z: Math.max(0, b) };
   return { ...best, from: "bands" };
 }
-// whether the rocket's guides suit the pad: lugs over a rod (inside diameter at least the rod's), buttons of the rail's size
+/**
+ * Whether the rocket's lugs or buttons suit the pad's rod or rail.
+ * @param {string} rt rail type
+ * @returns {Array|null} [status, label, why]
+ *
+ * whether the rocket's guides suit the pad: lugs over a rod (inside diameter at least the rod's), buttons of the rail's size
+ */
 function padGuideCheck(rt) {
   if (!rt || rt === "other" || rt === "tower" || typeof BLD === "undefined" || !BLD)
     return rt === "tower"
@@ -96,6 +125,15 @@ function padGuideCheck(rt) {
         `The rocket's rail buttons look like ${[...new Set(sz)].join(" and ")} size, which don't fit a ${pad[0]}. Use the matching rail or change the buttons.`,
       ];
 }
+/**
+ * The RSO checklist items for the last run.
+ * @param {object} st flight summary
+ * @param {object} S stability
+ * @param {object} m motor
+ * @param {object} D design
+ * @param {object} LL launch conditions
+ * @returns {{s:string, label:string, val:string, why:string}[]} s is "good", "warn" or "bad"
+ */
 function rsoChecks(st, S, m, D, LL) {
   const c = [],
     sp = (v) => `${fmt(v, "speed")} ${uname("speed")}`,
@@ -539,11 +577,29 @@ function rsoChecks(st, S, m, D, LL) {
 /* certification scope (NAR and Tripoli): no certification = model rockets (F and G at most, under the model rocket limits);
    Level 1 = H and I (160.01–640 N·s); Level 2 = J, K and L (640.01–5,120 N·s); Level 3 = M, N and O (5,120.01–40,960 N·s).
    A single motor is judged by its certified (labeled) class; a cluster or staged rocket also by the combined impulse of all its motors. */
+/**
+ * The biggest motor class each certification level allows, and the levels' names.
+ */
 const CERT_MAX = { none: "G", L1: "I", L2: "L", L3: "O" },
   CERT_NAME = { none: "No certification", L1: "Level 1", L2: "Level 2", L3: "Level 3" };
+/**
+ * Whether the flyer's certification covers the motors (or, for an attempt, whether they suit it).
+ * @param {object} st
+ * @param {object} m motor
+ * @param {object} [mb] booster motor
+ * @param {string} cert "none", "L1", "L2" or "L3"
+ * @param {boolean} attempt a certification attempt flight
+ * @returns {{s:string, ok:boolean, val:string, why:string}}
+ */
 function certCheck(st, m, mb, cert, attempt) {
+  /**
+   * The single motors in a motor or cluster.
+   */
   const expand = (x) => (!x ? [] : x.cluster && x.members ? x.members.flatMap((e) => Array(e.n).fill(e.m)) : [x]);
   const motors = [...expand(m), ...(st.staged ? expand(mb) : [])];
+  /**
+   * A motor's labeled class letter.
+   */
   const lab = (x) => {
     const c = String(x.cn || x.name || "")
       .trim()
@@ -557,6 +613,9 @@ function certCheck(st, m, mb, cert, attempt) {
   const top = motors.reduce((a, x) => (L.indexOf(lab(x)) > L.indexOf(a) ? lab(x) : a), "A");
   // the class that sets the level: the biggest single motor's label, or for several motors their combined impulse
   const need = multi && L.indexOf(impulseLetter(I)) > L.indexOf(top) ? impulseLetter(I) : top;
+  /**
+   * The certification level a class needs.
+   */
   const lvl = (c) =>
     L.indexOf(c) <= L.indexOf("G")
       ? "none"
@@ -625,6 +684,11 @@ function certCheck(st, m, mb, cert, attempt) {
     txt = `This flight needs ${reqName}${why.length ? ": " + why.join(", ") : multi ? ` (the motors together are ${need} class)` : ` (${top} class)`}. Fly it only as a certification attempt under NAR or Tripoli rules, or have a qualified flier fly it.`;
   return { s: ok ? "good" : "bad", ok, val, why: txt };
 }
+/**
+ * The impulse class letter of a total impulse.
+ * @param {number} I N·s
+ * @returns {string}
+ */
 function impulseLetter(I) {
   const c = "ABCDEFGHIJKLMNOP";
   let lim = 2.5;
@@ -636,6 +700,10 @@ function impulseLetter(I) {
 }
 // the checklist starts folded up, showing just its summary; a tap opens it (and it stays open until it's tapped again)
 var rsoOpen = false;
+/**
+ * Opens or folds the checklist.
+ * @param {boolean} o
+ */
 function rsoSetOpen(o) {
   rsoOpen = o;
   const t = document.getElementById("rsotog"),
@@ -654,7 +722,11 @@ document.getElementById("mctog").onclick = () => {
   document.getElementById("mcbody").hidden = !o;
   t.textContent = o ? "Hide results" : "Show results";
 };
-// motor temperature (Motor tab) starts folded up; its value shows beside the title
+/**
+ * Shows the motor temperature beside its folded title.
+ *
+ * motor temperature (Motor tab) starts folded up; its value shows beside the title
+ */
 function mtSummary() {
   const e = document.getElementById("mtsum");
   if (e) {
@@ -675,7 +747,11 @@ document.querySelectorAll("[data-fold]").forEach(
       if (typeof imperfSum === "function") imperfSum();
     }),
 );
-// the folded Imperfections header names any that are switched on
+/**
+ * Names the imperfections that are switched on in their folded header.
+ *
+ * the folded Imperfections header names any that are switched on
+ */
 function imperfSum() {
   const e = document.getElementById("imperfsum");
   if (!e) return;
@@ -708,6 +784,9 @@ document.getElementById("windtog").onclick = () => {
   document.getElementById("windbody").hidden = !o;
   document.getElementById("windmore").textContent = o ? "Hide table" : "Show table";
 };
+/**
+ * Draws the RSO checklist from the last run.
+ */
 function renderRSO() {
   const P = document.getElementById("rsopanel");
   if (!P) return;
@@ -758,6 +837,14 @@ function renderRSO() {
   rsoSetOpen(rsoOpen);
   P.hidden = false;
 }
+/**
+ * The results flags: stability, rail exit speed, tumbling, deployment speed, landing...
+ * @param {object} st
+ * @param {object} S
+ * @param {object} m motor
+ * @param {object} D design
+ * @returns {Array[]} [status, text]
+ */
 function resultFlags(st, S, m, D) {
   const flags = [];
   if (st.error) flags.push(["bad", st.error]);
@@ -1008,6 +1095,10 @@ function resultFlags(st, S, m, D) {
   }
   return flags;
 }
+/**
+ * The wind table rows from the last run.
+ * @returns {object[]}
+ */
 function windRows() {
   const { windTable, L: RL, D: RD } = lastSim;
   return windTable.map((r) => ({
@@ -1022,6 +1113,10 @@ function windRows() {
     over: r.w > 8.95,
   }));
 }
+/**
+ * The text under the wind table: the wind profile and what the rows assume.
+ * @returns {string}
+ */
 function windExplain() {
   const RL = lastSim.L,
     st = lastSim.st;
@@ -1036,6 +1131,9 @@ function windExplain() {
       : "";
   return `${prof}, measured at ${fmt(RL.windRef || 2, "alt", 0)} ${uname("alt")}.${aloft} The wind blows from the ${compass(RL.windDir ?? 270)}. ${RL.railMode === "fixed" ? `The rail leans toward the ${compass(RL.railDir || 0)}.` : "The rail leans into the wind, so light winds can land the rocket upwind of the pad."}${RL.turb > 0 ? ` Gusts vary the wind by about ${(RL.turb * 100).toFixed(0)}% (RMS), the same pattern every run.` : ""}`;
 }
+/**
+ * Draws the wind table.
+ */
 function renderWindTable() {
   const el = document.getElementById("windtable");
   if (!el || !lastSim) return;
@@ -1043,6 +1141,9 @@ function renderWindTable() {
   el.innerHTML = `<table><thead><tr><th>Wind</th><th>Apogee</th><th>Tilt, powered</th><th>Landing</th></tr></thead><tbody>${rows.map((r) => `<tr${r.current ? ' class="cur"' : ""}><td>${r.wind}${r.over ? ' <span class="over">over limit</span>' : ""}</td><td>${r.apo}</td><td${r.outCone ? ' class="outcone"' : ""}>${r.tilt}</td><td>${r.land}<span class="big">${r.dir}${r.landBig && /^[0-9.]+/.test(r.landBig) && parseFloat(r.landBig) >= 0.1 ? " · " + r.landBig : ""}</span></td></tr>`).join("")}</tbody></table>`;
   document.getElementById("windnote").textContent = windExplain() + " " + coneWindNote();
 }
+/**
+ * The chart series: [label, dimension].
+ */
 const SERIES = {
   alt: ["Altitude", "alt"],
   vel: ["Velocity", "speed"],

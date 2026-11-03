@@ -1,6 +1,15 @@
+/**
+ * Saving the animation as a video (see the note below).
+ */
 /* ---------- video export: the animation rendered frame by frame, H.264 in an .mp4 ----------
    Frames are drawn off screen at 720×1280 and encoded with the browser's own H.264 encoder (WebCodecs);
    the .mp4 container is written here (a plain, "fast start" file: ftyp, moov, mdat). */
+/**
+ * Writes an .mp4 file from encoded H.264 frames.
+ * @param {{width:number, height:number, fps:number, samples:{data:Uint8Array, key:boolean, pts:number}[],
+ *   avcC:Uint8Array}} o frame size, frame rate, encoded frames (pts in µs) and the H.264 decoder configuration
+ * @returns {Uint8Array}
+ */
 function mp4Mux({ width, height, fps, samples, avcC }) {
   const TS = fps * 1000,
     DUR = 1000; // timescale and per-frame duration
@@ -9,10 +18,16 @@ function mp4Mux({ width, height, fps, samples, avcC }) {
   const u32 = (v) => [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255],
     u16 = (v) => [(v >> 8) & 255, v & 255],
     str = (t) => [...t].map((ch) => ch.charCodeAt(0));
+  /**
+   * An mp4 box: size, type, contents.
+   */
   const box = (type, ...parts) => {
     const body = parts.flat(Infinity);
     return [...u32(8 + body.length), ...str(type), ...body];
   };
+  /**
+   * An mp4 full box (with version and flags).
+   */
   const full = (type, ver, flags, ...parts) =>
     box(type, [ver, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255], ...parts);
   const matrix = [0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000].flatMap(u32);
@@ -23,6 +38,9 @@ function mp4Mux({ width, height, fps, samples, avcC }) {
   // composition offsets, only if the encoder reordered frames
   const offs = samples.map((sm, i) => Math.round(((sm.pts - (i * 1e6) / fps) * TS) / 1e6));
   const needCtts = offs.some((o) => o !== 0);
+  /**
+   * The movie header box, with the sample tables pointing at data from off.
+   */
   const moov = (off) =>
     box(
       "moov",
@@ -136,11 +154,20 @@ function mp4Mux({ width, height, fps, samples, avcC }) {
   }
   return outBuf;
 }
+/**
+ * Video export state: busy, and whether the user cancelled.
+ */
 const VID = { busy: false, cancel: false };
+/**
+ * Renders the whole flight frame by frame, encodes it and saves the .mp4.
+ */
 async function animExportVideo() {
   if (VID.busy || !lastSim) return;
   const box = document.getElementById("animvidbox"),
     msg = document.getElementById("animvidmsg");
+  /**
+   * Shows the export's progress.
+   */
   const say = (t) => {
     box.hidden = false;
     msg.textContent = t;
