@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">243</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">244</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -1009,7 +1009,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="243";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="244";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -1458,6 +1458,8 @@ function renderForms(){if(typeof mtSummary==="function")setTimeout(mtSummary,0);
 const BP_PIN={"2-56":35,"4-40":50}; // approximate shear strength of one nylon pin, lbf
 // each design's own charge settings (per bay: pressure, pins, what fires it; where bays divide) live with the design, and
 // are saved inside its .ork file. Settings from before this lived on the device; the open design takes them over once.
+// RockSim's EjectionDelay field: 0 or more is the delay in seconds (0 fires at burnout); negative (-1 plugged, -2) is no charge
+const rktEj=v=>v==null||!isFinite(+v)||+v<0?null:+v;
 const BP_ORK="pocketrocket/ejection-charges.json", FIN_ORK="pocketrocket/fin-edges.json";
 function bpDesign(){if(typeof BLD==="undefined"||!BLD)return {comps:{},splits:{}};
   if(!BLD.bp){BLD.bp={comps:{},splits:{}};const g=store.get("rfs-bp",{});if(g.comps||g.splits){BLD.bp.comps=g.comps||{};BLD.bp.splits=g.splits||{};delete g.comps;delete g.splits;store.set("rfs-bp",g);}}
@@ -3299,7 +3301,11 @@ function parseRkt(xml){
   const rx2=list=>{if(!list.length)return [];const [m0,...rest]=list;return [...(m0.count>1?[{...m0,count:m0.count-1}]:[]),...rest];};
   r.motorExtras=rx2(rktS3);r.boosterExtras=r.design.twoStage?rx2(rktS2):[];
   if(r.motorExtras.length||r.boosterExtras.length)r.notes.push("The file has a motor cluster. All motors in a stage are lit together and their thrust is added.");
-  if(motor&&motor.ej>0){r.design.deployMode="motor";r.design.deployDelay=motor.ej;r.notes.push(`The chute opens at the motor’s ejection charge, ${motor.ej.toFixed(1)} s after burnout, as in the RockSim file.`);}
+  /* RockSim's EjectionDelay: seconds after burnout (0 fires at burnout); a negative value (-1, -2) is a plugged motor, and
+     RockSim then opens nothing (its own simulations of such motors come down ballistic). Its chutes open at the motor's
+     ejection charge. */
+  if(motor){const ej=rktEj(motor.ej);r.design.deployMode="motor";r.design.deployDelay=ej??0;
+    r.notes.push(ej!=null?`The chute opens at the motor’s ejection charge, ${ej.toFixed(1)} s after burnout, as in the RockSim file.`:"The motor is plugged in the RockSim file, so the chute, which RockSim opens at the motor’s ejection charge, stays packed. Choose a delay under Motor Delay on the Motor tab.");}
   // site conditions saved with RockSim's simulation
   if(rktSite.lat!=null){r.launch.lat=rktSite.lat;}
   if(rktSite.humidity!=null)r.launch.humidity=rktSite.humidity;
@@ -3620,14 +3626,14 @@ function bldFromOrk(xml,info){
       const groups=[];for(const x of all){const g=groups.find(g=>key(g.x)===key(x));if(g)g.n+=x===info.motor?1:(x.count||1);else groups.push({x,n:x===info.motor?1:(x.count||1)});}
       const inner=m0.od-2*(m0.wall||0), fits=g=>{const m=mo(g.x), d=m&&m.dia>0?m.dia:g.x.mountDia||0;return d>0&&Math.abs(d-inner)<0.004;};
       const main=groups.find(fits)||groups[0];
-      if(main){m0.motor=mo(main.x);m0.delay=main.x.ej>0?main.x.ej:null;if(main.n>1&&m0.type==="mount")m0.cluster=main.n===2?"double":`${main.n}-ring`;}
+      if(main){m0.motor=mo(main.x);m0.delay=rktEj(main.x.ej);if(main.n>1&&m0.type==="mount")m0.cluster=main.n===2?"double":`${main.n}-ring`;}
       else{m0.motor=null;m0.delay=null;}
       const host=s0.parts.find(p=>p.kids.includes(m0))||s0.parts[s0.parts.length-1];
       for(const g of groups){if(g===main)continue;const m=mo(g.x), d=m&&m.dia>0?m.dia:g.x.mountDia||0.029;if(m&&!(m.dia>0))m.dia=d;
         host.kids.push({...bldNew("mount"),name:`Mount for ${g.x.designation} (from the file)`,od:d+2*0.0008+0.0004,wall:0.0008,len:m&&m.len>0?m.len:0.1,ref:"bottom",pos:0,overhang:0.003,mat:"Kraft phenolic",
-          known:1e-9,knownAll:false,motor:m,delay:g.x.ej>0?g.x.ej:null,cluster:g.n===1?"single":g.n===2?"double":`${g.n}-ring`,extra:true});}}
-    if(mb){mb.motor=mo(info.boosterMotor);mb.delay=null;}
-    if(m1){m1.motor=mo(info.firstMotor);m1.delay=null;}
+          known:1e-9,knownAll:false,motor:m,delay:rktEj(g.x.ej),cluster:g.n===1?"single":g.n===2?"double":`${g.n}-ring`,extra:true});}}
+    if(mb){mb.motor=mo(info.boosterMotor);mb.delay=rktEj(info.boosterMotor&&info.boosterMotor.ej);}
+    if(m1){m1.motor=mo(info.firstMotor);m1.delay=rktEj(info.firstMotor&&info.firstMotor.ej);}
     if(three)model.stages[1].ignDelay=info.design.midDelay||0;
     if(info.design&&info.design.deployMode==="motor")for(const st of model.stages)for(const p of st.parts)for(const k of p.kids)if((k.type==="chute"||k.type==="streamer")&&k.deploy==="apogee")k.deploy="ejection";
     if(info.design&&model.stages.length>1)model.stages[0].ignDelay=info.design.stageDelay||0;
@@ -6890,7 +6896,7 @@ function buildPatchedFile(){
       else{cfgDeploy(el,"deployevent","apogee");cfgDeploy(el,"deploydelay",dl);}}
   }
   // the motor's ejection delay (Motor tab, Motor Delay): "none" in OpenRocket for a plugged motor
-  if(chg("ejDelay","motor")&&(D.ejDelay!=null||ork))motorDelay=D.ejDelay!=null?D.ejDelay:"none";
+  if(chg("ejDelay","motor"))motorDelay=D.ejDelay!=null?D.ejDelay:ork?"none":-1;
   /* motors */
   const sim=lists.sims[src.sim>=0?src.sim:0]||null;
   const rktSet=stage=>{if(!sim)return null;const g=sim.getElementsByTagName(stage===1?"Stage2Engines":"Stage3Engines")[0];return (g||(stage===0?sim:null))?.getElementsByTagName("EngineSet")[0]||null;};
