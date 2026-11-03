@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">245</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">246</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -819,6 +819,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
         <div class="fld" id="mdcustf" hidden><label for="mdcust">Custom delay</label><div class="in"><input id="mdcust" type="number" inputmode="decimal" step="0.1" min="0"><span class="u">s</span></div></div>
       </div>
       <p class="note" id="mdnote"></p>
+      <div id="mdx"></div>
     </div>
     <div class="panel" id="motortemppanel">
       <div class="foldhead"><h2 style="margin:0">Motor temperature <span class="foldsum" id="mtsum"></span></h2><button class="rsomore foldbtn" id="mttog" type="button" aria-expanded="false" aria-controls="mtbody">Show</button></div>
@@ -1009,7 +1010,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="245";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="246";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -2361,7 +2362,14 @@ function simulate(D,L,m,mb,opts={}){
   const depMode=D.deployMode||"apogee", depDelay=depMode==="motor"?Math.max(0,D.ejDelay??0):Math.max(0,D.deployDelay||0);
   // a chute set to open at the motor ejection charge on a plugged motor never opens: the rocket falls ballistic (a dual
   // deploy main set to an altitude still opens there)
-  const plugSkip=depMode==="motor"&&D.ejDelay==null;
+  /* every live charge in the sustainer (or only) stage: the main motor's delay after the stage burns out, and each separately
+     mounted motor's own delay after its own burnout (outboard or pod motors, set under Motor Delay). A chute set to open at
+     the motor ejection charge opens on the first of them, as OpenRocket does. Times are relative to the stage's ignition. */
+  const XEJ=(D.extraMotors||[]).filter(e=>e&&e.ej!=null&&+e.ej>=0&&findMotor(e.id)).map(e=>{const xm=findMotor(e.id), tb=motorModel(xm).tb/kT;
+    return {rel:(+e.d||0)+tb+(+e.ej), ej:+e.ej, name:xm.cn||xm.name, n:e.n||1};});
+  const plugSkip=depMode==="motor"&&D.ejDelay==null&&!XEJ.length;
+  const chargeTimes=()=>[...(D.ejDelay!=null?[susEnd()+D.ejDelay]:[]),...XEJ.map(e=>tIgn+e.rel)].sort((a,b)=>a-b);
+  const firstCharge=()=>{const c=chargeTimes();return c.length?c[0]:null;};
   const chuteA=(d,cd)=>cd*Math.PI*(d/2)**2;
   const dual=D.recovery!=="single", drogueDia=dual?D.drogueDia:0, mainAlt=dual?D.mainAlt:Infinity;
   const CdAdrogue=chuteA(drogueDia,D.drogueCd), CdAmain=chuteA(D.mainDia,D.mainCd), noChute=!(CdAmain+CdAdrogue>0);
@@ -2503,7 +2511,7 @@ function simulate(D,L,m,mb,opts={}){
   }
   const breaks=three?[t1Sep,tOff,tSep,tIgn]:staged?[tSep,tIgn]:[];
   const powered=t=>(three&&t<t1Sep+0.5)||(staged&&t>=tOff-0.05&&t<tSep+0.5)||(ignOK&&t>=tIgn-0.05&&t<susEnd()+0.5);
-  let t=0,s=[0,0,0,0,0,0,rx,ry,rz,0,0,0,0,L.rollStart||0], tDep=depMode==="timer"?depDelay:null, ejDone=false;
+  let t=0,s=[0,0,0,0,0,0,rx,ry,rz,0,0,0,0,L.rollStart||0], tDep=depMode==="timer"?depDelay:null, ejSeen=0;const ejLives=[];
   const out={t:[],alt:[],vel:[],acc:[],thrust:[],drift:[],cross:[],pitch:[],aoa:[],va:[],ax:[],az:[],roll:[]};
   const st={maxAlt:0,maxV:0,maxMach:0,maxAcc:0,offRail:null,offRailT:null,burnAlt:null,tApo:null,tMain:null,tLand:null,drift:0,landed:false,error:null,staged};
   let lastRec=-1, acc=0, boosterStart=null, firstStart=null, tumbling=false;
@@ -2557,7 +2565,7 @@ function simulate(D,L,m,mb,opts={}){
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if(phase==="flight"&&!tumbling&&t<=susEnd()+1e-9)st.powerTilt=Math.max(st.powerTilt||0,tiltNow);
     if(phase==="flight"&&st.tApo==null&&z>Math.max(2*L.rail,15))st.pathAngle=Math.max(st.pathAngle||0,Math.atan2(Math.hypot(x,y),z)*180/Math.PI);
-    if(depMode==="motor")tDep=ignOK&&D.ejDelay!=null?susEnd()+depDelay:null;
+    if(depMode==="motor")tDep=ignOK?firstCharge():null;
     if(phase==="rail"){
       const dist=x*rx+y*ry+z*rz;
       if(dist>=L.rail){phase="flight";st.offRail=sp;st.offRailT=t;s[6]=rx;s[7]=ry;s[8]=rz;s[9]=s[11]=0;s[10]=TIPOFF;
@@ -2584,12 +2592,12 @@ function simulate(D,L,m,mb,opts={}){
          (the first chute through tDep, others through their own events). A live charge that fires while a chute set to
          open some other way is still packed is recorded for a safety warning: in the real rocket it could blow that
          chute out early or damage the rocket. */
-      if(!ejDone&&D.ejDelay!=null&&ignOK&&t>=susEnd()+D.ejDelay-1e-9){ejDone=true;
+      if(ignOK&&chargeTimes().some((tc,i)=>!(ejSeen>>i&1)&&t>=tc-1e-9)){const ct=chargeTimes();ct.forEach((tc,i)=>{if(t>=tc-1e-9)ejSeen|=1<<i;});
         // the charge pushes on the compartment nearest the tail: what's packed there matters
         const aftMain=!dual||D.aftChute==="main"||!(drogueDia>0);
         if(!noChute&&depMode!=="motor"){
-          if(phase==="flight")st.ejLive={t,alt:z,v:airSp(z,vx,vy,vz,t),dt:st.tApo!=null?t-st.tApo:null,packed:!dual?"chute":aftMain?"main":"drogue"};
-          else if(dual&&aftMain&&(phase==="flight"||phase==="drogue"||phase==="free")&&!(mainAlt>=z))st.ejLive={t,alt:z,v:airSp(z,vx,vy,vz,t),dt:st.tApo!=null?t-st.tApo:null,packed:"main"};}}
+          if(phase==="flight")ejLives.push({t,alt:z,v:airSp(z,vx,vy,vz,t),packed:!dual?"chute":aftMain?"main":"drogue"});
+          else if(dual&&aftMain&&(phase==="drogue"||phase==="free")&&!(mainAlt>=z))ejLives.push({t,alt:z,v:airSp(z,vx,vy,vz,t),packed:"main"});}}
       if(phase==="flight"&&(tDep!=null&&t>=tDep-1e-9||noChute&&st.tApo!=null)){ // the first chute opens (or, with none, it starts tumbling at apogee)
         st.tDeploy=t;st.vDeploy=airSp(z,vx,vy,vz,t);st.altDeploy=z;
         if(noChute){phase="free";st.noChute=true;} // nothing to open: it tumbles down
@@ -2601,7 +2609,7 @@ function simulate(D,L,m,mb,opts={}){
         phase="main";st.tMain=t;}
     }
     if(XC.length&&phase!=="rail")for(const c of XC){if(c.open)continue;
-      const due=c.ev==="altitude"?st.tApo!=null&&z<=c.alt:c.ev==="launch"?t>=c.dd:c.ev==="ejection"?D.ejDelay!=null&&ignOK&&t>=susEnd()+D.ejDelay+c.dd:st.tApo!=null&&t>=st.tApo+c.dd;
+      const due=c.ev==="altitude"?st.tApo!=null&&z<=c.alt:c.ev==="launch"?t>=c.dd:c.ev==="ejection"?ignOK&&firstCharge()!=null&&t>=firstCharge()+c.dd:st.tApo!=null&&t>=st.tApo+c.dd;
       if(due){const W=windVec(z,t), va=Math.hypot(vx-W[0],vy-W[1],vz);c.open={t,v:va,tf:Math.max(FILL_N*c.d/Math.max(va,1),0.05)};(st.extraOpen||(st.extraOpen=[])).push({t,alt:z,ev:c.ev});}}
     if(phase!==prevPh){const W=windVec(z,t), va=Math.hypot(vx-W[0],vy-W[1],vz);
       if(phase==="drogue"&&!openD)openD={t,v:va,tf:Math.max(FILL_N*drogueDia/Math.max(va,1),0.05)};
@@ -2641,8 +2649,9 @@ function simulate(D,L,m,mb,opts={}){
   st.mainRate=noChute&&!XCtot?null:term(CdAmain+CdAdrogue+XCtot);st.tumbleRate=term(Gs.tumbleCdA);st.noChute=noChute;
   // the sustainer's (or only) motor's ejection charge, if it lit and the charge fires before landing
   if(D.ejDelay!=null&&ignOK){const te=susEnd()+D.ejDelay;if(st.tLand==null||te<=st.tLand+1e-6)st.tEject=te;}
+  if(ignOK&&XEJ.length)st.tEjectX=XEJ.map(e=>({t:tIgn+e.rel,name:e.name,delay:e.ej,n:e.n})).filter(e=>st.tLand==null||e.t<=st.tLand+1e-6);
   // a charge within 1.5 s of apogee, pushing on a drogue or single chute, is the usual motor backup: no warning
-  if(st.ejLive){if(st.tApo!=null)st.ejLive.dt=st.ejLive.t-st.tApo;if(st.ejLive.packed!=="main"&&st.ejLive.dt!=null&&Math.abs(st.ejLive.dt)<=1.5)st.ejLive=null;}
+  for(const e of ejLives){e.dt=st.tApo!=null?e.t-st.tApo:null;if(!(e.packed!=="main"&&e.dt!=null&&Math.abs(e.dt)<=1.5)){st.ejLive=e;break;}}
   st.tb=staged?susEnd():MS.tb;st.landMass=mLand;st.depMode=depMode;st.depDelay=depDelay;if(plugSkip&&!st.noChute)st.plugSkip=true;
   // the apogee the rocket would reach if nothing opened early: the reference for chute timing and the ideal delay
   st.tApoFree=st.tApo;
@@ -2683,20 +2692,24 @@ function flyBooster(D,L,mb,start,windVec,out,key="b"){
     const Fd=0.5*atm.rho*vr*vr*CdA, dx=vr>1e-6?vrx/vr:0, dy=vr>1e-6?vry/vr:0, dz=vr>1e-6?vz/vr:0;
     const gz=g*(6371000/(6371000+Math.max(z,0)))**2;
     return [vx,vz,-Fd*dx/mBo-2*(Oy*vz-Oz*vy),-Fd*dz/mBo-gz-2*(Ox*vy-Oy*vx),vy,-Fd*dy/mBo-2*(Oz*vx-Ox*vz)];};
-  let last=-1;
+  let last=-1, ejB=false, liveB=null;
   while(t<start.t+3600){
     let dt=ph==="coast"?0.01:0.05;
     if(ph==="chute"&&chute){const atm=atmosphere(L,Math.max(s[1],0)), v=Math.hypot(s[2],s[3],s[5]);dt=Math.min(dt,Math.max(0.5*mBo/(atm.rho*chute*Math.max(v,1)),0.002));}
     const k1=f(s,ph,t),k2=f(s.map((v,i)=>v+k1[i]*dt/2),ph,t+dt/2),k3=f(s.map((v,i)=>v+k2[i]*dt/2),ph,t+dt/2),k4=f(s.map((v,i)=>v+k3[i]*dt),ph,t+dt);
     s=s.map((v,i)=>v+dt*(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6);t+=dt;
     if(ph==="coast"&&s[3]<0){ph="down";tApo=t;}
+    // the booster's own delay charge firing while its chute, set to open some other way, is still packed
+    if(!ejB&&start.ej!=null&&t>=start.ej){ejB=true;if(chute&&ph!=="chute"&&ev!=="ejection")liveB={t,alt:s[1],v:Math.hypot(s[2],s[3],s[5])};}
     if(ph!=="chute"&&chute&&due()){ph="chute";tDep=t;}
     apo=Math.max(apo,s[1]);
     if(t-last>=0.1){OT.push(t);OA.push(Math.max(s[1],0));OX.push(s[0]);last=t;}
     if(s[1]<=0){OT.push(t);OA.push(0);OX.push(s[0]);break;}
   }
   const atm0=atmosphere(L,0);
-  return {apogee:apo,tApo,tLand:t,drift:s[0],driftY:s[4],rate:Math.sqrt(2*mBo*g/(atm0.rho*(chute||GB.tumbleCdA))),chute:chute>0,tDeploy:tDep,mass:mBo,stable,margin:(cpB-cgB)/(2*GB.R)};
+  // a charge within 1.5 s of the booster's own apogee is the usual backup: no warning
+  if(liveB){liveB.dt=tApo!=null?liveB.t-tApo:null;liveB.packed="chute";if(liveB.dt!=null&&Math.abs(liveB.dt)<=1.5)liveB=null;}
+  return {apogee:apo,tApo,tLand:t,drift:s[0],driftY:s[4],rate:Math.sqrt(2*mBo*g/(atm0.rho*(chute||GB.tumbleCdA))),chute:chute>0,tDeploy:tDep,mass:mBo,stable,margin:(cpB-cgB)/(2*GB.R),ejLive:liveB};
 }
 /* ---------- .ork import ---------- */
 async function inflate(bytes,format){
@@ -2786,7 +2799,7 @@ function parseOrk(xml){
         if(sMountAft[curStage]==null&&kid(c,"motormount")&&xAft!=null)sMountAft[curStage]=xAft; // the aft end of the motor tube: where the motor sits
         if(sMountD[curStage]==null&&kid(c,"motormount")&&ri>0)sMountD[curStage]=2*ri; // inside diameter of the motor tube
         if(mt){const dly=(txt(mt,"delay")||"").trim().toLowerCase(), ej=dly===""||dly==="none"||dly==="p"||!isFinite(parseFloat(dly))?null:parseFloat(dly);
-          const mo={designation:(txt(mt,"designation")||"").trim(),mfr:(txt(mt,"manufacturer")||"").trim(),dia:num(mt,"diameter"),nozzle:num(mt,"nozzleexitdiameter",0),ej,oi:ord(mt,"mo",/^motor$/)};
+          const mo={designation:(txt(mt,"designation")||"").trim(),mfr:(txt(mt,"manufacturer")||"").trim(),dia:num(mt,"diameter"),nozzle:num(mt,"nozzleexitdiameter",0),ej,oi:ord(mt,"mo",/^motor$/),par:parDepth>0};
           if(!sMotor[curStage])sMotor[curStage]=mo;if(!motor)motor=mo;
           const cc=(txt(c,"clusterconfiguration")||"single").trim().toLowerCase();
           const cnt=cc==="single"?1:cc==="double"?2:Math.max(1,parseInt(cc,10)||1);
@@ -2811,7 +2824,7 @@ function parseOrk(xml){
   let tubeFins=false;
   let maxR=0, totalMass=0, moment=0, nose=null, fins=[], chutes=[], motor=null, transitions=[], stages=0, buttons=[], lugs=[], cdComp=false, segments=[];
   let cdCount=0;const odc=c=>{const e=kid(c,"overridecd");const v=e?parseFloat(e.textContent):0;return !isFinite(v)||v<0?0:v>0?v:e?1e-12:0;}; // an override of 0 (OpenRocket: the part adds no drag) is kept as 1e-12
-  let curStage=0;const sMountAft=[],sKnown=[],sMass=[],sMom=[],sX0=[],sX1=[],sOverhang=[],sMotor=[],sMotors=[],sIgn=[],sSep=[];
+  let curStage=0, parDepth=0;const sMountAft=[],sKnown=[],sMass=[],sMom=[],sX0=[],sX1=[],sOverhang=[],sMotor=[],sMotors=[],sIgn=[],sSep=[];
   const R={};
   const ORD={};const ord=(el,key,re)=>{if(!ORD[key])ORD[key]=[...rocket.getElementsByTagName("*")].filter(e=>re.test(e.tagName));return ORD[key].indexOf(el);};
   const FINRE=/^(trapezoid|elliptical|freeform)finset$/, CHRE=/^(parachute|streamer)$/;
@@ -2942,8 +2955,10 @@ function parseOrk(xml){
     const me={x,len,ri:ri||ro,ro:ro||(parent&&parent.ro)||0,innerOR};
     // pods and side boosters have their own outline: they don't change what an automatic size on the main body follows
     const lastR=R.last;
+    if(tag==="parallelstage")parDepth++; // an OpenRocket parallel (side booster) stage: its motors' charges are its own
     if(!skipKids)for(const k of kids)walk(k,place(k,me),me);
     else for(const k of kids){if(/finset/.test(k.tagName)||k.tagName==="parachute"||k.tagName==="innertube"){const tm=totalMass,mo=moment,np=massPts.length;walk(k,place(k,me),me);totalMass=tm;moment=mo;massPts.length=np;}}
+    if(tag==="parallelstage")parDepth--;
     if(tag==="podset"||tag==="parallelstage")R.last=lastR;
   }
   function place(k,p){const o=offset(k),len=lenOf(k);
@@ -3140,6 +3155,9 @@ function parseOrk(xml){
     if(m0.ign==="never"){info.off=true;out=fly.map(e=>({...e,d:(+e.ignDelay||0)-tmin}));}
     else{const d0=(+m0.ignDelay||0)-tmin;info.delay=d0;
       out=[...(m0.count>1?[{...m0,count:m0.count-1,d:d0}]:[]),...list.slice(1).filter(e=>e.ign!=="never").map(e=>({...e,d:(+e.ignDelay||0)-tmin}))];}
+    // a motor in another stage (an OpenRocket parallel booster or pod stage) has its own charge for its own recovery: it
+    // doesn't open this stage's chutes, so its delay isn't carried here
+    out=out.map(e=>e.si!==m0.si||!!e.par!==!!m0.par?{...e,ej:null}:e);
     if(out.some(e=>e.d>0)||info.delay>0)notes.push("Some motors light after others (an airstart); each one's thrust starts that many seconds after the first motor lights.");
     return out;};
   const susList=twoStage?sMotors[0]:sMotors.flat().filter(Boolean);
@@ -3950,13 +3968,14 @@ function firstTiles(st){const f=st.first||{}, same=Math.abs((st.tIgnMid??0)-(st.
 /* a live motor charge that fires while a chute set to open some other way (apogee, altitude, timer) is still packed: the
    simulation follows the design, as OpenRocket does, but in the real rocket the charge could blow that chute out early or
    damage the rocket */
-function ejLiveFlag(st){const e=st.ejLive, what=e.packed==="main"?"main":e.packed==="drogue"?"drogue":"parachute";
-  const when=e.dt==null?"before apogee":Math.abs(e.dt)<0.1?"at apogee":e.dt<0?`${(-e.dt).toFixed(1)} s before apogee`:`${e.dt.toFixed(1)} s after apogee`;
+function ejLiveFlag(st,stage){const e=st.ejLive, what=(stage?stage+"’s ":"")+(e.packed==="main"?"main":e.packed==="drogue"?"drogue":"parachute"), apo=stage?"its apogee":"apogee";
+  const when=e.dt==null?`before ${apo}`:Math.abs(e.dt)<0.1?`at ${apo}`:e.dt<0?`${(-e.dt).toFixed(1)} s before ${apo}`:`${e.dt.toFixed(1)} s after ${apo}`;
   const fast=e.v>30||e.packed==="main"&&e.dt!=null&&e.dt>0;
-  return [fast?"bad":"warn",`The motor’s ejection charge fires ${when} (${fmt(e.alt,"alt")} ${uname("alt")}, ${fmt(e.v,"speed")} ${uname("speed")}) while the ${what} is still packed${e.packed==="main"?" for its lower altitude":""}. The simulation opens it as the design sets it, but a live charge can blow it out early or damage the rocket. Use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal.`];}
+  return [fast?"bad":"warn",`The ${stage?stage+" ":""}motor’s ejection charge fires ${when} (${fmt(e.alt,"alt")} ${uname("alt")}, ${fmt(e.v,"speed")} ${uname("speed")}) while the ${what} is still packed${e.packed==="main"?" for its lower altitude":""}. The simulation opens it as the design sets it, but a live charge can blow it out early or damage the rocket. Use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal.`];}
 function chargeEvents(st,D,outs){
   const out=[], tDep=st.tDeploy, noDrogue=!st.single&&!(D.drogueDia>0), mainAtDep=st.single||(st.tMain!=null&&tDep!=null&&st.tMain<=tDep+1e-6);
   if(st.tEject!=null)out.push({t:st.tEject,name:`${st.staged?"Sustainer motor":"Motor"} delay charge`,motor:true,delay:D.ejDelay??0});
+  for(const x of st.tEjectX||[])if(st.tEject==null||Math.abs(x.t-st.tEject)>0.05)out.push({t:x.t,name:`${x.name}${x.n>1?` (${x.n}×)`:""} delay charge`,motor:true,delay:x.delay});
   if(st.tBEject!=null)out.push({t:st.tBEject,name:"Booster motor delay charge",motor:true,delay:D.bEjDelay??0,booster:true});
   if(st.tB1Eject!=null)out.push({t:st.tB1Eject,name:"First-stage motor delay charge",motor:true,delay:D.s1&&D.s1.bEjDelay||0,booster:true});
   if(st.noChute||st.depMode==="motor"&&!st.plugSkip)return out.sort((a,b)=>a.t-b.t); // no chutes, or the chute rides on the motor's charge
@@ -4078,6 +4097,7 @@ function rsoChecks(st,S,m,D,LL){
       add(ok?"good":alt?"warn":(Math.abs(diff)>3?"bad":"warn"),`${st.staged?"Sustainer motor":"Motor"} ejection delay`,`${+D.ejDelay.toFixed(1)} s · ideal ${ideal.toFixed(1)} s`,
         ok?"Fires within 1.5 s of apogee.":`Fires ${Math.abs(diff).toFixed(1)} s ${diff<0?"before":"after"} apogee. ${alt?"With an altimeter doing deployment, use a plugged motor or a delay as backup set near the ideal.":"Drill or choose a delay closer to the ideal."}`);}
     else if(D.ejDelay==null&&st.depMode==="motor")add("bad","Motor ejection delay","Plugged",`${st.single?"The parachute":"The drogue"} is set to open at the motor ejection charge, but the motor is plugged, so it never opens and the rocket comes down ballistic${!st.single&&st.tMain!=null?" until the main opens":""}. Choose a delay under Motor Delay on the Motor tab, or set the chute to open at apogee with an altimeter.`);
+    for(const [b,nm] of [[st.booster,"Booster"],[st.first,"First stage"]])if(b&&b.ejLive){const f=ejLiveFlag({ejLive:b.ejLive},nm.toLowerCase());add(f[0],`${nm} charge and packed chute`,`Fires ${b.ejLive.dt==null?"on the way up":b.ejLive.dt<0?(-b.ejLive.dt).toFixed(1)+" s before its apogee":b.ejLive.dt.toFixed(1)+" s after its apogee"}`,f[1]);}
     if(st.ejLive){const f=ejLiveFlag(st);add(f[0],"Motor charge and packed chute",`Fires ${st.ejLive.dt==null?"before apogee":st.ejLive.dt<0?(-st.ejLive.dt).toFixed(1)+" s before apogee":st.ejLive.dt.toFixed(1)+" s after apogee"}`,f[1]);}
     const v=st.vDeploy??st.vApo;
     if(v!=null)add(v<=15?"good":v<=30?"warn":"bad",st.single?"Speed when the chute opens":"Speed when the drogue opens",sp(v),
@@ -4248,6 +4268,7 @@ function resultFlags(st,S,m,D){
       if(Math.abs(dt)<=1.5)flags.push(["good",`Chute opens ${when} at ${fmt(v,"speed")} ${uname("speed")}`]);
       else flags.push([v>30?"bad":"warn",`Chute opens ${when}, at ${fmt(v,"speed")} ${uname("speed")}${dt>0?` and ${fmt(st.maxAlt-st.altDeploy,"alt")} ${uname("alt")} below apogee`:""}. ${st.depMode==="motor"?"Use a delay closer to the ideal motor delay for apogee.":"Adjust the timing."}`]);}
     if(st.ejLive&&!st.noChute)flags.push(ejLiveFlag(st));
+    for(const [b,nm] of [[st.booster,"booster"],[st.first,"first stage"]])if(b&&b.ejLive)flags.push(ejLiveFlag({ejLive:b.ejLive},nm));
     // roll lock-in (roll resonance): the roll rate at the pitch frequency
     if(st.rollLock&&st.rollLock.dur>=0.25)flags.push([st.rollLock.dur>=0.6&&st.rollLock.v>30?"bad":"warn",`Roll lock-in risk: the roll rate stays near the rocket’s pitch frequency (${st.rollLock.f.toFixed(1)} Hz) for ${st.rollLock.dur.toFixed(1)} s from T+${st.rollLock.t.toFixed(1)} s, at ${fmt(st.rollLock.v,"speed")} ${uname("speed")}. Any small fin misalignment or mass imbalance is then driven into a growing coning motion that costs altitude and can damage the rocket. Change the fin cant so the roll rate stays well away from the pitch frequency.`]);
     else if(st.rollCross)flags.push(["warn",`The roll rate passes through the pitch frequency (${st.rollCross.f.toFixed(1)} Hz) at T+${st.rollCross.t.toFixed(1)} s, at ${fmt(st.rollCross.v,"speed")} ${uname("speed")}. A quick pass like this is usually harmless; lingering there is what causes roll lock-in.`]);
@@ -5121,7 +5142,21 @@ function mdRender(){
   if(!cf.hidden&&document.activeElement!==ci)ci.value=v==null?"":v;
   const nm=m.cn||m.name, stock=sk.list.length?`The ${nm} is sold with ${sk.list.join(", ")} s delays${sk.plugged?" or plugged":""}${/RMS|DMS|ProX|Loki/.test(m.sys||"")?"; reload delays can be drilled shorter":""}.`:sk.plugged?`The ${nm} comes plugged (no ejection charge).`:"";
   const ideal=(()=>{try{const st=lastSim&&lastSim.st;if(!st||tg!=="sustainer"||lastSim.m.id!==m.id)return null;const t=st.tApoFree??st.tApo;return t!=null&&st.tb!=null?t-st.tb:null;}catch(e){return null;}})();
-  document.getElementById("mdnote").textContent=`${v==null?"Plugged: no ejection charge fires.":`The charge fires ${v} s after ${two&&tg==="sustainer"?"sustainer ":""}burnout.`} ${stock}${ideal!=null?` Ideal for the last simulated flight: ${ideal.toFixed(1)} s.`:""}`;}
+  document.getElementById("mdnote").textContent=`${v==null?"Plugged: no ejection charge fires.":`The charge fires ${v} s after ${two&&tg==="sustainer"?"sustainer ":""}burnout.`} ${stock}${ideal!=null?` Ideal for the last simulated flight: ${ideal.toFixed(1)} s.`:""}`;
+  mdRenderExtra(tg);}
+/* separately mounted motors in the same stage (outboard or pod motors, each in its own mount): each has its own delay,
+   fired after its own burnout. The main mount's cluster shares the main delay. */
+function mdExtraMounts(tg){const h=mdHost(tg);if(!h||!BLD)return [];const st=BLD.stages.find(st=>bldMounts(st).includes(h));return st?bldMounts(st).filter(k=>k!==h&&k.motor):[];}
+function mdRenderExtra(tg){const box=document.getElementById("mdx");if(!box)return;const list=mdExtraMounts(tg);
+  if(!list.length){box.innerHTML="";return;}
+  box.innerHTML=`<div class="bldh" style="margin-top:12px">Other motor mounts in this stage</div>`+list.map((k,i)=>{const m=findMotor(k.motor.id)||allMotors().find(x=>x.name===k.motor.name), sk=mdStock(m), v=k.delay==null||!(+k.delay>=0)?null:+k.delay, cust=v!=null&&!sk.list.includes(v);
+    return `<div class="grid" data-mi="${i}"><div class="fld"><label>${esc(k.name||"Motor mount")}: ${esc(m?(m.cn||m.name):k.motor.name)}${k.cluster&&k.cluster!=="single"?` (${esc(k.cluster)})`:""}</label><div class="in"><select class="mdxsel">${sk.list.map(x=>`<option value="${x}"${!cust&&v===x?" selected":""}>${x} s${x===0?" (fires at burnout)":""}</option>`).join("")}<option value="P"${v==null?" selected":""}>Plugged (no ejection charge)</option><option value="C"${cust?" selected":""}>Custom time…</option></select></div></div>
+      <div class="fld"${cust?"":" hidden"}><label>Custom delay</label><div class="in"><input class="mdxcust" type="number" inputmode="decimal" step="0.1" min="0" value="${cust?v:""}"><span class="u">s</span></div></div></div>`;}).join("")+
+    `<p class="note">Each fires its own delay after its own burnout. A chute set to open at the motor ejection charge opens on the first charge in the stage.</p>`;
+  box.querySelectorAll("[data-mi]").forEach(row=>{const k=list[+row.dataset.mi], sel=row.querySelector(".mdxsel"), ci=row.querySelector(".mdxcust");
+    const put=v=>{v=v==null||!isFinite(v)?null:Math.max(0,Math.round(v*10)/10);if((k.delay??null)===v)return;k.delay=v;bldChanged(true);mdRender();};
+    sel.onchange=()=>{if(sel.value==="C"){ci.closest(".fld").hidden=false;ci.focus();return;}put(sel.value==="P"?null:parseFloat(sel.value));};
+    ci.onchange=()=>{const x=parseFloat(ci.value);if(isFinite(x)&&x>=0)put(x);};});}
 {const sel=document.getElementById("mdsel"), ci=document.getElementById("mdcust"), cf=document.getElementById("mdcustf");
   sel.addEventListener("change",()=>{const tg=mdTarget();
     if(sel.value==="C"){sel.dataset.custom="1";cf.hidden=false;const v=mdGet(tg);ci.value=v==null?"":v;ci.focus();return;}
@@ -6259,9 +6294,9 @@ function bldDerive(){
   const ex=(list,key)=>{const want=(list||[]).reduce((a,e)=>a+(e.count||1),0), had=(prev&&prev[key]||[]).reduce((a,e)=>a+(e.n||1),0);
     const id=key==="extraMotors"?motorId:key==="s1ExtraMotors"?firstId:boostId, out=[];
     // a different motor in another mount (RockSim pods) flies as itself when it's in the list
-    for(const e of list||[]){const m=e.designation?matchMotor(e):null, mid=m?m.id:id, d=+e.d||0, o=out.find(x=>x.id===mid&&Math.abs((x.d||0)-d)<1e-6);if(o)o.n+=e.count||1;else out.push({id:mid,n:e.count||1,d});}
+    for(const e of list||[]){const m=e.designation?matchMotor(e):null, mid=m?m.id:id, d=+e.d||0, ej=e.ej!=null&&+e.ej>=0?+e.ej:null, o=out.find(x=>x.id===mid&&Math.abs((x.d||0)-d)<1e-6&&x.ej===ej);if(o)o.n+=e.count||1;else out.push({id:mid,n:e.count||1,d,ej});}
     // the same motors as before (perhaps chosen on the Motor tab): kept, with the mounts' lighting times unless changed there
-    if(want&&had===want){const pv=prev[key];if(pv.length===out.length)return pv.map((p,i)=>p.dUser?p:{...p,d:out[i].d});return pv;}
+    if(want&&had===want){const pv=prev[key];if(pv.length===out.length)return pv.map((p,i)=>p.dUser?{...p,ej:out[i].ej}:{...p,d:out[i].d,ej:out[i].ej});return pv;}
     return out;};
   nd.extraMotors=ex(r.motorExtras,"extraMotors");nd.bExtraMotors=nd.twoStage?ex(r.boosterExtras,"bExtraMotors"):[];nd.s1ExtraMotors=nd.threeStage?ex(r.firstExtras,"s1ExtraMotors"):[];
   if(prev){nd.mountSel=prev.mountSel==="file"||prev.mountSel==null?"file":prev.mountSel;nd.bMountSel=prev.bMountSel||"file";}
@@ -7723,7 +7758,7 @@ async function runMC(){
         thrustMis:Math.hypot(SL.thrustMis||0,(L.mcMis||0)*R.n()),rollStart:2*Math.PI*R.u(),turb:SL.turb,thermalW:(L.mcThermal||0)*R.n()};
       const Di={...SD,dryMass:SD.dryMass*Math.max(0.5,1+(L.mcMass||0)*R.n()),dragScale:(SD.dragScale>0?SD.dragScale:1)*Math.max(0.5,1+(L.mcCd||0)*R.n())};
       // the motor's delay grain burns a little long or short; each canopy's drag varies
-      {const kd=Math.max(0.5,1+(L.mcDelay||0)*R.n());if(Di.ejDelay!=null)Di.ejDelay*=kd;
+      {const kd=Math.max(0.5,1+(L.mcDelay||0)*R.n());if(Di.ejDelay!=null)Di.ejDelay*=kd;if(Di.extraMotors)Di.extraMotors=Di.extraMotors.map(e=>e.ej!=null?{...e,ej:e.ej*kd}:e);
        if(Di.bEjDelay!=null)Di.bEjDelay*=Math.max(0.5,1+(L.mcDelay||0)*R.n());
        const kc=()=>Math.max(0.5,1+(L.mcChute||0)*R.n());Di.mainCd=(Di.mainCd||0)*kc();Di.drogueCd=(Di.drogueCd||0)*kc();
        if(Di.extraChutes)Di.extraChutes=Di.extraChutes.map(c=>({...c,cd:(c.cd||0.8)*kc()}));}
