@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">237</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">238</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -808,6 +808,18 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <p class="note" id="mountnote" hidden></p>
       <button class="btn ghost addmot" id="addmotor" type="button">+ Add a motor</button>
     </div>
+    <div class="panel" id="mdelaypanel">
+      <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and a chute set on the Rocket tab to open at the motor ejection charge opens then.
+
+The list shows the delays the motor is sold with. Plugged means no ejection charge (an altimeter handles deployment). Custom is for any other time, such as a reload delay you drill shorter.
+
+Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing another motor keeps the delay if the new motor comes with it, and otherwise moves it to the nearest delay the new motor offers (a custom time is kept). The Results tab and the RSO Checklist show the ideal delay for the flight." aria-label="About Motor Delay">i</button></h2>
+      <div class="grid">
+        <div class="fld"><label for="mdsel" id="mdlab">Ejection delay</label><div class="in"><select id="mdsel"></select></div></div>
+        <div class="fld" id="mdcustf" hidden><label for="mdcust">Custom delay</label><div class="in"><input id="mdcust" type="number" inputmode="decimal" step="0.1" min="0.1"><span class="u">s</span></div></div>
+      </div>
+      <p class="note" id="mdnote"></p>
+    </div>
     <div class="panel" id="motortemppanel">
       <div class="foldhead"><h2 style="margin:0">Motor temperature <span class="foldsum" id="mtsum"></span></h2><button class="rsomore foldbtn" id="mttog" type="button" aria-expanded="false" aria-controls="mtbody">Show</button></div>
       <div id="mtbody" hidden><div class="grid" id="g-motortemp" style="margin-top:10px"></div></div>
@@ -997,7 +1009,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="237";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="238";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -1703,7 +1715,7 @@ let stale=false;
 function changed(){store.set("rfs-design",D);store.set("rfs-launch",L);markStale();siteRender();windProfNote();drawProfile();renderDragTable();renderInertiaNote();renderRecNote();renderSavePanel();}
 function renderRecNote(){const rn=document.getElementById("recnote");
   if(rn){const first=D.recovery==="single"?"The parachute":"The drogue", dm=D.deployMode||"apogee", dl=Math.max(0,D.deployDelay||0);
-    const when=dm==="motor"?`opens when the motor’s ejection charge fires, ${dl.toFixed(1)} s after ${D.twoStage?"sustainer ":""}burnout`:dm==="timer"?`opens ${dl.toFixed(1)} s after liftoff`:dl>0?`opens ${dl.toFixed(1)} s after apogee`:"opens at apogee";
+    const when=dm==="motor"?(D.ejDelay!=null?`opens when the motor’s ejection charge fires, ${(+D.ejDelay).toFixed(1)} s after ${D.twoStage?"sustainer ":""}burnout (Motor tab, Motor Delay)`:"is set to open at the motor ejection charge, but the motor is plugged (Motor tab, Motor Delay)"):dm==="timer"?`opens ${dl.toFixed(1)} s after liftoff`:dl>0?`opens ${dl.toFixed(1)} s after apogee`:"opens at apogee";
     let txt=`${first} ${when}.`+(D.recovery==="single"?" Drogue settings are turned off.":" The main opens at the set altitude. Set the drogue diameter to 0 to free-fall until the main opens.");
     if(dm==="motor"){const mm=curMotor(),dly=(mm.delays||"").replace(/,?P$/i,"");txt+=dly&&dly!=="0"?` The ${mm.cn||mm.name} is sold with ${dly} s delays${/RMS|DMS|ProX|Loki/.test(mm.sys||"")?"; reload delays can be shortened with a drilling tool":""}. The Results tab shows the ideal motor delay for apogee.`:` The ${mm.cn||mm.name} has no ejection delay; use an altimeter instead.`;}
     rn.textContent=txt;}
@@ -2343,7 +2355,8 @@ function simulate(D,L,m,mb,opts={}){
   /* rising or sinking air (a thermal, or sink) during the descent: a steady vertical air speed, full strength from about
      30 m up to 2.5 km above the pad, fading to nothing at the ground and at 3.5 km */
   const thW=+L.thermalW||0, draft=z=>thW?thW*Math.min(1,Math.max(0,z/30))*Math.min(1,Math.max(0,(3500-z)/1000)):0;
-  const depMode=D.deployMode||"apogee", depDelay=Math.max(0,D.deployDelay||0);
+  // a chute set to open at the motor ejection charge opens when the motor's delay (Motor tab) runs out: there's one delay
+  const depMode=D.deployMode||"apogee", depDelay=depMode==="motor"?Math.max(0,D.ejDelay??0):Math.max(0,D.deployDelay||0);
   const chuteA=(d,cd)=>cd*Math.PI*(d/2)**2;
   const dual=D.recovery!=="single", drogueDia=dual?D.drogueDia:0, mainAlt=dual?D.mainAlt:Infinity;
   const CdAdrogue=chuteA(drogueDia,D.drogueCd), CdAmain=chuteA(D.mainDia,D.mainCd), noChute=!(CdAmain+CdAdrogue>0);
@@ -2528,7 +2541,7 @@ function simulate(D,L,m,mb,opts={}){
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if(phase==="flight"&&!tumbling&&t<=susEnd()+1e-9)st.powerTilt=Math.max(st.powerTilt||0,tiltNow);
     if(phase==="flight"&&st.tApo==null&&z>Math.max(2*L.rail,15))st.pathAngle=Math.max(st.pathAngle||0,Math.atan2(Math.hypot(x,y),z)*180/Math.PI);
-    if(depMode==="motor")tDep=ignOK?susEnd()+depDelay:null;
+    if(depMode==="motor")tDep=ignOK&&D.ejDelay!=null?susEnd()+depDelay:null;
     if(phase==="rail"){
       const dist=x*rx+y*ry+z*rz;
       if(dist>=L.rail){phase="flight";st.offRail=sp;st.offRailT=t;s[6]=rx;s[7]=ry;s[8]=rz;s[9]=s[11]=0;s[10]=TIPOFF;
@@ -5008,9 +5021,9 @@ function renderMotors(){
     const el=document.createElement("div");el.className="mot";el.setAttribute("role","radio");el.tabIndex=0;el.setAttribute("aria-checked",m.id===selId);
     el.innerHTML=`<span class="dot"></span><div style="min-width:0"><div class="nm">${esc(m.cn||m.name)}${m.cn&&m.cn!==m.name?`<span class="sub" style="font:500 .78rem var(--f-mono);margin-left:6px">${esc(m.name)}</span>`:""}${F.brand==="all"?`<span class="tag">${esc(m.brand==="Cesaroni"?"CTI":m.brand==="AeroTech"?"AT":m.brand)}</span>`:""}${m.builtin?"":'<span class="tag">Uploaded</span>'}${m.sparky?'<span class="tag">Sparky</span>':""}${m.builtin?"":`<button class="del" data-id="${esc(m.id)}">Remove</button>`}</div>
       <div class="meta">${motorMeta(m,s)}</div></div><canvas></canvas>`;
-    const pick=()=>{if(pickSlot>=0&&xlist[pickSlot]){xlist[pickSlot].id=m.id;store.set("rfs-design",D);}
+    const pick=()=>{const tg0=mdTarget(), old=pickSlot>=0?null:mdMotor(tg0);if(pickSlot>=0&&xlist[pickSlot]){xlist[pickSlot].id=m.id;store.set("rfs-design",D);}
       else if(tgtFirst()){firstId=m.id;store.set("rfs-b1motor",firstId);}
-      else if(two&&motorTarget==="booster"){boostId=m.id;store.set("rfs-bmotor",boostId);}else{motorId=m.id;store.set("rfs-motor",motorId);}renderMotors();markStale();drawProfile();};
+      else if(two&&motorTarget==="booster"){boostId=m.id;store.set("rfs-bmotor",boostId);}else{motorId=m.id;store.set("rfs-motor",motorId);}if(old)mdSnap(tg0,old,m);renderMotors();markStale();drawProfile();};
     el.addEventListener("click",e=>{if(e.target.classList.contains("del"))return;pick();});
     el.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();pick();}});
     list.appendChild(el);drawSpark(el.querySelector("canvas"),m);
@@ -5018,11 +5031,55 @@ function renderMotors(){
   const more=document.getElementById("moremotors");
   more.hidden=items.length<=shown;more.textContent=`Show ${Math.min(40,items.length-shown)} more of ${items.length-shown}`;
   list.querySelectorAll(".del").forEach(b=>b.onclick=()=>{USER_MOTORS=USER_MOTORS.filter(m=>m.id!==b.dataset.id);store.set("rfs-motors",USER_MOTORS);if(motorId===b.dataset.id)motorId=DEFAULT_MOTOR;store.set("rfs-motor",motorId);renderMotors();markStale();});
+  mdRender();
   drawMtarget();
   if(CMP.rows&&CMP.tgt!==motorTarget&&!CMP.running){CMP.rows=null;document.getElementById("cmpmsg").textContent="";}
   cmpRender();
 }
 document.getElementById("moremotors").onclick=()=>{shown+=40;renderMotors();};
+/* ---------- Motor Delay (Motor tab): the one ejection delay setting ----------
+   It lives on the primary motor mount of the stage being chosen (the same mount bldSyncMotors puts the Motor tab's motor
+   in), so it's saved with the design and read from OpenRocket and RockSim files; null is a plugged motor. */
+function mdTarget(){return tgtFirst()?"first":D.twoStage&&motorTarget==="booster"?"booster":"sustainer";}
+function mdHost(tg){
+  if(!BLD||!BLD.stages||!BLD.stages.length)return null;
+  const mounted=BLD.stages.filter(st=>bldMounts(st).length);
+  if(BLD.stages.length>1&&mounted.length===1)return tg==="sustainer"?bldMounts(mounted[0])[0]:null;
+  const st=tg==="sustainer"?BLD.stages[0]:tg==="first"?BLD.stages[2]:BLD.stages.length===3&&mounted.length===3?BLD.stages[1]:BLD.stages[BLD.stages.length-1];
+  return st?bldMounts(st)[0]||null:null;}
+function mdMotor(tg){return tg==="first"?curFirst():tg==="booster"?curBoost():curMotor();}
+// a delay of 0 (or none) is plugged, as when the design is flown
+function mdGet(tg){const h=mdHost(tg), v=h?h.delay:tg==="first"?D.s1&&D.s1.bEjDelay:tg==="booster"?D.bEjDelay:D.ejDelay;return v==null||!(+v>0)?null:+v;}
+function mdSet(tg,v){v=v==null||!isFinite(v)?null:Math.max(0,Math.round(v*10)/10);const h=mdHost(tg);
+  if(h){if(mdGet(tg)===v&&(h.delay==null)===(v==null))return;h.delay=v;bldChanged(true);}
+  else{if(tg==="first"){if(D.s1)D.s1.bEjDelay=v;}else if(tg==="booster")D.bEjDelay=v;else D.ejDelay=v;changed();}
+  mdRender();}
+// the delays a motor is sold with, in seconds, and whether it comes plugged. A 0 s "delay" is a booster motor's charge for
+// lighting the stage above, not for deployment, so it isn't offered (a 0 in a design file reads as plugged, as before);
+// catalog placeholders of 60 s or more are left out
+function mdStock(m){const p=String(m&&m.delays||"").split(/[-,\s]+/).filter(Boolean);
+  return {list:[...new Set(p.map(Number).filter(x=>isFinite(x)&&x>0&&x<60))].sort((a,b)=>a-b),plugged:p.some(x=>/^p$/i.test(x)||x==="0")};}
+// a new motor: a stock delay of the old motor moves to the nearest one the new motor offers; plugged and custom times stay
+function mdSnap(tg,oldM,newM){if(!oldM||!newM||oldM.id===newM.id)return;const v=mdGet(tg);if(v==null)return;
+  const a=mdStock(oldM).list, b=mdStock(newM).list;if(!b.length||b.includes(v)||(a.length&&!a.includes(v)))return;
+  const near=b.reduce((x,y)=>Math.abs(y-v)<Math.abs(x-v)?y:x,b[0]);mdSet(tg,near);
+  prToast(`Motor delay set to ${near} s: the ${newM.cn||newM.name} doesn’t come with a ${v} s delay.`);}
+function mdRender(){
+  const sel=document.getElementById("mdsel");if(!sel)return;const tg=mdTarget(), m=mdMotor(tg), v=mdGet(tg), sk=mdStock(m), two=!!D.twoStage;
+  const custom=v!=null&&!sk.list.includes(v);
+  sel.innerHTML=sk.list.map(x=>`<option value="${x}">${x} s</option>`).join("")+`<option value="P">Plugged (no ejection charge)</option><option value="C">Custom time…</option>`;
+  sel.value=v==null?"P":custom?"C":String(v);
+  document.getElementById("mdlab").textContent=two?`${TGT_NAME[tg]} motor ejection delay`:"Ejection delay";
+  const cf=document.getElementById("mdcustf"), ci=document.getElementById("mdcust");cf.hidden=!(custom||sel.dataset.custom==="1");
+  if(!cf.hidden&&document.activeElement!==ci)ci.value=v==null?"":v;
+  const nm=m.cn||m.name, stock=sk.list.length?`The ${nm} is sold with ${sk.list.join(", ")} s delays${sk.plugged?" or plugged":""}${/RMS|DMS|ProX|Loki/.test(m.sys||"")?"; reload delays can be drilled shorter":""}.`:sk.plugged?`The ${nm} comes plugged (no ejection charge).`:"";
+  const ideal=(()=>{try{const st=lastSim&&lastSim.st;if(!st||tg!=="sustainer"||lastSim.m.id!==m.id)return null;const t=st.tApoFree??st.tApo;return t!=null&&st.tb!=null?t-st.tb:null;}catch(e){return null;}})();
+  document.getElementById("mdnote").textContent=`${v==null?"Plugged: no ejection charge fires.":`The charge fires ${v} s after ${two&&tg==="sustainer"?"sustainer ":""}burnout.`} ${stock}${ideal!=null?` Ideal for the last simulated flight: ${ideal.toFixed(1)} s.`:""}`;}
+{const sel=document.getElementById("mdsel"), ci=document.getElementById("mdcust"), cf=document.getElementById("mdcustf");
+  sel.addEventListener("change",()=>{const tg=mdTarget();
+    if(sel.value==="C"){sel.dataset.custom="1";cf.hidden=false;const v=mdGet(tg);ci.value=v==null?"":v;ci.focus();return;}
+    sel.dataset.custom="";mdSet(tg,sel.value==="P"?null:parseFloat(sel.value));});
+  ci.addEventListener("change",()=>{const x=parseFloat(ci.value);if(!isFinite(x)||x<=0)return;sel.dataset.custom="1";mdSet(mdTarget(),x);});}
 // the Motor tab's side view of the stages, with the one being chosen shaded
 function mtargetRanges(){const L0=D.length, L1=L0+(D.bLength||0);const r=[["sustainer",0,L0],["booster",L0,L1]];if(isThree(D))r.push(["first",L1,L1+D.s1.bLength]);return r;}
 function drawMtarget(){
@@ -6084,13 +6141,13 @@ function bldFields(p){
   const dep=[["deploy","Opens","sel",BLD_DEPLOY.some(d=>d[0]===p.deploy)?BLD_DEPLOY:[...BLD_DEPLOY,[p.deploy,`From file (${p.deploy})`]]],...(p.deploy==="altitude"?[["alt","Opening altitude","num","alt"]]:p.deploy==="apogee"?[["delay","Delay after apogee","num","time"]]:p.deploy==="launch"?[["delay","Time after liftoff","num","time"]]:[])];
   switch(p.type){
     case"nose":return [["name","Name","text"],["shape","Shape","sel",BLD_SHAPES],...param,["len","Length","num","len"],["dia","Base diameter","num","len"],["filled","Solid","check"],...(p.filled?[]:[["wall","Wall thickness","num","small"]]),["shLen","Shoulder length","num","len"],...mat(),...kw];
-    case"tube":return [["name","Name","text"],["len","Length","num","len"],["od","Outside diameter","num","len"],["wall","Wall thickness","num","small"],["isMount","This tube is the motor mount (minimum diameter)","check"],...(p.mm?[["mmDelay","Ejection delay","num","time"],["mmOverhang","Motor overhang","num","small"]]:[]),...mat(),...kw];
+    case"tube":return [["name","Name","text"],["len","Length","num","len"],["od","Outside diameter","num","len"],["wall","Wall thickness","num","small"],["isMount","This tube is the motor mount (minimum diameter)","check"],...(p.mm?[["mmOverhang","Motor overhang","num","small"]]:[]),...mat(),...kw];
     case"transition":return [["name","Name","text"],["shape","Shape","sel",BLD_SHAPES.filter(s=>s[0]!=="ellipsoid")],...param,["len","Length","num","len"],["dia1","Front diameter","num","len"],["dia2","Aft diameter","num","len"],["wall","Wall thickness","num","small"],["sh1Len","Front shoulder length","num","len"],["sh2Len","Aft shoulder length","num","len"],...mat(),...kw];
     case"fins":return [["name","Name","text"],["shape","Shape","sel",[["trapezoid","Trapezoid"],["elliptical","Elliptical"],["freeform","Free-form"]]],["n","Number of fins","int"],
       ...(p.shape==="freeform"?[["pts","Outline points","pts"]]:[["root","Root chord","num","len"],...(p.shape==="trapezoid"?[["tip","Tip chord","num","len"]]:[]),["span","Span (height)","num","len"],...(p.shape==="trapezoid"?[["sweep","Leading-edge sweep","num","len"]]:[])]),
       ["t","Thickness","num","small"],["edge","Edges","sel",FIN_EDGES],["cant","Cant angle","num","deg"],...posF,...mat(),...kw];
     case"mount":{const f=typeof bldFind==="function"?bldFind(p.id):null, upper=f&&BLD&&BLD.stages.length>1&&f.si<BLD.stages.length-1;
-      return [["name","Name","text"],["size","Motor size","size"],["delay","Ejection delay","num","time"],
+      return [["name","Name","text"],["size","Motor size","size"],
       ...(upper?[]:[["ign","Lights","sel",[["automatic","At liftoff"],["never","Never (leave it empty this flight)"],...(["automatic","never","launch"].includes(p.ign||"automatic")?[]:[[p.ign,`From file (${p.ign})`]])]],...((p.ign||"automatic")!=="never"?[["ignDelay","Airstart: lights this long after liftoff","num","time"]]:[])]),["cluster","Motors in this mount","sel",BLD_CLUSTERS.some(c=>c[0]===p.cluster)?BLD_CLUSTERS:[...BLD_CLUSTERS,[p.cluster,`From file (${p.cluster})`]]],["od","Tube outside diameter","num","small"],["wall","Tube wall","num","small"],["len","Length","num","len"],["overhang","Motor overhang","num","small"],...posF,...mat(),...kw];}
     case"inner":return [["name","Name","text"],["od","Outside diameter","num","small"],["wall","Wall thickness","num","small"],["len","Length","num","len"],...posF,...mat(),...kw];
     case"ring":return [["name","Name","text"],["od","Outside diameter","num","small"],["id_","Hole diameter","num","small"],["len","Thickness","num","small"],...posF,...mat(),...kw];
@@ -6352,8 +6409,13 @@ function bldWire(el,p,mode,si){
       else if(kind==="pts"){p.pts=inp.value.split(/\n+/).map(l=>l.split(/[ ,\t]+/).filter(Boolean).map(Number)).filter(a=>a.length>=2&&isFinite(a[0])&&isFinite(a[1])).map(a=>`${fromDisp(a[0],"len")},${fromDisp(a[1],"len")}`).join("\n");}
       else if(kind==="size"){const s=parseInt(inp.value,10);if(s>0){p.od=s/1000+2*p.wall+0.0004;if(p.motor&&Math.abs(p.motor.dia-s/1000)>0.0015)p.motor=null;full=true;}}
       else if(kind==="motor"){if(inp.value==="__file")return;const m=findMotor(inp.value), host=key==="mmMotor"?p.mm:p;
+        const hadM=host.motor?findMotor(host.motor.id)||allMotors().find(x=>x.name===host.motor.name):null;
         host.motor=m?{id:m.id,mfr:m.mfr||m.brand,name:m.name,dia:m.dia,len:m.len}:null;
-        if(m&&host.delay==null){const d=String(m.delays||"").split(/[-,\s]+/).map(Number).filter(x=>x>0&&x<100);if(d.length)host.delay=d[Math.floor(d.length/2)];}
+        // the delay (set on the Motor tab): a new mount's first motor gets its middle stock delay; a stock delay of the
+        // previous motor moves to the nearest one this motor offers; plugged and custom times stay
+        if(m){const b=mdStock(m).list.filter(x=>x>0);
+          if(!hadM&&host.delay==null){if(b.length)host.delay=b[Math.floor(b.length/2)];}
+          else if(hadM&&host.delay!=null&&b.length&&!b.includes(+host.delay)&&mdStock(hadM).list.includes(+host.delay))host.delay=b.reduce((x,y)=>Math.abs(y-host.delay)<Math.abs(x-host.delay)?y:x,b[0]);}
         // the stage's main mount flies the motor the Motor tab shows
         const f2=bldFind(p.id), st=BLD.stages[f2?f2.si:0], isPrimary=bldMounts(st)[0]===host;
         if(m&&isPrimary){const tg=bldTgt(BLD.stages.indexOf(st));if(tg==="sustainer"){motorId=m.id;store.set("rfs-motor",motorId);}else if(tg==="first"){firstId=m.id;store.set("rfs-b1motor",firstId);}else{boostId=m.id;store.set("rfs-bmotor",boostId);}
@@ -6792,10 +6854,12 @@ function buildPatchedFile(){
     const dm=D.deployMode||"apogee",dl=Math.max(0,D.deployDelay||0);
     if(ork){const el=chuteEl(src.first);
       if(!el)notes.push("No chute that opens at apogee was found, so the deployment timing wasn’t saved.");
-      else if(dm==="motor"){cfgDeploy(el,"deployevent","ejection");cfgDeploy(el,"deploydelay",0);motorDelay=dl;}
+      else if(dm==="motor"){cfgDeploy(el,"deployevent","ejection");cfgDeploy(el,"deploydelay",0);}
       else if(dm==="timer"){cfgDeploy(el,"deployevent","launch");cfgDeploy(el,"deploydelay",dl);}
       else{cfgDeploy(el,"deployevent","apogee");cfgDeploy(el,"deploydelay",dl);}}
-    else motorDelay=dl;}
+  }
+  // the motor's ejection delay (Motor tab, Motor Delay): "none" in OpenRocket for a plugged motor
+  if(chg("ejDelay","motor")&&(D.ejDelay!=null||ork))motorDelay=D.ejDelay!=null?D.ejDelay:"none";
   /* motors */
   const sim=lists.sims[src.sim>=0?src.sim:0]||null;
   const rktSet=stage=>{if(!sim)return null;const g=sim.getElementsByTagName(stage===1?"Stage2Engines":"Stage3Engines")[0];return (g||(stage===0?sim:null))?.getElementsByTagName("EngineSet")[0]||null;};
@@ -6942,7 +7006,7 @@ function buildNewOrk(){
   // sustainer (or the only stage)
   const sParts=bodyParts(D.segments,D.length,D.diameter/2,true,true);
   const sFins=[{...mainOf0(false),x:D.length-D.finAft-D.finRoot,name:"Fins"},...(D.extraFins||[]).map((f,i)=>({...f,x:f.pos,name:`Fin set ${i+2}`}))];
-  const ej=dm==="motor"?Math.max(0,D.deployDelay||0):null;
+  const ej=D.ejDelay!=null?Math.max(0,D.ejDelay):null; // the motor's delay (Motor tab)
   const sInner=[mountXml(m,D.motorOverhang||0,"Motor mount",two?"burnout":"automatic",two?D.stageDelay||0:0,ej)];
   for(const x of D.extraMotors||[]){const xm=findMotor(x.id);if(!xm)continue;for(let i=0;i<Math.max(1,x.n||1);i++)sInner.push(mountXml(xm,D.motorOverhang||0,"Cluster motor mount",two?"burnout":"automatic",two?D.stageDelay||0:0,ej));}
   const firstEv=dm==="motor"?"ejection":dm==="timer"?"launch":"apogee", firstDd=dm==="motor"?0:Math.max(0,D.deployDelay||0);
@@ -7269,7 +7333,7 @@ function buildReportPdf(){
     ...(RL.thrustMis||RL.finMis||RL.cgOff||RL.clusterFail?[["Imperfections",[RL.thrustMis?`thrust ${RL.thrustMis}°`:"",RL.finMis?`fin ${RL.finMis}°`:"",RL.cgOff?`CG offset ${fmt(RL.cgOff,"small")} ${uname("small")}`:"",RL.clusterFail?"one cluster motor out":""].filter(Boolean).join(", ")]]:[]),
     ...(RL.lat!=null?[["Site",`Latitude ${Math.abs(RL.lat).toFixed(2)}° ${RL.lat>=0?"N":"S"}`]]:[]),
     ["Wind",`${fmt(RL.wind,"wind")} ${uname("wind")} from ${compass(RL.windDir??270)}${RL.turb>0?`, ${(RL.turb*100).toFixed(0)}% gusts`:""}`],["Rail",`${fmt(RL.rail,"alt",1)} ${uname("alt")} at ${RL.angle.toFixed(1)}°, ${RL.railMode==="fixed"?"toward "+compass(RL.railDir||0):"into the wind"}`],
-    ["Recovery",!(RD.mainDia>0)&&!(RD.recovery==="dual"&&RD.drogueDia>0)?"None in the design (tumbles down)":RD.recovery==="single"?`${fmt(RD.mainDia,"len",0)} ${uname("len")} chute ${({motor:`at ejection, ${(RD.deployDelay||0).toFixed(1)} s delay`,timer:`${(RD.deployDelay||0).toFixed(1)} s after liftoff`}[RD.deployMode])||((RD.deployDelay||0)>0?`${RD.deployDelay.toFixed(1)} s after apogee`:"at apogee")}`:`${RD.drogueDia>0?fmt(RD.drogueDia,"len",0)+" "+uname("len")+" drogue, ":"No drogue, "}${fmt(RD.mainDia,"len",0)} ${uname("len")} main at ${fmt(RD.mainAlt,"alt")} ${uname("alt")}`]];
+    ["Recovery",!(RD.mainDia>0)&&!(RD.recovery==="dual"&&RD.drogueDia>0)?"None in the design (tumbles down)":RD.recovery==="single"?`${fmt(RD.mainDia,"len",0)} ${uname("len")} chute ${({motor:RD.ejDelay!=null?`at ejection, ${(+RD.ejDelay).toFixed(1)} s delay`:"at ejection (motor plugged)",timer:`${(RD.deployDelay||0).toFixed(1)} s after liftoff`}[RD.deployMode])||((RD.deployDelay||0)>0?`${RD.deployDelay.toFixed(1)} s after apogee`:"at apogee")}`:`${RD.drogueDia>0?fmt(RD.drogueDia,"len",0)+" "+uname("len")+" drogue, ":"No drogue, "}${fmt(RD.mainDia,"len",0)} ${uname("len")} main at ${fmt(RD.mainAlt,"alt")} ${uname("alt")}`]];
   const kv=(rows,x,w,title)=>{let yy=y;font("bold",11);col(C.ink);T(title,x,yy);yy+=6;
     rows.forEach(([k,v])=>{yy+=15;col(C.line,"draw");doc.setLineWidth(0.5);doc.line(x,yy+4,x+w,yy+4);
       font("normal",8.5);col(C.muted);T(k,x,yy);font("bold",8.5);col(C.ink);
@@ -7612,7 +7676,7 @@ async function runMC(){
         thrustMis:Math.hypot(SL.thrustMis||0,(L.mcMis||0)*R.n()),rollStart:2*Math.PI*R.u(),turb:SL.turb,thermalW:(L.mcThermal||0)*R.n()};
       const Di={...SD,dryMass:SD.dryMass*Math.max(0.5,1+(L.mcMass||0)*R.n()),dragScale:(SD.dragScale>0?SD.dragScale:1)*Math.max(0.5,1+(L.mcCd||0)*R.n())};
       // the motor's delay grain burns a little long or short; each canopy's drag varies
-      {const kd=Math.max(0.5,1+(L.mcDelay||0)*R.n());if(Di.ejDelay!=null)Di.ejDelay*=kd;if(Di.deployMode==="motor")Di.deployDelay=(Di.deployDelay||0)*kd;
+      {const kd=Math.max(0.5,1+(L.mcDelay||0)*R.n());if(Di.ejDelay!=null)Di.ejDelay*=kd;
        if(Di.bEjDelay!=null)Di.bEjDelay*=Math.max(0.5,1+(L.mcDelay||0)*R.n());
        const kc=()=>Math.max(0.5,1+(L.mcChute||0)*R.n());Di.mainCd=(Di.mainCd||0)*kc();Di.drogueCd=(Di.drogueCd||0)*kc();
        if(Di.extraChutes)Di.extraChutes=Di.extraChutes.map(c=>({...c,cd:(c.cd||0.8)*kc()}));}
