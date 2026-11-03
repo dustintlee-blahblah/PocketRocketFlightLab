@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">232</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">233</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -997,7 +997,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="232";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="233";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -2095,11 +2095,12 @@ function cdParts(A,v,atm,nozzleArea=0){
 /* fin lift with Mach number. Subsonic: Diederich's formula with Prandtl–Glauert compressibility, the form Barrowman (1967)
    uses, CNα ∝ 1/(1 + √(1 + (β·X)²)), β = √(1 − M²). Supersonic: the linear-theory form (Ackeret) with the tip-loss factor
    (1 − 1/(2·AR·β)) for a finite panel, β = √(M² − 1). Ackeret's 2-D value is 4/β; fins on a body lose part of that at
-   supersonic speed (less body carry-over, thickness and boundary-layer effects), so the app uses 2.5/β, a conservative
-   value: for five Mach 1.7–2.6 designs it gives stability margins equal to or below OpenRocket's at Mach 2 (within about
-   ½ caliber), never above. Subsonic and supersonic are blended across Mach 0.9–1.5. The fin's center of pressure moves
+   supersonic speed, so an earlier version used a cautious 2.5/β. Against NASA wind-tunnel data for the Arcas sounding
+   rocket (TN D-4014, Mach 1.5–4.63, two body lengths), the full 4/β puts the center of pressure within 2% of body length
+   of the measured one at every Mach number, where 2.5/β put it 6–19% too far forward; so the app uses 4/β. (OpenRocket's
+   supersonic margins come out lower than this.) Subsonic and supersonic are blended across Mach 0.9–1.5. The fin's center of pressure moves
    from a quarter of the mean chord toward Barrowman's supersonic location, x/c = (AR·β − 0.67)/(2·AR·β − 1). */
-const FIN_SUB_M=0.9, FIN_SUP_M=1.5, FIN_SUP_K=2.5;
+const FIN_SUB_M=0.9, FIN_SUP_M=1.5, FIN_SUP_K=4;
 function finLiftRatio(f,M){ // fin normal-force slope at Mach M over its incompressible value, and the fin CP shift aft (m)
   const X=f.cnX, base=1+Math.sqrt(1+X*X), AR=2*f.s*f.s/Math.max(f.area,1e-9);
   const sub=m=>{const b=Math.sqrt(Math.max(1-m*m,0));return base/(1+Math.sqrt(1+(b*X)**2));};
