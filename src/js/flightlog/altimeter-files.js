@@ -1,6 +1,13 @@
+/**
+ * Reading altimeter files (see the note below): the columns, their units, and the flight's figures (apogee, speeds,
+ * descent rates, events) worked out from them.
+ */
 /* ---------- altimeter files: Featherweight, Altus Metrum, Eggtimer, PerfectFlite or any text/CSV log ----------
    The file's columns are found from its own header: a time column, an altitude (or pressure) column and, if there is one,
    a velocity column. The units come from the header or the brand's usual units, and everything is shown for checking first. */
+/**
+ * Altimeter makers: [id, name, how to recognize their files, their usual altitude unit].
+ */
 const ALT_BRANDS = [
   [
     "altus",
@@ -14,16 +21,37 @@ const ALT_BRANDS = [
   ["apogee", "Apogee Components", /apogee ?components|apogee ?rockets|apogeerockets/im, "ft"],
   ["perfectflite", "PerfectFlite", /perfect ?flite|stratologger|pnut|sl ?100|alt ?15k|\.pf2\b|mav?\b.*perfect/im, "ft"],
 ];
+/**
+ * The altimeter maker, from a file's first lines and name.
+ * @param {string} head
+ * @param {string} fname
+ * @returns {{id:string, name:string, unit:string}}
+ */
 function altBrand(head, fname) {
   const s = (fname || "") + "\n" + head;
   for (const b of ALT_BRANDS) if (b[2].test(s)) return { id: b[0], name: b[1], unit: b[3] };
   if (/\.pf2$/i.test(fname || "")) return { id: "perfectflite", name: "PerfectFlite", unit: "ft" };
   return { id: "other", name: "Altimeter", unit: "ft" };
 }
+/**
+ * True if text is a plain number.
+ */
 const altNum = (s) => s !== "" && /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s);
+/**
+ * Splits a line into fields (a space delimiter means any run of whitespace; quotes are stripped).
+ * @param {string} l
+ * @param {string} d delimiter
+ * @returns {string[]}
+ */
 function altSplit(l, d) {
   return d === " " ? l.trim().split(/\s+/) : l.split(d).map((x) => x.trim().replace(/^"(.*)"$/, "$1"));
 }
+/**
+ * Reads an altimeter file into a table, with a first guess at which columns are which.
+ * @param {string} text
+ * @param {string} fname
+ * @returns {object} {brand, cols, data, raw, rate, preUnit, hasHeader, fname, map}, or {error}
+ */
 function altParse(text, fname) {
   text = String(text || "").replace(/^﻿/, "");
   const lines = text.split(/\r\n|\n|\r/);
@@ -88,6 +116,9 @@ function altParse(text, fname) {
   P.map = altGuess(P);
   return P;
 }
+/**
+ * Pressure units: [name, Pa].
+ */
 const ALT_PRESS = [
   ["atm", 101325],
   ["hPa", 100],
@@ -96,6 +127,12 @@ const ALT_PRESS = [
   ["psi", 6894.757],
   ["inHg", 3386.389],
 ];
+/**
+ * The unit a column header names, if any.
+ * @param {string} h header
+ * @param {string} kind "time", "alt", "vel" or "press"
+ * @returns {string|null}
+ */
 function altColUnit(h, kind) {
   h = h.toLowerCase();
   if (kind === "time")
@@ -112,10 +149,18 @@ function altColUnit(h, kind) {
   }
   return null;
 }
+/**
+ * Guesses the time, altitude (or pressure) and velocity columns and their units.
+ * @param {object} P from altParse
+ * @returns {object} map {t, alt, vel, isP, tUnit, aUnit, vUnit, pUnit, rate}: column indexes (-1 for none) and units
+ */
 function altGuess(P) {
   const H = P.cols.map((h) => h.toLowerCase()),
     n = H.length,
     col = (k) => P.data.map((r) => r[k]);
+  /**
+   * The first column whose header matches one of the patterns (and none of the excluded ones).
+   */
   const find = (res, not) => {
     for (const re of res) {
       const k = H.findIndex((h) => re.test(h) && !(not && not.test(h)));
@@ -123,6 +168,9 @@ function altGuess(P) {
     }
     return -1;
   };
+  /**
+   * True for a column that only rises (a time column).
+   */
   const monotone = (k) => {
     const v = col(k).filter(isFinite);
     if (v.length < 5) return false;
@@ -130,6 +178,9 @@ function altGuess(P) {
     for (let i = 1; i < v.length; i++) if (v[i] > v[i - 1]) up++;
     return up >= 0.95 * (v.length - 1);
   };
+  /**
+   * A column's range.
+   */
   const spread = (k) => {
     const v = col(k).filter(isFinite);
     return v.length ? Math.max(...v) - Math.min(...v) : 0;
@@ -195,10 +246,22 @@ function altGuess(P) {
   map.vUnit = vel >= 0 ? altColUnit(P.cols[vel], "vel") || map.aUnit : map.aUnit;
   return map;
 }
-// median of three, to drop single-sample spikes (an ejection charge's pressure blip)
+/**
+ * Median of three, to drop single-sample spikes (an ejection charge's pressure blip).
+ * @param {number[]} a
+ * @returns {number[]}
+ *
+ * median of three, to drop single-sample spikes (an ejection charge's pressure blip)
+ */
 function altMed3(a) {
   return a.map((v, i) => (i && i < a.length - 1 ? [a[i - 1], v, a[i + 1]].sort((x, y) => x - y)[1] : v));
 }
+/**
+ * The flight's figures from the file's columns.
+ * @param {object} P from altParse
+ * @param {object} map column choices and units
+ * @returns {object} {apo, vmax, vDer, tApo, tLand, rateHigh, rateLow, samples, rate, curve, ev, land, warn}, or {error}
+ */
 function altCompute(P, map) {
   if (!P || !map || map.alt < 0) return { error: "Choose the altitude column." };
   const FTm = 0.3048,
@@ -225,6 +288,9 @@ function altCompute(P, map) {
   if (map.isP) {
     const p0 = [...Hh.slice(0, Math.min(10, Hh.length))].sort((a, b) => a - b)[Math.min(10, Hh.length) >> 1];
     if (!(p0 > 0)) return { error: "The pressure column doesn't look like pressure." };
+    /**
+     * Height from pressure (standard atmosphere).
+     */
     const hs = (p) => 44330.8 * (1 - Math.pow(p / 101325, 0.1902632)),
       z0 = hs(p0);
     Hh = Hh.map((p) => (p > 0 ? hs(p) - z0 : NaN));
@@ -296,11 +362,18 @@ function altCompute(P, map) {
   }
   let vmax = 0;
   for (let i = i0; i <= iA; i++) if (isFinite(vel[i]) && vel[i] > vmax) vmax = vel[i];
-  // descent rates: just after apogee (drogue, or the only chute) and near the ground (main)
+  /**
+   * The first sample from an index at or below a height.
+   *
+   * descent rates: just after apogee (drogue, or the only chute) and near the ground (main)
+   */
   const cross = (lvl, from) => {
     for (let i = from; i <= iE; i++) if (h[i] <= lvl) return i;
     return -1;
   };
+  /**
+   * The descent rate between two samples (null if less than 2 s apart).
+   */
   const rate = (a, b) => (a >= 0 && b > a && T[b] - T[a] >= 2 ? (h[a] - h[b]) / (T[b] - T[a]) : null);
   const iH1 = cross(apo * 0.85, iA),
     iH2 = cross(apo * 0.55, iA),

@@ -1,9 +1,21 @@
+/**
+ * The Flight Log (see the note below): logging real flights, comparing them with the prediction, and fitting the drag
+ * calibration to them.
+ */
 /* ---------- Flight Log: each design's real flights, kept on this device ----------
    A design is known by the id inside its file (RockSim GUID or OpenRocket rocket id), or else by its file and rocket name. */
+/**
+ * FL_STORE: the storage key; flShow: the flight whose details are open; flEdit: the flight in the form; flNow:
+ * per-design caches.
+ */
 var FL_STORE = "rfs-flightlog",
   flShow = null,
   flEdit = null,
   flNow = {};
+/**
+ * The open design's log key: the id inside its file, or else its file and rocket names.
+ * @returns {string}
+ */
 function flKey() {
   const s = (SOURCE && SOURCE.text) || "";
   let id = null;
@@ -18,13 +30,26 @@ function flKey() {
   }
   return id || "file:" + calKeyOld();
 }
+/**
+ * Every design's log entry, by key.
+ * @returns {object}
+ */
 function flAll() {
   return store.get(FL_STORE, {});
 }
+/**
+ * The open design's flights.
+ * @returns {object[]}
+ */
 function flList() {
   const e = flAll()[flKey()];
   return e && e.flights ? e.flights : [];
 }
+/**
+ * Saves all logs (warns when the device is out of space).
+ * @param {object} all
+ * @returns {boolean} saved
+ */
 function flSaveAll(all) {
   try {
     localStorage.setItem(FL_STORE, JSON.stringify(all));
@@ -34,6 +59,11 @@ function flSaveAll(all) {
     return false;
   }
 }
+/**
+ * Saves the open design's flights (an empty list removes its entry).
+ * @param {object[]} list
+ * @returns {boolean}
+ */
 function flPut(list) {
   const all = flAll(),
     k = flKey();
@@ -41,31 +71,75 @@ function flPut(list) {
   else delete all[k];
   return flSaveAll(all);
 }
+/**
+ * A new flight id.
+ * @returns {string}
+ */
 function flId() {
   return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
+/**
+ * The motors flown, as text ("booster → sustainer").
+ * @param {object} m
+ * @param {object} [mb]
+ * @returns {string}
+ */
 function flMotorName(m, mb) {
   return mb ? `${mb.cn || mb.name} → ${m.cn || m.name}` : m.cn || m.name;
 }
+/**
+ * How far a measured value is from the prediction, %.
+ * @param {number} a measured
+ * @param {number} pred predicted
+ * @returns {number|null}
+ */
 function flDiff(a, pred) {
   return a > 0 && pred > 0 ? ((a - pred) / pred) * 100 : null;
 }
+/**
+ * good (under 5%), warn (under 10%) or bad, for a difference.
+ * @param {number} d %
+ * @returns {string}
+ */
 function flCls(d) {
   const a = Math.abs(d);
   return a < 5 ? "good" : a < 10 ? "warn" : "bad";
 }
+/**
+ * A difference as "+3.2%".
+ * @param {number|null} d
+ * @returns {string}
+ */
 function flPct(d) {
   return d == null ? "" : `${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}%`;
 }
+/**
+ * A flight's date (YYYY-MM-DD) in the local format.
+ * @param {string} s
+ * @returns {string}
+ */
 function flDate(s) {
   if (!s) return "";
   const d = new Date(s + "T12:00:00");
   return isNaN(d) ? s : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
+/**
+ * The 16 compass points.
+ */
 const FL_PTS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+/**
+ * The compass point of a bearing.
+ * @param {number} deg
+ * @returns {string}
+ */
 function flCompass(deg) {
   return FL_PTS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
 }
+/**
+ * A typed direction (compass point or degrees) as degrees.
+ * @param {string} s
+ * @returns {number|null}
+ */
 function flParseDir(s) {
   s = String(s || "")
     .trim()
@@ -76,7 +150,13 @@ function flParseDir(s) {
   const v = parseFloat(s);
   return isFinite(v) ? ((v % 360) + 360) % 360 : null;
 }
-// the altimeter files kept with a flight (older entries kept just one)
+/**
+ * The altimeter files kept with a flight (older entries kept just one).
+ * @param {object} f flight
+ * @returns {object[]}
+ *
+ * the altimeter files kept with a flight (older entries kept just one)
+ */
 function flAltis(f) {
   if (f.altis) return f.altis;
   if (f.alti)
@@ -94,7 +174,14 @@ function flAltis(f) {
     ];
   return [];
 }
-// the motors flown: total impulse and class, the way the certification check counts them
+/**
+ * The motors flown: total impulse and class, the way the certification check counts them.
+ * @param {object} m
+ * @param {object} [mb]
+ * @returns {{I:number, cls:string}|null}
+ *
+ * the motors flown: total impulse and class, the way the certification check counts them
+ */
 function flMotorInfo(m, mb) {
   if (!m) return null;
   const expand = (x) => (!x ? [] : x.cluster && x.members ? x.members.flatMap((e) => Array(e.n).fill(e.m)) : [x]),
@@ -111,6 +198,13 @@ function flMotorInfo(m, mb) {
     top = ms.reduce((a, x) => (LT.indexOf(lab(x)) > LT.indexOf(a) ? lab(x) : a), "A");
   return { I, cls: ms.length > 1 ? (LT.indexOf(impulseLetter(I)) > LT.indexOf(top) ? impulseLetter(I) : top) : top };
 }
+/**
+ * The liftoff mass of a design on its motors.
+ * @param {object} Dd design
+ * @param {object} m
+ * @param {object} [mb]
+ * @returns {number} kg
+ */
 function flLiftMass(Dd, m, mb) {
   return (
     Dd.dryMass +
@@ -119,7 +213,14 @@ function flLiftMass(Dd, m, mb) {
     (mb && isThree(Dd) ? (Dd.s1.bDryMass || 0) + flightFirst(Dd).totalMass : 0)
   );
 }
-// the current design flown in the logged flight's conditions and weight, on its motor if this device still has it
+/**
+ * The current design set up as the logged flight was flown (its conditions, weight and motors, if this device still
+ * has them).
+ * @param {object} f flight
+ * @returns {{D:object, L:object, m:object, mb:object}|null}
+ *
+ * the current design flown in the logged flight's conditions and weight, on its motor if this device still has it
+ */
 function flCtx(f) {
   if (!lastSim) return null;
   const m = (f.motorId && findMotor(f.motorId)) || null,
@@ -138,6 +239,12 @@ function flCtx(f) {
   }
   return { D: D2, L: L2, m, mb: mbF };
 }
+/**
+ * Flies a flight's setup, optionally with a drag multiplier.
+ * @param {object} c from flCtx
+ * @param {number} [k] drag multiplier
+ * @returns {object|null} flight summary
+ */
 function flSim(c, k) {
   try {
     const r = simulate(k ? { ...c.D, dragScale: k } : c.D, c.L, c.m, c.mb, { noRef: true }).st;
@@ -146,27 +253,56 @@ function flSim(c, k) {
     return null;
   }
 }
+/**
+ * The prediction for a logged flight now.
+ * @param {object} f
+ * @returns {object|null} flight summary
+ */
 function flPredict(f) {
   const c = flCtx(f);
   return c ? flSim(c) : null;
 }
-// a landing spot as east/north metres from the pad: simulated (drift along the wind) or real (distance and bearing)
+/**
+ * A simulated landing spot as east/north meters from the pad (drift along the wind).
+ * @param {object} st flight summary
+ * @param {number} windDir degrees, the direction the wind blows from
+ * @returns {{e:number, n:number}}
+ *
+ * a landing spot as east/north metres from the pad: simulated (drift along the wind) or real (distance and bearing)
+ */
 function flSimLand(st, windDir) {
   const h = ((((windDir ?? 270) + 180) % 360) * Math.PI) / 180,
     x = st.drift || 0,
     y = st.driftY || 0;
   return { e: x * Math.sin(h) - y * Math.cos(h), n: x * Math.cos(h) + y * Math.sin(h) };
 }
+/**
+ * A logged landing spot as east/north meters from the pad (from its distance and bearing).
+ * @param {object} f
+ * @returns {{e:number, n:number}|null}
+ */
 function flRealLand(f) {
   if (!(f.landDist >= 0) || f.landBrg == null) return null;
   const b = (f.landBrg * Math.PI) / 180;
   return { e: f.landDist * Math.sin(b), n: f.landDist * Math.cos(b) };
 }
+/**
+ * A landing spot as distance and compass point.
+ * @param {{e:number, n:number}} p
+ * @returns {string}
+ */
 function flLandTxt(p) {
   const d = Math.hypot(p.e, p.n);
   return `${fmt(d, "alt")} ${uname("alt")}${d > 0.5 ? " " + flCompass((Math.atan2(p.e, p.n) * 180) / Math.PI) : ""}`;
 }
-// is a landing inside the last dispersion run's ellipses? only when that run's wind matches the flight's
+/**
+ * Whether a landing is inside the last dispersion run's ellipses (only when that run's wind matches the flight's).
+ * @param {object} f flight
+ * @param {{e:number, n:number}} p landing spot
+ * @returns {string|null}
+ *
+ * is a landing inside the last dispersion run's ellipses? only when that run's wind matches the flight's
+ */
 function flInMC(f, p) {
   if (!lastMC || !lastSim || lastMC.when !== lastSim.when || !p) return null;
   const L0 = lastSim.L,
@@ -187,7 +323,14 @@ function flInMC(f, p) {
       ? "inside the 95% ellipse"
       : "outside the 95% ellipse";
 }
-// what the altimeter's events say about the delay and the main
+/**
+ * What the altimeter's events say about the delay and the main.
+ * @param {object} f flight
+ * @param {object} a altimeter results
+ * @returns {string}
+ *
+ * what the altimeter's events say about the delay and the main
+ */
 function flEventTxt(f, a) {
   if (!a || !a.ev) return "";
   const ev = a.ev,
@@ -214,6 +357,9 @@ function flEventTxt(f, a) {
   }
   return out.join(" ");
 }
+/**
+ * Draws the Flight Log: each flight against its prediction, the calibration line and the buttons.
+ */
 function renderFlightLog() {
   const pn = document.getElementById("flpanel");
   if (!pn) return;
@@ -292,6 +438,12 @@ function renderFlightLog() {
     else b.onclick = () => flAct(b.closest(".flrow").dataset.id, b.dataset.fl, b);
   });
 }
+/**
+ * A flight's buttons: show, edit, delete, use for calibration...
+ * @param {string} id flight id
+ * @param {string} what action
+ * @param {HTMLElement} btn
+ */
 function flAct(id, what, btn) {
   const list = flList(),
     f = list.find((x) => x.id === id);
@@ -333,10 +485,19 @@ function flAct(id, what, btn) {
 }
 /* calibration from the flight log: the drag multiplier fitted to the flights ticked "Use for calibration"
    (one flight: matched exactly; several: the multiplier that leaves them, on average, neither high nor low) */
+/**
+ * A fit is running; another was asked for while it ran; its message.
+ */
 let flFitBusy = false,
   flFitAgain = false,
   flFitMsg = "";
+/**
+ * Today's date in the local format.
+ */
 const flToday = () => new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+/**
+ * Fits the drag multiplier to the ticked flights (see the note above) and saves it.
+ */
 async function flFit() {
   if (!lastSim) return;
   if (flFitBusy) {
@@ -371,6 +532,9 @@ async function flFit() {
   flFitBusy = true;
   flFitMsg = "Calibrating…";
   renderFlightLog();
+  /**
+   * Lets the page update between runs.
+   */
   const tick = () => new Promise((r) => setTimeout(r, 0));
   try {
     let k = null;
@@ -442,7 +606,12 @@ async function flFit() {
     }
   }
 }
-// the calibration line at the top of the log; older calibrations are brought into the log's way of working
+/**
+ * Draws the calibration line at the top of the log (older calibrations are brought into the log's way).
+ * @param {object[]} list flights
+ *
+ * the calibration line at the top of the log; older calibrations are brought into the log's way of working
+ */
 function renderFlCal(list) {
   const el = document.getElementById("flcal");
   if (!el) return;
@@ -521,10 +690,18 @@ function renderFlCal(list) {
     };
 }
 /* the flight form */
+/**
+ * The HTML of one number field in the flight form.
+ * @returns {string}
+ */
 function flField(id, lab, dim, val, dec, ph) {
   const u = dim ? uname(dim) : "";
   return `<div class="fld"><label for="${id}">${lab}</label><div class="in"><input id="${id}" type="number" inputmode="decimal" step="any"${ph ? ` placeholder="${esc(ph)}"` : ""} value="${val != null && isFinite(val) ? (dim ? +toDisp(val, dim).toFixed(dec ?? (dim === "alt" ? 0 : 1)) : val) : ""}">${u ? `<span class="u">${u}</span>` : ""}</div></div>`;
 }
+/**
+ * Opens the flight form, for a new flight or to edit one.
+ * @param {object} [f]
+ */
 function flOpen(f) {
   if (!lastSim) return;
   const today = new Date(),
@@ -581,6 +758,9 @@ function flOpen(f) {
   flPredBox();
   document.getElementById("flmodal").hidden = false;
 }
+/**
+ * Draws the altimeter files attached in the form.
+ */
 function flAltBox() {
   const b = document.getElementById("fl-altbox");
   if (!b) return;
@@ -606,7 +786,14 @@ function flAltBox() {
       if (f) altOpenFile(f, "form");
     };
 }
+/**
+ * Reads the flight form.
+ * @returns {object} flight fields
+ */
 function flRead() {
+  /**
+   * A number field in SI (null if empty).
+   */
   const g = (id, dim) => {
     const v = parseFloat(document.getElementById(id).value);
     return isFinite(v) ? (dim ? fromDisp(v, dim) : v) : null;
@@ -628,6 +815,9 @@ function flRead() {
     notes: document.getElementById("fl-notes").value.trim(),
   };
 }
+/**
+ * Writes the prediction for the flight in the form.
+ */
 function flPredBox() {
   const p = document.getElementById("flpred");
   if (!p || !flEdit) return;
@@ -694,6 +884,10 @@ document.getElementById("flsave").onclick = () => {
   if (!wasNew && f.cal) flFit();
   else if (wasNew && f.apo > 0 && flCtx(f)) flAskCal(f.id);
 };
+/**
+ * After logging a flight, asks whether to use it for the calibration.
+ * @param {string} id
+ */
 function flAskCal(id) {
   const el = document.getElementById("flprompt");
   if (!el) return;
@@ -709,5 +903,8 @@ function flAskCal(id) {
   };
 }
 /* altimeter files */
+/**
+ * The altimeter file being imported, and whether it's for a new flight or the one in the form.
+ */
 let altP = null,
   altMode = "new";

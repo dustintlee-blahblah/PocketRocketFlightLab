@@ -1,5 +1,17 @@
+/**
+ * File downloads (Android app, the claude.ai page's downloads, or an ordinary browser download) and the PDF flight
+ * report (jsPDF): the design, motors, conditions, results, RSO checklist, every graph and the flyer's profile.
+ * Coordinates in the PDF are points (1/72 in) from the top left.
+ */
 /* ---------- PDF flight report ---------- */
+/**
+ * How files are saved here: an object with save({filename, data}) that resolves with {status}.
+ */
 let downloadsNS = null;
+/**
+ * Saving through an ordinary browser download.
+ * @returns {{browser:boolean, save:function}}
+ */
 function browserDownloads() {
   const types = {
     pdf: "application/pdf",
@@ -32,6 +44,11 @@ function browserDownloads() {
     },
   };
 }
+/**
+ * Bytes as base64 (in chunks, so large files don't overflow the call stack).
+ * @param {ArrayBuffer|Uint8Array} buf
+ * @returns {string}
+ */
 function bufToB64(buf) {
   const u = new Uint8Array(buf);
   let s = "";
@@ -58,6 +75,11 @@ function bufToB64(buf) {
   const b = document.getElementById("exportwrap");
   if (b) b.hidden = !downloadsNS || !lastSim;
 })();
+/**
+ * Text with the characters the PDF's built-in fonts lack replaced (≥, ≤, arrows, subscripts...).
+ * @param {string} s
+ * @returns {string}
+ */
 function pdfSafe(s) {
   return String(s ?? "")
     .replace(/≥/g, ">=")
@@ -66,6 +88,10 @@ function pdfSafe(s) {
     .replace(/µ/g, "u")
     .replace(/[^\x20-\x7E -ÿ–—‘’“”•·]/g, "");
 }
+/**
+ * Builds the flight report for the last run.
+ * @returns {jsPDF} the document
+ */
 function buildReportPdf() {
   const { out, st, m, S } = lastSim,
     RD = lastSim.D,
@@ -92,12 +118,21 @@ function buildReportPdf() {
     warn: [168, 105, 15],
     bad: [197, 48, 48],
   };
+  /**
+   * Sets the text (or fill/draw) color.
+   */
   const col = (c, f = "text") => {
     if (f === "text") doc.setTextColor(...c);
     else if (f === "draw") doc.setDrawColor(...c);
     else doc.setFillColor(...c);
   };
+  /**
+   * Writes text (made PDF-safe).
+   */
   const T = (s, x, y, o) => doc.text(pdfSafe(s), x, y, o);
+  /**
+   * Sets the font weight and size.
+   */
   const font = (w, sz) => {
     doc.setFont("helvetica", w);
     doc.setFontSize(sz);
@@ -113,6 +148,9 @@ function buildReportPdf() {
     ? m1L +
       `${mb.mfr || ""} ${mb.cn && mb.cn !== mb.name ? mb.cn + " (" + mb.name + ")" : mb.name} booster, ${m.mfr || ""} ${motorName} sustainer`
     : `${m.mfr || ""} ${motorName}`;
+  /**
+   * Writes a section heading; returns the y below it.
+   */
   const sectionHead = (title, yy) => {
     font("bold", 15);
     col(C.ink);
@@ -334,6 +372,9 @@ function buildReportPdf() {
           : `${RD.drogueDia > 0 ? fmt(RD.drogueDia, "len", 0) + " " + uname("len") + " drogue, " : "No drogue, "}${fmt(RD.mainDia, "len", 0)} ${uname("len")} main at ${fmt(RD.mainAlt, "alt")} ${uname("alt")}`,
     ],
   ];
+  /**
+   * Writes a titled table of label/value rows; returns the y below it.
+   */
   const kv = (rows, x, w, title) => {
     let yy = y;
     font("bold", 11);
@@ -546,7 +587,11 @@ function buildReportPdf() {
     });
     y += 8;
   }
-  // ---- graphs: every graph the app shows, two per row, continuing on the next page as needed
+  /**
+   * Starts a new page if there isn't room for a block of height h.
+   *
+   * ---- graphs: every graph the app shows, two per row, continuing on the next page as needed
+   */
   const room = (h) => {
     if (y + h > PH - 50) {
       doc.addPage();
@@ -811,7 +856,17 @@ function buildReportPdf() {
   }
   return doc;
 }
-// the safety-cone graph: the path to chute opening (or apogee), true scale, inside the cone from the pad
+/**
+ * Draws the safety-cone graph: the path to chute opening (or apogee), true scale, inside the cone from the pad.
+ * @param {jsPDF} doc
+ * @param {object} C colors
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ *
+ * the safety-cone graph: the path to chute opening (or apogee), true scale, inside the cone from the pad
+ */
 function pdfCone(doc, C, x, y, w, h) {
   const { out, st, L: RL } = lastSim,
     coneDeg = RL.cone ?? 20,
@@ -918,6 +973,21 @@ function pdfCone(doc, C, x, y, w, h) {
     gy + gh + 21,
   );
 }
+/**
+ * Draws one time-history graph with its events and any measured curves over it.
+ * @param {jsPDF} doc
+ * @param {object} C colors
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ * @param {number[]} ts times, s
+ * @param {number[]} ys values (display units)
+ * @param {string} title
+ * @param {number} [tmax] end of the time axis
+ * @param {Array[]} [events] [time, label]
+ * @param {object[]} [over] measured curves
+ */
 function pdfChart(doc, C, x, y, w, h, ts, ys, title, tmax, events, over) {
   let xs = ts.slice(),
     vs = ys.slice();
@@ -1012,6 +1082,19 @@ function pdfChart(doc, C, x, y, w, h, ts, ys, title, tmax, events, over) {
     align: right ? "right" : "left",
   });
 }
+/**
+ * Draws the rocket's side view with its CG and CP.
+ * @param {jsPDF} doc
+ * @param {object} C colors
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ * @param {object} RD design
+ * @param {object} m motor
+ * @param {object} S stability
+ * @param {object} [mb] booster motor
+ */
 function pdfProfile(doc, C, x, y, w, h, RD, m, S, mb) {
   const two = !!(RD.twoStage && mb),
     DD = two ? fullStack(RD) : RD;
@@ -1049,6 +1132,9 @@ function pdfProfile(doc, C, x, y, w, h, RD, m, S, mb) {
       .reverse()
       .map(([a, b]) => [X(a), Y(-b)]),
   ];
+  /**
+   * Draws a closed outline.
+   */
   const drawPoly = (P, style) => {
     const d = [];
     for (let i = 1; i < P.length; i++) d.push([P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]]);
@@ -1064,6 +1150,9 @@ function pdfProfile(doc, C, x, y, w, h, RD, m, S, mb) {
     if (typeof BLD !== "undefined" && BLD)
       for (const b of bldLayout(BLD).bodies) for (const kk of b.kids) if (kk.k.type === "fins") bFins.push(kk.k);
   } catch (e) {}
+  /**
+   * A fin set's drawing rotation.
+   */
   const rotOf = (f) => {
     const k = bFins.find((k) => k.n === f.n && Math.abs((k.root || 0) - f.a) < 0.002) || null;
     return (((k && k.rot) || 0) * Math.PI) / 180;
@@ -1147,6 +1236,9 @@ function pdfProfile(doc, C, x, y, w, h, RD, m, S, mb) {
     if (isThree(RD)) doc.line(X(L2), Y(r) - 6, X(L2), Y(-r) + 6);
   }
   doc.setLineDashPattern([], 0);
+  /**
+   * Draws the CG or CP marker.
+   */
   const mark = (xx, c, lab, above) => {
     doc.setDrawColor(...c);
     doc.setFillColor(...c);
@@ -1166,6 +1258,9 @@ function pdfProfile(doc, C, x, y, w, h, RD, m, S, mb) {
   mark(S.cgL, C.cg, "CG", true);
   mark(S.cp, C.cp, "CP", false);
 }
+/**
+ * Save the flight report: builds the PDF and saves it.
+ */
 async function exportPdf() {
   const btn = document.getElementById("exportbtn"),
     msg = document.getElementById("exportmsg");

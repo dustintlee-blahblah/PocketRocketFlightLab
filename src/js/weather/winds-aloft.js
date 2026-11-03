@@ -1,5 +1,14 @@
+/**
+ * Winds aloft: a table of heights, speeds and directions typed in by hand (or filled from the forecast).
+ */
 /* ---------- winds aloft: a table of heights, speeds and directions, typed in by hand ---------- */
+/**
+ * The winds-aloft table is unfolded.
+ */
 var aloftOpen = false;
+/**
+ * Draws the winds-aloft rows and the temperature-aloft note.
+ */
 function renderAloft() {
   const box = document.getElementById("aloftlist");
   if (!box) return;

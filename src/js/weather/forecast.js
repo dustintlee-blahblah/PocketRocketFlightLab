@@ -1,9 +1,15 @@
+/**
+ * The weather forecast for the site (see the note below), the site's coordinates, and directions to it.
+ */
 /* ---------- the weather forecast for the site: winds from the ground to about 100,000 ft ----------
    NOAA's GFS model through Open-Meteo: wind speed, direction and geopotential height (above sea level) on 44 pressure
    levels from 1000 hPa up to 10 hPa (about 31 km), plus the 10 m wind and 2 m temperature. Levels below the field are
    left out; the rest become the winds-aloft table, measured from the pad. */
 /* the day's weather: once you've set it (typed into Ambient conditions or Winds aloft, or fetched a forecast), opening
    another rocket keeps it instead of taking the launch conditions saved in that file */
+/**
+ * The day's weather keys (see the note above).
+ */
 const WX_KEYS = [
   "tempAloft",
   "tempC",
@@ -29,12 +35,18 @@ const WX_KEYS = [
 for (const id of ["g-ambient", "aloftpanel"]) {
   const el = document.getElementById(id);
   if (el) {
+    /**
+     * Marks the day's weather as set.
+     */
     const set = () => {
       if (!L.wxSet) {
         L.wxSet = true;
         store.set("rfs-launch", L);
       }
     };
+    /**
+     * An edit in the weather fields sets the day's weather (typed cloud bands replace the forecast's levels).
+     */
     const edit = (e) => {
       const t = e.target;
       if (t && t.matches("input,select") && !t.closest("#wxbox")) {
@@ -53,13 +65,25 @@ for (const id of ["g-ambient", "aloftpanel"]) {
     });
   }
 }
+/**
+ * The GFS pressure levels asked for, hPa.
+ */
 const WX_LEVELS = [
   1000, 975, 950, 925, 900, 875, 850, 825, 800, 775, 750, 725, 700, 675, 650, 625, 600, 575, 550, 525, 500, 475, 450,
   425, 400, 375, 350, 325, 300, 275, 250, 225, 200, 175, 150, 125, 100, 70, 50, 40, 30, 20, 15, 10,
 ];
+/**
+ * Web requests waiting for the Android app's answer, by id.
+ */
 const PR_FETCH = {};
 let prFetchN = 0;
-// a web request: through the Android app when it's there (so it isn't held to the page's own network rules), else fetch()
+/**
+ * Fetches a URL as text (see the note above).
+ * @param {string} url
+ * @returns {Promise<string>}
+ *
+ * a web request: through the Android app when it's there (so it isn't held to the page's own network rules), else fetch()
+ */
 function prFetchText(url) {
   const A = window.PocketRocketApp;
   if (A && typeof A.fetchText === "function")
@@ -106,15 +130,27 @@ window.prFetchDone = (id, ok, b64) => {
     p.rej(new Error(why || "The request failed."));
   }
 };
+/**
+ * Two-digit number.
+ */
 function wxPad(n) {
   return String(n).padStart(2, "0");
 }
+/**
+ * The forecast time offered first: the next whole hour, local time, as "YYYY-MM-DDTHH:00".
+ * @returns {string}
+ */
 function wxDefaultWhen() {
   const d = new Date(Date.now() + 3600e3);
   return `${d.getFullYear()}-${wxPad(d.getMonth() + 1)}-${wxPad(d.getDate())}T${wxPad(d.getHours())}:00`;
 }
 /* the site's coordinates in one field: "40.218224,-112.246072" as copied from a map app; also "40.2182 N 112.2461 W",
    degree signs, and degrees-minutes-seconds such as 40°13'05.6"N 112°14'45.9"W */
+/**
+ * Reads coordinates typed or pasted in one field (see the note above).
+ * @param {string} t
+ * @returns {{lat:number, lon:number}|null}
+ */
 function parseLatLon(t) {
   t = String(t || "")
     .trim()
@@ -125,6 +161,9 @@ function parseLatLon(t) {
     /-?\d+(?:\.\d+)?(?:\s*[°º:d]\s*\d+(?:\.\d+)?\s*['′m]?(?:\s*\d+(?:\.\d+)?\s*(?:"|″|''|s)?)?)?\s*[NSEWnsew]?/g,
   );
   if (!parts || parts.length !== 2) return null;
+  /**
+   * One coordinate (decimal or degrees-minutes-seconds, with its hemisphere).
+   */
   const one = (s) => {
     const h = (s.match(/[NSEWnsew]\s*$/) || [""])[0].trim().toUpperCase(),
       n = s.match(/-?\d+(?:\.\d+)?/g).map(Number);
@@ -143,10 +182,19 @@ function parseLatLon(t) {
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
   return { lat: +lat.toFixed(6), lon: +lon.toFixed(6) };
 }
+/**
+ * Coordinates as "lat,lon" with up to 6 decimals.
+ * @param {number} la
+ * @param {number} lo
+ * @returns {string}
+ */
 function fmtLatLon(la, lo) {
   const f = (v) => (+v).toFixed(6).replace(/\.?0+$/, "");
   return `${f(la)}, ${f(lo)}`;
 }
+/**
+ * Shows the site's coordinates in their field (not while it's being typed in).
+ */
 function siteCoordRender() {
   const el = document.getElementById("sitecoord");
   if (!el || document.activeElement === el) return;
@@ -160,6 +208,9 @@ function siteCoordRender() {
     }
   }
 }
+/**
+ * Reads the coordinates field into the launch conditions.
+ */
 function siteCoordSet() {
   const el = document.getElementById("sitecoord"),
     m = document.getElementById("sitecoordmsg"),
@@ -196,12 +247,19 @@ function siteCoordSet() {
     }, 0),
   );
 }
+/**
+ * Removes the old wind-profile note (kept so older callers still work).
+ */
 function windProfNote() {
   const n = document.getElementById("windprofnote");
   if (n) n.remove();
 }
-// the site's coordinates handed to the map app: on Android a geo: link (the phone's default map app); in a browser,
-// Apple Maps on iPhone/iPad/Mac and Google Maps elsewhere, both opening with directions to the site
+/**
+ * Opens directions to the site (see the note above).
+ *
+ * the site's coordinates handed to the map app: on Android a geo: link (the phone's default map app); in a browser,
+ * Apple Maps on iPhone/iPad/Mac and Google Maps elsewhere, both opening with directions to the site
+ */
 function siteDirections() {
   const la = +(L.lat ?? NaN),
     lo = +(L.lon ?? NaN),
@@ -238,6 +296,9 @@ function siteDirections() {
   }
 }
 document.getElementById("sitedir").onclick = siteDirections;
+/**
+ * Writes the forecast box's note about the site's location.
+ */
 function wxSiteNote() {
   siteCoordRender();
   windProfNote();
@@ -261,6 +322,13 @@ function wxSiteNote() {
   const w = document.getElementById("wxwhen");
   if (w && !w.value) w.value = wxDefaultWhen();
 }
+/**
+ * The Open-Meteo request for the site and day: the surface fields and every level's wind, height and temperature.
+ * @param {number} lat
+ * @param {number} lon
+ * @param {string} date YYYY-MM-DD
+ * @returns {string}
+ */
 function wxUrl(lat, lon, date) {
   const v = [
     "wind_speed_10m",
@@ -285,12 +353,25 @@ function wxUrl(lat, lon, date) {
   ];
   return `https://api.open-meteo.com/v1/gfs?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&hourly=${v.join(",")}&wind_speed_unit=ms&temperature_unit=celsius&timezone=auto&start_date=${date}&end_date=${date}`;
 }
-// the forecast's levels for one hour, as winds-aloft rows above the pad (pure: tested on its own)
+/**
+ * The forecast for one hour as winds-aloft rows above the pad, plus the surface weather (pure: tested on its own).
+ * @param {object} j the service's JSON
+ * @param {string} key the hour, "YYYY-MM-DDTHH:00"
+ * @param {number} elev the field's elevation, m
+ * @returns {object} rows, temperatures aloft, cloud cover by level and band, visibility, precipitation chance,
+ *   surface wind, gusts, temperature, humidity, pressure and the model's elevation
+ * @throws {Error} if the reply is malformed or lacks that hour
+ *
+ * the forecast's levels for one hour, as winds-aloft rows above the pad (pure: tested on its own)
+ */
 function wxRows(j, key, elev) {
   const H = j && j.hourly;
   if (!H || !Array.isArray(H.time)) throw new Error("The weather service sent something unexpected.");
   const i = H.time.indexOf(key);
   if (i < 0) throw new Error("That hour isn’t in the forecast.");
+  /**
+   * One hourly field at the hour (null if missing).
+   */
   const val = (k) => {
     const a = H[k];
     const x = a ? a[i] : null;
@@ -366,6 +447,9 @@ function wxRows(j, key, elev) {
     elev: isFinite(j.elevation) ? +j.elevation : null,
   };
 }
+/**
+ * Get forecast: fetches the forecast for the chosen hour and fills the launch conditions and winds aloft.
+ */
 async function wxFetch() {
   const msg = document.getElementById("wxmsg"),
     btn = document.getElementById("wxgo"),
@@ -443,6 +527,9 @@ async function wxFetch() {
       );
     }
     {
+      /**
+       * Percent to a fraction 0–1.
+       */
       const f = (v) => Math.min(1, Math.max(0, v / 100));
       if (W.cl != null) L.cloudLow = f(W.cl);
       if (W.cm != null) L.cloudMid = f(W.cm);

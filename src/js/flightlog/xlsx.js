@@ -1,4 +1,14 @@
+/**
+ * Altimeter file import (Excel .xlsx workbooks become CSV text for the altimeter reader; files shared from other apps
+ * go straight into the log), the column-check box, log backups (JSON and CSV), the all-rockets flight list, and the
+ * measured curves drawn over the chart.
+ */
 /* ---------- Excel (.xlsx) altimeter files: each worksheet becomes CSV text for the altimeter reader ---------- */
+/**
+ * The entries of a zip archive (from its central directory).
+ * @param {ArrayBuffer} buf
+ * @returns {{name:string, off:number, csize:number, method:number}[]}
+ */
 function zipEntries(buf) {
   const u8 = new Uint8Array(buf),
     dv = new DataView(buf);
@@ -25,6 +35,12 @@ function zipEntries(buf) {
   }
   return out;
 }
+/**
+ * The unpacked bytes of one zip entry.
+ * @param {ArrayBuffer} buf
+ * @param {object} e entry
+ * @returns {Promise<Uint8Array>}
+ */
 async function zipData(buf, e) {
   const u8 = new Uint8Array(buf),
     dv = new DataView(buf),
@@ -33,6 +49,9 @@ async function zipData(buf, e) {
   const d = u8.subarray(e.off + 30 + lnl + lxl, e.off + 30 + lnl + lxl + e.csize);
   return e.method === 0 ? d : await inflate(d, "deflate-raw");
 }
+/**
+ * Unescapes XML text.
+ */
 const xmlTxt = (s) =>
   s
     .replace(/&lt;/g, "<")
@@ -42,6 +61,11 @@ const xmlTxt = (s) =>
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/&amp;/g, "&");
+/**
+ * Each worksheet of an .xlsx workbook as CSV text.
+ * @param {ArrayBuffer} buf
+ * @returns {Promise<{name:string, text:string}[]|null>} null if the file is not a workbook
+ */
 async function xlsxSheets(buf) {
   const ents = zipEntries(buf),
     get = async (n) => {
@@ -81,6 +105,9 @@ async function xlsxSheets(buf) {
     ents
       .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(e.name))
       .forEach((e, i) => list.push({ name: "Sheet " + (i + 1), file: e.name }));
+  /**
+   * A cell reference's column number (A = 0).
+   */
   const colN = (r) => {
     const m = /^([A-Z]+)/.exec(r || "");
     if (!m) return -1;
@@ -88,6 +115,9 @@ async function xlsxSheets(buf) {
     for (const ch of m[1]) n = n * 26 + ch.charCodeAt(0) - 64;
     return n - 1;
   };
+  /**
+   * Quotes a CSV field when needed.
+   */
   const q = (v) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   const out = [];
   for (const s of list) {
@@ -122,6 +152,11 @@ async function xlsxSheets(buf) {
   }
   return out;
 }
+/**
+ * Reads an altimeter file (text, CSV or the best worksheet of a workbook) and opens the column check.
+ * @param {File} file
+ * @param {string} mode "new" (a new flight) or "form" (the flight in the form)
+ */
 async function altOpenFile(file, mode) {
   altMode = mode;
   try {
@@ -143,6 +178,9 @@ async function altOpenFile(file, mode) {
         return;
       }
       const Ps = sh.map((s) => altParse(s.name + "\n" + s.text, file.name));
+      /**
+       * How flight-like a parsed sheet looks, to choose among a workbook's sheets.
+       */
       const score = (P) =>
         P.error ? -1 : P.data.length * (P.map.alt >= 0 ? 1 : 0) * (P.map.t >= 0 ? 1.5 : 1) * (P.hasHeader ? 1.2 : 1);
       let best = 0;
@@ -173,7 +211,13 @@ async function altOpenFile(file, mode) {
   }
 }
 /* a file shared to the app from another app (Featherweight UI, email, Drive…): straight into the flight log */
+/**
+ * A file shared to the app, waiting until the app is ready (disclaimer agreed, a design open).
+ */
 var prPendingAlt = null;
+/**
+ * Opens a file shared to the app from another app in the flight log.
+ */
 function prIncomingGo() {
   if (!prPendingAlt) return;
   const lg = document.getElementById("legal");
@@ -217,6 +261,9 @@ window.prIncoming = function () {
 };
 setTimeout(() => window.prIncoming(), 600);
 
+/**
+ * Draws the column check: the columns found and their units, for the user to confirm.
+ */
 function altShow() {
   const P = altP,
     m = P.map,
@@ -235,6 +282,9 @@ function altShow() {
       <div class="fld"><label for="alt-v">Velocity column</label><div class="in"><select id="alt-v">${opt(m.vel, "None: work it out from altitude")}</select></div></div>
       <div class="fld"><label for="alt-vu">Velocity unit</label><div class="in"><select id="alt-vu"${m.vel < 0 ? " disabled" : ""}><option value="ft"${m.vUnit === "ft" ? " selected" : ""}>ft/s</option><option value="m"${m.vUnit === "m" ? " selected" : ""}>m/s</option></select></div></div>
     </div>`;
+  /**
+   * Reads the column choices back from the box.
+   */
   const rd = () => {
     const g = (id) => document.getElementById(id);
     m.t = +g("alt-t").value;
@@ -276,7 +326,13 @@ function altShow() {
   document.getElementById("altmodal").hidden = false;
   altPreview();
 }
+/**
+ * The figures worked out from the file with the columns as chosen.
+ */
 let altR = null;
+/**
+ * Works out and shows the file's figures and a small altitude chart for checking.
+ */
 function altPreview() {
   altR = altCompute(altP, altP.map);
   const out = document.getElementById("altout"),
@@ -397,6 +453,9 @@ document.getElementById("altok").onclick = () => {
   }
   const first = !(flEdit.altis && flEdit.altis.length);
   flEdit.altis = [...(flEdit.altis || []), a];
+  /**
+   * Fills a form field from the file's figures.
+   */
   const set = (id, v, dim) => {
     const e = document.getElementById(id);
     if (e && v != null && isFinite(v) && (first || !e.value)) e.value = +toDisp(v, dim).toFixed(0);
@@ -423,6 +482,11 @@ document.getElementById("fladd").onclick = () => flOpen(null);
   };
 }
 /* backups: the whole log as JSON (to bring back), or a CSV of the flights (for a spreadsheet) */
+/**
+ * Saves a text file (downloads, Android app or browser).
+ * @param {string} name
+ * @param {string} text
+ */
 async function flDownload(name, text) {
   const data = new TextEncoder().encode(text).buffer;
   try {
@@ -468,6 +532,11 @@ document.getElementById("flexp").onclick = () => {
     ),
   );
 };
+/**
+ * The flights as CSV, one row each.
+ * @param {Array[]} entries [rocket name, flight]
+ * @returns {string}
+ */
 function flCsv(entries) {
   const q = (v) => {
       const s = v == null ? "" : String(v);
@@ -601,6 +670,11 @@ document.getElementById("flcsv").onclick = () => {
   };
 }
 /* every rocket's flights in one list, with totals by motor class */
+/**
+ * A logged flight's motor class.
+ * @param {object} f
+ * @returns {string}
+ */
 function flClassOf(f) {
   if (f.cls) return f.cls;
   const m = f.motorId && findMotor(f.motorId);
@@ -613,6 +687,11 @@ function flClassOf(f) {
     .match(/(?:^|[^A-Z])([A-O])\d/);
   return c ? c[1] : "?";
 }
+/**
+ * A logged flight's total impulse.
+ * @param {object} f
+ * @returns {number} N·s
+ */
 function flImpOf(f) {
   if (f.impulse) return f.impulse;
   const m = f.motorId && findMotor(f.motorId);
@@ -622,12 +701,19 @@ function flImpOf(f) {
   }
   return null;
 }
+/**
+ * Every rocket's flights, newest first.
+ * @returns {Array[]} [rocket name, flight]
+ */
 function flAllEntries() {
   const all = flAll(),
     out = [];
   for (const e of Object.values(all)) for (const f of e.flights || []) out.push([e.name || e.file || "Rocket", f]);
   return out.sort((a, b) => (b[1].date || "").localeCompare(a[1].date || ""));
 }
+/**
+ * Draws the all-rockets flight list with totals by motor class.
+ */
 function flAllOpen() {
   const E = flAllEntries(),
     box = document.getElementById("flallbody");
@@ -674,7 +760,13 @@ document.getElementById("flallcsv").onclick = () => {
   }
   flDownload(`all flights ${new Date().toISOString().slice(0, 10)}.csv`, flCsv(E.slice().reverse()));
 };
-// the measured curves over the chart's simulation (altitude or vertical velocity), one per altimeter
+/**
+ * The measured curves to draw over the chart (altitude or vertical velocity), one per altimeter.
+ * @param {string} ser series
+ * @returns {object[]|null}
+ *
+ * the measured curves over the chart's simulation (altitude or vertical velocity), one per altimeter
+ */
 function flOverlay(ser) {
   if (!flShow || (ser !== "alt" && ser !== "vel")) return null;
   const f = flList().find((x) => x.id === flShow);
