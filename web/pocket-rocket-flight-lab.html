@@ -494,7 +494,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">246</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">247</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -808,6 +808,13 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <p class="note" id="mountnote" hidden></p>
       <button class="btn ghost addmot" id="addmotor" type="button">+ Add a motor</button>
     </div>
+    <div class="panel" id="cfgpanel" hidden>
+      <h2>Motor configuration<button class="ib" type="button" data-title="Motor configuration" data-info="An OpenRocket file can hold several motor configurations: different motors, delays, ignition and deployment settings for the same rocket. This chooses which one to fly. It reopens the rocket from its file with that configuration, so changes you haven't saved are replaced by the file's.
+
+Opening a file takes the configuration its own simulation used, or its default. Saving back into the file writes your changes to the configuration chosen here." aria-label="About Motor configuration">i</button></h2>
+      <div class="grid"><div class="fld"><label for="cfgsel">From the file</label><div class="in"><select id="cfgsel"></select></div></div></div>
+      <p class="note" id="cfgnote"></p>
+    </div>
     <div class="panel" id="mdelaypanel">
       <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and chutes set on the Rocket tab to open at the motor ejection charge open then. As in OpenRocket, chutes set to open some other way (apogee, an altitude, a timer) stay packed until then; the Results tab and the RSO Checklist warn when a live charge fires while one of them is still packed, since a real charge can blow it out early.
 
@@ -1010,7 +1017,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
-const APP_BUILD="246";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
+const APP_BUILD="247";document.querySelectorAll(".bnum").forEach(e=>e.textContent=APP_BUILD); // set by the build script, with the splash screen's build number
 /* ---------- storage helpers ---------- */
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const IN=0.0254, FT=0.3048, LB=0.45359237;
@@ -2565,7 +2572,7 @@ function simulate(D,L,m,mb,opts={}){
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if(phase==="flight"&&!tumbling&&t<=susEnd()+1e-9)st.powerTilt=Math.max(st.powerTilt||0,tiltNow);
     if(phase==="flight"&&st.tApo==null&&z>Math.max(2*L.rail,15))st.pathAngle=Math.max(st.pathAngle||0,Math.atan2(Math.hypot(x,y),z)*180/Math.PI);
-    if(depMode==="motor")tDep=ignOK?firstCharge():null;
+    if(depMode==="motor"){const fc=ignOK?firstCharge():null;tDep=fc!=null?fc+Math.max(0,D.ejChuteDelay||0):null;}
     if(phase==="rail"){
       const dist=x*rx+y*ry+z*rz;
       if(dist>=L.rail){phase="flight";st.offRail=sp;st.offRailT=t;s[6]=rx;s[7]=ry;s[8]=rz;s[9]=s[11]=0;s[10]=TIPOFF;
@@ -2682,7 +2689,7 @@ function flyBooster(D,L,mb,start,windVec,out,key="b"){
   let t=start.t, s=start.s.slice(0,6), ph="coast", apo=s[1], tApo=null, tDep=null;
   // the stage's chute opens on its own event: apogee plus a delay, an altitude on the way down, the motor's ejection charge, or a timer
   const ev=D.bChuteEv||"apogee", dd=Math.max(0,D.bChuteDelay||0), dAlt=D.bChuteAlt||0;
-  const due=()=>ev==="altitude"?tApo!=null&&s[1]<=dAlt:ev==="launch"?t>=dd:ev==="ejection"?start.ej!=null&&t>=start.ej:tApo!=null&&t>=tApo+dd;
+  const due=()=>ev==="altitude"?tApo!=null&&s[1]<=dAlt:ev==="launch"?t>=dd:ev==="ejection"?start.ej!=null&&t>=start.ej+dd:tApo!=null&&t>=tApo+dd;
   // the earth's rotation (Coriolis), as for the main flight
   const OM=7.2921159e-5, latR=(L.lat??40)*Math.PI/180, hdg=(((L.windDir??270)+180)%360)*Math.PI/180;
   const Ox=OM*Math.cos(latR)*Math.cos(hdg), Oy=OM*Math.cos(latR)*Math.sin(hdg), Oz=OM*Math.sin(latR);
@@ -2818,8 +2825,12 @@ function parseOrk(xml){
     return {method:(el.getAttribute("method")||el.getAttribute("type")||"top").toLowerCase(),val:parseFloat(el.textContent)||0};
   }
   const simEls=[...doc.getElementsByTagName("simulation")];
-  const refSim=simEls.find(s=>s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"))||simEls[0]||null;
-  let cfg=null;{const c=refSim&&refSim.getElementsByTagName("conditions")[0],e=c&&c.getElementsByTagName("configid")[0];if(e)cfg=e.textContent.trim();}
+  // a motor configuration chosen on the Motor tab (ORK_CFG) wins; then the one the file's simulation used; then the default
+  const simCfgOf=sm=>{const c=sm&&sm.getElementsByTagName("conditions")[0],e=c&&c.getElementsByTagName("configid")[0];return e?e.textContent.trim():null;};
+  const pick=ORK_CFG&&[...rocket.getElementsByTagName("motorconfiguration")].some(e=>e.getAttribute("configid")===ORK_CFG)?ORK_CFG:null;
+  const refSim=pick?(simEls.find(s=>simCfgOf(s)===pick&&s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"))||simEls.find(s=>simCfgOf(s)===pick)||null)
+    :simEls.find(s=>s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"))||simEls[0]||null;
+  let cfg=pick;if(!cfg)cfg=simCfgOf(refSim);
   if(!cfg){const mcs=[...rocket.getElementsByTagName("motorconfiguration")];const dc=mcs.find(e=>e.getAttribute("default")==="true")||mcs[0];cfg=dc?dc.getAttribute("configid"):null;}
   let tubeFins=false;
   let maxR=0, totalMass=0, moment=0, nose=null, fins=[], chutes=[], motor=null, transitions=[], stages=0, buttons=[], lugs=[], cdComp=false, segments=[];
@@ -3109,9 +3120,9 @@ function parseOrk(xml){
   if(nd.extraChutes.length)notes.push(`${nd.extraChutes.length} more recovery device${nd.extraChutes.length>1?"s":""} besides the ${nd.recovery==="dual"?"drogue and main":"main chute"}: each opens on its own setting and adds its drag.`);
   { // when the first chute opens
     const big=a=>a.length?a.reduce((p,q)=>q.d>p.d?q:p):null, first=big(apo);
-    nd.deployMode="apogee";nd.deployDelay=0;
+    nd.deployMode="apogee";nd.deployDelay=0;nd.ejChuteDelay=0;
     if(first){SRC.first=first.oi;const dd=Math.max(0,first.dd||0), mo=twoStage?sMotor[0]:motor;
-      if(first.ev==="ejection"){nd.deployMode="motor";nd.deployDelay=mo&&mo.ej!=null?mo.ej+dd:0;
+      if(first.ev==="ejection"){nd.deployMode="motor";nd.deployDelay=mo&&mo.ej!=null?mo.ej+dd:0;nd.ejChuteDelay=dd;
         if(!(mo&&mo.ej!=null))notes.push("The chute is set to open at the motor ejection charge, but the motor is plugged, so that chute never opens. Choose a delay under Motor Delay on the Motor tab, or set the chute to open at apogee.");}
       else if(first.ev==="launch"){nd.deployMode="timer";nd.deployDelay=dd;}
       else if(first.ev==="apogee")nd.deployDelay=dd;
@@ -3472,7 +3483,7 @@ function bldToOrk(model,L,opts={}){
   const pos=k=>`<axialoffset method="${k.ref==="top"?"top":"bottom"}">${n(k.ref==="top"?k.pos:-k.pos)}</axialoffset>`;
   const head=k=>`<name>${e(k.name)}</name><id>${k.id}</id>${pos(k)}${known(k)}`;
   const sep=model.stages.length>1;
-  const deploy=k=>`<deployevent>${e(k.deploy||"apogee")}</deployevent><deployaltitude>${n(k.alt||0)}</deployaltitude><deploydelay>${n(k.deploy==="ejection"?0:k.delay||0)}</deploydelay>`;
+  const deploy=k=>`<deployevent>${e(k.deploy||"apogee")}</deployevent><deployaltitude>${n(k.alt||0)}</deployaltitude><deploydelay>${n(k.delay||0)}</deploydelay>`;
   const motorMount=(k,si)=>{
     const upper=sep&&si<model.stages.length-1, ign=upper?(k.ign&&k.ign!=="automatic"&&k.ign!=="launch"?k.ign:"burnout"):(k.ign&&k.ign!=="burnout"?k.ign:"automatic");
     const idly=upper?(model.stages[si].ignDelay||0):(k.ignDelay||0);
@@ -3555,9 +3566,12 @@ function bldFromOrk(xml,info){
     if(kid(c,"overridecg")){o.knownCg=num(c,"overridecg");if(txt(c,"overridesubcomponentscg")==="true")o.knownAll=true;}
     return o;};
   const cfgEl=[...rocket.children].filter(c=>c.tagName==="motorconfiguration");
-  const sims=[...doc.getElementsByTagName("simulation")], refSim=sims.find(s=>s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"))||sims[0];
-  const simCfg=refSim&&refSim.getElementsByTagName("conditions")[0]?.getElementsByTagName("configid")[0]?.textContent.trim();
-  const cfg=simCfg||(cfgEl.find(c=>c.getAttribute("default")==="true")||cfgEl[0])?.getAttribute("configid")||bldId();
+  const sims=[...doc.getElementsByTagName("simulation")], scfg=sm=>sm&&sm.getElementsByTagName("conditions")[0]?.getElementsByTagName("configid")[0]?.textContent.trim();
+  const pickC=ORK_CFG&&cfgEl.some(c=>c.getAttribute("configid")===ORK_CFG)?ORK_CFG:null;
+  const refSim=pickC?(sims.find(s=>scfg(s)===pickC&&s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"))||sims.find(s=>scfg(s)===pickC)||null)
+    :sims.find(s=>s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"))||sims[0];
+  const simCfg=scfg(refSim);
+  const cfg=pickC||simCfg||(cfgEl.find(c=>c.getAttribute("default")==="true")||cfgEl[0])?.getAttribute("configid")||bldId();
   const forCfg=(el,tag)=>[...el.children].filter(c=>c.tagName===tag).find(c=>c.getAttribute("configid")===cfg);
   const dep=e=>{const dc=forCfg(e,"deploymentconfiguration"), g=(t,d)=>dc&&txt(dc,t)!=null?(t==="deployevent"?txt(dc,t):num(dc,t)):(t==="deployevent"?txt(e,t)||d:num(e,t));
     return {deploy:String(g("deployevent","apogee")).toLowerCase(),alt:g("deployaltitude"),delay:g("deploydelay")};};
@@ -5099,12 +5113,27 @@ function renderMotors(){
   const more=document.getElementById("moremotors");
   more.hidden=items.length<=shown;more.textContent=`Show ${Math.min(40,items.length-shown)} more of ${items.length-shown}`;
   list.querySelectorAll(".del").forEach(b=>b.onclick=()=>{USER_MOTORS=USER_MOTORS.filter(m=>m.id!==b.dataset.id);store.set("rfs-motors",USER_MOTORS);if(motorId===b.dataset.id)motorId=DEFAULT_MOTOR;store.set("rfs-motor",motorId);renderMotors();markStale();});
-  mdRender();
+  mdRender();cfgRender();
   drawMtarget();
   if(CMP.rows&&CMP.tgt!==motorTarget&&!CMP.running){CMP.rows=null;document.getElementById("cmpmsg").textContent="";}
   cmpRender();
 }
 document.getElementById("moremotors").onclick=()=>{shown+=40;renderMotors();};
+/* ---------- motor configurations of an OpenRocket file (Motor tab) ---------- */
+function orkConfigs(xml){try{const doc=new DOMParser().parseFromString(xml,"application/xml"), rocket=doc.getElementsByTagName("rocket")[0];if(!rocket)return [];
+  const cfgs=[...rocket.children].filter(c=>c.tagName==="motorconfiguration"), motors=[...rocket.getElementsByTagName("motor")];
+  return cfgs.map(c=>{const id=c.getAttribute("configid"), nm=(c.getElementsByTagName("name")[0]?.textContent||"").trim();
+    const ms=motors.filter(m=>m.getAttribute("configid")===id).map(m=>{const d=(m.getElementsByTagName("designation")[0]?.textContent||"").trim(), dl=(m.getElementsByTagName("delay")[0]?.textContent||"").trim().toLowerCase();
+      return d?`${d}-${!dl||dl==="none"||dl==="p"?"P":+parseFloat(dl).toFixed(1)}`:null;}).filter(Boolean);
+    return {id,label:(nm&&!/^[\[{].*[\]}]$/.test(nm)?nm+": ":"")+(ms.length?ms.join(" + "):"no motor"),def:c.getAttribute("default")==="true"};});}catch(e){return [];}}
+function cfgRender(){const pn=document.getElementById("cfgpanel");if(!pn)return;
+  const list=SOURCE&&SOURCE.format==="ork"&&SOURCE.text?orkConfigs(SOURCE.text):[];pn.hidden=list.length<2;if(pn.hidden)return;
+  const cur=(BLD&&BLD.cfg)||(SOURCE.src&&SOURCE.src.cfg)||null, sel=document.getElementById("cfgsel");
+  sel.innerHTML=list.map(c=>`<option value="${esc(c.id)}"${c.id===cur?" selected":""}>${esc(c.label)}${c.def?" (default)":""}</option>`).join("");
+  document.getElementById("cfgnote").textContent=`${list.length} configurations in ${SOURCE.name||"the file"}. Choosing another reopens the rocket from the file with it; changes you haven't saved are replaced.`;}
+document.getElementById("cfgsel").addEventListener("change",async e=>{const id=e.target.value;if(!SOURCE||!SOURCE.text)return;
+  const ok=await loadDesignXml(SOURCE.text,SOURCE.name,null,{cfg:id});
+  if(ok!==false){prToast("Motor configuration changed.");cfgRender();}});
 /* ---------- Motor Delay (Motor tab): the one ejection delay setting ----------
    It lives on the primary motor mount of the stage being chosen (the same mount bldSyncMotors puts the Motor tab's motor
    in), so it's saved with the design and read from OpenRocket and RockSim files; null is a plugged motor. */
@@ -5533,6 +5562,7 @@ document.getElementById("orkfile").addEventListener("change",async e=>{
 // open a design from .ork / .rkt text: from a file, or from the rocket builder
 async function loadDesignXml(xml,fileName,buf,opts={}){
   const rep=document.getElementById("orkreport");
+  ORK_CFG=opts.cfg||null; // a motor configuration chosen on the Motor tab, when reopening for it
   try{
     const r=/<RockSimDocument/i.test(xml.slice(0,4000))?parseRkt(xml):parseOrk(xml);D=r.design;const keptWx=!!(L&&L.wxSet);
     {const keep={};[...RANGE_KEYS,"elev","lat","lon",...(keptWx?WX_KEYS:[])].forEach(k=>{if(L&&L[k]!==undefined)keep[k]=jclone(L[k]);});L=Object.assign(r.launch,keep);}
@@ -5572,16 +5602,21 @@ async function loadDesignXml(xml,fileName,buf,opts={}){
     {const isR=/<RockSimDocument/i.test(xml.slice(0,4000));let nm=(fileName||"").trim();if(!nm||/^\.[a-z]+$/i.test(nm)||!/\.(ork|rkt)$/i.test(nm))nm=((D.name||"rocket").replace(/[\\/:*?"<>|]+/g,"-").trim()||"rocket")+(isR?".rkt":".ork");
     BLD=bldFromOrk(isR?r.orkXml:xml,{...r,rkt:isR});BLD.name=r.design.name||BLD.name;
     BLD.bp={comps:{},splits:{}};
-    if(buf&&!isR)try{const e=zipEntries(buf).find(e=>e.name===FIN_ORK);if(e){const fe=(JSON.parse(new TextDecoder().decode(await zipData(buf,e))).finEdges)||{};
+    // Pocket Rocket's own files inside the .ork: from the opened file, or (reopening it for another motor configuration)
+    // from the copy kept with the design
+    const prevX=opts.cfg!=null&&!buf&&SOURCE?SOURCE.extras||[]:null;
+    const side=async nm=>{try{if(buf){const e=zipEntries(buf).find(e=>e.name===nm);return e?new TextDecoder().decode(await zipData(buf,e)):null;}
+      const x=prevX&&prevX.find(x=>x.name===nm);return x?new TextDecoder().decode(b64ToU8(x.b64)):null;}catch(e){return null;}};
+    if(!isR)try{const t=await side(FIN_ORK);if(t){const fe=(JSON.parse(t).finEdges)||{};
       for(const st of BLD.stages)for(const pp of st.parts||[])for(const k of pp.kids||[])if(k.type==="fins"&&fe[k.id]&&FIN_EDGES.some(x=>x[0]===fe[k.id]))k.edge=fe[k.id];}}catch(e){}
-    if(buf&&!isR)try{const e=zipEntries(buf).find(e=>e.name===BP_ORK);if(e){const j=JSON.parse(new TextDecoder().decode(await zipData(buf,e)));BLD.bp={comps:j.comps||{},splits:j.splits||{}};}}catch(e){}
+    if(!isR)try{const t=await side(BP_ORK);if(t){const j=JSON.parse(t);BLD.bp={comps:j.comps||{},splits:j.splits||{}};}}catch(e){}
     if(isR)BLD.mountHint=[r.design.mountDia||null,r.design.bMountDia||null];
     // a RockSim stage with different motors: the main mount flies the one that fits it
     if(isR){const pm=bldMounts(BLD.stages[0])[0];if(pm&&pm.motor&&pm.motor.id&&pm.motor.id!==motorId&&findMotor(pm.motor.id)){motorId=pm.motor.id;store.set("rfs-motor",motorId);}}
     // a motor the file names but your list doesn't have stays in the file until you choose another one
     BLD.hold=[r.motor&&r.motor.designation&&!mm?motorId:null,D.twoStage&&r.boosterMotor&&r.boosterMotor.designation&&!matchMotor(r.boosterMotor)?boostId:null,isThree(D)&&r.firstMotor&&r.firstMotor.designation&&!matchMotor(r.firstMotor)?firstId:null];
     bldSel=BLD_ROOT;bldSave();try{bldDerive();}catch(e){}
-    setSource({name:nm,format:isR?"rkt":"ork",text:xml,src:r.src,extras:isR||!buf?[]:await zipOthers(buf),base:{D:jclone(D),L:jclone(L),motorId,boostId,firstId,M:jclone(BLD)}});document.getElementById("savemsg").innerHTML="";}
+    setSource({name:nm,format:isR?"rkt":"ork",text:xml,src:r.src,extras:isR?[]:prevX?prevX:!buf?[]:await zipOthers(buf),recentId:prevX&&SOURCE?SOURCE.recentId:undefined,base:{D:jclone(D),L:jclone(L),motorId,boostId,firstId,M:jclone(BLD)}});document.getElementById("savemsg").innerHTML="";}
     applyCal();if(D.dragScale!==1)rep.querySelector(".report")?.insertAdjacentHTML("beforeend",`<div class="note" style="margin-top:6px">Drag is calibrated to your flight of this rocket (×${D.dragScale.toFixed(2)}). See Results to change it.</div>`);
     motorTarget="sustainer";mountFilter();renderMotors();
     setActive(true);renderForms();changed();markClean();bldRender();
@@ -6220,7 +6255,7 @@ function bldFields(p){
   const posF=[["pos","Position","pos"]], kw=[["known",p.knownCalc?"Weight from RockSim’s calculation":"Measured weight","num","smass"],...(p.known>0?[["knownAll","Includes the parts attached to it","check"]]:[])];
   const mat=k=>[["mat","Material",k||"bulk"]];
   const param=["power","parabolic","haack","ogive"].includes(p.shape)?[["param","Shape parameter","num","none"]]:[];
-  const dep=[["deploy","Opens","sel",BLD_DEPLOY.some(d=>d[0]===p.deploy)?BLD_DEPLOY:[...BLD_DEPLOY,[p.deploy,`From file (${p.deploy})`]]],...(p.deploy==="altitude"?[["alt","Opening altitude","num","alt"]]:p.deploy==="apogee"?[["delay","Delay after apogee","num","time"]]:p.deploy==="launch"?[["delay","Time after liftoff","num","time"]]:[])];
+  const dep=[["deploy","Opens","sel",BLD_DEPLOY.some(d=>d[0]===p.deploy)?BLD_DEPLOY:[...BLD_DEPLOY,[p.deploy,`From file (${p.deploy})`]]],...(p.deploy==="altitude"?[["alt","Opening altitude","num","alt"]]:p.deploy==="apogee"?[["delay","Delay after apogee","num","time"]]:p.deploy==="ejection"?[["delay","Delay after the charge","num","time"]]:p.deploy==="launch"?[["delay","Time after liftoff","num","time"]]:[])];
   switch(p.type){
     case"nose":return [["name","Name","text"],["shape","Shape","sel",BLD_SHAPES],...param,["len","Length","num","len"],["dia","Base diameter","num","len"],["filled","Solid","check"],...(p.filled?[]:[["wall","Wall thickness","num","small"]]),["shLen","Shoulder length","num","len"],...mat(),...kw];
     case"tube":return [["name","Name","text"],["len","Length","num","len"],["od","Outside diameter","num","len"],["wall","Wall thickness","num","small"],["isMount","This tube is the motor mount (minimum diameter)","check"],...(p.mm?[["mmOverhang","Motor overhang","num","small"]]:[]),...mat(),...kw];
@@ -6649,6 +6684,9 @@ window.prToast=msg=>{const el=document.getElementById("prtoast");if(!el)return f
   clearTimeout(prToastT);prToastT=setTimeout(()=>el.classList.remove("show"),2200);return true;};
 /* ---------- save the design back to its .ork / .rkt file ---------- */
 var SOURCE=null;
+/* the motor configuration of an OpenRocket file to fly (configid), when the file has several: chosen on the Motor tab.
+   null takes the one the file's own simulation used, or its default. */
+var ORK_CFG=null;
 try{SOURCE=JSON.parse(localStorage.getItem("rfs-source")||"null");}catch(e){SOURCE=null;}
 applyCal(); // this rocket's drag calibration, if it has one
 function setSource(s){SOURCE=s;
@@ -6932,11 +6970,11 @@ function buildPatchedFile(){
   if(ork&&chg("mainAlt")&&D.recovery==="dual"&&chuteEl(src.main))cfgDeploy(chuteEl(src.main),"deployaltitude",D.mainAlt);
   if(D.twoStage&&chg("bChuteDia","bChuteCd"))setChute(chuteEl(src.bchute),D.bChuteDia,D.bChuteCd,src.bstreamer,"booster parachute");
   let motorDelay=null;
-  if(chg("deployMode","deployDelay")){
+  if(chg("deployMode","deployDelay","ejChuteDelay")){
     const dm=D.deployMode||"apogee",dl=Math.max(0,D.deployDelay||0);
     if(ork){const el=chuteEl(src.first);
       if(!el)notes.push("No chute that opens at apogee was found, so the deployment timing wasn’t saved.");
-      else if(dm==="motor"){cfgDeploy(el,"deployevent","ejection");cfgDeploy(el,"deploydelay",0);}
+      else if(dm==="motor"){cfgDeploy(el,"deployevent","ejection");cfgDeploy(el,"deploydelay",Math.max(0,D.ejChuteDelay||0));}
       else if(dm==="timer"){cfgDeploy(el,"deployevent","launch");cfgDeploy(el,"deploydelay",dl);}
       else{cfgDeploy(el,"deployevent","apogee");cfgDeploy(el,"deploydelay",dl);}}
   }
