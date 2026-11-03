@@ -1,4 +1,13 @@
+/**
+ * The Motor tab's motor configuration picker (for OpenRocket files with several) and Motor Delay, the one ejection
+ * delay setting for each stage (see the note below), with the side view that shows which stage is being chosen for.
+ */
 /* ---------- motor configurations of an OpenRocket file (Motor tab) ---------- */
+/**
+ * The motor configurations in an OpenRocket file, with a label from their motors and delays.
+ * @param {string} xml
+ * @returns {{id:string, label:string, def:boolean}[]} def: the file's default configuration
+ */
 function orkConfigs(xml) {
   try {
     const doc = new DOMParser().parseFromString(xml, "application/xml"),
@@ -27,6 +36,9 @@ function orkConfigs(xml) {
     return [];
   }
 }
+/**
+ * Shows the configuration picker when the open .ork file has two or more configurations.
+ */
 function cfgRender() {
   const pn = document.getElementById("cfgpanel");
   if (!pn) return;
@@ -56,9 +68,18 @@ document.getElementById("cfgsel").addEventListener("change", async (e) => {
 /* ---------- Motor Delay (Motor tab): the one ejection delay setting ----------
    It lives on the primary motor mount of the stage being chosen (the same mount bldSyncMotors puts the Motor tab's motor
    in), so it's saved with the design and read from OpenRocket and RockSim files; null is a plugged motor. */
+/**
+ * The stage Motor Delay is set for: the Motor tab's target.
+ * @returns {string} "sustainer", "booster" or "first"
+ */
 function mdTarget() {
   return tgtFirst() ? "first" : D.twoStage && motorTarget === "booster" ? "booster" : "sustainer";
 }
+/**
+ * The builder mount that holds a stage's delay: its primary motor mount (null if there is no builder design).
+ * @param {string} tg target
+ * @returns {object|null}
+ */
 function mdHost(tg) {
   if (!BLD || !BLD.stages || !BLD.stages.length) return null;
   const mounted = BLD.stages.filter((st) => bldMounts(st).length);
@@ -73,15 +94,31 @@ function mdHost(tg) {
           : BLD.stages[BLD.stages.length - 1];
   return st ? bldMounts(st)[0] || null : null;
 }
+/**
+ * A target's selected motor.
+ * @param {string} tg
+ * @returns {object}
+ */
 function mdMotor(tg) {
   return tg === "first" ? curFirst() : tg === "booster" ? curBoost() : curMotor();
 }
-// null is plugged; 0 is a charge at burnout
+/**
+ * A target's ejection delay: seconds after burnout (0 = at burnout), or null for plugged.
+ * @param {string} tg
+ * @returns {number|null}
+ *
+ * null is plugged; 0 is a charge at burnout
+ */
 function mdGet(tg) {
   const h = mdHost(tg),
     v = h ? h.delay : tg === "first" ? D.s1 && D.s1.bEjDelay : tg === "booster" ? D.bEjDelay : D.ejDelay;
   return v == null || !(+v >= 0) ? null : +v;
 }
+/**
+ * Sets a target's ejection delay (rounded to 0.1 s; null = plugged) and refreshes.
+ * @param {string} tg
+ * @param {number|null} v
+ */
 function mdSet(tg, v) {
   v = v == null || !isFinite(v) ? null : Math.max(0, Math.round(v * 10) / 10);
   const h = mdHost(tg);
@@ -98,9 +135,15 @@ function mdSet(tg, v) {
   }
   mdRender();
 }
-// the delays a motor is sold with, in seconds, and whether it comes plugged. 0 s is a real charge at burnout (booster
-// motors use it to separate stages or light the next motor), kept apart from plugged (no charge), as OpenRocket does;
-// catalog placeholders of 60 s or more are left out
+/**
+ * The delays a motor is sold with, and whether it comes plugged (see the note above).
+ * @param {object} m motor
+ * @returns {{list:number[], plugged:boolean}}
+ *
+ * the delays a motor is sold with, in seconds, and whether it comes plugged. 0 s is a real charge at burnout (booster
+ * motors use it to separate stages or light the next motor), kept apart from plugged (no charge), as OpenRocket does;
+ * catalog placeholders of 60 s or more are left out
+ */
 function mdStock(m) {
   const p = String((m && m.delays) || "")
     .split(/[-,\s]+/)
@@ -110,7 +153,14 @@ function mdStock(m) {
     plugged: p.some((x) => /^p$/i.test(x)),
   };
 }
-// a new motor: a stock delay of the old motor moves to the nearest one the new motor offers; plugged and custom times stay
+/**
+ * After a motor change: moves a stock delay to the nearest one the new motor offers (see the note above).
+ * @param {string} tg
+ * @param {object} oldM
+ * @param {object} newM
+ *
+ * a new motor: a stock delay of the old motor moves to the nearest one the new motor offers; plugged and custom times stay
+ */
 function mdSnap(tg, oldM, newM) {
   if (!oldM || !newM || oldM.id === newM.id) return;
   const v = mdGet(tg);
@@ -122,6 +172,9 @@ function mdSnap(tg, oldM, newM) {
   mdSet(tg, near);
   prToast(`Motor delay set to ${near} s: the ${newM.cn || newM.name} doesn’t come with a ${v} s delay.`);
 }
+/**
+ * Draws Motor Delay: the stock delays, plugged and custom, with the best delay from the last run.
+ */
 function mdRender() {
   const sel = document.getElementById("mdsel");
   if (!sel) return;
@@ -146,6 +199,9 @@ function mdRender() {
       : sk.plugged
         ? `The ${nm} comes plugged (no ejection charge).`
         : "";
+  /**
+   * The delay that would fire the charge at apogee in the last run.
+   */
   const ideal = (() => {
     try {
       const st = lastSim && lastSim.st;
@@ -162,12 +218,21 @@ function mdRender() {
 }
 /* separately mounted motors in the same stage (outboard or pod motors, each in its own mount): each has its own delay,
    fired after its own burnout. The main mount's cluster shares the main delay. */
+/**
+ * The other motor mounts of the stage that have their own motor (see the note above).
+ * @param {string} tg
+ * @returns {object[]}
+ */
 function mdExtraMounts(tg) {
   const h = mdHost(tg);
   if (!h || !BLD) return [];
   const st = BLD.stages.find((st) => bldMounts(st).includes(h));
   return st ? bldMounts(st).filter((k) => k !== h && k.motor) : [];
 }
+/**
+ * Draws a delay picker for each of the stage's other mounts.
+ * @param {string} tg
+ */
 function mdRenderExtra(tg) {
   const box = document.getElementById("mdx");
   if (!box) return;
@@ -193,6 +258,9 @@ function mdRenderExtra(tg) {
     const k = list[+row.dataset.mi],
       sel = row.querySelector(".mdxsel"),
       ci = row.querySelector(".mdxcust");
+    /**
+     * Sets one extra mount's delay.
+     */
     const put = (v) => {
       v = v == null || !isFinite(v) ? null : Math.max(0, Math.round(v * 10) / 10);
       if ((k.delay ?? null) === v) return;
@@ -238,7 +306,12 @@ function mdRenderExtra(tg) {
     mdSet(mdTarget(), x);
   });
 }
-// the Motor tab's side view of the stages, with the one being chosen shaded
+/**
+ * Where each stage sits along the stack, for the side view.
+ * @returns {Array[]} [target, from, to] in m from the nose tip
+ *
+ * the Motor tab's side view of the stages, with the one being chosen shaded
+ */
 function mtargetRanges() {
   const L0 = D.length,
     L1 = L0 + (D.bLength || 0);
@@ -249,6 +322,9 @@ function mtargetRanges() {
   if (isThree(D)) r.push(["first", L1, L1 + D.s1.bLength]);
   return r;
 }
+/**
+ * Draws the Motor tab's side view of the stages, with the one being chosen for shaded.
+ */
 function drawMtarget() {
   const cv = document.getElementById("mtargetcv");
   if (!cv || !D.twoStage || !cv.getBoundingClientRect().width) return;

@@ -1,9 +1,17 @@
+/**
+ * Donations (see the note below), opening outside links, the Launch and Save-this-run buttons, and the disclaimer
+ * that must be read and agreed to once per legal version.
+ */
 /* ---------- donations (Venmo) ----------
    A "Support the app" card in Settings is always there. Once, after someone has got real use from the app (their 10th
    launch, or their first saved flight report), a single line shows above the flight report; closing it or tapping
    through means it never shows again. Nothing pops up or gets in the way. */
 const VENMO_URL = "https://venmo.com/u/PocketRocketFlightLab",
   PAYPAL_URL = "https://www.paypal.com/qrcodes/p2pqrc/6SFLPUHMKC9FY";
+/**
+ * Opens a link outside the app (through the Android app when there is one).
+ * @param {string} url
+ */
 function openLink(url) {
   const A = window.PocketRocketApp;
   try {
@@ -20,7 +28,11 @@ function openLink(url) {
     a.remove();
   }
 }
-// the flight report shows the flier's profile; say so when this copy of the app has none
+/**
+ * Shows the note that the flight report has no flyer profile, when there isn't one.
+ *
+ * the flight report shows the flier's profile; say so when this copy of the app has none
+ */
 function profNoteRender() {
   const n = document.getElementById("exportprof");
   if (!n) return;
@@ -30,17 +42,27 @@ document.getElementById("exportprofbtn").addEventListener("click", (e) => {
   e.stopPropagation();
   if (window.prOpenProfile) window.prOpenProfile();
 });
+/**
+ * Hides the support line for good.
+ */
 function supDone() {
   store.set("rfs-support", { done: true });
   const l = document.getElementById("supline");
   if (l) l.hidden = true;
 }
+/**
+ * Shows the support line once the app has had real use (see the note above).
+ */
 function supRender() {
   const l = document.getElementById("supline");
   if (!l) return;
   const v = store.get("rfs-support", {});
   l.hidden = !lastSim || !!v.done || !((v.runs || 0) >= 10 || v.report);
 }
+/**
+ * Counts a launch or notes a saved report, for the support line.
+ * @param {string} k "run", or another milestone
+ */
 function supNote(k) {
   const v = store.get("rfs-support", {});
   if (v.done) return;
@@ -90,6 +112,9 @@ document.getElementById("simsave").onclick = async () => {
     chk = document.getElementById("legalchk"),
     ok = document.getElementById("legalok");
   let lastFocus = null;
+  /**
+   * Opens the disclaimer (required: it must be read and agreed to before going on).
+   */
   const open = (required) => {
     lastFocus = document.activeElement;
     dlg.hidden = false;
@@ -107,6 +132,9 @@ document.getElementById("simsave").onclick = async () => {
       (required ? body : ok).focus();
     }, 0);
   };
+  /**
+   * Closes the disclaimer and puts the focus back.
+   */
   const close = () => {
     dlg.hidden = true;
     document.body.style.overflow = "";
@@ -116,6 +144,9 @@ document.getElementById("simsave").onclick = async () => {
   const body = dlg.querySelector(".body"),
     hint = document.getElementById("legalhint");
   let readAll = false;
+  /**
+   * Enables "I agree" once the whole text has been read and the box is ticked.
+   */
   const update = () => {
     if (dlg.dataset.required !== "1") {
       ok.disabled = false;
@@ -172,6 +203,9 @@ document.getElementById("simsave").onclick = async () => {
   document.getElementById("showlegal").onclick = () => open(false);
   const ab = document.getElementById("about");
   let abFocus = null;
+  /**
+   * Closes the About box.
+   */
   const abClose = () => {
     ab.hidden = true;
     document.body.style.overflow = "";

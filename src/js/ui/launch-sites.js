@@ -1,6 +1,17 @@
+/**
+ * Saved launch sites: each one keeps a field's own settings (location, elevation, rail, waiver, cone...), not the day's
+ * weather. The chosen site stays in force when another rocket is opened.
+ */
 /* ---------- launch sites and field-day mode ---------- */
-// a field's own settings (not the day's weather: the height the wind is measured at goes with the wind reading)
+/**
+ * The saved-sites manager's state: open, the site being renamed, the site waiting for delete confirmation.
+ *
+ * a field's own settings (not the day's weather: the height the wind is measured at goes with the wind reading)
+ */
 var SITEMGR = { open: false, edit: null, del: null }; // the saved-sites manager (below)
+/**
+ * The launch-condition keys a site keeps (see the note above).
+ */
 const SITE_KEYS = [
   "elev",
   "lat",
@@ -17,6 +28,10 @@ const SITE_KEYS = [
   "cone",
 ]; // every field under Launch site, Range and Launch pad
 const SITE_DIFF_KEYS = SITE_KEYS.filter((k) => k !== "flightType"); // saved with the site, but changing it alone isn't an unsaved change
+/**
+ * The saved sites: [{name, v: {key: value}}].
+ * @returns {object[]}
+ */
 const sitesGet = () => {
   const v = store.get("rfs-sites", []);
   return Array.isArray(v) ? v : [];
@@ -25,6 +40,9 @@ let siteCur = store.get("rfs-site", "");
 /* well-known launch fields, added once to the saved sites (names you already use, and fields within about a mile of a
    site you've saved, are skipped; a field you delete doesn't come back). Coordinates and elevations are from each club's
    own site page where it gives them; elev null: looked up from map data the first time the site is chosen. */
+/**
+ * Well-known launch fields: [name, latitude, longitude, elevation m or null].
+ */
 const SITE_PRESETS = [
   ["Argonia, KS (KLOUDBusters)", 37.170278, -97.736667, 384.0],
   ["Black Rock Desert, NV (AeroPac)", 40.870683, -119.10695, 1219.2],
@@ -39,6 +57,9 @@ const SITE_PRESETS = [
   ["Swan Falls, ID (Tripoli Idaho)", 43.2375, -116.324167, null],
   ["Tripoli Minnesota field, MN", 45.546058, -92.92464, null],
 ];
+/**
+ * Adds the preset fields to the saved sites once.
+ */
 (function sitePresetsAdd() {
   if (store.get("rfs-site-presets", 0) >= 1) return;
   const S = (() => {
@@ -54,6 +75,9 @@ const SITE_PRESETS = [
   store.set("rfs-sites", S);
   store.set("rfs-site-presets", 1);
 })();
+/**
+ * Draws the site picker and its buttons.
+ */
 function siteRender() {
   const sel = document.getElementById("sitesel");
   if (!sel) return;
@@ -85,15 +109,29 @@ function siteRender() {
   }
   siteBtnUpdate();
 }
-// the chosen site stays in force when another rocket is opened (a design file carries launch conditions of its own)
+/**
+ * The current values of the site keys.
+ * @returns {object}
+ *
+ * the chosen site stays in force when another rocket is opened (a design file carries launch conditions of its own)
+ */
 function siteSnap() {
   const v = {};
   for (const k of SITE_KEYS) v[k] = L[k] ?? null;
   return v;
 }
+/**
+ * Records the site's settings as just chosen or saved, to tell later whether they changed.
+ * @param {string} name
+ */
 function siteBaseSet(name) {
   store.set("rfs-site-base", { name, v: siteSnap() });
 }
+/**
+ * The settings a site was chosen with (its saved values, filled in from when it was chosen).
+ * @param {object} x site
+ * @returns {object}
+ */
 function siteBase(x) {
   const b = store.get("rfs-site-base", null),
     v = {};
@@ -102,7 +140,11 @@ function siteBase(x) {
   if (!b || b.name !== x.name) store.set("rfs-site-base", { name: x.name, v });
   return v;
 }
-// Save Changes shows only when there is something to save: the chosen site's settings were changed, or a name was typed for a new site
+/**
+ * Shows Save Changes only when there's something to save (see the note above).
+ *
+ * Save Changes shows only when there is something to save: the chosen site's settings were changed, or a name was typed for a new site
+ */
 function siteBtnUpdate() {
   const btn = document.getElementById("sitesave"),
     inp = document.getElementById("sitename");
@@ -115,12 +157,20 @@ function siteBtnUpdate() {
   }
   btn.hidden = !(diff || inp.value.trim());
 }
+/**
+ * Puts the chosen site's settings back into L (after a design file brought its own).
+ * @returns {string|null} the site's name
+ */
 function siteKeep() {
   const x = siteCur && sitesGet().find((s) => s.name === siteCur);
   if (!x) return null;
   for (const k of SITE_KEYS) if (x.v[k] != null) L[k] = x.v[k];
   return x.name;
 }
+/**
+ * Chooses a saved site and applies its settings.
+ * @param {string} name
+ */
 function siteApply(name) {
   const x = sitesGet().find((s) => s.name === name);
   siteCur = name;
@@ -142,7 +192,12 @@ function siteApply(name) {
   siteRender();
   delete m.dataset.keep;
 }
-// a site saved without an elevation: looked up from map data (Open-Meteo's elevation service, 90 m terrain model) and kept with the site
+/**
+ * Looks up a site's elevation from map data (see the note above) and keeps it with the site.
+ * @param {object} x site
+ *
+ * a site saved without an elevation: looked up from map data (Open-Meteo's elevation service, 90 m terrain model) and kept with the site
+ */
 async function siteElevLookup(x) {
   const m = document.getElementById("sitemsg");
   m.textContent = `Using ${x.name}. Looking up its field elevation…`;
@@ -173,6 +228,9 @@ async function siteElevLookup(x) {
     delete m.dataset.keep;
   }
 }
+/**
+ * Saves the current settings as the typed site name (a new site, or the chosen one updated).
+ */
 function siteSave() {
   const inp = document.getElementById("sitename"),
     name = (inp.value || siteCur || "").trim().slice(0, 40),
@@ -219,6 +277,10 @@ document.getElementById("sitename").addEventListener("keydown", (e) => {
   }
 });
 /* managing saved sites: rename or delete each one. Deleting takes two steps (Delete, then confirm), so it can't happen by a stray tap */
+/**
+ * Opens or closes the saved-sites manager.
+ * @param {boolean} open
+ */
 function siteMgrToggle(open) {
   SITEMGR.open = open;
   SITEMGR.edit = SITEMGR.del = null;
@@ -228,6 +290,9 @@ function siteMgrToggle(open) {
   document.getElementById("sitemgr").hidden = !open;
   if (open) siteMgrRender();
 }
+/**
+ * Draws the saved-sites manager: rename or delete each site (deleting takes a confirmation).
+ */
 function siteMgrRender() {
   const box = document.getElementById("sitemgr"),
     S = sitesGet();
@@ -236,6 +301,9 @@ function siteMgrRender() {
     box.innerHTML = `<p class="note" style="margin:8px 0">No saved sites.</p>`;
     return;
   }
+  /**
+   * A latitude or longitude as text.
+   */
   const ll = (v) =>
     v.lat != null && v.lon != null ? `${(+v.lat).toFixed(4)}, ${(+v.lon).toFixed(4)}` : "no coordinates";
   box.innerHTML = S.map((x, i) => {

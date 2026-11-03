@@ -1,5 +1,13 @@
+/**
+ * The Motor tab and the drawings that share its canvas helpers: the weathercocking cone, the flight chart, the fin and
+ * rocket side views, the motor list with its filters, and the motor tube size checks.
+ */
 /* ---------- weathercocking cone ---------- */
-// the highest wind (from the wind sweep) that keeps the airframe inside the cone while the motor burns
+/**
+ * Writes the highest wind (from the wind sweep) that keeps the airframe inside the safety cone while the motor burns.
+ *
+ * the highest wind (from the wind sweep) that keeps the airframe inside the cone while the motor burns
+ */
 function coneWindNote() {
   const RL = lastSim.L,
     cone = RL.cone ?? 20,
@@ -21,7 +29,14 @@ function coneWindNote() {
   }
   return `It stays inside the ${cone}° safety cone under power up to about ${fmt(wMax, "wind", 0)} ${uname("wind")} of wind (tilts outside the cone are in red).`;
 }
-// side view of the climb, drawn to true scale so the cone's angle is real; wind blows left to right
+/**
+ * Draws the climb from the side to true scale, with the safety cone; wind blows left to right.
+ * @param {CanvasRenderingContext2D} c
+ * @param {number} W width, px
+ * @param {number} H height, px
+ *
+ * side view of the climb, drawn to true scale so the cone's angle is real; wind blows left to right
+ */
 function drawConeChart(c, W, H) {
   const { out, st, L: RL } = lastSim,
     coneDeg = RL.cone ?? 20,
@@ -124,6 +139,9 @@ function drawConeChart(c, W, H) {
     }
     c.stroke();
   }
+  /**
+   * Draws a marker at a point of the flight path.
+   */
   const dot = (i, col) => {
     if (i < 0 || i >= n) return;
     c.fillStyle = col;
@@ -153,6 +171,11 @@ function drawConeChart(c, W, H) {
     `<span style="--c:${acc}">Under power${pt != null ? `: up to ${pt.toFixed(0)}° from vertical, ${inside ? "inside" : "outside"} the cone` : ""}</span>` +
     `<span style="--c:var(--ink)">${st.tDeploy != null ? "Chute opens" : "Apogee"}${st.pathAngle != null ? `, ${st.pathAngle.toFixed(0)}° off vertical from the pad` : ""}</span>`;
 }
+/**
+ * The events marked on the flight chart (burnout, apogee, chute, main, landing...).
+ * @param {object} st flight summary
+ * @returns {Array[]} [time, label]
+ */
 function chartEvents(st) {
   const main = [st.tMain && st.tMain !== st.tApo && st.tMain !== st.tDeploy ? st.tMain : null, "Main"];
   const dep = [
@@ -177,6 +200,9 @@ function chartEvents(st) {
     main,
   ];
 }
+/**
+ * Draws the chart's series buttons.
+ */
 function renderSeries() {
   document.getElementById("series").innerHTML = Object.entries(SERIES)
     .map(([k, [n]]) => `<button data-s="${k}" aria-pressed="${k === series}">${n}</button>`)
@@ -191,9 +217,19 @@ function renderSeries() {
       }),
   );
 }
+/**
+ * A CSS custom property's value (theme colors).
+ * @param {string} v property name, e.g. "--accent"
+ * @returns {string}
+ */
 function css(v) {
   return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 }
+/**
+ * Sizes a canvas for its displayed size and the screen's pixel ratio.
+ * @param {HTMLCanvasElement} cv
+ * @returns {{c:CanvasRenderingContext2D, W:number, H:number}} the context (scaled to CSS pixels) and size
+ */
 function setupCanvas(cv) {
   const r = cv.getBoundingClientRect(),
     dpr = window.devicePixelRatio || 1;
@@ -203,6 +239,13 @@ function setupCanvas(cv) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   return { c, W: r.width, H: r.height };
 }
+/**
+ * Round axis tick values (steps of 1, 2, 2.5 or 5 × a power of ten).
+ * @param {number} min
+ * @param {number} max
+ * @param {number} [n=5] about how many ticks
+ * @returns {number[]} tick values covering min to max
+ */
 function niceTicks(min, max, n = 5) {
   const span = max - min || 1;
   const step0 = span / n;
@@ -214,6 +257,9 @@ function niceTicks(min, max, n = 5) {
   for (let v = lo; v <= hi + step / 2; v += step) t.push(+v.toFixed(10));
   return t;
 }
+/**
+ * Draws the flight chart for the chosen series (or the cone or landing views).
+ */
 function drawChart() {
   if (!lastSim) return;
   const cv = document.getElementById("chart");
@@ -279,6 +325,9 @@ function drawChart() {
   const y0 = yt[0],
     y1 = yt[yt.length - 1],
     x1 = xt[xt.length - 1];
+  /**
+   * Time to screen x (and value to screen y).
+   */
   const X = (t) => padL + (t / x1) * (W - padL - padR),
     Y = (v) => padT + (1 - (v - y0) / (y1 - y0)) * (H - padT - padB);
   c.font = "11px " + css("--f-mono").split(",")[0].replace(/"/g, "") + ", monospace";
@@ -508,6 +557,9 @@ function drawChart() {
       .map((e) => `<span style="--c:var(--muted)">${e[1]} ${e[0].toFixed(1)} s</span>`)
       .join("");
 }
+/**
+ * Draws the main fin set in the quick form.
+ */
 function drawFins() {
   drawFinsInto("finview", "finnote", {
     n: D.finCount,
@@ -533,6 +585,12 @@ function drawFins() {
     });
   if (typeof drawExtraFins === "function") drawExtraFins();
 }
+/**
+ * Draws a fin set to scale, with its dimensions, and writes its note.
+ * @param {string} cvId canvas id
+ * @param {string} noteId note element id
+ * @param {object} FS fin set: n, a (root), b (tip), s (span), sw (sweep), t, aft, edge, pts...
+ */
 function drawFinsInto(cvId, noteId, FS) {
   const cv = document.getElementById(cvId);
   if (!cv || !cv.getBoundingClientRect().width) return;
@@ -635,6 +693,9 @@ function drawFinsInto(cvId, noteId, FS) {
   c.font = mono;
   c.lineWidth = 1;
   c.strokeStyle = muted;
+  /**
+   * Draws a horizontal dimension line with its label.
+   */
   const dimH = (x1, x2, y, label, below, minPx = 0) => {
     if (Math.abs(X(x2) - X(x1)) < 2) return;
     c.beginPath();
@@ -697,6 +758,9 @@ function drawFinsInto(cvId, noteId, FS) {
         ? " The shape comes from your design file, and drag and stability are calculated from it directly. Root, tip, span and sweep above describe a trapezoid with the same area, span and lift point; changing any of them replaces the file's shape with that trapezoid."
         : "");
 }
+/**
+ * Draws the rocket's side view (the builder's, when it's open) and the fins.
+ */
 function drawProfile() {
   if (typeof bldDraw === "function" && BLD) {
     bldDraw();
@@ -783,7 +847,11 @@ function drawProfile() {
     c.stroke();
   }
   c.setLineDash([]);
-  // CG / CP markers
+  /**
+   * Draws the CG or CP marker.
+   *
+   * CG / CP markers
+   */
   const mark = (x, color, lab, above) => {
     const cx = X(x),
       cy = oy;
@@ -817,6 +885,11 @@ function drawProfile() {
   mark(S.cgL, css("--cg"), "CG", true);
   mark(S.cp, css("--bad"), "CP", false);
 }
+/**
+ * Draws a motor's thrust curve, small.
+ * @param {HTMLCanvasElement} cv
+ * @param {object} m motor
+ */
 function drawSpark(cv, m) {
   const { c, W, H } = setupCanvas(cv);
   c.clearRect(0, 0, W, H);
@@ -833,8 +906,17 @@ function drawSpark(cv, m) {
   c.stroke();
 }
 
+/**
+ * The motor list's filters: brand, diameter (mm), system, search text and sparky ("all", "only" or "none").
+ */
 let F = Object.assign({ brand: "all", dia: null, sys: "all", q: "", sparky: "all" }, store.get("rfs-filter", {}));
 let shown = 40;
+/**
+ * A motor's one-line summary: diameter, impulse, average thrust, burn time, delays...
+ * @param {object} m motor
+ * @param {object} s its stats
+ * @returns {string}
+ */
 function motorMeta(m, s) {
   const bits = [
     `${Math.round(m.dia * 1000)} mm`,
@@ -848,7 +930,17 @@ function motorMeta(m, s) {
   if (m.delays) bits.push("delays " + m.delays);
   return bits.map(esc).join(" · ");
 }
-// sparky: "all", "only" (sparky motors only) or "none" (no sparky motors), from ThrustCurve's sparky flag
+/**
+ * The motors that pass the filters.
+ * @param {number|null} dia mm
+ * @param {string} sys motor system or "all"
+ * @param {string} q search text
+ * @param {string} [brand]
+ * @param {string} [sparky]
+ * @returns {object[]}
+ *
+ * sparky: "all", "only" (sparky motors only) or "none" (no sparky motors), from ThrustCurve's sparky flag
+ */
 function filterMotors(dia, sys, q, brand = F.brand, sparky = F.sparky) {
   const qq = q.trim().toLowerCase().replace(/\s+/g, " ");
   return allMotors().filter(
@@ -864,6 +956,9 @@ function filterMotors(dia, sys, q, brand = F.brand, sparky = F.sparky) {
           .includes(qq)),
   );
 }
+/**
+ * Draws the filter chips with the number of motors each would show.
+ */
 function renderFilters() {
   const brands = BUILTIN_BRANDS.slice().concat(
     [...new Set(USER_MOTORS.map((m) => m.brand))].filter((b) => !BRAND_SYS[b]).sort(),
@@ -965,13 +1060,22 @@ function renderFilters() {
   const fs = document.getElementById("fsearch");
   if (fs.value !== F.q) fs.value = F.q;
 }
+/**
+ * Keeps the filters on the device.
+ */
 function saveFilter() {
   store.set("rfs-filter", F);
 }
 let pickSlot = -1; // -1: choosing the main motor; otherwise the index of the extra motor being chosen
 /* ---------- motor tube size ---------- */
 const MOTOR_SIZES = [13, 18, 24, 29, 38, 54, 75, 98, 132, 152, 161]; // standard motor diameters, mm, up to the largest motors in the list
-// the motor size a mount takes: the largest standard motor that slides into its inside diameter
+/**
+ * The motor size a mount takes: the largest standard motor that slides into its inside diameter.
+ * @param {number} d inside diameter, m
+ * @returns {number|null} mm
+ *
+ * the motor size a mount takes: the largest standard motor that slides into its inside diameter
+ */
 function mountClass(d) {
   if (!(d > 0)) return null;
   const mm = d * 1000;
@@ -979,15 +1083,30 @@ function mountClass(d) {
   for (const s of MOTOR_SIZES) if (s <= mm + 0.6) c = s;
   return c;
 }
-// the mount size in use: the one chosen on the Rocket tab, or the one from the design file
+/**
+ * The mount size in use: chosen on the Rocket tab, or from the design file.
+ * @param {object} Dx design
+ * @param {boolean} booster
+ * @returns {{cls:number, src:string}|null} mm, and "chosen" or "file"
+ *
+ * the mount size in use: the one chosen on the Rocket tab, or the one from the design file
+ */
 function mountSize(Dx, booster) {
   const sel = booster ? Dx.bMountSel : Dx.mountSel;
   if (sel != null && sel !== "file" && +sel > 0) return { cls: +sel, src: "chosen" };
   const c = mountClass(booster ? Dx.bMountDia : Dx.mountDia);
   return c ? { cls: c, src: "file" } : null;
 }
-// a stand-in when a file's motor isn't in the list and the motor already selected doesn't fit the mount:
-// a motor of the mount's size, in the file motor's impulse class if there is one (else a middling one)
+/**
+ * A stand-in motor that fits the mount (see the note above).
+ * @param {object} Dx design
+ * @param {boolean} booster
+ * @param {object} [want] the file's motor
+ * @returns {object|null}
+ *
+ * a stand-in when a file's motor isn't in the list and the motor already selected doesn't fit the mount:
+ * a motor of the mount's size, in the file motor's impulse class if there is one (else a middling one)
+ */
 function fitStandIn(Dx, booster, want) {
   const cur = findMotor(booster ? boostId : motorId),
     f = motorFit(cur, Dx, booster);
@@ -1010,6 +1129,13 @@ function fitStandIn(Dx, booster, want) {
   }
   return list.slice().sort((a, b) => Math.abs(Math.log(I(a) / target)) - Math.abs(Math.log(I(b) / target)))[0];
 }
+/**
+ * How a motor fits the mount in use.
+ * @param {object} m motor
+ * @param {object} Dx design
+ * @param {boolean} booster
+ * @returns {{mount:number, motor:number, src:string, status:string}|null} status "ok", "big" or "small"
+ */
 function motorFit(m, Dx, booster) {
   const ms = mountSize(Dx, booster);
   if (!ms || !m) return null;
@@ -1018,7 +1144,14 @@ function motorFit(m, Dx, booster) {
   // within a millimetre counts as the same size (a 76 mm motor goes in a 75 mm mount)
   return { mount: cls, motor: md, src: ms.src, status: md > cls + 1 ? "big" : md < cls - 1 ? "small" : "ok" };
 }
-// a chosen mount bigger than the body it sits in
+/**
+ * A chosen mount bigger than the body it sits in.
+ * @param {object} Dx design
+ * @param {boolean} booster
+ * @returns {{cls:number, body:number}|null} mm
+ *
+ * a chosen mount bigger than the body it sits in
+ */
 function mountTooBig(Dx, booster) {
   const ms = mountSize(Dx, booster);
   if (!ms || ms.src !== "chosen") return null;
@@ -1026,6 +1159,9 @@ function mountTooBig(Dx, booster) {
   // the mount tube (about 4% plus 2 mm over the motor) has to fit inside the body tube (about 3 mm under its outside)
   return ms.cls * 1.04 + 2 > body - 3 ? { cls: ms.cls, body } : null;
 }
+/**
+ * Writes the notes beside the mount size fields.
+ */
 function renderMountNote() {
   // beside the field: a caution when the chosen mount is bigger than the one in the design file
   for (const [b, fid] of [
@@ -1071,6 +1207,11 @@ function renderMountNote() {
         : `Motor mount from the design file: ${ms.cls} mm. The Motor tab lists ${ms.cls} mm motors first; choose another size here to fly a different motor.`;
   }
 }
+/**
+ * The mount size choices: from the design file, or a standard size.
+ * @param {boolean} booster
+ * @returns {Array[]} [value, label]
+ */
 function mountOptions(booster) {
   const fd = mountClass(booster ? D.bMountDia : D.mountDia);
   return [
@@ -1081,10 +1222,20 @@ function mountOptions(booster) {
 // show motors that fit the mount first on the Motor tab
 // the first stage of a three-stage rocket, seen through the booster's field names (for its motor mount)
 const s1View = (Dx) => ({ ...Dx, ...Dx.s1, bMountSel: Dx.s1 && Dx.s1.mountSel != null ? Dx.s1.mountSel : "file" });
+/**
+ * Which stage the Motor tab is choosing for: tgtFirst (a three-stage rocket's first stage), tgtB (a booster
+ * mount), tgtD (the design, or the first stage's view of it).
+ */
 const tgtFirst = () => isThree(D) && motorTarget === "first",
   tgtB = () => tgtFirst() || (!!D.twoStage && motorTarget === "booster"),
   tgtD = () => (tgtFirst() ? s1View(D) : D);
+/**
+ * Names of the Motor tab's targets.
+ */
 const TGT_NAME = { first: "First stage", booster: "Booster", sustainer: "Sustainer" };
+/**
+ * Sets the diameter filter to the mount size of the stage being chosen for.
+ */
 function mountFilter() {
   const ms = mountSize(tgtD(), tgtB());
   if (!ms) return;
@@ -1092,6 +1243,9 @@ function mountFilter() {
   F.brand = "all";
   saveFilter();
 }
+/**
+ * Draws the Motor tab: the stage picker, the selected motors, the extra motors and the motor list.
+ */
 function renderMotors() {
   const two = !!D.twoStage,
     three = isThree(D);

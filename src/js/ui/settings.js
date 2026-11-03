@@ -1,8 +1,15 @@
+/**
+ * The settings menu (units, appearance, app colors, swipe, disclaimer and About), the Launch warnings (rail, motor fit,
+ * mount size), and opening a design file (loadDesignXml).
+ */
 /* ---------- settings menu (gear, top right): units, appearance, swipe, disclaimer and About ---------- */
 (function () {
   const btn = document.getElementById("gearbtn"),
     menu = document.getElementById("setmenu");
   if (!btn || !menu) return;
+  /**
+   * Opens or closes the settings menu.
+   */
   const open = (on) => {
     menu.hidden = !on;
     btn.setAttribute("aria-expanded", on);
@@ -25,7 +32,11 @@
   });
   document.getElementById("s-imp").onclick = () => setUnits("imp");
   document.getElementById("s-met").onclick = () => setUnits("met");
-  // appearance: follow the phone, or always light or dark
+  /**
+   * Follows the phone's light or dark setting, or always uses one.
+   *
+   * appearance: follow the phone, or always light or dark
+   */
   const applyTheme = (t) => {
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
     else document.documentElement.removeAttribute("data-theme");
@@ -50,7 +61,11 @@
   sw.onchange = () => {
     store.set("rfs-swipe", sw.checked);
   };
-  // App Color: the main colour and the accent colour, each a preset swatch or any colour from the picker
+  /**
+   * Redraws the canvases after a color change.
+   *
+   * App Color: the main colour and the accent colour, each a preset swatch or any colour from the picker
+   */
   const redraw = () => {
     try {
       renderResults();
@@ -61,7 +76,13 @@
       if (!document.getElementById("v-motor").hidden) renderMotors();
     } catch (_) {}
   };
+  /**
+   * Applies the saved main and accent colors.
+   */
   const colors = () => window.prColors(store.get("rfs-accent", null) || "", store.get("rfs-accent2", null) || "");
+  /**
+   * Saves and applies one app color (a preset swatch or any color).
+   */
   const setCol = (key, hex) => {
     store.set(key, hex || null);
     colors();
@@ -153,6 +174,9 @@
     open(false);
     document.getElementById("showabout").click();
   };
+  /**
+   * Shows the current settings in the menu.
+   */
   function sync() {
     for (const [key, attr, pick, def] of [
       ["rfs-accent", "main", pickM, "#D9501C"],
@@ -196,6 +220,9 @@ document.getElementById("resetbtn").onclick = () => {
 document.getElementById("resetno").onclick = () => {
   document.getElementById("resetconfirm").hidden = true;
 };
+/**
+ * The warning shown instead of a run when the rail is too short (almost always a units mix-up).
+ */
 function showRailWarn() {
   document.getElementById("railwarntxt").textContent =
     `The rail is only ${fmt(L.rail, "alt", units === "imp" ? 1 : 2)} ${uname("alt")} long. A launch rail shorter than ${units === "imp" ? "2.5 ft" : "0.76 m"} won't guide the rocket to a safe speed, so the flight wasn't simulated. Check the rail length on the Range tab.`;
@@ -205,6 +232,12 @@ function showRailWarn() {
 document.getElementById("railok").onclick = () => {
   document.getElementById("railwarn").hidden = true;
 };
+/**
+ * The warning shown instead of a run when a motor is too big for its mount.
+ * @param {object} m motor
+ * @param {object} fit from motorFit
+ * @param {string} [stage]
+ */
 function showFitWarn(m, fit, stage) {
   document.getElementById("fitwarntxt").textContent =
     `The ${m.cn || m.name} is a ${fit.motor} mm motor, too big for the ${fit.mount} mm ${stage ? (stage === "first" ? "first-stage" : stage) + " " : ""}motor mount ${fit.src === "chosen" ? "you chose" : "in your design"}, so the flight wasn't simulated. Choose a motor that fits on the Motor tab${fit.src === "file" ? " or pick a larger motor mount in the design tree on the Rocket tab" : ""}.`;
@@ -220,6 +253,12 @@ function showFitWarn(m, fit, stage) {
     window.scrollTo({ top: 0 });
   };
 }
+/**
+ * The warning shown when a chosen mount is bigger than its body.
+ * @param {{cls:number, body:number}} tb from mountTooBig
+ * @param {string} [stage]
+ * @param {boolean} booster
+ */
 function showMountWarn(tb, stage, booster) {
   document.getElementById("fitwarntxt").textContent =
     `A ${tb.cls} mm motor mount doesn't fit inside the ${fmt(booster ? D.bDiameter : D.diameter, "small")} ${uname("small")} ${stage ? stage + " " : ""}body tube, so the flight wasn't simulated. Choose a smaller motor mount in the design tree on the Rocket tab.`;
@@ -291,6 +330,9 @@ document.getElementById("resetyes").onclick = () => {
   if (typeof renderMotors === "function") renderMotors();
 };
 
+/**
+ * Escapes text for HTML.
+ */
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 document.getElementById("orkfile").addEventListener("change", async (e) => {
   const f = e.target.files[0];
@@ -304,7 +346,16 @@ document.getElementById("orkfile").addEventListener("change", async (e) => {
   }
   e.target.value = "";
 });
-// open a design from .ork / .rkt text: from a file, or from the rocket builder
+/**
+ * Opens a design from .ork or .rkt text: reads it, picks the motors, sets the design, conditions and builder
+ * parts, and reports what was opened.
+ * @param {string} xml
+ * @param {string} fileName
+ * @param {ArrayBuffer} [buf] the file as opened (kept for saving changes back into it)
+ * @param {{cfg:string}} [opts] cfg: a motor configuration chosen on the Motor tab, when reopening for it
+ *
+ * open a design from .ork / .rkt text: from a file, or from the rocket builder
+ */
 async function loadDesignXml(xml, fileName, buf, opts = {}) {
   const rep = document.getElementById("orkreport");
   ORK_CFG = opts.cfg || null; // a motor configuration chosen on the Motor tab, when reopening for it
@@ -322,6 +373,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
     const keptSite = siteKeep(); // your range settings stay when you open another rocket
     const mm = matchMotor(r.motor);
     let mnote = "";
+    /**
+     * Matches a stage's extra motors to the motor list.
+     */
     const addExtras = (list, key, label) => {
       const miss = [];
       D[key] = [];
@@ -421,6 +475,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       // Pocket Rocket's own files inside the .ork: from the opened file, or (reopening it for another motor configuration)
       // from the copy kept with the design
       const prevX = opts.cfg != null && !buf && SOURCE ? SOURCE.extras || [] : null;
+      /**
+       * Reads a file kept inside the .ork (ejection charges, fin edges) from the copy kept with the design.
+       */
       const side = async (nm) => {
         try {
           if (buf) {

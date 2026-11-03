@@ -1,5 +1,17 @@
+/**
+ * Compare motors: the rocket flown on every motor in the filtered list for the stage being chosen, as a sortable
+ * table with each motor's apogee, speeds, stability and RSO result. Also the Motor tab's cluster panel.
+ */
 /* ---------- compare motors: the rocket flown on every motor in the filtered list, for the stage being chosen ---------- */
+/**
+ * Comparison state: rows, the inputs they were run for (key), sort column and direction, running, stop
+ * requested, the row opened, and the target stage.
+ */
 const CMP = { rows: null, key: null, sort: "I", dir: 1, running: false, stop: false, open: null, tgt: null };
+/**
+ * A key of everything the comparison depends on (design, conditions, target, filters), to tell when it's stale.
+ * @returns {string}
+ */
 function cmpKey() {
   const t = motorTarget;
   return JSON.stringify([
@@ -12,6 +24,11 @@ function cmpKey() {
     units,
   ]);
 }
+/**
+ * Flies the rocket on one motor (for the stage being chosen, with the others as selected).
+ * @param {object} m motor
+ * @returns {object} the row: motor, class, impulse, apogee, speeds, best delay, flags, RSO problems (bad)...
+ */
 function cmpFly(m) {
   const t = tgtFirst() ? "first" : D.twoStage && motorTarget === "booster" ? "booster" : "sustainer";
   const ms = t === "sustainer" ? clusterOf(m, D.extraMotors, D.mainOff ? 0 : D.mainDelay) : flightMotor(),
@@ -67,6 +84,9 @@ function cmpFly(m) {
     rso: st.error ? 3 : bad.length ? 2 : warn.length ? 1 : 0,
   };
 }
+/**
+ * Runs the comparison for every motor in the filtered list that fits, a few at a time so the page stays responsive.
+ */
 async function cmpRun() {
   if (CMP.running) return;
   const items = filterMotors(F.dia, F.sys, F.q)
@@ -122,6 +142,9 @@ async function cmpRun() {
   msg.textContent = `${CMP.stop ? "Stopped after" : "Flew"} ${n} motor${n > 1 ? "s" : ""} in ${((performance.now() - t0) / 1000).toFixed(1)} s.`;
   cmpRender();
 }
+/**
+ * Draws the comparison table.
+ */
 function cmpRender() {
   const w = document.getElementById("cmpwrap"),
     note = document.getElementById("cmpnote");
@@ -172,6 +195,9 @@ function cmpRender() {
     ["off", `Off rail`],
     ["ttw", "Thrust/weight"],
   ];
+  /**
+   * A row's RSO result cell.
+   */
   const rsoCell = (r) =>
     r.err
       ? `<span class="ng">Fails</span>`
@@ -242,6 +268,9 @@ document.getElementById("cmpgo").onclick = cmpRun;
    errors stay open. Every way of writing it is caught here, including notes added to it afterwards. */
 {
   const box = document.getElementById("orkreport");
+  /**
+   * Folds or unfolds the message under the Rocket tab's buttons (see the note above).
+   */
   const fold = () => {
     for (const r of box.querySelectorAll(".report:not(.err)")) {
       let body = r.querySelector(":scope>.rpbody");
@@ -272,7 +301,12 @@ document.getElementById("cmpgo").onclick = cmpRun;
   };
   new MutationObserver(fold).observe(box, { childList: true, subtree: true });
 }
-// the section folds up; whether it's open is remembered
+/**
+ * Opens or folds the comparison section (remembered).
+ * @param {boolean} open
+ *
+ * the section folds up; whether it's open is remembered
+ */
 function cmpFold(open) {
   const t = document.getElementById("cmptog");
   t.setAttribute("aria-expanded", String(open));
@@ -281,6 +315,9 @@ function cmpFold(open) {
   store.set("rfs-cmpopen", open);
   cmpSum();
 }
+/**
+ * Writes the folded comparison's one-line summary.
+ */
 function cmpSum() {
   const el = document.getElementById("cmpsum");
   if (!el) return;
@@ -295,6 +332,12 @@ cmpFold(!!store.get("rfs-cmpopen", false));
 document.getElementById("cmpstop").onclick = () => {
   CMP.stop = true;
 };
+/**
+ * Draws the Motor tab's cluster panel: the main motor and each extra motor with its count and delay.
+ * @param {boolean} two the stage being chosen for is part of a staged rocket
+ * @param {object[]} xlist the stage's extra motors
+ * @param {object} mainM the main motor
+ */
 function renderCluster(two, xlist, mainM) {
   const sel = document.getElementById("selmotor"),
     box = document.getElementById("cluster");

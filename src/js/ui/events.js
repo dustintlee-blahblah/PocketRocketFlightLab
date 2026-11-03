@@ -1,4 +1,11 @@
+/**
+ * Tabs, page spacing for the launch bar, swiping between tabs, and the units switch.
+ */
 /* ---------- events ---------- */
+/**
+ * Shows one of the four tabs and draws what it needs.
+ * @param {string} name "flight", "rocket", "motor" or "results"
+ */
 function showTab(name) {
   ["flight", "rocket", "motor", "results"].forEach((n) => {
     document.getElementById("v-" + n).hidden = n !== name;
@@ -18,7 +25,11 @@ function showTab(name) {
 (function () {
   const rb = document.getElementById("runbar");
   if (!rb) return;
-  // measured from the top of the bar to the bottom of the screen, so anything below it (the phone's gesture bar) counts too
+  /**
+   * Sets the page's bottom space to the launch bar's real height.
+   *
+   * measured from the top of the bar to the bottom of the screen, so anything below it (the phone's gesture bar) counts too
+   */
   const set = () => {
     const r = rb.getBoundingClientRect();
     if (!r.height) return;
@@ -42,7 +53,11 @@ function showTab(name) {
     sy = 0,
     st = 0,
     ok = false;
-  // not while typing or dragging a slider, inside a table that scrolls sideways, or with a pop-up open
+  /**
+   * True where a swipe shouldn't change tabs (see the note above).
+   *
+   * not while typing or dragging a slider, inside a table that scrolls sideways, or with a pop-up open
+   */
   const blocked = (t) => {
     if (!t.closest) return false;
     if (t.closest("input[type=range],textarea,.legal,.splash")) return true;
@@ -51,6 +66,9 @@ function showTab(name) {
     if (sc && sc.scrollWidth > sc.clientWidth + 2) return true;
     return false;
   };
+  /**
+   * True while a pop-up is open.
+   */
   const popup = () =>
     [...document.querySelectorAll(".modal,.animmodal,.legal,.splash")].some(
       (m) => !m.hidden && m.isConnected && getComputedStyle(m).display !== "none",
@@ -99,6 +117,10 @@ function showTab(name) {
   );
 })();
 document.getElementById("mchange").onclick = () => showTab("motor");
+/**
+ * Switches between imperial and metric units and redraws.
+ * @param {string} u "imp" or "met"
+ */
 function setUnits(u) {
   units = u;
   store.set("rfs-units", u);

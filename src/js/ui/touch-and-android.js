@@ -1,6 +1,16 @@
+/**
+ * Touch screens: a field being typed in hides the launch bar until the keyboard closes. And the Android app's report
+ * of where a new design was saved (prSavedAs).
+ */
 // on touch screens, a field being typed in hides the launch bar until the keyboard closes
 {
+  /**
+   * True on a touch screen.
+   */
   const touch = () => window.matchMedia && matchMedia("(pointer:coarse)").matches;
+  /**
+   * True for a field that brings up the keyboard.
+   */
   const typed = (el) =>
     el &&
     (el.tagName === "TEXTAREA" ||
@@ -14,7 +24,11 @@
       if (!typed(document.activeElement)) document.documentElement.classList.remove("typing");
     }, 0),
   );
-  // the keyboard was put away while the field still has focus: finish the edit and bring the launch bar back
+  /**
+   * The keyboard was put away while the field still has focus: finish the edit and bring the launch bar back.
+   *
+   * the keyboard was put away while the field still has focus: finish the edit and bring the launch bar back
+   */
   const closed = () => {
     document.documentElement.classList.remove("typing");
     const a = document.activeElement;
