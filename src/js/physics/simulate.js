@@ -193,9 +193,12 @@ function motorModel(m) {
   const mass = (t) => m.totalMass - m.propMass * Math.min(1, impulse(t) / Itot);
   return { tb, Itot, thrust, mass, peak: Math.max(...m.F) };
 }
-/* fin flutter: Martin's flutter-speed formula (NACA TN 4197, 1958), as commonly applied to rocket fins:
-   Vf = a·√( G / ( 1.337·AR³·p·(λ + 1) / (2·(AR + 2)·(t/c)³) ) ), with G and p in the same units.
-   G is the fin material's shear modulus; the values below are approximate handbook figures, on the low side. */
+/* fin flutter: Martin's bending-torsion flutter criterion (NACA TN 4197, 1958, eq. 18), applied to one fin panel:
+   Vf = a·√( G / ( 2.674·AR³·p·(λ + 1) / (2·(AR + 2)·(t/c)³) ) ), with G and p in the same units, AR = span²/area,
+   λ = tip/root chord and t/c taken at the root (the thinnest ratio of a constant-thickness fin, so the lowest speed).
+   G is the fin material's in-plane shear modulus. Wood, paper and woven composites are not isotropic, so G is not
+   E/(2(1+ν)) for them: wood's is about 4–8% of its grain-direction E (USDA Wood Handbook, Table 4-1). The values below
+   are handbook figures, on the low side. */
 /**
  * Shear modulus of a fin set's material, for the flutter estimate.
  * @param {object} f fin set (mat: material name, rho: density)
