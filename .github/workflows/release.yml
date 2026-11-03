@@ -48,7 +48,7 @@ jobs:
           for f in "$APK" "$HTML" RELEASE_NOTES.md MAIN_COMMIT; do
             [ -s "$f" ] || { echo "::error::$f is missing from the release-files branch"; exit 1; }
           done
-          grep -q "APP_BUILD=\"${N}\"" "$HTML" || { echo "::error::$HTML isn't build $N"; exit 1; }
+          grep -Eq "APP_BUILD ?= ?\"${N}\"" "$HTML" || { echo "::error::$HTML isn't build $N"; exit 1; }
           if grep -q "BETA DEMO" "$HTML"; then echo "::error::$HTML is the beta demo copy"; exit 1; fi
           unzip -tq "$APK" > /dev/null || { echo "::error::$APK is damaged"; exit 1; }
           echo "Files for version $V, build $N look good."
