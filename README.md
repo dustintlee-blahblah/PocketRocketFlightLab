@@ -43,6 +43,7 @@ build.js                            joins src/ into the single page the app ship
 web/pocket-rocket-flight-lab.html   the built app: one HTML file (HTML, CSS and JavaScript)
 android/                            Android app: a WebView around the same page, built with Gradle
 tests/golden.js                     regression test: proves a change leaves every result the same
+tests/drag-benchmarks.js            the drag model against published NACA measurements
 tools/                              maintenance scripts (unused-code check, a one-off split record)
 LICENSE                             GNU GPL v3
 THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library and data
@@ -83,6 +84,16 @@ npm run lint           # ESLint, then tools/unused-globals.js (top-level names n
 ```
 
 Edit the files in `src/`, then build; don't edit `web/pocket-rocket-flight-lab.html` by hand.
+
+### Drag benchmarks
+
+`tests/drag-benchmarks.js` rebuilds published test models (NACA RM A53D02, free-flight drag of a finned body
+from Mach 0.6 to 4.6; NACA RM E50D28, the drag the RM-10 missile's swept fins add at Mach 1.5–2) and compares the
+app's drag model with the measurements at the tests' Mach and Reynolds numbers:
+
+```
+npm run test:drag
+```
 
 ### Regression test
 

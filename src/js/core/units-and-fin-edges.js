@@ -17,10 +17,16 @@ const IN = 0.0254,
    fins' 4.3%. Nothing changes below Mach 0.85. This is for sharp-edged sections (airfoil, beveled, double wedge), the
    kind measured: square and rounded edges have their own blunt-edge drag model above, which already rises through Mach 1,
    and adding this to them would count the same shocks twice.
-   Sweeping the leading edge back delays and weakens the rise. The Arcas fins are swept 30°; NASA TM X-653 (Ames, Mach
-   0.6–5.8) measured almost no added drag from thin sharp fins swept 70°, where an unswept rise would have added about 0.15.
-   So the Mach number is scaled by √(cos Λ / cos 30°) (Λ = leading-edge sweep), which leaves the Arcas calibration as it
-   was, moves the rise of a 60° fin to about Mach 1.35, and keeps a 70° fin out of it until well past Mach 1.5. */
+   Sweeping the leading edge back delays and weakens the rise. By simple sweep theory the shocks follow the Mach number
+   normal to the leading edge, M·cos Λ (Λ = leading-edge sweep), so the Mach number is scaled by r = cos Λ / cos 30°
+   (1 for the Arcas fins' 30°, and for anything swept less). The rise also weakens faster than the infinite swept wing's
+   cos³Λ, as low-aspect-ratio fins relieve the flow around their tips: it is scaled by r⁵, fitted to the RM-10 missile's
+   60°-swept, 10%-thick fins (NACA RM E50D28, Mach 1.49–1.98: the fins add 0.09–0.10 to the drag, about half of it skin
+   friction). That keeps the Arcas calibration as it was, and leaves almost nothing for fins swept 70° or more, as measured
+   on NASA TM X-653's 70° fins (Mach 0.6–5.8) and NACA RM A53D02's 72° fins (free flight, Mach 0.6–10, no rise between
+   Mach 1.3 and 3). The supersonic thin-airfoil term below gets the same r⁵ while the leading edge is subsonic
+   (M·cos Λ < 1) and its full value once it is supersonic. Between 30° and 60° the scaling is interpolated, not measured.
+   The tests/drag-benchmarks.js script checks these cases. */
 /**
  * Added transonic drag of a sharp-edged fin set, per unit fin planform area (see the notes above).
  * @param {number} M free-stream Mach number
@@ -29,12 +35,19 @@ const IN = 0.0254,
  * @returns {number} drag coefficient on fin planform area (0 below Mach 0.85)
  */
 function finTransonicCd(M, tc, cosL = 1) {
-  M *= Math.min(1, Math.sqrt(Math.max(cosL, 0) / 0.866));
+  const r = finSweepRatio(cosL);
+  M *= r;
   if (M <= 0.85 || !(tc > 0)) return 0;
   const g =
     M < 1.02 ? smooth01((M - 0.85) / 0.15) : 0.75 * Math.exp(-(M - 1.02) / 0.2) + 0.25 * Math.exp(-(M - 1.02) / 0.8);
-  return 9.36 * Math.pow(Math.min(tc, 0.12), 5 / 3) * g;
+  return 9.36 * Math.pow(Math.min(tc, 0.12), 5 / 3) * g * Math.pow(r, FIN_SWEEP_N);
 }
+/**
+ * FIN_SWEEP_N: the power of the sweep ratio that weakens the fins' transonic drag rise (see the notes above).
+ * finSweepRatio: cos Λ / cos 30°, at most 1.
+ */
+var FIN_SWEEP_N = 5;
+const finSweepRatio = (cosL) => Math.min(1, Math.max(cosL, 0) / 0.866);
 /**
  * Fin edge profiles offered in the forms: [value, label].
  */

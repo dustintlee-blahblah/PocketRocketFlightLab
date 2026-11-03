@@ -864,8 +864,10 @@ function cdParts(A, v, atm, nozzleArea = 0) {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
       base += 0.5 * cb * edge;
     } else {
-      const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4);
-      pressure += (((trF * finWaveK(f.edge) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
+      const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
+        kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),
+        subLE = kS + (1 - kS) * smooth01((Mn - 1) / 0.1); // a subsonic leading edge weakens it (see finTransonicCd)
+      pressure += (((trF * subLE * finWaveK(f.edge) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
     }
     if (!finBlunt(f.edge)) pressure += (finTransonicCd(M, f.tc, f.cosL) * f.n * f.area) / S;
   }

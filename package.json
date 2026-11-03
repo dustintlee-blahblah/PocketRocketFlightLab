@@ -11,7 +11,8 @@
     "format:check": "prettier --check \"src/**/*.{js,css}\" build.js tests/*.js tools/*.js",
     "lint": "eslint src/js build.js tests tools && node tools/unused-globals.js",
     "test": "node build.js && node tests/golden.js check golden-snapshot.json",
-    "lint:globals": "node tools/unused-globals.js"
+    "lint:globals": "node tools/unused-globals.js",
+    "test:drag": "node build.js && node tests/drag-benchmarks.js"
   },
   "devDependencies": {
     "@babel/parser": "7.26.2",
