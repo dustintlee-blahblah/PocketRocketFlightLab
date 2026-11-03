@@ -558,34 +558,6 @@ function drawChart() {
       .join("");
 }
 /**
- * Draws the main fin set in the quick form.
- */
-function drawFins() {
-  drawFinsInto("finview", "finnote", {
-    n: D.finCount,
-    a: D.finRoot,
-    b: D.finTip,
-    s: D.finSpan,
-    sw: D.finSweep,
-    t: D.finThick,
-    aft: D.finAft,
-    edge: D.finEdge,
-    pts: D.finPts,
-  });
-  if (D.twoStage)
-    drawFinsInto("bfinview", "bfinnote", {
-      n: D.bFinCount,
-      a: D.bFinRoot,
-      b: D.bFinTip,
-      s: D.bFinSpan,
-      sw: D.bFinSweep,
-      t: D.bFinThick,
-      aft: D.bFinAft,
-      edge: D.bFinEdge,
-    });
-  if (typeof drawExtraFins === "function") drawExtraFins();
-}
-/**
  * Draws a fin set to scale, with its dimensions, and writes its note.
  * @param {string} cvId canvas id
  * @param {string} noteId note element id
@@ -759,131 +731,10 @@ function drawFinsInto(cvId, noteId, FS) {
         : "");
 }
 /**
- * Draws the rocket's side view (the builder's, when it's open) and the fins.
+ * Draws the rocket's side view (the builder's side view and stability readout).
  */
 function drawProfile() {
-  if (typeof bldDraw === "function" && BLD) {
-    bldDraw();
-    return;
-  }
-  drawFins();
-  const cv = document.getElementById("profile");
-  if (!cv.getBoundingClientRect().width) return;
-  const { c, W, H } = setupCanvas(cv);
-  c.clearRect(0, 0, W, H);
-  const two = !!D.twoStage,
-    m = flightMotor(),
-    mb = two ? flightBoost() : null,
-    SU = stability(D, m),
-    S = two ? stackStability(D, m, mb) : SU;
-  const DD = two ? fullStack(D) : D,
-    AE = aero(DD),
-    Lr = DD.length,
-    r = AE.R;
-  document.getElementById("stabtxt").textContent = two
-    ? `Stack ${S.marginL.toFixed(2)} cal at liftoff · sustainer ${SU.marginL.toFixed(2)} cal alone`
-    : `Margin ${S.marginL.toFixed(2)} cal at liftoff, ${S.marginB.toFixed(2)} at burnout`;
-  const span = r + Math.max(0, ...AE.fins.map((f) => f.s));
-  let xLo = 0,
-    xHi = Lr;
-  for (const f of AE.fins) {
-    try {
-      const ol = finOutline(f);
-      xLo = Math.min(xLo, f.xLead + Math.min(...ol.map((p) => p[0])));
-      xHi = Math.max(xHi, f.xLead + Math.max(...ol.map((p) => p[0])));
-    } catch (e) {}
-  }
-  const sc = Math.min((W - 20) / (xHi - xLo + 0.02), (H - 40) / (2 * span));
-  const ox = 10 - xLo * sc,
-    oy = H / 2 - 6;
-  const X = (x) => ox + x * sc,
-    Y = (y) => oy - y * sc;
-  c.lineWidth = 1.5;
-  c.strokeStyle = css("--ink");
-  c.fillStyle = css("--field");
-  // body outline
-  const pts = [];
-  for (const sgm of AE.segs) {
-    const k = sgm.kind === "tube" ? 1 : 30;
-    for (let i = 0; i <= k; i++) {
-      const x = (i / k) * sgm.len;
-      pts.push([sgm.x + x, segR(sgm, x)]);
-    }
-  }
-  c.beginPath();
-  c.moveTo(X(pts[0][0]), Y(pts[0][1]));
-  pts.forEach(([x, y]) => c.lineTo(X(x), Y(y)));
-  for (let i = pts.length - 1; i >= 0; i--) c.lineTo(X(pts[i][0]), Y(-pts[i][1]));
-  c.closePath();
-  c.fill();
-  c.stroke();
-  // fins (top and bottom silhouettes)
-  for (const f of AE.fins) {
-    const xb = f.xLead,
-      rf = radiusAt(AE, xb + f.a / 2);
-    const ol = finOutline(f);
-    [1, -1].forEach((sg) => {
-      c.beginPath();
-      ol.forEach(([px, py], i) => {
-        const xx = X(xb + px),
-          yy = Y(sg * (rf + py));
-        i ? c.lineTo(xx, yy) : c.moveTo(xx, yy);
-      });
-      c.closePath();
-      c.fill();
-      c.stroke();
-    });
-  }
-  // motors
-  c.setLineDash([4, 3]);
-  c.strokeStyle = css("--muted");
-  c.strokeRect(X((D.mountAft ?? D.length) + D.motorOverhang - m.len), Y(m.dia / 2), m.len * sc, m.dia * sc);
-  if (two) {
-    c.strokeRect(X(Lr + (D.bOverhang || 0) - mb.len), Y(mb.dia / 2), mb.len * sc, mb.dia * sc);
-    c.strokeStyle = css("--gulf-ink");
-    c.beginPath();
-    c.moveTo(X(D.length), Y(r) - 10);
-    c.lineTo(X(D.length), Y(-r) + 10);
-    c.stroke();
-  }
-  c.setLineDash([]);
-  /**
-   * Draws the CG or CP marker.
-   *
-   * CG / CP markers
-   */
-  const mark = (x, color, lab, above) => {
-    const cx = X(x),
-      cy = oy;
-    c.fillStyle = color;
-    c.strokeStyle = color;
-    c.beginPath();
-    c.arc(cx, cy, 6, 0, 7);
-    c.lineWidth = 2;
-    c.stroke();
-    if (lab === "CG") {
-      c.beginPath();
-      c.moveTo(cx, cy);
-      c.arc(cx, cy, 6, -Math.PI / 2, 0);
-      c.lineTo(cx, cy);
-      c.arc(cx, cy, 6, Math.PI / 2, Math.PI);
-      c.fill();
-    } else {
-      c.beginPath();
-      c.arc(cx, cy, 2.5, 0, 7);
-      c.fill();
-    }
-    c.font = "600 11px " + css("--f-body").split(",")[0].replace(/"/g, "") + ", sans-serif";
-    c.textAlign = "center";
-    c.textBaseline = above ? "bottom" : "top";
-    c.fillText(
-      `${lab} ${fmt(x, "len", 1)} ${uname("len")}`,
-      Math.min(Math.max(cx, 40), W - 40),
-      above ? cy - r * sc - 6 : cy + r * sc + 6,
-    );
-  };
-  mark(S.cgL, css("--cg"), "CG", true);
-  mark(S.cp, css("--bad"), "CP", false);
+  if (typeof bldDraw === "function") bldDraw();
 }
 /**
  * Draws a motor's thrust curve, small.
@@ -1160,64 +1011,22 @@ function mountTooBig(Dx, booster) {
   return ms.cls * 1.04 + 2 > body - 3 ? { cls: ms.cls, body } : null;
 }
 /**
- * Writes the notes beside the mount size fields.
+ * Writes the motor mount size note under Design notes (and warns when the mount is bigger than the body).
  */
 function renderMountNote() {
-  // beside the field: a caution when the chosen mount is bigger than the one in the design file
-  for (const [b, fid] of [
-    [false, "f-mountSel"],
-    [true, "f-bMountSel"],
-  ]) {
-    const f = document.getElementById(fid);
-    if (!f) continue;
-    const wrap = f.closest(".fld");
-    let w = wrap.nextElementSibling;
-    if (!(w && w.classList.contains("mountwarn"))) {
-      w = null;
-    }
-    const ms = mountSize(D, b),
-      fc = mountClass(b ? D.bMountDia : D.mountDia),
-      big = ms && ms.src === "chosen" && fc && ms.cls > fc;
-    if (!big) {
-      if (w) w.remove();
-      continue;
-    }
-    if (!w) {
-      w = document.createElement("div");
-      w.className = "mountwarn";
-      wrap.after(w);
-    }
-    w.textContent = `⚠ Larger than the ${fc} mm motor mount in the original ${SOURCE && SOURCE.format === "rkt" ? ".rkt" : ".ork"} file. Exercise caution when modifying a rocket for a larger motor.`;
-  }
-  for (const [b, id] of [
-    [false, "mountsizenote"],
-    [true, "bmountsizenote"],
-  ]) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    const ms = mountSize(D, b),
-      tb = mountTooBig(D, b);
-    el.hidden = !ms;
-    if (!ms) continue;
+  const el = document.getElementById("mountsizenote");
+  if (!el) return;
+  const ms = mountSize(D, false),
+    tb = mountTooBig(D, false);
+  el.hidden = !ms;
+  if (ms) {
     el.style.color = tb ? "var(--bad)" : "";
     el.textContent = tb
-      ? `⚠ A ${tb.cls} mm motor mount doesn't fit inside this ${fmt(b ? D.bDiameter : D.diameter, "small")} ${uname("small")} body tube. Choose a smaller size; LAUNCH is blocked until you do.`
+      ? `⚠ A ${tb.cls} mm motor mount doesn't fit inside this ${fmt(D.diameter, "small")} ${uname("small")} body tube. Choose a smaller mount in the design tree; LAUNCH is blocked until you do.`
       : ms.src === "chosen"
-        ? `Motor mount set to ${ms.cls} mm${mountClass(b ? D.bMountDia : D.mountDia) ? ` (the design file has ${mountClass(b ? D.bMountDia : D.mountDia)} mm)` : ""}. ${ms.cls} mm motors fly without a fit warning, and the Motor tab lists them first.`
-        : `Motor mount from the design file: ${ms.cls} mm. The Motor tab lists ${ms.cls} mm motors first; choose another size here to fly a different motor.`;
+        ? `Motor mount set to ${ms.cls} mm${mountClass(D.mountDia) ? ` (the design file has ${mountClass(D.mountDia)} mm)` : ""}. ${ms.cls} mm motors fly without a fit warning, and the Motor tab lists them first.`
+        : `Motor mount from the design file: ${ms.cls} mm. The Motor tab lists ${ms.cls} mm motors first; change the motor mount in the design tree to fly a different size.`;
   }
-}
-/**
- * The mount size choices: from the design file, or a standard size.
- * @param {boolean} booster
- * @returns {Array[]} [value, label]
- */
-function mountOptions(booster) {
-  const fd = mountClass(booster ? D.bMountDia : D.mountDia);
-  return [
-    ["file", fd ? `From design file (${fd} mm)` : "Not set (no design file)"],
-    ...MOTOR_SIZES.map((v) => [String(v), `${v} mm${fd === v ? " (same as file)" : ""}`]),
-  ];
 }
 // show motors that fit the mount first on the Motor tab
 // the first stage of a three-stage rocket, seen through the booster's field names (for its motor mount)

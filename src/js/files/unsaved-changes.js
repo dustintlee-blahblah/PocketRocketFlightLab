@@ -126,7 +126,6 @@ function setActive(on) {
   if (on)
     requestAnimationFrame(() => {
       drawProfile();
-      drawFins();
     });
 }
 document.getElementById("handdesign").onclick = bldNewDesign;

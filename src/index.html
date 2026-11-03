@@ -326,37 +326,6 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
     <div class="panel"><div class="foldhead"><h2 style="margin:0">Drag table<button class="ib" type="button" data-title="Drag table" data-info="Calculated with a component drag buildup from published aerodynamic methods and NASA flight data (Hoerner, Schlichting, Fleeman, NASA TR R-100) for your launch-site air at zero angle of attack. A Cd override replaces them at every speed." aria-label="About Drag">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="dragbody" aria-expanded="false" aria-controls="dragbody">Show</button></div><div id="dragbody" hidden><div class="dtab" id="dragtable" style="margin-top:10px"></div></div>
       </div>
     <div class="panel"><h2>Design notes</h2><p class="note" id="mountsizenote" hidden></p><p class="note" id="recnote"></p><p class="note" id="inote"></p></div>
-
-    <div id="legacyform" hidden aria-hidden="true">
-      <canvas id="profile"></canvas><div class="legend"><span id="stabtxt"></span></div>
-    <div class="panel"><h2>Stages</h2><div class="grid" id="g-stages"></div>
-      <p class="note" id="stagenote"></p></div>
-    <div class="panel"><h2 id="h-body">Airframe &amp; nose</h2><div class="grid" id="g-body"></div><p class="note" id="segnote" hidden></p></div>
-    <div class="panel"><h2 id="h-fins">Fins</h2><div class="grid" id="g-fins"></div>
-      <canvas id="finview" aria-label="Fin shape drawn to scale"></canvas>
-      <p class="note" id="finnote"></p>
-      <div id="xfins" class="xfins"></div>
-      <button class="btn ghost addfin" id="addfin" type="button">+ Add a fin set</button></div>
-    <div class="panel"><h2 id="h-mass">Mass &amp; balance</h2><div class="grid" id="g-mass"></div>
-      <p class="note" id="massnote">Enter the flight-ready weight and balance point without the motor. Measure CG from the nose tip.</p>
-      </div>
-    <div class="panel"><h2>Drag</h2><div class="grid" id="g-drag"></div>
-      
-      </div>
-    <div class="panel"><h2 id="h-rec">Recovery</h2><div class="grid" id="g-rec"></div>
-      </div>
-    <div class="vstack" id="boosterpanels" hidden>
-      <div class="panel"><h2>Booster airframe &amp; weight</h2><div class="grid" id="g-booster"></div><p class="note" id="bmountsizenote" hidden></p>
-        <p class="note">The booster sits below the sustainer. Weigh it ready to fly without its motor, and measure its balance point from its front end.</p></div>
-      <div class="panel"><h2>Booster fins</h2><div class="grid" id="g-bfins"></div>
-        <canvas id="bfinview" aria-label="Booster fin shape drawn to scale"></canvas>
-        <p class="note" id="bfinnote"></p>
-        <div id="bxfins" class="xfins"></div>
-        <button class="btn ghost addfin" id="baddfin" type="button">+ Add a fin set</button></div>
-      <div class="panel"><h2>Booster recovery</h2><div class="grid" id="g-brec"></div>
-        <p class="note" id="brecnote"></p></div>
-    </div>
-    </div>
   </section>
 
   <!-- MOTORS -->
@@ -595,7 +564,6 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 @@include js/ui/forms.js
 @@include js/ui/field-help.js
 @@include js/recovery/ejection-charge.js
-@@include js/design/extra-fins.js
 @@include js/ui/state.js
 @@include js/physics/atmosphere.js
 @@include js/physics/geometry.js

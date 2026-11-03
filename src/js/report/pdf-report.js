@@ -89,6 +89,27 @@ function pdfSafe(s) {
     .replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u00B7]/g, "");
 }
 /**
+ * Surface finish names for the report: [roughness, label].
+ */
+const PDF_FINISHES = [
+  ["0.5e-6", "Smooth molded composite (0.5 µm)"],
+  ["1.5e-6", "Polished metal (1.5 µm)"],
+  ["6e-6", "Smooth paint, sanded (6 µm)"],
+  ["10e-6", "Matte or camouflage paint (10 µm)"],
+  ["30e-6", "Hobby spray paint (30 µm, est.)"],
+  ["100e-6", "Bare paper or phenolic tube (100 µm, est.)"],
+  ["300e-6", "Raw fiberglass weave or balsa (300 µm, est.)"],
+];
+/**
+ * Rail guide names for the report: [preset, label].
+ */
+const PDF_RAIL_GUIDES = [
+  ["none", "None"],
+  ["1010", "1010 buttons ×2"],
+  ["1515", "1515 buttons ×2"],
+  ["custom", "From design file"],
+];
+/**
  * Builds the flight report for the last run.
  * @returns {jsPDF} the document
  */
@@ -229,14 +250,14 @@ function buildReportPdf() {
   const A = aero(RD),
     ns = noseSpec(RD);
   const noseLabel = (NOSE_PRESETS.find((p) => p[0] === String(RD.noseShape)) || [0, `${ns.shape} ${ns.param}`])[1];
-  const finishLabel = (FIELDS["g-drag"][0][5].find((o) => Math.abs(+o[0] - RD.finish) < 1e-12) || [
+  const finishLabel = (PDF_FINISHES.find((o) => Math.abs(+o[0] - RD.finish) < 1e-12) || [
     0,
     (RD.finish * 1e6).toFixed(0) + " um",
   ])[1];
   const railLabel =
     RD.railPreset === "custom"
       ? "From design file"
-      : (FIELDS["g-drag"][1][5].find((o) => o[0] === RD.railPreset) || [0, RD.railPreset])[1];
+      : (PDF_RAIL_GUIDES.find((o) => o[0] === RD.railPreset) || [0, RD.railPreset])[1];
   const left = [
     [st.staged ? "Sustainer length" : "Total length", `${fmt(RD.length, "len")} ${uname("len")}`],
     ["Body diameter", `${fmt(2 * A.R, "small")} ${uname("small")}`],

@@ -264,60 +264,32 @@ document.addEventListener(
   });
 })();
 /**
- * Draws every quick-form group from FIELDS with the current values and units, and the notes that go with them.
+ * Draws every form group in FIELDS with the current values and units, and the notes that go with them.
  */
 function renderForms() {
   if (typeof mtSummary === "function") setTimeout(mtSummary, 0);
   try {
     bpRender();
   } catch (e) {}
-  renderSegNote();
   renderInertiaNote();
-  renderStageUI();
   renderTitle();
   renderRecNote();
   for (const [gid, list] of Object.entries(FIELDS)) {
     const g = document.getElementById(gid);
     g.innerHTML = "";
-    for (const [k, label, dim, obj, decOverride, opts] of list) {
-      const O = obj === "L" ? L : D,
+    for (const [k, lab, dim, , decOverride, opts] of list) {
+      const O = L,
         id = "f-" + k;
       const wrap = document.createElement("div");
       wrap.className = "fld";
-      const single = D.recovery === "single";
-      const off =
-        (single && ["drogueDia", "drogueCd", "mainAlt"].includes(k)) ||
-        (L.railMode !== "fixed" && k === "railDir") ||
-        (!D.twoStage && k === "stageDelay") ||
-        (D.bRecovery !== "chute" && ["bChuteDia", "bChuteCd"].includes(k));
-      const lab =
-        k === "deployDelay"
-          ? {
-              apogee: "Delay after apogee (0 = at apogee)",
-              motor: "Motor ejection delay after burnout",
-              timer: "Time after liftoff",
-            }[D.deployMode || "apogee"]
-          : single && k === "mainDia"
-            ? "Parachute diameter"
-            : single && k === "mainCd"
-              ? "Parachute Cd"
-              : (D.twoStage && SUS_LABELS[k]) || label;
+      // the rail's lean direction only applies to a rail set to lean a fixed way
+      const off = L.railMode !== "fixed" && k === "railDir";
       if (off) wrap.classList.add("off");
       let html = `<div class="lh"><label for="${id}">${lab}</label>${infoBtn(lab, fieldInfo(k))}</div><div class="in">`;
       if (dim === "sel") {
-        let o2 = opts;
-        if (k === "railPreset" && !((D.buttons || []).length || (D.lugs || []).length))
-          o2 = opts.filter((o) => o[0] !== "custom");
-        if (k === "finish" && !opts.some((o) => Math.abs(+o[0] - D.finish) < 1e-12))
-          o2 = [...opts, [String(D.finish), `From file (${+(D.finish * 1e6).toFixed(1)} µm)`]];
-        if (k === "mountSel" || k === "bMountSel") o2 = mountOptions(k === "bMountSel");
-        if (k === "noseShape" && !opts.some((o) => o[0] === String(D.noseShape))) {
-          const ns = noseSpec(D);
-          o2 = [...opts, [String(D.noseShape), `From file (${ns.shape}, ${ns.param})`]];
-        }
         html +=
           `<select id="${id}">` +
-          o2.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("") +
+          opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("") +
           `</select>`;
       } else {
         // pressure and humidity left unset show blank (standard air, dry) rather than a 0 that reads like a measurement
@@ -359,35 +331,8 @@ function renderForms() {
             siteRender();
             return;
           }
-          O[k] =
-            k === "twoStage" || k === "clusterFail"
-              ? el.value === "true"
-              : isNaN(+el.value) || k === "railPreset"
-                ? el.value
-                : +el.value;
-          if (D.segments && BODY_KEYS.includes(k)) {
-            D.segments = null;
-            renderSegNote();
-          }
-          if (k === "twoStage") {
-            if (D.twoStage && !D.bSegments) D.bDiameter = D.diameter;
-            motorTarget = "sustainer";
-          }
-          if (k === "recovery" || k === "twoStage" || k === "bRecovery" || k === "railMode" || k === "deployMode")
-            renderForms();
-          if (k === "finish") {
-            D.finFinish = null;
-            if (D.segments)
-              D.segments.forEach((sg) => {
-                delete sg.rs;
-              });
-          }
-          if (k === "mountSel" || k === "bMountSel") {
-            motorTarget = k === "bMountSel" ? "booster" : "sustainer";
-            mountFilter();
-            renderMotors();
-            renderMountNote();
-          }
+          O[k] = k === "clusterFail" ? el.value === "true" : isNaN(+el.value) ? el.value : +el.value;
+          if (k === "railMode") renderForms();
           changed();
         });
       } else {
@@ -409,33 +354,12 @@ function renderForms() {
             siteRender();
             return;
           }
-          if (["finRoot", "finTip", "finSpan", "finSweep"].includes(k)) D.finPts = null;
-          if (["bFinRoot", "bFinTip", "bFinSpan", "bFinSweep"].includes(k)) D.bFinPts = null;
-          if (D.segments && BODY_KEYS.includes(k)) {
-            D.segments = null;
-            D.mountAft = null;
-            renderSegNote();
-          }
-          if (D.bSegments && B_BODY_KEYS.includes(k)) {
-            D.bSegments = null;
-            D.bMountAft = null;
-          }
-          if (k === "dryInertia") {
-            D.inertiaMass = D.dryMass;
-            D.inertiaSource = "manual";
-          }
-          if (k === "bDryInertia") {
-            D.bInertiaMass = D.bDryMass;
-            D.bInertiaSource = "manual";
-          }
           changed();
         });
-        if (k === "tailDia" && !(D.tailLen > 0)) wrap.style.opacity = ".55";
       }
       el.dataset.shown = el.value;
     }
   }
-  renderExtraFins();
   renderSavePanel();
   renderMountNote();
   if (typeof renderAloft === "function") renderAloft();

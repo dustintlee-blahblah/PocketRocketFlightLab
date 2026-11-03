@@ -183,20 +183,14 @@ function markFresh() {
  */
 function readFields() {
   for (const list of Object.values(FIELDS))
-    for (const [k, , dim, obj] of list) {
-      if (obj !== "L") continue; // the rocket itself is edited in the parts builder
+    for (const [k, , dim] of list) {
       const O = L,
         el = document.getElementById("f-" + k);
       if (!el || el.disabled) continue;
       // a field left as shown keeps its exact value (the box only shows a rounded copy)
       if (el.dataset.shown != null && el.value === el.dataset.shown) continue;
       if (dim === "sel") {
-        O[k] =
-          k === "twoStage" || k === "clusterFail"
-            ? el.value === "true"
-            : isNaN(+el.value) || k === "railPreset"
-              ? el.value
-              : +el.value;
+        O[k] = k === "clusterFail" ? el.value === "true" : isNaN(+el.value) ? el.value : +el.value;
         continue;
       }
       const v = parseFloat(el.value);

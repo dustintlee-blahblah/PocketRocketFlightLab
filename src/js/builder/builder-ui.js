@@ -1695,11 +1695,6 @@ function bldDraw() {
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
       `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
       `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff, <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>`;
-    const stx = document.getElementById("stabtxt");
-    if (stx)
-      stx.textContent = two
-        ? `Stack ${S.marginL.toFixed(2)} cal at liftoff · sustainer ${SU.marginL.toFixed(2)} cal alone`
-        : `Margin ${S.marginL.toFixed(2)} cal at liftoff, ${S.marginB.toFixed(2)} at burnout`;
   } catch (e) {
     st.innerHTML = `<span class="bad">${esc(e.message || String(e))}</span>`;
   }

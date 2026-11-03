@@ -267,11 +267,6 @@ function showMountWarn(tb, stage, booster) {
   fx.onclick = () => {
     document.getElementById("fitwarn").hidden = true;
     showTab("rocket");
-    const f = document.getElementById(booster ? "f-bMountSel" : "f-mountSel");
-    if (f) {
-      f.scrollIntoView({ block: "center" });
-      f.focus();
-    }
   };
   document.getElementById("fitwarn").hidden = false;
   fx.focus();
