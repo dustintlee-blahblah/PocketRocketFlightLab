@@ -1,0 +1,342 @@
+/* ---------- rocket builder: parts model, .ork import and export ----------
+   A design is a list of stages; each stage is a front-to-back list of body parts (nose cone, body tubes,
+   transitions), and each body part holds the parts attached to it or packed inside it. Lengths in metres.
+   Parts opened from a file keep their file id, so saving can carry over what the builder doesn't edit. */
+const BLD_BULK = [
+  ["Cardboard", 680],
+  ["Kraft phenolic", 950],
+  ["Blue Tube", 1300],
+  ["Fiberglass", 1850],
+  ["Carbon fiber", 1780],
+  ["Polystyrene (PS)", 1050],
+  ["ABS plastic", 1020],
+  ["PLA (3D printed)", 1250],
+  ["Polycarbonate", 1200],
+  ["Balsa", 170],
+  ["Basswood", 500],
+  ["Birch plywood", 630],
+  ["G10 fiberglass", 1800],
+  ["Aluminum", 2700],
+];
+const BLD_SURF = [
+  ["Ripstop nylon", 0.067],
+  ["Mylar", 0.021],
+  ["Polyethylene (thin)", 0.01],
+];
+const BLD_LINE = [
+  ["Kevlar 1/4 in", 0.0105],
+  ["Tubular nylon 1/2 in", 0.013],
+  ["Tubular nylon 1 in", 0.03],
+  ["Elastic 1/4 in", 0.0013],
+];
+const BLD_BODY = ["nose", "tube", "transition"];
+const BLD_NAMES = {
+  nose: "Nose cone",
+  tube: "Body tube",
+  transition: "Transition",
+  fins: "Fin set",
+  mount: "Motor mount",
+  inner: "Inner tube",
+  ring: "Centering ring",
+  bulkhead: "Bulkhead",
+  coupler: "Coupler",
+  lug: "Launch lug",
+  buttons: "Rail buttons",
+  chute: "Parachute",
+  streamer: "Streamer",
+  cord: "Shock cord",
+  mass: "Mass",
+  raw: "Part from file",
+};
+const BLD_FINISH = [
+  ["mirror", "Mirror (0 µm)"],
+  ["finishpolished", "Finish-polished (0.5 µm)"],
+  ["polished", "Polished (2 µm)"],
+  ["optimum", "Optimum paint (5 µm)"],
+  ["smooth", "Smooth paint (20 µm)"],
+  ["normal", "Regular paint (60 µm)"],
+  ["unfinished", "Unfinished (150 µm)"],
+  ["roughunfinished", "Rough unfinished (250 µm)"],
+  ["rough", "Rough (500 µm)"],
+];
+// OpenRocket requires every part id to be a UUID
+const bldId = () =>
+  globalThis.crypto && crypto.randomUUID
+    ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
+// a new part with sensible sizes for the body it goes on (R = body radius)
+function bldNew(type, R = 0.0333) {
+  const id = bldId(),
+    name = BLD_NAMES[type];
+  switch (type) {
+    case "nose":
+      return {
+        id,
+        type,
+        name,
+        shape: "ogive",
+        param: 1,
+        len: R * 6,
+        dia: 2 * R,
+        wall: 0.002,
+        filled: false,
+        shLen: 2 * R,
+        mat: "Polystyrene (PS)",
+        known: 0,
+        kids: [],
+      };
+    case "tube":
+      return { id, type, name, len: R * 16, od: 2 * R, wall: 0.0015, mat: "Blue Tube", known: 0, mm: null, kids: [] };
+    case "transition":
+      return {
+        id,
+        type,
+        name,
+        shape: "conical",
+        param: 0,
+        len: R * 2,
+        dia1: 2 * R,
+        dia2: 1.5 * R,
+        wall: 0.002,
+        mat: "Polystyrene (PS)",
+        known: 0,
+        kids: [],
+      };
+    case "fins":
+      return {
+        id,
+        type,
+        name,
+        shape: "trapezoid",
+        cant: 0,
+        n: 3,
+        root: R * 4.5,
+        tip: R * 1.8,
+        span: R * 2.3,
+        sweep: R * 2.7,
+        t: 0.003,
+        edge: "rounded",
+        pts: "",
+        ref: "bottom",
+        pos: 0,
+        mat: "Birch plywood",
+        known: 0,
+      };
+    case "mount":
+      return {
+        id,
+        type,
+        name,
+        od: 0.031,
+        wall: 0.0008,
+        len: 0.2,
+        ref: "bottom",
+        pos: 0,
+        overhang: 0.006,
+        mat: "Kraft phenolic",
+        motor: null,
+        delay: null,
+        cluster: "single",
+        known: 0,
+      };
+    case "inner":
+      return {
+        id,
+        type,
+        name,
+        od: 0.031,
+        wall: 0.0008,
+        len: 0.1,
+        ref: "top",
+        pos: 0.05,
+        mat: "Kraft phenolic",
+        known: 0,
+      };
+    case "ring":
+      return { id, type, name, od: 0, id_: 0, len: 0.006, ref: "bottom", pos: 0.01, mat: "Birch plywood", known: 0 };
+    case "bulkhead":
+      return { id, type, name, od: 0, len: 0.006, ref: "top", pos: 0.02, mat: "Birch plywood", known: 0 };
+    case "coupler":
+      return {
+        id,
+        type,
+        name,
+        od: 0,
+        wall: 0.0015,
+        len: R * 3,
+        ref: "bottom",
+        pos: -R * 1.5,
+        mat: "Kraft phenolic",
+        known: 0,
+      };
+    case "lug":
+      return {
+        id,
+        type,
+        name,
+        od: 0.0076,
+        id_: 0.0064,
+        len: 0.05,
+        ref: "bottom",
+        pos: 0.05,
+        mat: "Cardboard",
+        known: 0,
+      };
+    case "buttons":
+      return { id, type, name, size: "1010", n: 2, sep: 0.3, ref: "bottom", pos: 0.03, known: 0 };
+    case "chute":
+      return {
+        id,
+        type,
+        name,
+        dia: Math.max(0.3, Math.round((R * 28) / 0.0254 / 6) * 6 * 0.0254),
+        cd: 0.8,
+        deploy: "apogee",
+        alt: 150,
+        delay: 0,
+        lines: 6,
+        lineLen: 0,
+        ref: "top",
+        pos: 0.05,
+        packLen: 0.08,
+        mat: "Ripstop nylon",
+        known: 0,
+      };
+    case "streamer":
+      return {
+        id,
+        type,
+        name,
+        len: 1,
+        width: 0.08,
+        deploy: "apogee",
+        alt: 150,
+        delay: 0,
+        ref: "top",
+        pos: 0.05,
+        packLen: 0.05,
+        mat: "Mylar",
+        known: 0,
+      };
+    case "cord":
+      return { id, type, name, cordLen: R * 90, ref: "top", pos: 0.04, packLen: 0.04, mat: "Kevlar 1/4 in", known: 0 };
+    case "mass":
+      return { id, type, name: "Mass", mass: 0.03, len: 0.03, ref: "top", pos: 0.02, known: 0 };
+  }
+}
+function bldSettings() {
+  return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
+}
+// a complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one chute
+function bldDefault() {
+  const R = 0.0333,
+    nose = bldNew("nose", R),
+    tube = bldNew("tube", R);
+  tube.len = 0.75;
+  nose.len = 0.2;
+  const mount = bldNew("mount", R);
+  const r1 = { ...bldNew("ring", R), name: "Aft centering ring", ref: "bottom", pos: 0.003 },
+    r2 = { ...bldNew("ring", R), name: "Forward centering ring", ref: "bottom", pos: 0.185 };
+  tube.kids = [bldNew("fins", R), mount, r1, r2, { ...bldNew("buttons", R) }, bldNew("cord", R), bldNew("chute", R)];
+  return {
+    name: "My rocket",
+    src: "new",
+    cfg: bldId(),
+    settings: { ...bldSettings(), finish: "normal" },
+    ref: null,
+    stages: [{ id: bldId(), name: "Sustainer", sepDelay: 0, ignDelay: 0, parts: [nose, tube] }],
+  };
+}
+const bldMat = (list, name) => {
+  const m = list.find((x) => x[0] === name) || list[0];
+  return m;
+};
+const bldBodyR = (p) => (p.type === "tube" ? p.od / 2 : p.type === "nose" ? p.dia / 2 : Math.min(p.dia1, p.dia2) / 2);
+// where everything sits, front to back
+function bldLayout(model) {
+  const out = [];
+  let x = 0;
+  model.stages.forEach((st, si) => {
+    st.parts.forEach((p, pi) => {
+      let r1,
+        r2,
+        len = p.len;
+      if (p.type === "nose") {
+        r1 = 0;
+        r2 = p.dia / 2;
+      } else if (p.type === "tube") {
+        r1 = r2 = p.od / 2;
+      } else {
+        r1 = p.dia1 / 2;
+        r2 = p.dia2 / 2;
+      }
+      const body = {
+        p,
+        si,
+        pi,
+        x,
+        len,
+        r1,
+        r2,
+        ri: Math.max((p.type === "tube" ? p.od / 2 : Math.min(r1, r2)) - (p.wall || 0), 0),
+      };
+      out.push(body);
+      body.kids = (p.kids || []).map((k) => {
+        const kl = bldLen(k),
+          kx = k.ref === "top" ? x + k.pos : x + len - kl - k.pos;
+        return { k, x: kx, len: kl };
+      });
+      x += len;
+    });
+  });
+  return { bodies: out, length: x, maxR: Math.max(0.001, ...out.map((b) => Math.max(b.r1, b.r2))) };
+}
+function bldLen(k) {
+  switch (k.type) {
+    case "fins":
+      return k.shape === "freeform" ? bldPts(k).root : k.root;
+    case "chute":
+    case "streamer":
+    case "cord":
+      return k.packLen;
+    case "buttons":
+      return (k.n - 1) * k.sep + 0.01;
+    case "raw":
+      return k.len || 0;
+    default:
+      return k.len || 0;
+  }
+}
+// free-form fin outline from "x,y" lines (metres); the root runs along y = 0
+function bldPts(k) {
+  const pts = String(k.pts || "")
+    .split(/[\n;]+/)
+    .map((l) =>
+      l
+        .split(/[ ,\t]+/)
+        .filter(Boolean)
+        .map(Number),
+    )
+    .filter((a) => a.length >= 2 && isFinite(a[0]) && isFinite(a[1]))
+    .map((a) => [a[0], a[1]]);
+  if (pts.length < 3) return { pts: [], root: 0 };
+  const xs = pts.map((p) => p[0]);
+  return { pts, root: Math.max(...xs) - Math.min(...xs) };
+}
+// the motor mount's inside size, rounded to the motor size it takes
+function bldMountMM(k) {
+  return Math.round((k.od - 2 * k.wall) * 1000);
+}
+const BLD_BUTTONS = {
+  1010: { od: 0.0102, id: 0.0064, h: 0.0097, fl: 0.0021, bs: 0.0021, label: "1010 (small)" },
+  1515: { od: 0.0157, id: 0.0081, h: 0.0127, fl: 0.0025, bs: 0.0025, label: "1515 (large)" },
+};
+// the motor tube's outside radius in a body part: the ring's hole size
+function bldMountR(b) {
+  const m = (b.p.kids || []).find((k) => k.type === "mount" || k.type === "inner");
+  return m ? m.od / 2 : Math.max(b.ri * 0.5, 0.005);
+}
+// every motor mount in a stage (inner tubes with a motor, or a body tube flown as its own mount)
+function bldMounts(st) {
+  return st.parts.flatMap((p) => [...(p.mm ? [p.mm] : []), ...(p.kids || []).filter((k) => k.type === "mount")]);
+}

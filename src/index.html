@@ -1,0 +1,641 @@
+<!--
+  Pocket Rocket Flight Lab
+  Copyright (C) 2026 Dustin Lee
+
+  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
+  Public License as published by the Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
+
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+  for more details.
+
+  You should have received a copy of the GNU General Public License along with this program. If not, see
+  <https://www.gnu.org/licenses/>.
+
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<title>Pocket Rocket Flight Lab</title>
+<meta name="author" content="Dustin Lee">
+<meta name="copyright" content="© 2026 Dustin Lee. Free software under the GNU GPL, version 3 or later.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+@@include styles.css
+</style>
+<script>/* the app colours picked in Settings, set before anything is drawn: the main colour (orange by default) and the accent colour (light blue) */
+(function(){
+  const hx=h=>/^#[0-9a-f]{6}$/i.test(h||"")?[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]:null;
+  const lin=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}, lum=c=>0.2126*lin(c[0])+0.7152*lin(c[1])+0.0722*lin(c[2]);
+  const mix=(c,to,t)=>c.map((v,i)=>Math.round(v+(to[i]-v)*t)), rgb=c=>`rgb(${c.join(",")})`, rgba=(c,a)=>`rgba(${c.join(",")},${a})`;
+  const isDark=()=>{const r=document.documentElement;return r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&!!window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);};
+  window.prColors=function(main,acc){
+    const root=document.documentElement.style, dark=isDark(), W=[255,255,255], K=[0,0,0];
+    const m=hx(main);
+    if(m){const c=dark?mix(m,W,0.18):m;root.setProperty("--accent",rgb(c));root.setProperty("--accent-ink",lum(c)>0.4?"#141414":"#FFFFFF");root.setProperty("--splash-accent",rgb(mix(m,W,0.12)));}
+    else["--accent","--accent-ink","--splash-accent"].forEach(v=>root.removeProperty(v));
+    window.PR_ACCENT=m?{hex:main,rgb:m}:null;
+    const a=hx(acc);
+    if(a){// the accent itself for bars and lines; a pale wash for highlights; a deeper (or, on dark, lighter) shade readable as text
+      const ink=lum(a)>0.18?(dark?mix(a,W,0.25):mix(a,K,0.55)):(dark?mix(a,W,0.45):a);
+      root.setProperty("--gulf",rgb(dark?mix(a,K,0.08):a));root.setProperty("--gulf-soft",dark?rgb(mix(a,[23,32,41],0.78)):rgb(mix(a,W,0.75)));root.setProperty("--gulf-ink",rgb(ink));
+      root.setProperty("--splash-gulf",rgb(a));root.setProperty("--splash-gulf-a",rgba(a,0.18));root.setProperty("--splash-gulf-g",rgba(a,0.07));}
+    else["--gulf","--gulf-soft","--gulf-ink","--splash-gulf","--splash-gulf-a","--splash-gulf-g"].forEach(v=>root.removeProperty(v));
+    window.PR_GULF=a?{hex:acc,rgb:a}:null;};
+  try{window.prColors(JSON.parse(localStorage.getItem("rfs-accent")||"null"),JSON.parse(localStorage.getItem("rfs-accent2")||"null"));}catch(e){}
+})();
+</script>
+<script>/* start with no rocket loaded, unless this is a reload within the same session */
+try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.classList.add("nodesign");}catch(e){document.documentElement.classList.add("nodesign");}</script>
+
+<div class="splash" id="splash" role="dialog" aria-label="Pocket Rocket Flight Lab, by Dustin Lee">
+  <div class="sp-grid" aria-hidden="true"></div>
+  <div class="sp-core">
+    <img class="sp-logo" alt="" src="data:image/png;base64,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">
+    <h2 class="sp-name">Pocket <span>Rocket</span><br>Flight Lab</h2>
+    <div class="sp-tag">Advanced rocket simulation</div>
+  </div>
+  <div class="sp-foot">
+    <div class="sp-dev">Developed by Dustin Lee</div>
+    <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">248</span></div>
+    <div class="sp-bar" aria-hidden="true"><i></i></div>
+  </div>
+</div>
+<script>/* the splash shows once each time the app opens, for 4 s (a tap skips it) */
+(function(){const el=document.getElementById("splash");let seen=false;try{seen=sessionStorage.getItem("rfs-splash")==="1";sessionStorage.setItem("rfs-splash","1");}catch(e){}
+  if(seen){el.remove();return;}
+  const done=()=>{if(!el.isConnected)return;el.classList.add("gone");setTimeout(()=>el.remove(),500);};
+  setTimeout(done,4000);el.addEventListener("click",done);})();</script>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Pocket <span>Rocket</span> Flight&nbsp;Lab</h1>
+      <div class="sub" id="rname">by Dustin Lee <span class="ver" title="App version and build"><span class="vnum">v1.0</span> · build <span class="bnum"></span></span></div>
+    </div>
+    <button class="gear" id="gearbtn" type="button" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="setmenu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M19.69 10.20 L22.28 10.45 L22.28 13.55 L19.69 13.80 L18.71 16.17 L20.37 18.17 L18.17 20.37 L16.17 18.71 L13.80 19.69 L13.55 22.28 L10.45 22.28 L10.20 19.69 L7.83 18.71 L5.83 20.37 L3.63 18.17 L5.29 16.17 L4.31 13.80 L1.72 13.55 L1.72 10.45 L4.31 10.20 L5.29 7.83 L3.63 5.83 L5.83 3.63 L7.83 5.29 L10.20 4.31 L10.45 1.72 L13.55 1.72 L13.80 4.31 L16.17 5.29 L18.17 3.63 L20.37 5.83 L18.71 7.83 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z"/></svg></button>
+    <div class="setmenu" id="setmenu" role="dialog" aria-label="Settings" hidden>
+      <h3>Settings</h3>
+      <button type="button" class="setrow setitem" id="s-profbtn" aria-expanded="false" aria-controls="s-prof"><span>Profile</span><span class="setdots"><span class="profsum" id="s-profsum"></span><b aria-hidden="true">›</b></span></button>
+      <div class="setsub" id="s-prof" hidden>
+        <label class="setfld"><span>Name</span><input type="text" id="p-name" maxlength="60" autocomplete="name"></label>
+        <label class="setfld"><span>Rocketry club</span><input type="text" id="p-club" maxlength="80" autocomplete="off"></label>
+        <div class="setpair"><label class="setfld"><span>NAR number</span><input type="text" id="p-nar" maxlength="12" inputmode="numeric" autocomplete="off"></label>
+        <label class="setfld"><span>Tripoli number</span><input type="text" id="p-tra" maxlength="12" inputmode="numeric" autocomplete="off"></label></div>
+        <label class="setfld"><span>Certification level</span><select id="p-cert"><option value="">Not set</option><option value="none">None (model rockets)</option><option value="L1">Level 1 (H–I)</option><option value="L2">Level 2 (J–L)</option><option value="L3">Level 3 (M–O)</option></select></label>
+        <p class="setnote">Used by the RSO Checklist to check each motor against your certification, and printed on flight reports. Kept on this device only.</p>
+      </div>
+      <div class="setrow"><span>Units</span><div class="seg2" role="group" aria-label="Units"><button type="button" id="s-imp" aria-pressed="true">ft · lb</button><button type="button" id="s-met" aria-pressed="false">m · kg</button></div></div>
+      <div class="setrow"><span>Appearance</span><div class="seg2" role="group" aria-label="Appearance"><button type="button" data-theme-set="auto">Auto</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button></div></div>
+      <button type="button" class="setrow setitem" id="s-colorbtn" aria-expanded="false" aria-controls="s-colors"><span>App Color</span><span class="setdots"><i style="background:var(--accent)"></i><i style="background:var(--gulf)"></i><b aria-hidden="true">›</b></span></button>
+      <div class="setsub" id="s-colors" hidden>
+        <div class="setcol"><span>Main color</span><div class="swatches" role="group" aria-label="Main color">
+          <button type="button" class="sw" data-main="" style="--c:#D9501C" aria-label="Orange (default)"></button>
+          <button type="button" class="sw" data-main="#C53030" style="--c:#C53030" aria-label="Red"></button>
+          <button type="button" class="sw" data-main="#B7791F" style="--c:#B7791F" aria-label="Gold"></button>
+          <button type="button" class="sw" data-main="#2F855A" style="--c:#2F855A" aria-label="Green"></button>
+          <button type="button" class="sw" data-main="#0F7C86" style="--c:#0F7C86" aria-label="Teal"></button>
+          <button type="button" class="sw" data-main="#2B6CB0" style="--c:#2B6CB0" aria-label="Blue"></button>
+          <button type="button" class="sw" data-main="#6B46C1" style="--c:#6B46C1" aria-label="Purple"></button>
+          <button type="button" class="sw" data-main="#B83280" style="--c:#B83280" aria-label="Pink"></button>
+          <label class="sw swcustom" aria-label="Pick any color" title="Pick any color"><input type="color" id="s-main"></label>
+        </div></div>
+        <div class="setcol"><span>Accent color</span><div class="swatches" role="group" aria-label="Accent color">
+          <button type="button" class="sw" data-acc="" style="--c:#8FCBEB" aria-label="Light blue (default)"></button>
+          <button type="button" class="sw" data-acc="#9AE6B4" style="--c:#9AE6B4" aria-label="Mint"></button>
+          <button type="button" class="sw" data-acc="#F6E05E" style="--c:#F6E05E" aria-label="Lemon"></button>
+          <button type="button" class="sw" data-acc="#FBD38D" style="--c:#FBD38D" aria-label="Peach"></button>
+          <button type="button" class="sw" data-acc="#FEB2B2" style="--c:#FEB2B2" aria-label="Rose"></button>
+          <button type="button" class="sw" data-acc="#D6BCFA" style="--c:#D6BCFA" aria-label="Lavender"></button>
+          <button type="button" class="sw" data-acc="#CBD5E0" style="--c:#CBD5E0" aria-label="Silver"></button>
+          <button type="button" class="sw" data-acc="#2D3748" style="--c:#2D3748" aria-label="Charcoal"></button>
+          <label class="sw swcustom" aria-label="Pick any color" title="Pick any color"><input type="color" id="s-acc"></label>
+        </div></div>
+        <button type="button" class="linkbtn setreset" id="s-colreset">Reset to the default colors</button>
+      </div>
+      <label class="setrow setchk"><span>Swipe left or right to change tabs</span><input type="checkbox" id="s-swipe"></label>
+      <button type="button" class="setrow setitem supitem" id="s-supbtn" aria-expanded="false" aria-controls="s-sup"><span><span class="supheart" aria-hidden="true">♥</span> Support the app</span><span class="setdots"><span class="supdon">Donate</span><b aria-hidden="true">›</b></span></button>
+      <div class="setsub" id="s-sup" hidden>
+        <p class="setnote" style="font-size:.86rem;color:var(--ink)">Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its development.</p>
+        <div class="donbtns"><button type="button" class="venmobtn" data-venmo>Donate with Venmo</button><button type="button" class="venmobtn ppbtn" data-paypal>Donate with PayPal</button></div>
+        <p class="setnote">Venmo (@PocketRocketFlightLab) works in the US only; PayPal works in most countries. Thank you!</p>
+      </div>
+      <div class="setlinks"><button type="button" class="linkbtn" id="s-legal">Safety and liability disclaimer</button><button type="button" class="linkbtn" id="s-about">About and licenses</button></div>
+    </div>
+  </header>
+  <div class="livery" aria-hidden="true"></div>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="t-rocket" aria-selected="true">Rocket</button>
+    <button role="tab" id="t-motor" aria-selected="false">Motor</button>
+    <button role="tab" id="t-flight" aria-selected="false">Range</button>
+    <button role="tab" id="t-results" aria-selected="false">Results</button>
+  </nav>
+
+  <!-- RESULTS -->
+  <section class="view" id="v-results" hidden>
+    <div class="panel">
+      <p class="eyebrow">Predicted apogee, above ground</p>
+      <div class="hero">
+        <div class="apogee" id="apogee">—</div>
+        <div class="motorchip"><span class="sub">Motor</span><b id="mchip">—</b><button id="mchange">Change</button></div>
+      </div>
+      <p class="aporange" id="aporange" hidden></p>
+      <div id="flightempty"><p class="note" id="flightemptytxt">No results yet. Set up the rocket, motor and conditions, then tap Launch.</p><button class="btn" id="emptylaunch" type="button" hidden>Launch now</button></div>
+      <div class="stats" id="stats"></div>
+      <div class="flags" id="flags"></div>
+      <div class="ref" id="orkref" hidden></div>
+    </div>
+
+    <div class="panel" id="rsopanel" hidden>
+      <h2>RSO Checklist<button class="ib" type="button" data-title="RSO Checklist" data-info="The checks a Range Safety Officer looks at before letting a rocket fly, worked out from this simulation: stability, speed off the rail, thrust-to-weight, the safety cone, deployment timing, landing speed, speed of sound, altimeter lockout, wind and motor fit.&#10;&#10;Green passes the usual guideline, amber is worth a second look, red needs fixing. These are estimates: confirm stability with a real swing or balance test and follow your range's rules and the RSO's call." aria-label="About RSO Checklist">i</button></h2>
+      <button class="rsotog" id="rsotog" type="button" aria-expanded="false" aria-controls="rsolist"><span class="rsosum" id="rsosum"></span><span class="rsomore" id="rsomore">Show checks</span></button>
+      <div class="rsolist" id="rsolist" hidden></div>
+    </div>
+
+    <div class="panel" id="stagepanel" hidden>
+      <h2>Staging</h2>
+      <ol class="stl" id="stagetl" aria-label="Flight sequence"></ol>
+      <div class="seg" id="stageseg" role="group" aria-label="Show the figures for"></div>
+      <div class="stats" id="stagestats"></div>
+    </div>
+
+    <div class="panel" id="animpanel" hidden>
+      <h2>Flight Animation</h2>
+      <div class="animrow"><button class="btn animbtn" id="animbtn" type="button">▶ Watch the flight</button><svg class="animico" viewBox="0 0 64 51" width="88" height="70" aria-hidden="true"><line x1="2" y1="47" x2="62" y2="47" stroke="var(--line)" stroke-width="2" stroke-linecap="round"/><path d="M8 46 Q31 -20 56 46" fill="none" stroke="var(--gulf)" stroke-width="2" stroke-dasharray="3 3.5" stroke-linecap="round"/><g transform="translate(32 13)"><path d="M-8 0 Q-8 -3 -5 -3 L4 -3 Q9 -1.5 11 0 Q9 1.5 4 3 L-5 3 Q-8 3 -8 0Z" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M-5 -3 L-9 -7 L-8 -3 M-5 3 L-9 7 L-8 3" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"/></g><path d="M8 47 l-3.5 -6 l7 0 z" fill="var(--accent)"/></svg></div>
+    </div>
+
+    <div class="panel" id="chartpanel" hidden>
+      <h2>Flight Performance</h2>
+      <div class="seg" id="series" role="group" aria-label="Chart series"></div>
+      <canvas id="chart" aria-label="Flight profile chart"></canvas>
+      <div class="legend" id="chartlegend"></div>
+    </div>
+
+    <div class="panel" id="mcpanel" hidden>
+      <div class="foldhead"><h2 style="margin:0">Landing dispersion<button class="ib" type="button" data-title="Landing dispersion" data-info="Flies the rocket many times with the inputs varied the way they vary in real life (a Monte Carlo analysis), to show the spread of apogees and where the rocket is likely to land. It runs automatically after each Launch; change how many flights and how much each input varies at the bottom of the L.pad tab." aria-label="About Landing dispersion">i</button></h2><button class="rsomore foldbtn" id="mctog" type="button" aria-expanded="false" aria-controls="mcbody">Show results</button></div>
+      <div class="row mcprog" id="mcprog" hidden><span class="note" id="mcmsg" aria-live="polite" style="margin:0"></span><button class="btn ghost" id="mccancel" type="button">Cancel</button></div>
+      <div id="mcbody" hidden><div id="mcout" hidden>
+        <div class="stats" id="mcstats" style="margin-top:12px"></div>
+        <p class="note" id="mcnote"></p>
+      </div></div>
+    </div>
+
+    <div class="panel" id="windpanel" hidden>
+      <button class="rsotog wtog" id="windtog" type="button" aria-expanded="false" aria-controls="windbody"><h2 style="margin:0">Drift by wind speed</h2><span class="rsomore" id="windmore">Show table</span></button>
+      <div id="windbody" hidden>
+        <div class="dtab" id="windtable"></div>
+        <p class="note" id="windnote"></p>
+      </div>
+    </div>
+    <div class="panel" id="flpanel" hidden>
+      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Import the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works or Apogee Components altimeter (exported as CSV or text) to fill in the apogee and top speed and to show the real curve on the chart. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
+      <div id="flcal" class="flcal"></div>
+      <div id="flprompt" class="flprompt" hidden></div>
+      <div id="fllist"></div>
+      <div class="row flbtns"><button class="btn" id="fladd" type="button">+ Log a flight</button><label class="file btn ghost" for="flaltfile">Import altimeter file<input type="file" id="flaltfile"></label></div>
+      <div class="row flbtns"><button class="btn ghost" id="flallbtn" type="button">All flights</button><button class="btn ghost" id="flexp" type="button">Export backup</button><button class="btn ghost" id="flcsv" type="button">Export CSV</button><label class="file btn ghost" for="flimp">Import backup<input type="file" id="flimp" accept=".json,application/json,text/plain"></label></div>
+    </div>
+
+
+
+    <div class="supline" id="supline" hidden><span>Enjoying Pocket Rocket Flight Lab? You can support it with a donation.</span><button type="button" class="supx" id="supx" aria-label="Don’t show this again">×</button><div class="donbtns"><button type="button" class="venmobtn small" data-venmo>Venmo</button><button type="button" class="venmobtn small ppbtn" data-paypal>PayPal</button></div></div>
+    <div class="panel exportp" id="exportwrap" hidden>
+      <div class="row" style="justify-content:space-between">
+        <div style="min-width:0;flex:1"><h2 style="margin:0">Flight report</h2><p class="note" style="margin:2px 0 0">A PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.</p></div>
+        <button class="btn" id="exportbtn">Export PDF report</button>
+      </div>
+      <p class="note" id="exportprof" style="margin:6px 0 0" hidden>Your name, club and certification won’t be on the report: this copy of the app doesn’t have your profile yet. Each copy (the Android app, each web browser) keeps its own settings. <button type="button" class="linkbtn" id="exportprofbtn">Add them in Settings → Profile</button></p>
+      <p class="note" id="exportmsg" aria-live="polite"></p>
+      <div class="row simsaverow" id="simsaverow" hidden><div style="min-width:0;flex:1"><h2 style="margin:0">Save this Flight to the .ork file</h2><p class="note" style="margin:2px 0 0" id="simsavenote">Adds this run to the file’s simulations, so OpenRocket or RockSim shows its results next to their own.</p></div>
+        <button class="btn ghost" id="simsave" type="button">Save this run</button></div>
+    </div>
+  </section>
+
+  <!-- FLIGHT -->
+  <section class="view" id="v-flight" hidden>
+    <div class="panel" id="sitepanel">
+      <h2>Launch site<button class="ib" type="button" data-title="Launch site" data-info="Save the settings that belong to a field under the field's name, then choose it from Saved sites next time. A site keeps everything in this section (coordinates, field elevation, waiver ceiling, recovery area and the rest of the Range settings) plus the rail length, angle and lean and the safety cone from Launch pad.\n\nChoosing a site doesn't change today's weather, and opening another rocket keeps the chosen site.">i</button></h2>
+      <div class="sitegrid" style="margin-bottom:12px">
+        <div class="fld"><label for="sitesel">Saved sites</label><div class="in"><select id="sitesel"></select></div></div>
+        <button class="btn ghost" id="sitemanage" type="button" aria-expanded="false" aria-controls="sitemgr" hidden>Manage</button>
+      </div>
+      <div class="sitemgr" id="sitemgr" hidden></div>
+      <div class="fld"><label for="sitecoord">Latitude, longitude</label><div class="in"><input id="sitecoord" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="40.218224, -112.246072"></div></div>
+      <p class="note" id="sitecoordmsg" aria-live="polite" style="margin:4px 0 4px">Paste both from a map app, separated by a comma. North and east are positive.</p>
+      <div class="row" style="margin:2px 0 6px"><button class="btn ghost" id="sitedir" type="button">Get directions</button></div>
+      <p class="subh">Range</p>
+      <div class="grid" id="g-range"></div>
+      <div class="sitegrid" style="margin-top:8px">
+        <div class="fld"><label for="sitename">Type a field name and Save Changes to create a new launch site</label><div class="in"><input id="sitename" type="text" maxlength="40" placeholder="Field name, e.g. Bonneville" autocomplete="off"></div></div>
+        <button class="btn ghost" id="sitesave" type="button" hidden>Save Changes</button>
+      </div>
+      <p class="note" id="sitemsg" aria-live="polite" style="margin:6px 0 0"></p>
+    </div>
+    <div class="panel">
+      <h2>Launch pad</h2>
+      <div class="grid" id="g-launch"></div>
+    </div>
+    <div class="panel">
+      <h2>Ambient conditions</h2>
+      <div class="grid" id="g-ambient"></div>
+      <div class="wx" id="wxbox">
+        <div class="bldh" style="margin-top:0">Weather forecast for this site</div>
+        <p class="note" id="wxsite" style="margin:2px 0 8px"></p>
+        <div class="fld"><label for="wxwhen">Launch time (the site’s local time)</label><div class="in"><input type="datetime-local" id="wxwhen" step="3600"></div></div>
+        <div class="row" style="gap:8px;margin-top:8px"><button class="btn" id="wxgo" type="button">Get forecast</button></div>
+        <p class="note" id="wxmsg" aria-live="polite"></p>
+        <p class="note wxsrc">Fills in every field above (temperature, pressure, humidity, dew point, wind, its height and direction, gustiness, cloud base elevation, low, mid and high cloud cover, visibility and chance of precipitation) and the Winds aloft table from ground level to about 100,000 ft. Forecasts from NOAA’s GFS model through <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Needs an internet connection; nothing else leaves the app.</p>
+      </div>
+    </div>
+    <div class="panel" id="stagelockpanel">
+      <h2>Sustainer ignition lockouts<button class="ib" type="button" data-title="Sustainer ignition lockouts" data-info="Staging altimeters can refuse to light the sustainer if the rocket is too low or tilted too far, so a rocket that weathercocks badly doesn&#x27;t fire its upper stage sideways. These apply to two-stage rockets only." aria-label="About Sustainer ignition lockouts">i</button></h2>
+      <div class="grid" id="g-stagelock"></div>
+    </div>
+    <div class="panel" id="aloftpanel">
+      <h2>Winds aloft<button class="ib" type="button" data-title="Winds aloft" data-info="Wind speed and the direction it blows from, at heights above the pad. Above the lowest level these replace the surface wind’s growth with height; between levels the wind is blended, and above the top level it stays the same. Leave the list empty to use the surface wind alone. Get forecast, under Ambient conditions, fills this table from the weather forecast for your site and launch time (it needs the site’s latitude and longitude and an internet connection), or enter the levels by hand. Winds aloft matter most for high flights: the jet stream at 30,000–40,000 ft is often 50–150 mph." aria-label="About Winds aloft">i</button></h2>
+      <div id="aloftlist" class="aloft"></div>
+      <div class="row"><button class="btn ghost" id="aloftadd" type="button">+ Add a level</button><button class="btn ghost" id="aloftclear" type="button">Clear</button></div>
+      <p class="note" id="aloftmsg" aria-live="polite"></p>
+      <p class="note" id="taloftnote" hidden></p>
+    </div>
+    <div class="panel" id="mcsetpanel">
+      <h2>Landing dispersion settings<button class="ib" type="button" data-title="Landing dispersion settings" data-info="Flies the rocket many times with the inputs varied the way they vary in real life (a Monte Carlo analysis), to show the spread of apogees and where the rocket is likely to land. It runs automatically each time you tap Launch, and the results and the landing bullseye show on the Results tab. The amounts below are one standard deviation." aria-label="About Landing dispersion settings">i</button></h2>
+      <div class="grid" id="g-mc"></div>
+    </div>
+  </section>
+
+  <!-- ROCKET -->
+  <section class="view" id="v-rocket">
+    <div class="panel welcome" id="welcome">
+      <h2>Get started</h2>
+      <p class="note">Predict how high your rocket will fly, where it will land, and whether it's ready for the pad. Choose how to start:</p>
+      <div class="wgrid">
+        <div class="wcard"><b>Open a design file</b><span>A rocket you've already designed in OpenRocket (.ork) or RockSim (.rkt). Its parts, motor and settings come with it.</span><label class="btn" for="orkfile">Open .ork / .rkt</label></div>
+        <div class="wcard"><b>Build your own</b><span>Start from a basic rocket (nose cone, body tube, fins, motor mount and parachute), then change any part.</span><button class="btn ghost" id="handdesign" type="button">Build a rocket</button></div>
+        <div class="wcard wex"><div class="exrow"><b>Example rockets</b><button class="rsomore foldbtn" type="button" data-fold="exbody" aria-expanded="false" aria-controls="exbody">Show</button></div><span>Real designs to learn with, from a small model rocket to dual-deploy high power. Open one, look around, and change anything.</span><div id="exbody" hidden><div class="rlist" id="exlist"></div></div></div>
+        <div class="wcard wrecent" id="recentwrap" hidden><b>Recent files</b><span>Open a design you’ve worked on before.</span><div class="rlist" id="recentlist"></div></div>
+      </div>
+    </div>
+    <div class="panel" id="rhead">
+      <div class="row" style="justify-content:space-between">
+        <div style="min-width:0"><h2 style="margin:0" id="rtitle">Rocket</h2><p class="note" id="rfile" style="margin:2px 0 0"></p></div>
+        <div class="row">
+          <label class="file btn ghost" for="orkfile">Open .ork / .rkt<input type="file" id="orkfile" accept=".ork,.ORK,.rkt,.RKT,application/zip,application/octet-stream,application/xml,text/xml"></label>
+          <button class="btn" id="savefile" type="button" hidden>Save changes</button>
+          <button class="btn ghost" id="savecopy" type="button">Save a copy</button>
+          <button class="btn ghost" id="resetbtn">Reset Changes</button>
+          <button class="btn ghost" id="recentbtn" type="button" aria-expanded="false" aria-controls="recentdrop" hidden>Open Recent</button>
+          <button class="btn ghost" id="newdesign" type="button">Open New Design</button>
+        </div>
+      </div>
+      <div class="recent" id="recentdrop" hidden><div class="rlist" id="recentlist2"></div><p class="exhead">Example rockets</p><div class="rlist" id="exlist2"></div></div>
+      <p class="note" id="rktnote" hidden>Opened from a RockSim file. Changes are saved as an OpenRocket (.ork) file; the original .rkt isn’t changed.</p>
+      <div id="savemsg" aria-live="polite"></div>
+      <div id="orkreport"></div>
+    </div>
+    <div class="bldview"><canvas id="bldcv" aria-label="Side view of the rocket, with its CG (motor in) and CP. Tap a part to select it."></canvas><div class="bldstats" id="bldstats"></div></div>
+    <div id="bldmsg" aria-live="polite"></div>
+    <div class="bldbody">
+      <div class="bldcol"><h2 style="margin:0 0 10px">Design Tree</h2><div id="bldtree"></div><div id="bldadd"></div></div>
+      <div class="bldcol bldeditcol"><div class="row undo bldundo"><button class="btn ghost" id="bldundo" type="button" disabled aria-label="Undo the last change">↶ Undo</button><button class="btn ghost" id="bldredo" type="button" disabled aria-label="Redo">↷ Redo</button></div><div id="bldedit"></div></div>
+    </div>
+    <div class="panel" id="bppanel">
+      <div class="foldhead"><h2 style="margin:0">Ejection Charge Calculator<button class="ib" type="button" data-title="Ejection Charge Calculator" data-info="Sizes the black powder charge that pressurizes a recovery compartment so it separates. The powder burns to gas; the ideal gas law gives the weight that fills the compartment's volume to the chosen pressure: grams = P·V ÷ (R·T), with R = 22.16 ft·lbf/(lbm·°R) and T = 3307 °R for FFFFg black powder combustion gas. That's the method most rocketry ejection calculators use.\n\nPressure: 10–15 psi is the usual target for a friction-fit section. Shear pins must break first, so their total strength, spread over the bulkhead, is added on top.\n\nBlack powder substitutes are less predictable: they need tight confinement to burn fully and can fail in thin, cold air at altitude. Always ground test the charge in the real rocket before flying it, and follow your club's and NAR or Tripoli's rules for handling energetics." aria-label="About the ejection charge calculator">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="bpbody" aria-expanded="false" aria-controls="bpbody">Show</button></div>
+      <div id="bpbody" hidden>
+        <div class="grid" style="margin-top:10px">
+          <div class="fld bpmanual"><label for="bp-d">Airframe inside diameter</label><div class="in"><input id="bp-d" type="number" inputmode="decimal" step="any"><span class="u bpu-len"></span></div><p class="note" id="bpdsrc" style="margin:4px 0 0;font-size:.78rem" hidden></p></div>
+          <div class="fld bpmanual"><label for="bp-l">Compartment length</label><div class="in"><input id="bp-l" type="number" inputmode="decimal" step="any"><span class="u bpu-len"></span></div></div>
+          <div class="fld bpmanual"><label for="bp-p">Separation pressure</label><div class="in"><input id="bp-p" type="number" inputmode="decimal" step="any"><span class="u bpu-p"></span></div></div>
+          <div class="fld bpmanual"><label for="bp-n">Shear pins</label><div class="in"><select id="bp-n"><option value="0">None</option><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></div></div>
+          <div class="fld bpmanual"><label for="bp-pin">Pin size</label><div class="in"><select id="bp-pin"><option value="2-56">#2-56 nylon (≈35 lbf)</option><option value="4-40">#4-40 nylon (≈50 lbf)</option></select></div></div>
+        </div>
+        <p class="note" id="bpweigh" style="margin:12px 0 0"><b style="color:var(--bad)">WARNING:</b> <span style="color:var(--bad)">Black powder is an explosive and can be very dangerous. Exercise extreme caution when storing, handling, and using it.</span> Weigh black powder on a scale, or use a powder measure set to the grains shown (powder measures are marked in grains of black powder by volume).</p>
+        <div class="bpack" id="bpack" hidden><label><input type="checkbox" id="bpackchk"><span>I understand that black powder is an explosive, that these charge sizes are estimates, and that I will follow the law and safety codes for energetics and ground test every charge before flight.</span></label><button type="button" class="btn" id="bpackok" disabled>Show charge sizes</button></div>
+        <button type="button" class="linkbtn" id="bpmode" style="margin-top:8px" hidden></button>
+        <div id="bpout" style="margin-top:12px"></div>
+        <p class="note" id="bpnote" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+    <div class="panel" id="imperfpanel">
+      <div class="foldhead"><h2 style="margin:0">Imperfections<button class="ib" type="button" data-title="Imperfections" data-info="Real rockets are never perfectly straight. A tilted motor, a crooked fin or a CG off the centerline pushes the rocket sideways in a direction that turns as it rolls, which makes it cone and lose altitude, and is what drives roll lock-in. Typical values: thrust misalignment 0.1–0.5°, fin misalignment 0.1–0.5°. The cluster setting flies the rocket with one outer motor of a cluster not lighting. All zero is a perfect rocket." aria-label="About Imperfections">i</button> <span class="foldsum" id="imperfsum"></span></h2><button class="rsomore foldbtn" type="button" data-fold="imperfbody" aria-expanded="false" aria-controls="imperfbody">Show</button></div>
+      <div id="imperfbody" hidden>
+      <div class="grid" id="g-imperf" style="margin-top:10px"></div></div>
+    </div>
+    <div class="panel"><div class="foldhead"><h2 style="margin:0">Drag table<button class="ib" type="button" data-title="Drag table" data-info="Calculated with a component drag buildup from published aerodynamic methods and NASA flight data (Hoerner, Schlichting, Fleeman, NASA TR R-100) for your launch-site air at zero angle of attack. A Cd override replaces them at every speed." aria-label="About Drag">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="dragbody" aria-expanded="false" aria-controls="dragbody">Show</button></div><div id="dragbody" hidden><div class="dtab" id="dragtable" style="margin-top:10px"></div></div>
+      </div>
+    <div class="panel"><h2>Design notes</h2><p class="note" id="mountsizenote" hidden></p><p class="note" id="recnote"></p><p class="note" id="inote"></p></div>
+
+    <div id="legacyform" hidden aria-hidden="true">
+      <canvas id="profile"></canvas><div class="legend"><span id="stabtxt"></span></div>
+    <div class="panel"><h2>Stages</h2><div class="grid" id="g-stages"></div>
+      <p class="note" id="stagenote"></p></div>
+    <div class="panel"><h2 id="h-body">Airframe &amp; nose</h2><div class="grid" id="g-body"></div><p class="note" id="segnote" hidden></p></div>
+    <div class="panel"><h2 id="h-fins">Fins</h2><div class="grid" id="g-fins"></div>
+      <canvas id="finview" aria-label="Fin shape drawn to scale"></canvas>
+      <p class="note" id="finnote"></p>
+      <div id="xfins" class="xfins"></div>
+      <button class="btn ghost addfin" id="addfin" type="button">+ Add a fin set</button></div>
+    <div class="panel"><h2 id="h-mass">Mass &amp; balance</h2><div class="grid" id="g-mass"></div>
+      <p class="note" id="massnote">Enter the flight-ready weight and balance point without the motor. Measure CG from the nose tip.</p>
+      </div>
+    <div class="panel"><h2>Drag</h2><div class="grid" id="g-drag"></div>
+      
+      </div>
+    <div class="panel"><h2 id="h-rec">Recovery</h2><div class="grid" id="g-rec"></div>
+      </div>
+    <div class="vstack" id="boosterpanels" hidden>
+      <div class="panel"><h2>Booster airframe &amp; weight</h2><div class="grid" id="g-booster"></div><p class="note" id="bmountsizenote" hidden></p>
+        <p class="note">The booster sits below the sustainer. Weigh it ready to fly without its motor, and measure its balance point from its front end.</p></div>
+      <div class="panel"><h2>Booster fins</h2><div class="grid" id="g-bfins"></div>
+        <canvas id="bfinview" aria-label="Booster fin shape drawn to scale"></canvas>
+        <p class="note" id="bfinnote"></p>
+        <div id="bxfins" class="xfins"></div>
+        <button class="btn ghost addfin" id="baddfin" type="button">+ Add a fin set</button></div>
+      <div class="panel"><h2>Booster recovery</h2><div class="grid" id="g-brec"></div>
+        <p class="note" id="brecnote"></p></div>
+    </div>
+    </div>
+  </section>
+
+  <!-- MOTORS -->
+  <section class="view" id="v-motor" hidden>
+    <div class="panel" id="mtargetp" hidden>
+      <p class="eyebrow">Choosing a motor for</p>
+      <div class="seg" id="mtarget" role="group" aria-label="Stage"></div>
+      <canvas id="mtargetcv" class="mtcv" aria-label="Side view of the stages; the one you're choosing a motor for is shaded. Tap a stage to choose its motor."></canvas>
+    </div>
+    <div class="panel">
+      <p class="eyebrow" id="selmotorlabel">Selected motor</p>
+      <div class="selm" id="selmotor"></div>
+      <div id="cluster" class="cluster"></div>
+      <p class="note" id="mountnote" hidden></p>
+      <button class="btn ghost addmot" id="addmotor" type="button">+ Add a motor</button>
+    </div>
+    <div class="panel" id="cfgpanel" hidden>
+      <h2>Motor configuration<button class="ib" type="button" data-title="Motor configuration" data-info="An OpenRocket file can hold several motor configurations: different motors, delays, ignition and deployment settings for the same rocket. This chooses which one to fly. It reopens the rocket from its file with that configuration, so changes you haven't saved are replaced by the file's.
+
+Opening a file takes the configuration its own simulation used, or its default. Saving back into the file writes your changes to the configuration chosen here." aria-label="About Motor configuration">i</button></h2>
+      <div class="grid"><div class="fld"><label for="cfgsel">From the file</label><div class="in"><select id="cfgsel"></select></div></div></div>
+      <p class="note" id="cfgnote"></p>
+    </div>
+    <div class="panel" id="mdelaypanel">
+      <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and chutes set on the Rocket tab to open at the motor ejection charge open then. As in OpenRocket, chutes set to open some other way (apogee, an altitude, a timer) stay packed until then; the Results tab and the RSO Checklist warn when a live charge fires while one of them is still packed, since a real charge can blow it out early.
+
+The list shows the delays the motor is sold with. 0 s fires at burnout (booster motors use it to separate stages or light the next motor). Plugged means no ejection charge at all (an altimeter handles deployment). Custom is for any other time, such as a reload delay you drill shorter.
+
+Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing another motor keeps the delay if the new motor comes with it, and otherwise moves it to the nearest delay the new motor offers (a custom time is kept). The Results tab and the RSO Checklist show the ideal delay for the flight." aria-label="About Motor Delay">i</button></h2>
+      <div class="grid">
+        <div class="fld"><label for="mdsel" id="mdlab">Ejection delay</label><div class="in"><select id="mdsel"></select></div></div>
+        <div class="fld" id="mdcustf" hidden><label for="mdcust">Custom delay</label><div class="in"><input id="mdcust" type="number" inputmode="decimal" step="0.1" min="0"><span class="u">s</span></div></div>
+      </div>
+      <p class="note" id="mdnote"></p>
+      <div id="mdx"></div>
+    </div>
+    <div class="panel" id="motortemppanel">
+      <div class="foldhead"><h2 style="margin:0">Motor temperature <span class="foldsum" id="mtsum"></span></h2><button class="rsomore foldbtn" id="mttog" type="button" aria-expanded="false" aria-controls="mtbody">Show</button></div>
+      <div id="mtbody" hidden><div class="grid" id="g-motortemp" style="margin-top:10px"></div></div>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Upload a Motor</h2>
+        <label class="file btn" for="engfile">Upload .eng / .rse / .zip<input type="file" id="engfile" multiple accept=".eng,.rse,.zip,.ENG,.RSE,.ZIP,text/plain,application/xml,text/xml,application/zip,application/x-zip-compressed"></label>
+      </div>
+      <p class="note">Upload a new motor to your database.</p>
+      <div id="engreport"></div>
+    </div>
+    <div class="panel filters">
+      <h2 style="margin:0">Select from database</h2>
+      <div><p class="eyebrow">Filter by manufacturer</p><div class="seg" id="fbrand" role="group" aria-label="Filter by manufacturer"></div></div>
+      <div><p class="eyebrow">Filter by diameter</p><div class="seg" id="fdia" role="group" aria-label="Filter by diameter"></div></div>
+      <div><p class="eyebrow">Filter by motor system</p><div class="seg" id="fsys" role="group" aria-label="Filter by motor system"></div></div>
+      <div><p class="eyebrow">Sparky motors<button class="ib" type="button" data-title="Sparky motors" data-info="Sparky propellants (AeroTech Metalstorm and Dark Matter, Cesaroni Skidmark, Loki Spitfire) throw a shower of burning metal sparks. Many fields and clubs ban them in dry, brushy or fire-season conditions, and some require extra clearance from the pad. Check with your RSO before flying one. The sparky label comes from ThrustCurve.org's motor data; motors you upload yourself aren't labeled, so they count as not sparky here." aria-label="About sparky motors">i</button></p><div class="seg" id="fspark" role="group" aria-label="Filter sparky motors"></div></div>
+      <div class="fld"><label for="fsearch">Search name, propellant or case</label><div class="in"><input id="fsearch" type="search" autocomplete="off" placeholder="H148, Blue Thunder, 38/240"></div></div>
+      <div class="note" id="fcount" style="margin:0"></div>
+    </div>
+    <div class="panel" id="cmppanel">
+      <div class="foldhead"><h2 style="margin:0">Compare motors<button class="ib" type="button" data-title="Compare motors" data-info="Flies your rocket on every motor in the list below (the one filtered to your motor mount), in today's launch conditions, and lists the results side by side. Each motor is flown with the chute opening at apogee, so the apogee isn't cut short by an ejection delay meant for a different motor; the Best delay column is the motor delay that would fire at apogee. RSO shows Go when nothing on the RSO checklist fails, with the number of cautions, or the first item that fails. Tap a column heading to sort, and tap a motor for its details.">i</button> <span class="foldsum" id="cmpsum"></span></h2><button class="rsomore foldbtn" id="cmptog" type="button" aria-expanded="false" aria-controls="cmpbody">Show</button></div>
+      <div id="cmpbody" hidden>
+      <p class="note" id="cmpnote" style="margin:6px 0 10px">Fly the rocket on every motor in the list below and see them side by side.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="cmpgo" type="button">Compare motors</button><button class="btn ghost" id="cmpstop" type="button" hidden>Stop</button></div>
+      <p class="note" id="cmpmsg" aria-live="polite" style="margin:8px 0 0"></p>
+      <div class="cmpwrap" id="cmpwrap" hidden></div>
+      </div>
+    </div>
+    <div class="motors" id="motorlist" role="radiogroup" aria-label="Motor"></div>
+    <button class="btn ghost more" id="moremotors" hidden>Show more</button>
+  </section>
+
+  <footer><br><br>Treat all results as estimates and confirm with your RSO before flight.<br><button class="linkbtn" id="showlegal">Safety and liability disclaimer</button> · <button class="linkbtn" id="showabout">About and licenses</button><br>© 2026 Dustin Lee · Free software under the GNU GPL v3</footer>
+</div>
+<div class="modal" id="infobox" role="dialog" aria-modal="true" aria-labelledby="infottl" hidden><div class="mbox">
+  <h3 id="infottl"></h3><p id="infotxt"></p>
+  <div class="row mrow"><button class="btn" id="infook" type="button">Got it</button></div></div></div>
+<div class="modal" id="resetconfirm" role="dialog" aria-modal="true" aria-labelledby="resettxt" hidden><div class="mbox">
+  <p id="resettxt">Reset the design to the LOC IV X2 starting values? Your edits will be lost.</p>
+  <div class="row mrow"><button class="btn" id="resetyes">Reset design</button><button class="btn ghost" id="resetno">Keep my edits</button></div></div></div>
+<div class="modal" id="openconfirm" role="dialog" aria-modal="true" aria-labelledby="opentxt" hidden><div class="mbox">
+  <p id="opentxt"></p>
+  <div class="row mrow"><button class="btn" id="opensave">Save changes</button><label class="btn" for="orkfile" id="openpick" hidden>Choose file</label><label class="btn ghost" for="orkfile" id="opendiscard">Discard changes</label><button class="btn ghost" id="opencancel">Cancel</button></div></div></div>
+<div class="modal" id="namebox" role="dialog" aria-modal="true" aria-labelledby="nametxt" hidden><div class="mbox">
+  <p id="nametxt" style="margin-top:0"><b>Name your rocket</b><br><span class="note">It’s saved as an OpenRocket (.ork) file with this name.</span></p>
+  <input type="text" id="savename" maxlength="80" autocomplete="off" style="width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink)">
+  <div id="nameerr" class="note" style="color:var(--warn);min-height:1.2em;margin-top:4px" aria-live="polite"></div>
+  <div class="row mrow"><button class="btn" id="nameok">Save</button><button class="btn ghost" id="namecancel">Cancel</button></div></div></div>
+<div class="modal" id="recentconfirm" role="dialog" aria-modal="true" aria-labelledby="recenttxt" hidden><div class="mbox">
+  <p id="recenttxt"></p>
+  <div class="row mrow"><button class="btn" id="recentsave">Save changes</button><button class="btn ghost" id="recentdiscard">Discard changes</button><button class="btn ghost" id="recentcancel">Cancel</button></div></div></div>
+<div class="modal" id="fitwarn" role="alertdialog" aria-modal="true" aria-labelledby="fitwarntxt" hidden><div class="mbox">
+  <p id="fitwarntxt"></p>
+  <div class="row mrow"><button class="btn" id="fitfix">Choose another motor</button><button class="btn ghost" id="fitok">OK</button></div></div></div>
+<div class="modal" id="flmodal" role="dialog" aria-modal="true" aria-labelledby="fltitle" hidden><div class="mbox flbox">
+  <h2 id="fltitle">Log a flight</h2>
+  <div id="flform"></div>
+  <p class="note" id="flpred"></p>
+  <div id="flres" hidden></div>
+  <div class="row mrow"><button class="btn" id="flsave" type="button">Save flight</button><button class="btn ghost" id="flcancel" type="button">Cancel</button></div></div></div>
+<div class="modal" id="flallmodal" role="dialog" aria-modal="true" aria-labelledby="flalltitle" hidden><div class="mbox flbox">
+  <h2 id="flalltitle">All flights</h2>
+  <div id="flallbody"></div>
+  <div class="row mrow"><button class="btn ghost" id="flallcsv" type="button">Export CSV</button><button class="btn" id="flallclose" type="button">Close</button></div></div></div>
+<div class="modal" id="altmodal" role="dialog" aria-modal="true" aria-labelledby="alttitle" hidden><div class="mbox flbox">
+  <h2 id="alttitle">Altimeter file</h2>
+  <div id="altmap"></div>
+  <canvas id="altcv" aria-label="Altitude from the altimeter file, with this run's prediction"></canvas>
+  <div class="legend" id="altleg"></div>
+  <div id="altout"></div>
+  <div class="row mrow"><button class="btn" id="altok" type="button">Use this data</button><button class="btn ghost" id="altcancel" type="button">Cancel</button></div></div></div>
+<div class="modal" id="railwarn" role="alertdialog" aria-modal="true" aria-labelledby="railwarntxt" hidden><div class="mbox">
+  <p id="railwarntxt"></p>
+  <div class="row mrow"><button class="btn" id="railfix">Change rail length</button><button class="btn ghost" id="railok">OK</button></div></div></div>
+<div class="animmodal" id="animmodal" role="dialog" aria-modal="true" aria-labelledby="animtitle" hidden><div class="animbox">
+  <div class="animtop"><h2 id="animtitle">Flight animation</h2><button class="btn ghost" id="animvideo" type="button">Export video</button></div>
+  <canvas id="animcv" aria-label="Animated side view of the flight"></canvas>
+  <div class="animhud" id="animhud"></div>
+  <div class="animctl"><button class="btn" id="animplay" type="button">Pause</button><button class="btn ghost" id="animrestart" type="button">Restart</button>
+    <select id="animspeed" aria-label="Playback speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
+    <input type="range" id="animscrub" min="0" max="10" step="0.05" value="0" aria-label="Flight time">
+    <button class="btn ghost" id="animclose" type="button">Close</button></div>
+  <div class="animvid" id="animvidbox" hidden><span id="animvidmsg"></span><button class="btn ghost" id="animvidcancel" type="button">Cancel</button></div>
+</div></div>
+<div class="prtoast" id="prtoast" role="status" aria-live="polite"></div>
+<div class="runbar" id="runbar"><div class="in">
+  <div class="runstat" id="runstat" aria-live="polite"><b>Results up to date</b><span id="runtime"></span></div>
+  <button id="runbtn">LAUNCH</button>
+</div></div>
+
+<div class="legal" id="about" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+  <div class="box">
+    <div class="head">
+      <h2 id="about-title">About Pocket Rocket Flight Lab</h2>
+      <p><span id="aboutver"></span> · by Dustin Lee</p>
+      <p>© 2026 Dustin Lee · Free software under the GNU General Public License, version 3 or later</p>
+    </div>
+    <div class="body credits" tabindex="0">
+      <p>Full 6-DOF flight simulation (X, Y, Z, pitch, yaw, roll) based on published aerospace industry and physics literature.</p>
+      <p>Treat all results as estimates and confirm with your RSO.</p>
+      <p>Built-in motor curves: the OpenRocket motor database (from ThrustCurve.org).</p>
+      <h3>Aerodynamic methods</h3>
+      <p>Drag is built up component by component from published methods:</p>
+      <ul class="refs">
+        <li>Hoerner, S. F., <i>Fluid-Dynamic Drag</i>, 1965: body and fin form factors, forebody shoulder drag, boattail separation, protuberance drag.</li>
+        <li>Schlichting, H., <i>Boundary-Layer Theory</i>: turbulent flat-plate friction and admissible roughness.</li>
+        <li>White, F. M., <i>Viscous Fluid Flow</i>: fully rough flat-plate friction.</li>
+        <li>Nikuradse, J., 1933: smooth and fully rough roughness regimes.</li>
+        <li>Stoney, W. E., <i>Collection of Zero-Lift Drag Data on Bodies of Revolution from Free-Flight Investigations</i>, NASA TR R-100, 1961: measured transonic and supersonic nose drag by shape and fineness.</li>
+        <li>Fleeman, E. L., <i>Tactical Missile Design</i>, AIAA: base drag (coasting and powered) and supersonic drag of body flares, after Bonney, <i>Engineering Supersonic Aerodynamics</i>, 1950.</li>
+        <li>Lees, L., 1955: modified Newtonian pressure on rounded fin edges and rail buttons.</li>
+        <li>Ackeret, J., 1925: supersonic thin-airfoil wave drag.</li>
+        <li>Allen, H. J. and Perkins, E. W., NACA Report 1048, 1951: body crossflow force at angle of attack and crossflow drag for tumbling descent.</li>
+        <li>Mandell, G. K., Caporaso, G. J. and Bengen, W. P., <i>Topics in Advanced Model Rocketry</i>, 1973: pitch motion, aerodynamic damping and jet damping.</li>
+        <li>Barrowman, J. S., <i>The Practical Calculation of the Aerodynamic Characteristics of Slender Finned Vehicles</i>, 1967: center of pressure.</li>
+        <li>Crowell, G. A., <i>The Descriptive Geometry of Nose Cones</i>, 1996: nose-cone shapes.</li>
+        <li>Sutherland's law for air viscosity; U.S. Standard Atmosphere, 1976.</li>
+      </ul>
+      <h3>Design files and altimeter files</h3>
+      <p>Opens OpenRocket (.ork) and RockSim (.rkt) design files and saves designs as OpenRocket (.ork) files; RockSim files are only read, never changed. It also reads flight data files exported from altimeters, so they can be used alongside those programs and devices. File support was written independently from the files themselves; no part of OpenRocket, RockSim or any altimeter software is included in this app. Simulations this app saves into a design file are labeled “Pocket Rocket”, so they aren’t mistaken for that program’s own results.</p>
+      <h3>Trademarks</h3>
+      <p>RockSim is a trademark of Apogee Components, Inc. OpenRocket, Featherweight, Blue Raven, Altus Metrum, Eggtimer, PerfectFlite, StratoLogger, Missile Works, Apogee Components, AeroTech, Cesaroni Technology, Loki Research and ThrustCurve are names or trademarks of their respective owners, used here only to identify the files, devices and motors the app works with. Pocket Rocket Flight Lab is not affiliated with, sponsored by or endorsed by any of them.</p>
+      <h3>Motor data</h3>
+      <p>Built-in AeroTech, Cesaroni, Loki Research and Estes thrust curves come from the OpenRocket motor database, which collects curves published on ThrustCurve.org, most of them from official motor certification tests. Where a motor has more than one curve, the certification curve is used. Other motors can be loaded from .eng, .rse or .zip files. <a href="https://www.thrustcurve.org/" target="_blank" rel="noopener">thrustcurve.org</a></p>
+      <h3>Copyright and license</h3>
+      <p>Pocket Rocket Flight Lab © 2026 Dustin Lee.</p>
+      <p>This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.</p>
+      <p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details: <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">gnu.org/licenses/gpl-3.0</a>.</p>
+      <p id="srcline">The complete source code is available from Dustin Lee, under the same license.</p>
+      <p>The license covers the program; it gives no right to use the name Pocket Rocket Flight Lab for a modified version. The third-party software, fonts and data listed on this page stay under their own licenses.</p>
+      <h3>Software and fonts</h3>
+      <p>jsPDF 2.5.1, © James Hall and yWorks GmbH, MIT License.<br>Barlow and Barlow Condensed by Jeremy Tribby, SIL Open Font License 1.1.<br>IBM Plex Mono by IBM, SIL Open Font License 1.1.</p>
+      <h3>Weather data</h3>
+      <p>Forecasts from NOAA’s GFS model, served by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> under the Creative Commons Attribution 4.0 license (CC BY 4.0).</p>
+    </div>
+    <div class="foot">
+      <button class="btn" id="aboutclose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="legal" id="legal" role="dialog" aria-modal="true" aria-labelledby="legal-title" hidden>
+  <div class="box">
+    <div class="head">
+      <h2 id="legal-title">Before you fly</h2>
+      <p>Safety and liability disclaimer. Please read and accept to use Pocket Rocket Flight Lab.</p>
+    </div>
+    <div class="body" tabindex="0">
+      <h3>Rocketry is dangerous</h3>
+      <p>Model and high-power rocketry involve rocket motors, energetic propellants, ejection charges, and objects moving at high speed. Misuse, malfunction, or bad information can cause serious injury or death, fire, and damage to or destruction of property.</p>
+      <h3>Results are estimates only</h3>
+      <p>This app produces simplified computer estimates. Its predictions of altitude, velocity, stability, drift, descent rate, and other values may be inaccurate or wrong, and motor and design data may contain errors. Do not rely on this app as your only basis for any safety decision. Verify your rocket's stability, weight, and recovery system yourself before every flight.</p>
+      <h3>Certification and regulations</h3>
+      <p>You are solely responsible for holding the certification required for the motors you use, such as NAR or Tripoli high-power certification at the appropriate level, and for following all laws, regulations, safety codes, and rules that apply where you fly. These include FAA regulations and any required waivers, NFPA rocketry safety codes, local fire restrictions and burn bans, landowner permission, and the instructions of the Range Safety Officer and launch organizers.</p>
+      <h3>Users under 18</h3>
+      <p>If you are under 18, you may use this app only with the permission of a parent or legal guardian who has read and accepted this disclaimer, and only with an adult supervising any rocketry you do.</p>
+      <h3>Not professional advice; no endorsement</h3>
+      <p>This app and its results are not engineering or other professional advice. The app is not reviewed, certified, approved, or endorsed by the NAR, Tripoli, the FAA, the NFPA, or any motor or component maker. The Range Safety Officer's decision always overrides anything this app shows.</p>
+      <h3>Ejection charges and energetic materials</h3>
+      <p>Ejection charge sizes from this app are estimates. Black powder and similar materials are explosives: obtain, store, handle, and use them only as the law allows and under the safety codes that apply, and ground test every charge in the real rocket before flight.</p>
+      <h3>Assumption of risk</h3>
+      <p>You knowingly and voluntarily accept all risks of rocketry, including the risks of building, preparing, launching, and recovering rockets, and all risks of relying on this app's estimates, data, and results. You are solely responsible for every decision you make about your rocket and its flights.</p>
+      <h3>No warranty and limitation of liability</h3>
+      <p>This app is provided “as is,” without warranty of any kind. To the fullest extent permitted by law, the author, Dustin Lee, is not liable for any injury, death, property damage or destruction, loss, or other harm arising from the use or misuse of this app or its results. You use this app entirely at your own risk.</p>
+      <h3>Indemnity</h3>
+      <p>To the fullest extent permitted by law, you agree to defend, indemnify, and hold harmless the author, Dustin Lee, from and against any claims, demands, damages, losses, liabilities, costs, and expenses, including reasonable attorneys' fees, brought by you or any third party and arising from or related to your use or misuse of this app or its results, or your violation of this disclaimer or of any law or safety code.</p>
+      <h3>Donations</h3>
+      <p>Donations to the author are voluntary gifts. They do not buy a license, product, service, support, warranty, or any other right, and they do not change anything in this disclaimer.</p>
+      <h3>Governing law and venue</h3>
+      <p>This disclaimer and any dispute arising from it or from the app are governed by the laws of the State of Utah, without regard to its conflict-of-laws rules. Any such dispute will be brought only in the state courts located in Davis County, Utah, or the United States District Court for the District of Utah, and you consent to their jurisdiction.</p>
+      <h3>Severability and survival</h3>
+      <p>If any part of this disclaimer is found invalid or unenforceable, that part will be enforced to the fullest extent the law allows, and the rest stays in full effect. This disclaimer continues to apply after you stop using the app.</p>
+      <p class="legalver">Disclaimer version <span id="legalver"></span></p>
+      <div class="accept">
+        <label for="legalchk"><input type="checkbox" id="legalchk"><span>I have read this disclaimer. I understand the risks, I will hold the required certifications, and I will follow all applicable regulations and safety codes. I use this app entirely at my own risk, accept full responsibility for how I use it and its results, and agree that the app and its developer, Dustin Lee, are not liable for any injury, damage, or loss arising from its use or misuse. If I am under 18, my parent or legal guardian has read and accepted this disclaimer and an adult supervises my rocketry.</span></label>
+      </div>
+    </div>
+    <div class="foot">
+      <p class="scrollhint" id="legalhint">Scroll to the end, then tick the box to continue.</p>
+      <button class="btn" id="legalok" disabled>I agree</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+@@include js/core/start.js
+@@include js/core/storage.js
+@@include data/motor-catalog.js
+@@include js/motors/catalog.js
+@@include data/old-motor-ids.js
+@@include js/motors/catalog-lookup.js
+@@include js/motors/motor-files.js
+@@include js/design/defaults.js
+@@include js/motors/clusters.js
+@@include js/ui/units.js
+@@include js/ui/forms.js
+@@include js/ui/field-help.js
+@@include js/recovery/ejection-charge.js
+@@include js/design/extra-fins.js
+@@include js/physics/atmosphere.js
+@@include js/physics/geometry.js
+@@include js/physics/aerodynamics.js
+@@include js/physics/simulate.js
+@@include js/files/openrocket-import.js
+@@include js/files/rocksim-import.js
+@@include js/builder/model.js
+@@include js/builder/ork-export.js
+@@include js/builder/ork-read.js
+@@include js/builder/ork-merge.js
+@@include js/ui/results.js
+@@include js/ui/rso-checklist.js
+@@include js/animation/animation.js
+@@include js/animation/scenery.js
+@@include js/animation/video-export.js
+@@include js/ui/motor-tab.js
+@@include js/ui/motor-delay.js
+@@include js/ui/launch-sites.js
+@@include js/ui/compare-motors.js
+@@include js/ui/events.js
+@@include js/ui/settings.js
+@@include js/flightlog/drag-calibration.js
+@@include js/flightlog/altimeter-files.js
+@@include js/flightlog/flight-log.js
+@@include js/flightlog/xlsx.js
+@@include js/builder/builder-ui.js
+@@include js/files/save.js
+@@include js/files/recent.js
+@@include data/examples.js
+@@include js/files/examples.js
+@@include js/ui/touch-and-android.js
+@@include js/files/save-diff.js
+@@include js/files/xml-helpers.js
+@@include js/files/ork-patch.js
+@@include js/files/ork-new.js
+@@include js/files/zip.js
+@@include js/files/saved-simulation.js
+@@include js/files/unsaved-changes.js
+@@include js/report/pdf-report.js
+@@include js/ui/donate.js
+@@include js/physics/monte-carlo.js
+@@include js/weather/winds-aloft.js
+@@include js/weather/forecast.js
+</script>

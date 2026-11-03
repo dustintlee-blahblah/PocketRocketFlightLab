@@ -17,3 +17,7 @@ android/.idea/
 *.apk
 *.aab
 .DS_Store
+
+# development tools (npm install)
+node_modules/
+golden-snapshot.json

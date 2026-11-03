@@ -1,0 +1,5 @@
+# generated or third-party
+web/
+android/
+src/data/
+node_modules/
