@@ -95,7 +95,7 @@ function renderResults() {
     return;
   }
   document.getElementById("stats").hidden = false;
-  const { out, st, m, S } = lastSim;
+  const { st, m, S } = lastSim;
   const D = lastSim.D;
   renderTitle();
   document.getElementById("mchip").textContent = m.cn || m.name;

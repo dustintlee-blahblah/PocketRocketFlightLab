@@ -434,8 +434,7 @@ function simulate(D, L, m, mb, opts = {}) {
   const relAz = ((L.railMode === "fixed" ? (L.railDir || 0) - ((L.windDir ?? 270) + 180) : 180) * Math.PI) / 180;
   const rx = Math.sin(th) * Math.cos(relAz),
     ry = -Math.sin(th) * Math.sin(relAz),
-    rz = Math.cos(th),
-    rd = [rx, rz];
+    rz = Math.cos(th);
   /* the earth's rotation (Coriolis acceleration −2Ω×v): Ω has components Ω·cos(lat) to the north and Ω·sin(lat) up;
      in these axes (x downwind, heading h = wind direction + 180°; y to its left; z up) */
   const OM = 7.2921159e-5,
@@ -567,11 +566,6 @@ function simulate(D, L, m, mb, opts = {}) {
       xN: stack1(t) ? xN1 : stack(t) ? xNb : xNs,
     };
   }
-  const wrapA = (a) => {
-    while (a > Math.PI) a -= 2 * Math.PI;
-    while (a < -Math.PI) a += 2 * Math.PI;
-    return a;
-  };
   /* roll (the sixth degree of freedom): fin cant drives it, the fins' own sweep through the air damps it,
      and the spin's angular momentum couples into pitch and yaw (gyroscopic precession) */
   const airRoll = (I, m0, R) => (I > 0 ? I : m0 * 0.5 * R * R); // without the parts list: a thin-walled tube's worth

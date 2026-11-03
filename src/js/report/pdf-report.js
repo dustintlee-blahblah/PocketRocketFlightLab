@@ -86,7 +86,7 @@ function pdfSafe(s) {
     .replace(/≤/g, "<=")
     .replace(/×/g, "x")
     .replace(/µ/g, "u")
-    .replace(/[^\x20-\x7E -ÿ–—‘’“”•·]/g, "");
+    .replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u00B7]/g, "");
 }
 /**
  * Builds the flight report for the last run.
@@ -227,7 +227,6 @@ function buildReportPdf() {
   );
   y += 18;
   const A = aero(RD),
-    a0 = atmosphere(RL, 0),
     ns = noseSpec(RD);
   const noseLabel = (NOSE_PRESETS.find((p) => p[0] === String(RD.noseShape)) || [0, `${ns.shape} ${ns.param}`])[1];
   const finishLabel = (FIELDS["g-drag"][0][5].find((o) => Math.abs(+o[0] - RD.finish) < 1e-12) || [

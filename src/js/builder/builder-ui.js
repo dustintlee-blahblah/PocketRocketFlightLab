@@ -12,8 +12,7 @@
 var BLD = null,
   bldSel = null,
   bldT = null,
-  bldHits = [],
-  bldNewSure = 0;
+  bldHits = [];
 /**
  * Nose and transition shapes offered: [shape, label].
  */

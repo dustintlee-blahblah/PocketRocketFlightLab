@@ -1395,7 +1395,6 @@ function parseOrk(xml) {
   }
   if (sim) {
     nd.orkApogee = parseFloat(sim.getElementsByTagName("flightdata")[0].getAttribute("maxaltitude"));
-    const mm = sim.getElementsByTagName("motor")[0];
   }
   // a cluster: the first motor is the main one; its extra copies and every other motor mount become extra motors
   // each extra motor lights this long after the main one: a mount set to light at liftoff with a delay is an airstart;

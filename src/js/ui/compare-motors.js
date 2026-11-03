@@ -49,7 +49,7 @@ function cmpFly(m) {
     deployMode: D.deployMode === "motor" ? "apogee" : D.deployMode,
     deployDelay: D.deployMode === "motor" ? 0 : D.deployDelay,
   };
-  const { out, st } = simulate(Dx, L, ms, mb, { noRef: true, mb1: m1 });
+  const { st } = simulate(Dx, L, ms, mb, { noRef: true, mb1: m1 });
   const S = D.twoStage && mb ? stackStability(Dx, ms, mb, m1 || undefined) : stability(Dx, ms);
   let checks = [];
   const keep = lastSim;
@@ -137,8 +137,7 @@ async function cmpRun() {
   CMP.running = false;
   document.getElementById("cmpgo").disabled = false;
   document.getElementById("cmpstop").hidden = true;
-  const n = CMP.rows.length,
-    go = CMP.rows.filter((r) => r.rso < 2).length;
+  const n = CMP.rows.length;
   msg.textContent = `${CMP.stop ? "Stopped after" : "Flew"} ${n} motor${n > 1 ? "s" : ""} in ${((performance.now() - t0) / 1000).toFixed(1)} s.`;
   cmpRender();
 }
@@ -195,17 +194,6 @@ function cmpRender() {
     ["off", `Off rail`],
     ["ttw", "Thrust/weight"],
   ];
-  /**
-   * A row's RSO result cell.
-   */
-  const rsoCell = (r) =>
-    r.err
-      ? `<span class="ng">Fails</span>`
-      : r.bad.length
-        ? `<span class="ng" title="${esc(r.bad.map((c) => c.label).join(", "))}">✕ ${r.bad.length}</span>`
-        : r.warn.length
-          ? `<span class="wn">Go ⚠${r.warn.length}</span>`
-          : `<span class="go">Go</span>`;
   let h = `<table class="cmpt"><thead><tr>${H.map(([k, l]) => `<th data-k="${k}"${CMP.sort === k ? ` aria-sort="${CMP.dir < 0 ? "descending" : "ascending"}"` : ""}>${l}</th>`).join("")}</tr></thead><tbody>`;
   for (const r of rows) {
     h += `<tr class="mrow${r.id === cur ? " cur" : ""}" data-id="${esc(r.id)}" aria-expanded="${CMP.open === r.id}"><td>${esc(r.name)}<span class="cl">${r.cls} · ${r.I.toFixed(0)} N·s</span></td>
@@ -322,9 +310,7 @@ function cmpSum() {
   const el = document.getElementById("cmpsum");
   if (!el) return;
   const open = document.getElementById("cmptog").getAttribute("aria-expanded") === "true";
-  const n = CMP.rows ? CMP.rows.length : 0,
-    go = n ? CMP.rows.filter((r) => r.rso < 2).length : 0;
-  el.textContent = open ? "" : CMP.running ? "running…" : "";
+  el.textContent = !open && CMP.running ? "running…" : "";
 }
 document.getElementById("cmptog").onclick = () =>
   cmpFold(document.getElementById("cmptog").getAttribute("aria-expanded") !== "true");

@@ -53,8 +53,9 @@ function altSplit(l, d) {
  * @returns {object} {brand, cols, data, raw, rate, preUnit, hasHeader, fname, map}, or {error}
  */
 function altParse(text, fname) {
-  text = String(text || "").replace(/^﻿/, "");
+  text = String(text || "").replace(/^\uFEFF/, "");
   const lines = text.split(/\r\n|\n|\r/);
+  // eslint-disable-next-line no-control-regex -- a binary file has control characters
   if (/[\x00-\x08\x0E-\x1F]/.test(text.slice(0, 4000)))
     return {
       error:

@@ -155,7 +155,7 @@ function parseLatLon(t) {
   t = String(t || "")
     .trim()
     .replace(/[\u2212\u2013]/g, "-")
-    .replace(/[()\[\]]/g, " ");
+    .replace(/[()[\]]/g, " ");
   if (!t) return null;
   const parts = t.match(
     /-?\d+(?:\.\d+)?(?:\s*[°º:d]\s*\d+(?:\.\d+)?\s*['′m]?(?:\s*\d+(?:\.\d+)?\s*(?:"|″|''|s)?)?)?\s*[NSEWnsew]?/g,

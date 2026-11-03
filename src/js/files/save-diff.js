@@ -1,5 +1,6 @@
 /**
- * What changed since the design was opened, and which of those changes each file format can save.
+ * What counts as a change to the design file (for the unsaved-changes check), the range-only settings, and keeping
+ * an .ork file's other zip entries when it is saved.
  */
 /**
  * The other files inside an .ork zip (decal images), as base64, so a save keeps them.
@@ -81,31 +82,7 @@ const SAVE_IGNORE = new Set([
   "bFinFinish",
 ]);
 /**
- * Names of the design keys as the user knows them, for the save summary.
- */
-const SAVE_LABEL = (() => {
-  const m = {
-    name: "Rocket name",
-    extraFins: "Extra fin sets",
-    bExtraFins: "Booster extra fin sets",
-    extraMotors: "Cluster motors",
-    bExtraMotors: "Booster cluster motors",
-    motor: "Motor",
-    bmotor: "Booster motor",
-    buttons: "Rail buttons",
-    lugs: "Launch lugs",
-    finCdOverride: "Fin Cd override",
-    bFinCdOverride: "Booster fin Cd override",
-    nozzleDia: "Nozzle diameter",
-  };
-  for (const list of Object.values(FIELDS)) for (const [k, l] of list) if (!m[k]) m[k] = l;
-  return m;
-})();
-/**
  * Range settings, which only feed the RSO Checklist (changing them keeps the results).
- *
- * what each format can carry
- * range settings only feed the RSO Checklist: changing them keeps the results
  */
 const RANGE_KEYS = [
   "waiver",
@@ -124,7 +101,7 @@ const RANGE_KEYS = [
   "dewC",
 ]; // read live by the RSO Checklist: changing them doesn't change the flight
 /**
- * Keys each format can't carry, so they aren't written back into the file.
+ * Keys the design file doesn't carry (app-only settings), so changing them isn't an unsaved change.
  */
 const SAVE_NOT = {
   common: [
@@ -190,37 +167,3 @@ const SAVE_NOT = {
   ],
   ork: ["extraMotors"],
 };
-/**
- * The changes since the design was opened (or since ref).
- * @param {object} [ref] a base {D, L, motorId, boostId, firstId}, in place of SOURCE.base
- * @returns {{keys:string[], saved:string[], skipped:string[], stageSwitch:boolean}|null} null without a source file
- */
-function saveDiff(ref) {
-  if (!SOURCE || !SOURCE.base) return null;
-  const RB = ref || SOURCE.base,
-    bD = RB.D,
-    bL = RB.L,
-    keys = [];
-  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  for (const k of new Set([...Object.keys(D), ...Object.keys(bD)])) {
-    if (SAVE_IGNORE.has(k)) continue;
-    if (!same(D[k], bD[k])) keys.push(k);
-  }
-  for (const k of new Set([...Object.keys(L), ...Object.keys(bL)])) if (!same(L[k], bL[k])) keys.push(k);
-  if (motorId !== RB.motorId) keys.push("motor");
-  if (D.twoStage && boostId !== RB.boostId) keys.push("bmotor");
-  if (isThree(D) && firstId !== RB.firstId) keys.push("b1motor");
-  const not = new Set([...SAVE_NOT.common, ...SAVE_NOT.ork]);
-  if (D.recovery !== bD.recovery) ["mainDia", "mainCd", "mainAlt", "drogueDia", "drogueCd"].forEach((k) => not.add(k));
-  if (D.bRecovery !== bD.bRecovery) ["bChuteDia", "bChuteCd"].forEach((k) => not.add(k));
-  return {
-    keys,
-    saved: keys.filter((k) => !not.has(k)),
-    skipped: keys.filter((k) => not.has(k)),
-    stageSwitch: !!D.twoStage !== !!bD.twoStage,
-  };
-}
-/**
- * The labels of a list of keys, joined, without repeats.
- */
-const labelList = (ks) => [...new Set(ks.map((k) => SAVE_LABEL[k] || k))].join(", ");

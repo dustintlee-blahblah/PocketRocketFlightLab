@@ -366,8 +366,7 @@ function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
           continue;
         }
         if (t === "motormount" && have.has(t)) {
-          const nm = kids(n).find((x) => x.tagName === "motormount"),
-            nmHave = new Set(kids(nm).map((x) => x.tagName));
+          const nm = kids(n).find((x) => x.tagName === "motormount");
           for (const mc of kids(c)) {
             if (mc.tagName === "motor" || mc.tagName === "ignitionconfiguration") {
               if (other(mc)) nm.appendChild(nd.importNode(mc, true));

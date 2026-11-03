@@ -289,13 +289,6 @@ function bldDefault() {
   };
 }
 /**
- * A material [name, density] from a list by name (the first one if not found).
- */
-const bldMat = (list, name) => {
-  const m = list.find((x) => x[0] === name) || list[0];
-  return m;
-};
-/**
  * The outside radius of a body part (the smaller end of a transition).
  */
 const bldBodyR = (p) => (p.type === "tube" ? p.od / 2 : p.type === "nose" ? p.dia / 2 : Math.min(p.dia1, p.dia2) / 2);

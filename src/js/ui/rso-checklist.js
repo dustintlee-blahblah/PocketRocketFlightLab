@@ -380,7 +380,6 @@ function rsoChecks(st, S, m, D, LL) {
     if (w > 0) {
       const ceil = w - (LL.waiverRef === "msl" ? LL.elev || 0 : 0),
         RG = apoRange(st, D),
-        mc = RG,
         hi = RG ? RG.hi : st.maxAlt;
       if (ceil <= 0)
         add(
@@ -413,7 +412,6 @@ function rsoChecks(st, S, m, D, LL) {
   {
     const hp = hprFlight(st, m, lastSim && lastSim.mb, lastSim && lastSim.m1),
       RG = apoRange(st, D),
-      mcx = RG,
       top = st.error ? 0 : RG ? RG.hi : st.maxAlt;
     const cov = cloudBelow(LL, top),
       tag = hp.hpr ? "High-power flight (FAA Part 101.25)" : "Model rocket";
@@ -580,8 +578,7 @@ function rsoChecks(st, S, m, D, LL) {
 /**
  * The biggest motor class each certification level allows, and the levels' names.
  */
-const CERT_MAX = { none: "G", L1: "I", L2: "L", L3: "O" },
-  CERT_NAME = { none: "No certification", L1: "Level 1", L2: "Level 2", L3: "Level 3" };
+const CERT_NAME = { none: "No certification", L1: "Level 1", L2: "Level 2", L3: "Level 3" };
 /**
  * Whether the flyer's certification covers the motors (or, for an attempt, whether they suit it).
  * @param {object} st
@@ -875,8 +872,8 @@ function resultFlags(st, S, m, D) {
         ? `, and it is ${st.burnTilt.toFixed(0)}° from vertical at ${st.staged ? "sustainer " : ""}burnout`
         : "";
     if (st.tumble) {
-    } // the tumble warning covers it; weathercocking numbers mean nothing once the rocket goes end over end
-    else if (st.maxAoA > 20)
+      // the tumble warning covers it; weathercocking numbers mean nothing once the rocket goes end over end
+    } else if (st.maxAoA > 20)
       flags.push([
         "bad",
         `Strong weathercocking: the crosswind meets the rocket at up to ${st.maxAoA.toFixed(0)}° just after it leaves the rail${tiltTxt}. Use a longer rail or a faster motor, or wait for less wind.`,
@@ -1100,7 +1097,7 @@ function resultFlags(st, S, m, D) {
  * @returns {object[]}
  */
 function windRows() {
-  const { windTable, L: RL, D: RD } = lastSim;
+  const { windTable, L: RL } = lastSim;
   return windTable.map((r) => ({
     wind: `${fmt(r.w, "wind", 0)} ${uname("wind")}`,
     apo: r.error ? "—" : `${fmt(r.apo, "alt")} ${uname("alt")}`,

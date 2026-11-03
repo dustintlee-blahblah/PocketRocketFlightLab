@@ -275,7 +275,6 @@ function renderForms() {
   renderInertiaNote();
   renderStageUI();
   renderTitle();
-  const rn = document.getElementById("recnote");
   renderRecNote();
   for (const [gid, list] of Object.entries(FIELDS)) {
     const g = document.getElementById(gid);

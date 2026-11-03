@@ -28,7 +28,7 @@ function orkConfigs(xml) {
         .filter(Boolean);
       return {
         id,
-        label: (nm && !/^[\[{].*[\]}]$/.test(nm) ? nm + ": " : "") + (ms.length ? ms.join(" + ") : "no motor"),
+        label: (nm && !/^[[{].*[\]}]$/.test(nm) ? nm + ": " : "") + (ms.length ? ms.join(" + ") : "no motor"),
         def: c.getAttribute("default") === "true",
       };
     });

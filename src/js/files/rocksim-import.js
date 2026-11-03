@@ -44,8 +44,6 @@ function parseRkt(xml) {
   const EDGE = ["square", "rounded", "airfoil"];
   const allChutes = [...design.getElementsByTagName("Parachute")].map((p) => num(p, "Dia") / 1000);
   const mainD = allChutes.length > 1 ? Math.max(...allChutes) : null;
-  let mountMotor = false,
-    sawChute = false;
   let usedCalc = false;
   /**
    * A RockSim part's material as an .ork material element (bulk, surface or line density, in SI).
@@ -139,10 +137,8 @@ function parseRkt(xml) {
           id = num(el, "ID") / 2000,
           th = Math.max(od - id, 0);
         if (txt(el, "IsInsideTube") === "1") {
-          if (txt(el, "IsMotorMount") === "1") mountMotor = true;
           return `<innertube>${c}<length>${L}</length><outerradius>${od}</outerradius><thickness>${th}</thickness><overhang>${num(el, "EngineOverhang") / 1000}</overhang>${txt(el, "IsMotorMount") === "1" ? "<motormount/>" : ""}<subcomponents>${kids(el)}</subcomponents></innertube>`;
         }
-        if (txt(el, "IsMotorMount") === "1") mountMotor = true;
         // an outside tube can be the motor mount too (minimum-diameter rockets, or RockSim's tube-in-tube boat tails)
         return `<bodytube>${c}<length>${L}</length><radius>${od}</radius><thickness>${th}</thickness>${txt(el, "IsMotorMount") === "1" ? `<overhang>${num(el, "EngineOverhang") / 1000}</overhang><motormount/>` : ""}<subcomponents>${kids(el)}</subcomponents></bodytube>`;
       }
@@ -188,7 +184,6 @@ function parseRkt(xml) {
       }
       case "Parachute": {
         const d = num(el, "Dia") / 1000;
-        sawChute = true;
         const ev =
           mainD != null && Math.abs(d - mainD) < 1e-9
             ? `<deployevent>altitude</deployevent><deployaltitude>${D.mainAlt}</deployaltitude>`
@@ -281,7 +276,7 @@ function parseRkt(xml) {
     rktS2 = engs("Stage2Engines");
     if (!rktS3.length) rktS3 = engs(null).slice(0, 1);
     motor = rktS3[0] || null;
-    var bMotorRkt = rktS2[0] || null;
+    bMotorRkt = rktS2[0] || null;
     const g = (t) => {
       const v = parseFloat(txt(sim, t));
       return isFinite(v) ? v : null;

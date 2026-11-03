@@ -52,14 +52,6 @@ const FIN_EDGES = [
  */
 const finWaveK = (e) => (e === "doublewedge" ? 4 : e === "beveled" ? 10 : 16 / 3);
 /**
- * The closest edge type OpenRocket and RockSim know (square, rounded or airfoil).
- * @param {string} e edge type
- * @returns {string}
- *
- * OpenRocket and RockSim know square, rounded and airfoil only: the closest of those goes into their files
- */
-const stdEdge = (e) => (finBlunt(e) ? e : "airfoil");
-/**
  * True for the blunt edge types (square, rounded), which use the blunt-edge drag model.
  * @param {string} e edge type
  * @returns {boolean}
