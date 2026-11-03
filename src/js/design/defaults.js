@@ -1,4 +1,11 @@
+/**
+ * The starting design (a LOC IV X2) and launch conditions, the saved state loaded at startup (design D, launch L,
+ * uploaded motors, flyer profile, selected motors), and the current-motor lookups.
+ */
 /* ---------- default design: LOC IV X2 ---------- */
+/**
+ * Nose shapes offered in the quick form: ["shape:param", label] (see noseR for the parameters).
+ */
 const NOSE_PRESETS = [
   ["ogive:1", "Tangent ogive"],
   ["conical:0", "Conical"],
@@ -11,6 +18,10 @@ const NOSE_PRESETS = [
   ["haack:0", "Von Kármán (Haack)"],
   ["haack:0.3333", "LV-Haack"],
 ];
+/**
+ * A fresh design: the LOC IV X2 on a single parachute. All lengths in meters, masses in kg.
+ * @returns {object} design
+ */
 function defaultDesign() {
   return {
     name: "LOC IV X2",
@@ -88,6 +99,10 @@ function defaultDesign() {
     bChuteCd: 0.8,
   };
 }
+/**
+ * Fresh launch conditions and Monte Carlo spreads. Lengths in meters, speeds in m/s, angles in degrees.
+ * @returns {object} launch conditions
+ */
 function defaultLaunch() {
   return {
     elev: 0,
@@ -143,8 +158,14 @@ function defaultLaunch() {
     clusterFail: false,
   };
 }
+/**
+ * Wind-profile power-law exponents: wind at height h = wind at the reference height × (h / ref)^α.
+ */
 const WIND_ALPHA = { constant: 0, typical: 1 / 7, shear: 0.25 };
 
+/**
+ * The current design, from storage over the defaults, with older saved formats brought up to date below.
+ */
 let D = Object.assign(defaultDesign(), store.get("rfs-design", {}));
 if (!store.get("rfs-rec-default-single", false)) {
   D.recovery = "single";
@@ -188,9 +209,17 @@ USER_MOTORS.forEach(classifyUser);
     motorId = store.get("rfs-motor", DEFAULT_MOTOR);
   }
 }
+/**
+ * Every motor: the catalog and the uploaded ones.
+ * @returns {object[]}
+ */
 const allMotors = () => [...BUILTIN, ...USER_MOTORS];
 let boostId = store.get("rfs-bmotor", null);
 let motorTarget = "sustainer";
+/**
+ * The booster's selected motor (falls back to the sustainer's motor, and saves the fallback).
+ * @returns {object} motor
+ */
 function curBoost() {
   let m = allMotors().find((m) => m.id === boostId);
   if (!m) m = curMotor();
@@ -213,6 +242,10 @@ for (const [k, set] of [
     store.set(k, OLD_MOTOR_IDS[v]);
   }
 }
+/**
+ * A three-stage rocket's first-stage motor (falls back to the booster's motor).
+ * @returns {object} motor
+ */
 function curFirst() {
   let m = allMotors().find((m) => m.id === firstId);
   if (!m) m = curBoost();
@@ -222,6 +255,10 @@ function curFirst() {
   }
   return m;
 }
+/**
+ * The sustainer's (or the only stage's) selected motor; falls back to the default motor and saves the choice.
+ * @returns {object} motor
+ */
 function curMotor() {
   let m = allMotors().find((m) => m.id === motorId);
   if (!m && /^b-/.test(motorId)) m = BUILTIN.find((x) => x.name === motorId.slice(2));
@@ -233,6 +270,11 @@ function curMotor() {
   return m;
 }
 const statCache = new WeakMap();
+/**
+ * motorStats, cached per motor object.
+ * @param {object} m motor
+ * @returns {object} see motorStats
+ */
 function mstats(m) {
   let s = statCache.get(m);
   if (!s) {

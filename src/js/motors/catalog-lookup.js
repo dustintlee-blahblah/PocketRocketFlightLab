@@ -1,8 +1,23 @@
+/**
+ * The built-in motor catalog as motor objects, and the rules that file uploaded motors under a brand and motor system.
+ *
+ * A motor object: {id, name, cn (common name), brand, mfr, dia (m), len (m), delays ("6,8,10" or "P"), case, prop,
+ * sys, sparky, totalMass (kg), propMass (kg), t (s), F (N), builtin}.
+ */
+/**
+ * The order motor systems are listed in.
+ */
 const SYS_ORDER = ["RMS", "DMS", "SU", "Hybrid", "Kosdon", "ProX", "ProXL", "Loki", "Legacy"];
+/**
+ * For each catalog brand, the motor systems it has, in SYS_ORDER.
+ */
 const BRAND_SYS = {};
 for (const r of MOTOR_DB) (BRAND_SYS[r.b] = BRAND_SYS[r.b] || new Set()).add(r.sy);
 for (const b in BRAND_SYS) BRAND_SYS[b] = SYS_ORDER.filter((y) => BRAND_SYS[b].has(y));
 const BUILTIN_BRANDS = Object.keys(BRAND_SYS);
+/**
+ * The catalog (MOTOR_DB's compact rows) unpacked into motor objects, with sizes in meters and masses in kg.
+ */
 const BUILTIN = MOTOR_DB.map((r) => ({
   id: r.id,
   name: r.n,
@@ -41,6 +56,11 @@ const MFR_ALIAS = [
   [/^(sf|skyr)/, "Sky Ripper"],
   [/^(wcoast|west coast)/, "West Coast Hybrids"],
 ];
+/**
+ * The brand an uploaded motor is filed under, from the manufacturer field of its file.
+ * @param {string} mfr manufacturer text (e.g. "AT", "Cesaroni")
+ * @returns {string} a catalog brand name, or the text tidied up
+ */
 function brandOfMfr(mfr) {
   const t = (mfr || "").trim(),
     l = t.toLowerCase();
@@ -48,7 +68,14 @@ function brandOfMfr(mfr) {
   for (const [re, b] of MFR_ALIAS) if (re.test(l)) return b;
   return t.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-// the same motor: same name, same maker, same diameter and the same total impulse (within 1%); other fields don't matter
+/**
+ * Finds the same motor in a list: same name, maker and diameter, and total impulse within 1%.
+ * @param {object} m motor
+ * @param {object[]} pool motors to search
+ * @returns {object|null} the matching motor, or null
+ *
+ * the same motor: same name, same maker, same diameter and the same total impulse (within 1%); other fields don't matter
+ */
 function dupMotor(m, pool) {
   const norm = (x) => (x || "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
     nm = norm(m.name),
@@ -65,6 +92,12 @@ function dupMotor(m, pool) {
     ) || null
   );
 }
+/**
+ * Tidies an uploaded motor in place: cleans its delay list (no "1000" = plugged placeholder; an empty list becomes
+ * "P"), sets its brand, and copies the system, case and propellant from the matching catalog motor, if there is one.
+ * @param {object} m uploaded motor
+ * @returns {object} the same motor
+ */
 function classifyUser(m) {
   if (m.delays)
     m.delays =
@@ -88,4 +121,7 @@ function classifyUser(m) {
   } else m.sys = m.brand === "Cesaroni" ? "ProX" : m.brand === "Loki" ? "Loki" : "Imported";
   return m;
 }
+/**
+ * The motor a fresh install starts with (AeroTech H148R).
+ */
 const DEFAULT_MOTOR = (BUILTIN.find((m) => m.name === "H148R") || BUILTIN[0]).id;

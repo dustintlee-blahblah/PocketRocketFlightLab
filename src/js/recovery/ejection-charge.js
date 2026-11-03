@@ -1,3 +1,7 @@
+/**
+ * Ejection charges: black powder sizing for each recovery compartment of the design (from the builder's parts), and the
+ * RockSim ejection-delay reader. The charge settings are saved with the design, inside its .ork file.
+ */
 /* ---------- ejection charge: black powder for a recovery compartment ----------
    Ideal gas: m = P·V / (R·T), with R = 22.16 ft·lbf/(lbm·°R) = 265.9 in·lbf/(lbm·°R) and T = 3307 °R for black powder's
    combustion gas (the figures most rocketry ejection calculators use; 15 psi in a 1 in² × 1 in volume ≈ 0.0061 g).
@@ -5,12 +9,26 @@
    loads 1:1 with black powder by volume and weighs about 77% as much for that volume; Triple Seven loads at 85% of the
    black powder volume (the makers' loading guidance), about 65% of the black powder weight. */
 const BP_PIN = { "2-56": 35, "4-40": 50 }; // approximate shear strength of one nylon pin, lbf
-// each design's own charge settings (per bay: pressure, pins, what fires it; where bays divide) live with the design, and
-// are saved inside its .ork file. Settings from before this lived on the device; the open design takes them over once.
-// RockSim's EjectionDelay field: 0 or more is the delay in seconds (0 fires at burnout); negative (-1 plugged, -2) is no charge
+/**
+ * A RockSim EjectionDelay value as a motor delay: seconds (0 = at burnout), or null for plugged / no charge.
+ * @param {*} v
+ * @returns {number|null}
+ *
+ * each design's own charge settings (per bay: pressure, pins, what fires it; where bays divide) live with the design, and
+ * are saved inside its .ork file. Settings from before this lived on the device; the open design takes them over once.
+ * RockSim's EjectionDelay field: 0 or more is the delay in seconds (0 fires at burnout); negative (-1 plugged, -2) is no charge
+ */
 const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
+/**
+ * Names of this app's extra files stored inside an .ork (ejection charges, fin edge types).
+ */
 const BP_ORK = "pocketrocket/ejection-charges.json",
   FIN_ORK = "pocketrocket/fin-edges.json";
+/**
+ * The open design's charge settings ({comps, splits}), created on first use; settings saved on the device by older
+ * builds are moved into it once.
+ * @returns {{comps:object, splits:object}}
+ */
 function bpDesign() {
   if (typeof BLD === "undefined" || !BLD) return { comps: {}, splits: {} };
   if (!BLD.bp) {
@@ -28,11 +46,17 @@ function bpDesign() {
   BLD.bp.splits = BLD.bp.splits || {};
   return BLD.bp;
 }
+/**
+ * Saves the builder design (and with it the charge settings); errors are ignored.
+ */
 function bpDesignSave() {
   try {
     bldSave();
   } catch (e) {}
 }
+/**
+ * The single-compartment calculator's settings on the device: d, l (m), p (Pa), n pins, pin size.
+ */
 const BP = {
   get() {
     return Object.assign({ d: null, l: 12 * IN, p: 15 * 6894.757, n: 0, pin: "2-56" }, store.get("rfs-bp", {}));
@@ -41,11 +65,18 @@ const BP = {
     store.set("rfs-bp", v);
   },
 };
+/**
+ * Black powder for one compartment (ideal gas, see above).
+ * @param {{d:number, l:number, p:number, n:number, pin:string}} v inside diameter and length (m), separation
+ *   pressure (Pa), shear pin count and size
+ * @returns {{A:number, V:number, pSep:number, pPin:number, P:number, g:number, force:number}} area in², volume in³,
+ *   pressures psi, black powder grams, force on the bulkhead lbf
+ */
 function bpCalc(v) {
-  const din = v.d / IN,
-    lin = v.l / IN,
-    A = (Math.PI / 4) * din * din,
-    V = A * lin,
+  const diaIn = v.d / IN,
+    lenIn = v.l / IN,
+    A = (Math.PI / 4) * diaIn * diaIn,
+    V = A * lenIn,
     pPin = v.n > 0 && A > 0 ? (v.n * BP_PIN[v.pin]) / A : 0,
     pSep = v.p / 6894.757,
     P = pSep + pPin;
@@ -53,7 +84,12 @@ function bpCalc(v) {
     g = lbm * 453.592;
   return { A, V, pSep, pPin, P, g, force: P * A };
 }
-// the inside diameter of the rocket's aft-most body tube (from the builder's parts), with a key that changes when that tube does
+/**
+ * The aft-most body tube's inside diameter, name and a key that changes when that tube does.
+ * @returns {{id:number, name:string, key:string}|null}
+ *
+ * the inside diameter of the rocket's aft-most body tube (from the builder's parts), with a key that changes when that tube does
+ */
 function bpAftTube() {
   try {
     if (typeof BLD === "undefined" || !BLD) return null;
@@ -72,6 +108,10 @@ function bpAftTube() {
    mount); nothing behind that counts. Each space between walls is a compartment: the nose cone's shoulder (or a coupler
    in the nose reaching back into the tube) is taken out of the one it reaches into. A sealed space with no parachute or
    streamer in it, closed by bulkheads at both ends, gets no charge: inside a coupler it's an electronics bay. */
+/**
+ * The recovery compartments of the sustainer (see the note above).
+ * @returns {object[]} compartments: kind, from/to (m), tubes, holds, label, key...
+ */
 function bpCompartments() {
   try {
     if (typeof BLD === "undefined" || !BLD) return [];
@@ -333,6 +373,9 @@ function bpCompartments() {
     return [];
   }
 }
+/**
+ * Draws the Ejection Charges panel (after the one-time black powder warning is acknowledged).
+ */
 function bpRender() {
   const out = document.getElementById("bpout");
   if (!out) return;
@@ -458,7 +501,14 @@ function bpRender() {
   document.getElementById("bpnote").textContent =
     `Compartment ${vU}, ${units === "imp" ? R.P.toFixed(1) + " psi" : (R.P * 6.894757).toFixed(0) + " kPa"} in all${R.pPin > 0 ? ` (${units === "imp" ? R.pSep.toFixed(1) + " psi" : (R.pSep * 6.894757).toFixed(0) + " kPa"} to separate plus ${units === "imp" ? R.pPin.toFixed(1) + " psi" : (R.pPin * 6.894757).toFixed(0) + " kPa"} to break ${v.n} pin${v.n > 1 ? "s" : ""})` : ""}: ${fU} on the bulkhead. A backup charge is usually 25–50% larger: ${g2(bp * 1.25)}–${g2(bp * 1.5)} g of black powder. Ground test before flying.`;
 }
-// each compartment's own settings: pressure, shear pins, and what fires its charge
+/**
+ * One compartment's settings (pressure, shear pins, what fires it), saved values over the defaults.
+ * @param {object} v calculator settings
+ * @param {object} c compartment
+ * @returns {object}
+ *
+ * each compartment's own settings: pressure, shear pins, and what fires its charge
+ */
 function bpCompSet(v, c) {
   const all = bpDesign().comps;
   return Object.assign(
@@ -484,13 +534,19 @@ function bpCompSet(v, c) {
     bpRender();
   });
 }
+/**
+ * Writes the charge table for each compartment, with the substitute powders' loads.
+ * @param {object[]} comps from bpCompartments
+ * @param {object} v calculator settings
+ * @param {HTMLElement} out container
+ */
 function bpRenderComps(comps, v, out) {
   const toIn3 = (x) => x / (IN * IN * IN),
     gr = (x) => (x * 15.4324).toFixed(1),
     g2 = (x) => (x < 1 ? x.toFixed(2) : x.toFixed(1));
   const vol = (x) => (units === "imp" ? `${toIn3(x).toFixed(1)} in³` : `${(x * 1e6).toFixed(0)} cm³`),
-    L = (x) => `${fmt(x, "len")} ${uname("len")}`,
-    Dm = (x) => `${fmt(x, "small")} ${uname("small")}`;
+    lenTxt = (x) => `${fmt(x, "len")} ${uname("len")}`,
+    smallTxt = (x) => `${fmt(x, "small")} ${uname("small")}`;
   const pU = units === "imp" ? "psi" : "kPa",
     pD = (x) => (units === "imp" ? x / 6894.757 : x / 1000);
   const P = [
@@ -515,7 +571,7 @@ function bpRenderComps(comps, v, out) {
             ? " between two bulkheads"
             : ` between the ${nm(c.from)} and the ${nm(c.to)}`
           : `${c.from ? ` from the ${nm(c.from)}` : " from the nose cone"}${c.to ? ` to the ${nm(c.to)}` : c.endBy ? ` to the forward ${c.endBy === "ring" ? "centering ring" : "end of the motor mount"}` : ""}`;
-      const where = `${Dm(c.d)} inside × ${L(c.len)}${ends}${c.shV > 0 ? `, less ${vol(c.shV)} of nose shoulder` : ""}`;
+      const where = `${smallTxt(c.d)} inside × ${lenTxt(c.len)}${ends}${c.shV > 0 ? `, less ${vol(c.shV)} of nose shoulder` : ""}`;
       if (c.kind !== "recovery")
         return `<div class="bpcard bpnone"><div class="bph"><b>${esc(c.name)}</b> · ${esc(c.kind === "ebay" ? c.tube : c.tubes.join(", "))}</div><div class="bpgeo">${where} = ${vol(c.V)}. ${c.kind === "ebay" ? (c.implied ? "The coupler between the two recovery bays, taken as sealed at both ends: no charge. If it isn’t sealed, add its bulkheads in the builder." : "Sealed by bulkheads at both ends, inside a coupler: no charge.") : c.kind === "sealed" ? "Sealed by bulkheads at both ends, with nothing to deploy: no charge." : "No parachute or streamer in it, so no charge is sized."}</div></div>`;
       const S = bpCompSet(v, c);

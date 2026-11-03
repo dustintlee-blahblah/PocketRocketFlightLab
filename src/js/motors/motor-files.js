@@ -1,4 +1,12 @@
+/**
+ * Reading motor files (RASP .eng and RockSim .rse) and the basic numbers of a thrust curve.
+ */
 /* ---------- motor file parsing ---------- */
+/**
+ * Reads a RASP .eng file, which can hold several motors. Comments (;) are skipped; sizes come in mm.
+ * @param {string} text file contents
+ * @returns {object[]} motor objects (curves with fewer than two points are dropped)
+ */
 function parseEng(text) {
   const out = [];
   let cur = null;
@@ -31,6 +39,11 @@ function parseEng(text) {
   if (cur && cur.t.length > 1) out.push(cur);
   return out.map(fixCurve);
 }
+/**
+ * Reads a RockSim .rse (XML) motor file, which can hold several motors.
+ * @param {string} text file contents
+ * @returns {object[]} motor objects
+ */
 function parseRse(text) {
   const doc = new DOMParser().parseFromString(text, "application/xml");
   return [...doc.getElementsByTagName("engine")]
@@ -51,6 +64,11 @@ function parseRse(text) {
     })
     .filter((m) => m.t.length > 1);
 }
+/**
+ * Makes a thrust curve start and end at zero thrust, and gives the motor its uploaded-motor id.
+ * @param {object} m motor (changed in place)
+ * @returns {object} the same motor
+ */
 function fixCurve(m) {
   if (m.t[0] !== 0) {
     m.t.unshift(0);
@@ -63,6 +81,11 @@ function fixCurve(m) {
   m.id = "u-" + m.mfr + "-" + m.name + "-" + Math.round(m.totalMass * 1e4);
   return m;
 }
+/**
+ * Total impulse, peak thrust, burn time, average thrust and impulse class of a motor.
+ * @param {object} m motor
+ * @returns {{I:number, Fmax:number, tb:number, avg:number, cls:string}} N·s, N, s, N and the class letter
+ */
 function motorStats(m) {
   let I = 0,
     Fmax = 0;

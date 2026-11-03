@@ -1,3 +1,9 @@
+/**
+ * Motor system labels for the motor catalog (the catalog data itself is in data/motor-catalog.js).
+ */
+/**
+ * Display names of the motor systems (reload families, single-use, hybrids...), keyed by the catalog's sy code.
+ */
 const SYS_LABEL = {
   RMS: "RMS reload",
   DMS: "DMS",
