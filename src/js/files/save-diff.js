@@ -1,4 +1,13 @@
-// the other files inside an OpenRocket .ork zip (decal images), kept so a save doesn't lose them
+/**
+ * What changed since the design was opened, and which of those changes each file format can save.
+ */
+/**
+ * The other files inside an .ork zip (decal images), as base64, so a save keeps them.
+ * @param {ArrayBuffer} buf
+ * @returns {Promise<{name:string, b64:string}[]>}
+ *
+ * the other files inside an OpenRocket .ork zip (decal images), kept so a save doesn't lose them
+ */
 async function zipOthers(buf) {
   const u8 = new Uint8Array(buf);
   if (u8[0] !== 0x50 || u8[1] !== 0x4b) return [];
@@ -41,8 +50,17 @@ async function zipOthers(buf) {
   }
   return out;
 }
+/**
+ * Base64 text to bytes.
+ */
 const b64ToU8 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+/**
+ * A deep copy of plain JSON data.
+ */
 const jclone = (o) => JSON.parse(JSON.stringify(o));
+/**
+ * Design keys that are derived or file-only, so a difference in them isn't a change.
+ */
 const SAVE_IGNORE = new Set([
   "dragScale",
   "mountDia",
@@ -62,6 +80,9 @@ const SAVE_IGNORE = new Set([
   "finFinish",
   "bFinFinish",
 ]);
+/**
+ * Names of the design keys as the user knows them, for the save summary.
+ */
 const SAVE_LABEL = (() => {
   const m = {
     name: "Rocket name",
@@ -80,8 +101,12 @@ const SAVE_LABEL = (() => {
   for (const list of Object.values(FIELDS)) for (const [k, l] of list) if (!m[k]) m[k] = l;
   return m;
 })();
-// what each format can carry
-// range settings only feed the RSO Checklist: changing them keeps the results
+/**
+ * Range settings, which only feed the RSO Checklist (changing them keeps the results).
+ *
+ * what each format can carry
+ * range settings only feed the RSO Checklist: changing them keeps the results
+ */
 const RANGE_KEYS = [
   "waiver",
   "waiverRef",
@@ -98,6 +123,9 @@ const RANGE_KEYS = [
   "precip",
   "dewC",
 ]; // read live by the RSO Checklist: changing them doesn't change the flight
+/**
+ * Keys each format can't carry, so they aren't written back into the file.
+ */
 const SAVE_NOT = {
   common: [
     "waiver",
@@ -162,6 +190,11 @@ const SAVE_NOT = {
   ],
   ork: ["extraMotors"],
 };
+/**
+ * The changes since the design was opened (or since ref).
+ * @param {object} [ref] a base {D, L, motorId, boostId, firstId}, in place of SOURCE.base
+ * @returns {{keys:string[], saved:string[], skipped:string[], stageSwitch:boolean}|null} null without a source file
+ */
 function saveDiff(ref) {
   if (!SOURCE || !SOURCE.base) return null;
   const RB = ref || SOURCE.base,
@@ -187,4 +220,7 @@ function saveDiff(ref) {
     stageSwitch: !!D.twoStage !== !!bD.twoStage,
   };
 }
+/**
+ * The labels of a list of keys, joined, without repeats.
+ */
 const labelList = (ks) => [...new Set(ks.map((k) => SAVE_LABEL[k] || k))].join(", ");

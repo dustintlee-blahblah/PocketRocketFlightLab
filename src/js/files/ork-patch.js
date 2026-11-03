@@ -1,4 +1,14 @@
+/**
+ * Saving changes back into the original file: the edits since the design was opened (saveDiff) are written into the
+ * .ork or .rkt document itself, leaving everything the app doesn't edit as it was. The result is read back and
+ * checked against the app's design.
+ */
 /* --- patch the original file with the edits --- */
+/**
+ * Writes the changes into a copy of the source file's document.
+ * @returns {{text:string, notes:string[], diff:object}} the new file text, notes on what couldn't be matched
+ * @throws {Error} if the design changed between one and two stages, or the file can't be read
+ */
 function buildPatchedFile() {
   const S = SOURCE,
     ork = S.format === "ork",
@@ -15,7 +25,13 @@ function buildPatchedFile() {
   const lists = srcLists(doc, S.format),
     ch = new Set(diff.saved),
     notes = [];
+  /**
+   * True if any of the keys changed (and can be saved).
+   */
   const chg = (...ks) => ks.some((k) => ch.has(k));
+  /**
+   * m to mm (RockSim lengths).
+   */
   const mm = (v) => v * 1000;
   /* name */
   if (chg("name")) ork ? setKid(lists.rocket, "name", D.name) : setKid(lists.rocket, "Name", D.name);
@@ -101,6 +117,9 @@ function buildPatchedFile() {
     }
   }
   /* fins */
+  /**
+   * Writes a fin set's count, edge and (if it changed) its shape into a fin set element.
+   */
   const finSet = (el, g, geom) => {
     if (ork) {
       if (geom && el.tagName !== "trapezoidfinset")
@@ -133,9 +152,15 @@ function buildPatchedFile() {
     }
     return el;
   };
+  /**
+   * The fin count of a fin set element.
+   */
   const countOf = (el) => parseFloat(ork ? txtOf(el, "fincount") : txtOf(el, "FinCount")) || 0;
   // a group is one fin set in the app, made of one or more fin-set parts in the file
   const groups = [];
+  /**
+   * A fin set in the app, made of one or more fin set parts in the file, with what changed.
+   */
   const mkGroup = (ois, cur, old, stage, kind) => {
     const els = (ois || []).map((i) => lists.fin[i]).filter(Boolean);
     if (!els.length) return null;
@@ -160,6 +185,9 @@ function buildPatchedFile() {
     groups.push(g);
     return g;
   };
+  /**
+   * The sustainer's or booster's main fin set now.
+   */
   const mainOf = (b) =>
     b
       ? {
@@ -180,6 +208,9 @@ function buildPatchedFile() {
           t: D.finThick,
           edge: D.finEdge,
         };
+  /**
+   * The main fin set as opened.
+   */
   const oldMain = (b) =>
     b
       ? {
@@ -248,6 +279,10 @@ function buildPatchedFile() {
     }
   }
   /* mass and balance: written as a stage weight and CG override, which replace the parts' own weights */
+  /**
+   * Writes a stage's weight and CG as overrides.
+   * @returns {boolean} false if the stage isn't in the file
+   */
   const massSet = (stageIdx, m, cg) => {
     if (ork) {
       const st = lists.stage[stageIdx];
@@ -272,7 +307,13 @@ function buildPatchedFile() {
   }
   if (D.twoStage && chg("bDryMass", "bCg")) massSet(1, D.bDryMass, D.bCg);
   /* recovery */
+  /**
+   * A parachute or streamer element by its index.
+   */
   const chuteEl = (oi) => (oi != null ? lists.chute[oi] : null);
+  /**
+   * Writes a parachute's diameter and Cd (a streamer gets the same drag area).
+   */
   const setChute = (el, dia, cd, streamer, label) => {
     if (!el) {
       notes.push(`The file has no ${label} to update.`);
@@ -290,6 +331,9 @@ function buildPatchedFile() {
       setKid(el, "DragCoefficient", cd);
     }
   };
+  /**
+   * Sets a deployment value on a chute, and in its deployment configuration for the motor configuration in use.
+   */
   const cfgDeploy = (el, k, v) => {
     setKid(el, k, v);
     for (const dc of [...el.children].filter(
@@ -334,11 +378,17 @@ function buildPatchedFile() {
   if (chg("ejDelay", "motor")) motorDelay = D.ejDelay != null ? D.ejDelay : ork ? "none" : -1;
   /* motors */
   const sim = lists.sims[src.sim >= 0 ? src.sim : 0] || null;
+  /**
+   * A RockSim simulation's engine set for a stage.
+   */
   const rktSet = (stage) => {
     if (!sim) return null;
     const g = sim.getElementsByTagName(stage === 1 ? "Stage2Engines" : "Stage3Engines")[0];
     return (g || (stage === 0 ? sim : null))?.getElementsByTagName("EngineSet")[0] || null;
   };
+  /**
+   * Writes a stage's motor (designation, maker, delay, count) into the file.
+   */
   const writeMotor = (stage, m, count) => {
     if (ork) {
       let el = lists.motor[stage === 1 ? src.bmotor : src.motor];
@@ -497,16 +547,29 @@ function buildPatchedFile() {
     }
   }
   /* lengths and fin positions: re-read the file the way the importer does and nudge until they match */
+  /**
+   * The document as text.
+   */
   const ser = () => new XMLSerializer().serializeToString(doc);
+  /**
+   * The document read back by the importer.
+   */
   const reparse = () => {
     const x = ser();
     return ork ? parseOrk(x) : parseRkt(x);
   };
-  // a length change goes to the longest tube without the motor mount, so the mount and the parts packed around it stay put
+  /**
+   * True if a body tube holds the motor mount.
+   *
+   * a length change goes to the longest tube without the motor mount, so the mount and the parts packed around it stay put
+   */
   const hasMount = (el) =>
     ork
       ? el.getElementsByTagName("motormount").length > 0
       : [el, ...el.getElementsByTagName("*")].some((e) => txtOf(e, "IsMotorMount") === "1");
+  /**
+   * The tube that takes a length change: the longest tube without the motor mount.
+   */
   const lenTube = (si) => {
     const tubes = (src.body || []).filter(
       (b) => b.tag === "bodytube" && (D.twoStage ? b.si === si : true) && lists.bodytube[b.oi],
@@ -521,8 +584,15 @@ function buildPatchedFile() {
   const tS = lenTube(0),
     tB = D.twoStage ? lenTube(1) : null;
   if (wantLen && !tS) notes.push("The file has no body tube to lengthen, so the length change wasn’t saved.");
+  /**
+   * A component's position element.
+   */
   const posKids = (el) => (ork ? kidOf(el, "axialoffset") || kidOf(el, "position") : kidOf(el, "Xb"));
-  // OpenRocket files can carry the position twice (axialoffset, and the older position tag); move both
+  /**
+   * Moves a component along the body by dx (both position tags, when the file has two).
+   *
+   * OpenRocket files can carry the position twice (axialoffset, and the older position tag); move both
+   */
   const moveEl = (el, dx) => {
     if (ork) {
       let ps = [kidOf(el, "axialoffset"), kidOf(el, "position")].filter(Boolean);
@@ -596,6 +666,9 @@ function buildPatchedFile() {
   /* check what the file now says against the app */
   const rd = r.design,
     miss = [];
+  /**
+   * Notes a saved value that doesn't match what the file reads back as.
+   */
   const cmp = (k, a, b, tol, dim) => {
     if (ch.has(k) && Math.abs(a - b) > tol)
       miss.push(`${SAVE_LABEL[k] || k}: ${fmt(a, dim)} in the file vs ${fmt(b, dim)} here`);

@@ -1,3 +1,9 @@
+/**
+ * Example rockets and opening recent files; and the unsaved-changes prompt shown before the open design is closed.
+ */
+/**
+ * Draws the example rockets lists.
+ */
 function renderExamples() {
   const h = EXAMPLES.map(
     (e, i) =>
@@ -8,7 +14,12 @@ function renderExamples() {
     if (l) l.innerHTML = h;
   }
 }
-// an example opens like a file: its own copy, so nothing you change touches the example (Save changes saves a new .ork)
+/**
+ * Opens an example rocket like a file, as its own copy (Save changes saves a new .ork).
+ * @param {number} i index in EXAMPLES
+ *
+ * an example opens like a file: its own copy, so nothing you change touches the example (Save changes saves a new .ork)
+ */
 async function openExample(i) {
   const e = EXAMPLES[i],
     rep = document.getElementById("orkreport");
@@ -54,6 +65,10 @@ async function openExample(i) {
   document.getElementById("exlist2").addEventListener("click", click);
 }
 renderExamples();
+/**
+ * Opens a recent file again from its stored copy.
+ * @param {string} id
+ */
 async function openRecent(id) {
   const rep = document.getElementById("orkreport"),
     e = await recentGet(id);
@@ -101,6 +116,11 @@ async function openRecent(id) {
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
   }
 }
+/**
+ * Runs an action that closes the open design, first offering to save unsaved changes (set up below).
+ * @param {function} act
+ * @param {string} [what] what the action does, for the prompt
+ */
 let confirmUnsaved = (act) => act();
 {
   const box = document.getElementById("recentconfirm"),

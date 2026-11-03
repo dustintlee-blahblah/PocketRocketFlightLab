@@ -1,8 +1,19 @@
+/**
+ * A new .ork written from the design, for designs typed in by hand or saved as a new file.
+ */
 /* --- a new .ork written from the design (for designs typed in by hand, or to start fresh) --- */
+/**
+ * Writes the design as a new OpenRocket file: stages, body parts, fins, recovery, launch guides, motor mounts and
+ * mass overrides, with the selected motors in one motor configuration.
+ * @returns {{text:string, notes:string[]}} the XML, and notes on what couldn't be written
+ */
 function buildNewOrk() {
   const n = numStr,
     e = (s) =>
       String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  /**
+   * A random id for an .ork component.
+   */
   const uid = () =>
     crypto.randomUUID
       ? crypto.randomUUID()
@@ -10,18 +21,40 @@ function buildNewOrk() {
   const cfg = uid(),
     notes = [],
     fin = FINISH_NAME(D.finish);
+  /**
+   * An .ork material element.
+   */
   const mat = (t, d, nm) => `<material type="${t}" density="${d}">${nm}</material>`;
+  /**
+   * A trapezoidal fin set element.
+   */
   const finXml = (f, name, off) =>
     `<trapezoidfinset><name>${e(name)}</name><axialoffset method="top">${n(off)}</axialoffset><finish>${fin}</finish>${mat("bulk", 680, "Plywood (birch)")}<fincount>${f.n}</fincount><rotation>0.0</rotation><thickness>${n(f.t)}</thickness><crosssection>${stdEdge(f.edge || "square")}</crosssection><cant>0.0</cant><rootchord>${n(f.root)}</rootchord><tipchord>${n(f.tip)}</tipchord><height>${n(f.span)}</height><sweeplength>${n(f.sweep)}</sweeplength></trapezoidfinset>`;
+  /**
+   * A motor element for the configuration.
+   */
   const motorXml = (m, delay) =>
     `<motor configid="${cfg}"><type>reload</type><manufacturer>${e(m.mfr || m.brand)}</manufacturer><designation>${e(m.name)}</designation><diameter>${n(m.dia)}</diameter><length>${n(m.len)}</length><delay>${delay == null ? "none" : n(delay)}</delay></motor>`;
+  /**
+   * A motor mount (inner tube) element with its motor, ignition and ejection delay.
+   */
   const mountXml = (m, overhang, name, ign, delay, ej, off) =>
     `<innertube><name>${e(name)}</name><axialoffset method="bottom">${n(off || 0)}</axialoffset>${mat("bulk", 680, "Cardboard")}<length>${n(Math.max(m.len - overhang, 0.02))}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${n(m.dia / 2 + 0.0008)}</outerradius><thickness>0.0008</thickness><clusterconfiguration>single</clusterconfiguration><clusterscale>1.0</clusterscale><clusterrotation>0.0</clusterrotation><motormount><ignitionevent>${ign}</ignitionevent><ignitiondelay>${n(delay)}</ignitiondelay><overhang>${n(overhang)}</overhang>${motorXml(m, ej)}</motormount><subcomponents/></innertube>`;
+  /**
+   * A parachute element with its deployment event, altitude and delay.
+   */
   const chuteXml = (name, d, cd, ev, alt, dd) =>
     `<parachute><name>${e(name)}</name><axialoffset method="top">0.0</axialoffset><packedlength>0.1</packedlength><packedradius>${n(D.diameter * 0.4)}</packedradius><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><cd>${n(cd)}</cd>${mat("surface", 0.067, "Ripstop nylon")}<deployevent>${ev}</deployevent><deployaltitude>${n(alt)}</deployaltitude><deploydelay>${n(dd)}</deploydelay><diameter>${n(d)}</diameter><linecount>6</linecount><linelength>${n(d)}</linelength><linematerial type="line" density="0.0013">Elastic cord (flat 6 mm, 1/4 in)</linematerial></parachute>`;
+  /**
+   * Mass and CG override elements.
+   */
   const override = (m, cg) =>
     `<overridemass>${n(m)}</overridemass><overridesubcomponentsmass>true</overridesubcomponentsmass><overridecg>${n(cg)}</overridecg><overridesubcomponentscg>true</overridesubcomponentscg>`;
-  // body parts from front to back (the file's own sections when the design came from one)
+  /**
+   * The body parts from front to back: nose cone, tubes and transitions (the file's own sections when there are any).
+   *
+   * body parts from front to back (the file's own sections when the design came from one)
+   */
   const bodyParts = (segs, len, R, nose, tail) => {
     if (segs && segs.length) return segs.map((s) => ({ ...s }));
     const out = [];
@@ -36,6 +69,9 @@ function buildNewOrk() {
     if (tl) out.push({ kind: "trans", x: len - tl, len: tl, r1: R, r2: D.tailDia / 2, shape: "conical", param: 0 });
     return out;
   };
+  /**
+   * Rail buttons and launch lugs.
+   */
   const guideXml = (btns, lugs) => [
     ...(btns || []).map((b) => ({
       x: b.x,
@@ -48,6 +84,9 @@ function buildNewOrk() {
         `<launchlug><name>Launch lug</name><axialoffset method="top">${n(off)}</axialoffset>${mat("bulk", 680, "Cardboard")}<radius>${n(l.ro)}</radius><thickness>${n(Math.max(l.ro - l.ri, 1e-4))}</thickness><length>${n(l.len)}</length><instancecount>${l.n || 1}</instancecount><instanceseparation>0.0</instanceseparation></launchlug>`,
     })),
   ];
+  /**
+   * One stage element with its parts.
+   */
   const stageXml = (name, parts, fins, inner, chutes, ovr, extra, guides) => {
     const tubes = parts.filter((p) => p.kind === "tube");
     const tubeFor = (x) => tubes.find((t) => x >= t.x - 1e-6 && x < t.x + t.len) || tubes[tubes.length - 1];
@@ -178,6 +217,11 @@ function buildNewOrk() {
   const xml = `<?xml version='1.0' encoding='utf-8'?>\n<openrocket version="1.9" creator="Pocket Rocket Flight Lab"><rocket><name>${e(D.name)}</name><motorconfiguration configid="${cfg}" default="true"/><referencetype>maximum</referencetype><subcomponents>${stages}</subcomponents></rocket><simulations><simulation status="outdated"><name>Simulation 1</name><simulator>RK4Simulator</simulator><calculator>BarrowmanCalculator</calculator>${cond}</simulation></simulations></openrocket>`;
   return { text: xml, notes };
 }
+/**
+ * The main fin set of the sustainer or the booster, as a fin set object.
+ * @param {boolean} b booster
+ * @returns {object}
+ */
 function mainOf0(b) {
   return b
     ? {

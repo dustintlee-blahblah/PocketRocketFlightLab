@@ -1,5 +1,14 @@
+/**
+ * Unsaved changes and the Save buttons: what counts as a change, the title asterisk, opening files, new and sample
+ * designs, and naming a file on its first save.
+ */
 /* ---------- unsaved changes: asked about before another file is opened ---------- */
-// only what the design file can hold counts as a change (app-only settings like the safety cone don't)
+/**
+ * A snapshot of what the design file can hold (app-only settings don't count as changes).
+ * @returns {string} JSON
+ *
+ * only what the design file can hold counts as a change (app-only settings like the safety cone don't)
+ */
 function designSnap(d, l, m, b) {
   const no = new Set([...SAVE_IGNORE, ...SAVE_NOT.common, ...SAVE_NOT.ork]);
   const pick = (o) =>
@@ -13,6 +22,9 @@ var CLEAN = null;
 try {
   CLEAN = localStorage.getItem("rfs-clean2");
 } catch (e) {}
+/**
+ * Takes the current design as saved.
+ */
 function markClean() {
   CLEAN = designSnap(D, L, motorId, boostId);
   try {
@@ -20,6 +32,10 @@ function markClean() {
   } catch (e) {}
   renderSavePanel();
 }
+/**
+ * True if the design differs from when it was last saved or opened.
+ * @returns {boolean}
+ */
 function isDirty() {
   const ref =
     CLEAN ??
@@ -73,11 +89,19 @@ function isDirty() {
     box.hidden = true;
   };
 }
-// the rocket's name, with an asterisk while an opened .ork/.rkt has unsaved changes
-// a design that's open (from a file, or started here) with changes that aren't saved
+/**
+ * True if a design is open and has unsaved changes.
+ * @returns {boolean}
+ *
+ * the rocket's name, with an asterisk while an opened .ork/.rkt has unsaved changes
+ * a design that's open (from a file, or started here) with changes that aren't saved
+ */
 function designDirty() {
   return !document.documentElement.classList.contains("nodesign") && isDirty();
 }
+/**
+ * Writes the rocket's name in the title, with an asterisk while there are unsaved changes.
+ */
 function renderTitle() {
   const el = document.getElementById("rtitle");
   if (!el) return;
@@ -88,7 +112,12 @@ function renderTitle() {
   const f = document.getElementById("rfile");
   if (f) f.textContent = SOURCE && SOURCE.name ? `File: ${SOURCE.name}` : "File: not saved yet";
 }
-// a rocket is open (from a file or entered by hand) for the rest of this session
+/**
+ * Marks a rocket as open for the rest of this session (or none), and shows the design screens.
+ * @param {boolean} on
+ *
+ * a rocket is open (from a file or entered by hand) for the rest of this session
+ */
 function setActive(on) {
   try {
     on ? sessionStorage.setItem("rfs-active", "1") : sessionStorage.removeItem("rfs-active");
@@ -142,6 +171,9 @@ document.getElementById("newdesign").onclick = () => {
     window.scrollTo({ top: 0 });
   }, "starting a new design");
 };
+/**
+ * Shows the Save changes button while there's something to save, worded for the file's format.
+ */
 function renderSavePanel() {
   renderTitle();
   const b = document.getElementById("savefile");
@@ -158,6 +190,10 @@ function renderSavePanel() {
   if (n) n.hidden = !(SOURCE && SOURCE.format === "rkt");
 }
 let nameMode = "first";
+/**
+ * Asks for a file name: for a new design's first save, or for a copy.
+ * @param {string} mode "first" or "copy"
+ */
 function askName(mode) {
   nameMode = mode;
   const box = document.getElementById("namebox"),

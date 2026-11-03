@@ -1,22 +1,44 @@
+/**
+ * A run written into the design file as a saved simulation (see the note below).
+ */
 /* ---------- a run written into the design file as a saved simulation ----------
    OpenRocket: a new <simulation> with its results summary, events and time history (OpenRocket opens it as a finished simulation).
    (A design opened from a RockSim file is saved as an .ork first; RockSim files are only read.) Runs saved from here are named "Pocket Rocket: …", so the app
    never takes them as the other program's own prediction when the file is opened again. */
+/**
+ * The name prefix of simulations saved from this app.
+ */
 const PR_SIM_TAG = "Pocket Rocket";
+/**
+ * A fresh run of the design for saving, without the file's own reference figures.
+ * @returns {object} {st, out, m, mb}
+ */
 function simFresh() {
   const m = flightMotor(),
     mb = D.twoStage ? flightBoost() : null;
   const r = simulate(D, L, m, mb, { noRef: true });
   return { ...r, m, mb };
 }
+/**
+ * The saved simulation's name: "Pocket Rocket: <motor>, <date>".
+ * @param {object} R run
+ * @returns {string}
+ */
 function simName(R) {
   return `${PR_SIM_TAG}: ${flMotorName(R.m, R.mb)}, ${new Date().toISOString().slice(0, 10)}`;
 }
+/**
+ * A number as OpenRocket writes it (NaN, exponent or 6 significant digits).
+ */
 const simN = (v) => {
   if (v == null || !isFinite(v)) return "NaN";
   const a = Math.abs(v);
   return a !== 0 && (a < 1e-3 || a >= 1e7) ? (+v).toExponential(3) : String(+(+v).toPrecision(6));
 };
+/**
+ * A random version-4 UUID.
+ * @returns {string}
+ */
 function simUuid() {
   const h = "0123456789abcdef";
   let s = "";
@@ -24,7 +46,13 @@ function simUuid() {
     s += i === 8 || i === 13 || i === 18 || i === 23 ? "-" : i === 14 ? "4" : h[Math.floor(Math.random() * 16)];
   return s;
 }
-// the run's figures, worked out once for both file formats
+/**
+ * The run's summary figures, worked out once for both file formats.
+ * @param {object} R run
+ * @returns {object}
+ *
+ * the run's figures, worked out once for both file formats
+ */
 function simFigures(R) {
   const { out, st } = R,
     n = out.t.length;
@@ -72,11 +100,21 @@ function simFigures(R) {
     optDelay: st.tApo != null && burn != null ? Math.max(0, st.tApo - burn) : null,
   };
 }
+/**
+ * Adds the run to an .ork document as a finished simulation, with its summary, events and time history.
+ * @param {string} xml
+ * @param {object} R run
+ * @param {string} cfg motor configuration id
+ * @returns {string} the new XML
+ */
 function simOrkAdd(xml, R, cfg) {
   const doc = new DOMParser().parseFromString(xml, "application/xml"),
     root = doc.documentElement,
     ns = root.namespaceURI,
     mk = (t) => doc.createElementNS(ns, t);
+  /**
+   * The first child element with a tag name.
+   */
   const kid = (el, t) => [...el.children].find((c) => c.tagName === t);
   let sims = kid(root, "simulations");
   if (!sims) {
@@ -195,7 +233,14 @@ function simOrkAdd(xml, R, cfg) {
   sims.appendChild(sim);
   return new XMLSerializer().serializeToString(doc);
 }
-// after a save to a new file, the design's flight log and drag calibration move with it (a copy takes copies of them)
+/**
+ * After a save to a new file, moves (or copies) the design's flight log and drag calibration to it.
+ * @param {string} oldFl the flight log key before
+ * @param {string} oldCal the calibration key before
+ * @param {boolean} move move them (a copy gets copies)
+ *
+ * after a save to a new file, the design's flight log and drag calibration move with it (a copy takes copies of them)
+ */
 function prCarryLog(oldFl, oldCal, move) {
   const nf = flKey(),
     nc = calKey();
@@ -222,6 +267,13 @@ function prCarryLog(oldFl, oldCal, move) {
     }
   }
 }
+/**
+ * Save changes / Save as / Save a copy: writes the design into its file, a new .ork or a copy, with the run
+ * as a saved simulation, and reports what was saved.
+ * @param {boolean} asNew save as a new .ork
+ * @param {{name:string, copyName:string}} [opts] the name for a first save, or for a copy
+ * @returns {Promise<boolean>} true if saved
+ */
 async function saveDesignFile(asNew, opts = {}) {
   // the first Save changes of a new design, or of a design opened from a RockSim file: it becomes an .ork file
   // (under the name just given, or the .rkt file's name), and later saves go into it. A RockSim file is only ever read.

@@ -1,4 +1,11 @@
+/**
+ * Display units: imperial or metric, chosen in Settings. Values are kept in SI everywhere; these convert them for the
+ * screen. Each dimension (len, alt, mass, speed...) has a unit name, the size of one unit in SI, and decimals shown.
+ */
 /* ---------- units ---------- */
+/**
+ * For each unit system, each dimension's [unit name, SI value of one unit, decimals shown].
+ */
 const DIMS = {
   imp: {
     dist: ["mi", 1609.344, 2],
@@ -45,17 +52,41 @@ const DIMS = {
     vis: ["km", 1000, 1],
   },
 };
+/**
+ * An SI value in the current display unit.
+ * @param {number} v SI value (temperatures in °C)
+ * @param {string} dim dimension key of DIMS (or "temp")
+ * @returns {number}
+ */
 function toDisp(v, dim) {
   if (dim === "temp") return units === "imp" ? (v * 9) / 5 + 32 : v;
   return v / DIMS[units][dim][1];
 }
+/**
+ * A value typed in the current display unit, converted to SI.
+ * @param {number} v displayed value
+ * @param {string} dim dimension key
+ * @returns {number}
+ */
 function fromDisp(v, dim) {
   if (dim === "temp") return units === "imp" ? ((v - 32) * 5) / 9 : v;
   return v * DIMS[units][dim][1];
 }
+/**
+ * An SI value formatted for display, with the dimension's decimals ("—" if not finite).
+ * @param {number} v SI value
+ * @param {string} dim dimension key
+ * @param {number} [dec] decimals, in place of the dimension's own
+ * @returns {string}
+ */
 function fmt(v, dim, dec) {
   const d = dec ?? DIMS[units][dim][2] ?? 1;
   const x = toDisp(v, dim);
   return isFinite(x) ? x.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 }
+/**
+ * The current unit name of a dimension (e.g. "in" or "cm").
+ * @param {string} dim
+ * @returns {string}
+ */
 const uname = (dim) => DIMS[units][dim][0];

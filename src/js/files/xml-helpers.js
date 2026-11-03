@@ -1,10 +1,28 @@
+/**
+ * Small XML helpers for writing changes back into .ork and .rkt documents.
+ */
 /* --- small XML helpers --- */
+/**
+ * The first child element with a tag name.
+ */
 const kidOf = (el, t) => [...el.children].find((c) => c.tagName === t);
+/**
+ * The trimmed text of a child element, or null.
+ */
 const txtOf = (el, t) => {
   const c = kidOf(el, t);
   return c ? c.textContent.trim() : null;
 };
+/**
+ * A number as text, rounded to 10 significant digits (no float noise in the file).
+ */
 const numStr = (v) => String(+(+v).toPrecision(10));
+/**
+ * Sets the text of a child element, creating it if it's missing.
+ * @param {Element} el
+ * @param {string} t tag
+ * @param {*} v value
+ */
 function setKid(el, t, v) {
   let c = kidOf(el, t);
   if (!c) {
@@ -15,9 +33,19 @@ function setKid(el, t, v) {
   c.textContent = typeof v === "number" ? numStr(v) : String(v);
   return c;
 }
+/**
+ * Removes every child element with a tag name.
+ */
 function delKid(el, t) {
   [...el.children].filter((c) => c.tagName === t).forEach((c) => c.remove());
 }
+/**
+ * Replaces an element with a copy under another tag name, keeping its attributes and children.
+ * @param {Element} el
+ * @param {string} tag
+ * @param {string[]} [drop] child tags to leave out
+ * @returns {Element} the new element
+ */
 function renameEl(el, tag, drop) {
   const ne = el.ownerDocument.createElementNS(el.namespaceURI, tag);
   for (const a of [...el.attributes]) ne.setAttribute(a.name, a.value);
@@ -28,6 +56,13 @@ function renameEl(el, tag, drop) {
   el.replaceWith(ne);
   return ne;
 }
+/**
+ * The parts of a source document by kind (fins, chutes, nose cones, tubes...), in the order the importer reported
+ * them, so the n-th part found here is the n-th part it read.
+ * @param {Document} doc
+ * @param {string} format "ork" or "rkt"
+ * @returns {object}
+ */
 function srcLists(doc, format) {
   if (format === "ork") {
     const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0],
@@ -91,6 +126,11 @@ function srcLists(doc, format) {
   }
   return R;
 }
+/**
+ * The OpenRocket finish name closest to a roughness height.
+ * @param {number} v roughness, m
+ * @returns {string}
+ */
 const FINISH_NAME = (v) => {
   let best = "normal",
     bd = 1e9;

@@ -1,10 +1,22 @@
+/**
+ * Field help: the small "i" button beside each input, the text it shows, and drawing the forms.
+ */
 /* ---------- field help: a small "i" button beside each input opens a box explaining how to fill it in ---------- */
+/**
+ * The HTML of an "i" button that opens a help box (empty if there is no help text).
+ * @param {string} title box title (HTML tags are stripped)
+ * @param {string} txt help text
+ * @returns {string} HTML
+ */
 function infoBtn(title, txt) {
   if (!txt) return "";
   const q = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]),
     t = String(title).replace(/<[^>]*>/g, "");
   return `<button class="ib" type="button" data-title="${q(t)}" data-info="${q(txt)}" aria-label="About ${q(t)}">i</button>`;
 }
+/**
+ * Help text for the form fields, by key (a function where the text depends on the design).
+ */
 const FIELD_INFO = {
   elev: "Height of the launch site above sea level. It sets the air pressure and density the rocket starts in, unless you enter a barometer reading under Ambient conditions.",
   lon: "The launch site’s longitude in degrees. Use a negative number west of Greenwich (all of North and South America) and a positive number east of it (for example −111.9 for Salt Lake City, 151.2 for Sydney).\n\nIt’s used to fetch the weather forecast for the site (Ambient conditions) and is written into OpenRocket files you save.",
@@ -86,10 +98,20 @@ const FIELD_INFO = {
   mcMis:
     "Spread of the thrust misalignment, as one standard deviation in degrees. Each flight gets a random amount in a random direction.",
 };
+/**
+ * The help text of a form field.
+ * @param {string} k field key
+ * @returns {string}
+ */
 function fieldInfo(k) {
   const v = FIELD_INFO[k];
   return typeof v === "function" ? v() : v || "";
 }
+/**
+ * The help text of a builder field, by part type and key.
+ * @param {object} F builder field: key and part p
+ * @returns {string}
+ */
 function bldInfo(F) {
   const k = F.key,
     t = F.p ? F.p.type : null,
@@ -241,6 +263,9 @@ document.addEventListener(
     if (e.key === "Escape" && m() && !m().hidden) m().hidden = true;
   });
 })();
+/**
+ * Draws every quick-form group from FIELDS with the current values and units, and the notes that go with them.
+ */
 function renderForms() {
   if (typeof mtSummary === "function") setTimeout(mtSummary, 0);
   try {

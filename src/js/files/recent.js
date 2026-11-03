@@ -1,6 +1,13 @@
+/**
+ * Recently opened files, kept on this device (IndexedDB) so they can be opened again with one tap.
+ */
 /* ---------- recently opened files: kept on this device so they can be opened again with one tap ---------- */
 const RECENT_MAX = 10;
 let recentDb = null;
+/**
+ * Opens (once) the recent-files database.
+ * @returns {Promise<IDBDatabase>}
+ */
 function recentOpenDb() {
   if (!recentDb)
     recentDb = new Promise((res, rej) => {
@@ -17,6 +24,12 @@ function recentOpenDb() {
     });
   return recentDb;
 }
+/**
+ * Runs one request on the files store and resolves with its result.
+ * @param {IDBTransactionMode} mode
+ * @param {function(IDBObjectStore):IDBRequest} fn
+ * @returns {Promise<*>}
+ */
 async function recentReq(mode, fn) {
   const db = await recentOpenDb();
   return new Promise((res, rej) => {
@@ -33,6 +46,10 @@ async function recentReq(mode, fn) {
     t.onabort = () => rej(t.error);
   });
 }
+/**
+ * Every recent file, newest first ([] if storage is unavailable).
+ * @returns {Promise<object[]>}
+ */
 async function recentList() {
   try {
     return ((await recentReq("readonly", (st) => st.getAll())) || []).sort((a, b) => b.when - a.when);
@@ -40,6 +57,11 @@ async function recentList() {
     return [];
   }
 }
+/**
+ * One recent file by id, or null.
+ * @param {string} id
+ * @returns {Promise<object|null>}
+ */
 async function recentGet(id) {
   try {
     return await recentReq("readonly", (st) => st.get(id));
@@ -47,11 +69,19 @@ async function recentGet(id) {
     return null;
   }
 }
+/**
+ * Removes a recent file.
+ * @param {string} id
+ */
 async function recentDel(id) {
   try {
     await recentReq("readwrite", (st) => st.delete(id));
   } catch (e) {}
 }
+/**
+ * Stores a recent file entry and drops the oldest past the list's limit.
+ * @param {object} e entry {id, name, uri, rocket, when, data}
+ */
 async function recentPut(e) {
   try {
     await recentReq("readwrite", (st) => st.put(e));
@@ -59,6 +89,10 @@ async function recentPut(e) {
     for (const x of all.slice(RECENT_MAX)) await recentDel(x.id);
   } catch (err) {}
 }
+/**
+ * In the Android app, the place on the phone of the file just opened or saved ("" in a browser).
+ * @returns {string}
+ */
 const recentAppUri = () => {
   try {
     const A = window.PocketRocketApp;
@@ -67,7 +101,13 @@ const recentAppUri = () => {
     return "";
   }
 };
-// a file just opened from the picker; the same file (by its place on the phone, or by name in the browser) moves to the top
+/**
+ * Adds a file just opened from the picker, or moves the same file to the top.
+ * @param {ArrayBuffer} buf file contents
+ * @param {string} name file name
+ *
+ * a file just opened from the picker; the same file (by its place on the phone, or by name in the browser) moves to the top
+ */
 async function recentAdd(buf, name) {
   const uri = recentAppUri(),
     id = uri || "name:" + name;
@@ -76,7 +116,13 @@ async function recentAdd(buf, name) {
   if (SOURCE) setSource({ ...SOURCE, recentId: id });
   renderRecent();
 }
-// after Save changes: the entry follows the file that was written
+/**
+ * After Save changes: updates the entry to follow the file that was written.
+ * @param {Uint8Array} bytes
+ * @param {string} fname
+ *
+ * after Save changes: the entry follows the file that was written
+ */
 async function recentSaved(bytes, fname) {
   const old = SOURCE && SOURCE.recentId ? await recentGet(SOURCE.recentId) : null,
     uri = recentAppUri();
@@ -93,6 +139,11 @@ async function recentSaved(bytes, fname) {
   if (SOURCE) setSource({ ...SOURCE, recentId: id });
   renderRecent();
 }
+/**
+ * When a file was opened, in words ("Today 3:05 PM", "Yesterday", a date).
+ * @param {number} t time, ms
+ * @returns {string}
+ */
 function recentWhen(t) {
   const d = new Date(t),
     now = new Date(),
@@ -110,6 +161,9 @@ function recentWhen(t) {
             year: d.getFullYear() === now.getFullYear() ? undefined : "numeric",
           });
 }
+/**
+ * Draws the recent files lists.
+ */
 async function renderRecent() {
   const list = await recentList(),
     cur = SOURCE && SOURCE.recentId;

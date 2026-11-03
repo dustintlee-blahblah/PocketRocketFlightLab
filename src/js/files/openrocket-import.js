@@ -1,4 +1,18 @@
+/**
+ * OpenRocket .ork import: unpacking the file (zip or gzip) and reading its rocket into this app's design.
+ *
+ * parseOrk walks the component tree once, adding up mass and balance, collecting the body shape, fins, recovery,
+ * launch lugs and motor mounts per stage, then builds the design (finalize) for one, two or three stages. The motor
+ * configuration used is the one chosen on the Motor tab (ORK_CFG), else the one the file's simulation flew, else
+ * the default.
+ */
 /* ---------- .ork import ---------- */
+/**
+ * Decompresses bytes with the browser's DecompressionStream.
+ * @param {Uint8Array} bytes
+ * @param {string} format "gzip", "deflate" or "deflate-raw"
+ * @returns {Promise<Uint8Array>}
+ */
 async function inflate(bytes, format) {
   if (typeof DecompressionStream === "undefined")
     throw new Error("This browser cannot decompress .ork files. Update Chrome on your phone and try again.");
@@ -6,7 +20,13 @@ async function inflate(bytes, format) {
   const buf = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
   return new Uint8Array(buf);
 }
-// every file in a .zip archive: its name, and a function that unpacks it
+/**
+ * Lists the files in a .zip archive from its central directory.
+ * @param {ArrayBuffer} buf
+ * @returns {Promise<{name:string, read:function():Promise<Uint8Array>}[]>}
+ *
+ * every file in a .zip archive: its name, and a function that unpacks it
+ */
 async function unzipEntries(buf) {
   const u8 = new Uint8Array(buf),
     dv = new DataView(buf);
@@ -43,6 +63,11 @@ async function unzipEntries(buf) {
   }
   return out;
 }
+/**
+ * The design XML of an .ork file, which can be a zip archive, gzip or plain XML.
+ * @param {ArrayBuffer} buf
+ * @returns {Promise<string>}
+ */
 async function unzipOrk(buf) {
   const u8 = new Uint8Array(buf);
   if (u8[0] === 0x1f && u8[1] === 0x8b) return new TextDecoder().decode(await inflate(u8, "gzip"));
@@ -81,6 +106,9 @@ async function unzipOrk(buf) {
   const raw = e.method === 0 ? data : await inflate(data, "deflate-raw");
   return new TextDecoder().decode(raw);
 }
+/**
+ * Surface roughness height of OpenRocket's finish names, m.
+ */
 const FINISH_RS = {
   rough: 500e-6,
   roughunfinished: 250e-6,
@@ -92,27 +120,51 @@ const FINISH_RS = {
   finishpolished: 0.5e-6,
   mirror: 0,
 };
+/**
+ * Reads an OpenRocket design.
+ * @param {string} xml the design XML
+ * @returns {{design:object, launch:object, notes:string[], motor:object, boosterMotor:object, firstMotor:object,
+ *   motorExtras:object[], boosterExtras:object[], firstExtras:object[], src:object}} the design, launch site and
+ *   conditions, notes on what was simplified, each stage's main motor (designation, maker, delay...) and extra
+ *   motors, and where the parts are in the file (for saving changes back into it)
+ * @throws {Error} if the file isn't a readable rocket design
+ */
 function parseOrk(xml) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("The design file could not be read as XML.");
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];
   if (!rocket) throw new Error("No rocket was found in this file.");
   const notes = [];
+  /**
+   * The first child element with a tag name.
+   */
   const kid = (el, tag) => [...el.children].find((c) => c.tagName === tag);
+  /**
+   * The trimmed text of a child element, or null.
+   */
   const txt = (el, tag) => {
     const c = kid(el, tag);
     return c ? c.textContent.trim() : null;
   };
+  /**
+   * The first number in a child element's text, or def.
+   */
   const num = (el, tag, def = 0) => {
     const s = txt(el, tag);
     if (s == null) return def;
     const mm = s.match(/-?\d+(\.\d+)?(e-?\d+)?/i);
     return mm ? parseFloat(mm[0]) : def;
   };
+  /**
+   * True if a child element's value is OpenRocket's "auto".
+   */
   const isAuto = (el, tag) => {
     const s = txt(el, tag);
     return s != null && /^\s*auto/i.test(s);
   };
+  /**
+   * The cached number after "auto" (may be stale).
+   */
   const autoNum = (el, tag) => {
     const s = txt(el, tag) || "";
     const mm = s.match(/-?\d+(\.\d+)?(e-?\d+)?/i);
@@ -121,6 +173,9 @@ function parseOrk(xml) {
   // automatic radii: OpenRocket stores "auto <cached value>", and the cached value can be stale,
   // so resolve them from the neighbouring body components, as the .ork format defines automatic sizes
   let bodyOrder = [];
+  /**
+   * The radius of the next body part aft that has an explicit (not automatic) radius.
+   */
   const nextExplicit = (c) => {
     const i = bodyOrder.indexOf(c);
     for (let j = i + 1; j < bodyOrder.length; j++) {
@@ -130,14 +185,23 @@ function parseOrk(xml) {
     }
     return 0;
   };
+  /**
+   * The density attribute of a part's material element.
+   */
   const dens = (el, tag = "material") => {
     const c = kid(el, tag);
     return c ? parseFloat(c.getAttribute("density")) || 0 : 0;
   };
+  /**
+   * A component's subcomponents.
+   */
   const subs = (el) => {
     const s = kid(el, "subcomponents");
     return s ? [...s.children] : [];
   };
+  /**
+   * A component's length along the body (fin root chord, packed length of recovery and mass parts).
+   */
   const lenOf = (c) => {
     switch (c.tagName) {
       case "trapezoidfinset":
@@ -157,6 +221,11 @@ function parseOrk(xml) {
   const FF_NOTE =
     "Free-form fins keep their exact shape from the file; drag and stability are calculated from that shape.";
   const EL_NOTE = "Elliptical fins keep their exact shape; drag and stability are calculated from that shape.";
+  /**
+   * The outline of a free-form fin set from its points: root, span, area, centroid and the points.
+   * @param {Element} c fin set element
+   * @returns {object}
+   */
   function finPts(c) {
     const fp = kid(c, "finpoints");
     if (!fp) return { root: 0, span: 0, area: 0, pts: [] };
@@ -207,49 +276,86 @@ function parseOrk(xml) {
       norm: pts.map(([x, y]) => [x - x0, y]),
     };
   }
-  // a motor mount: an inner tube, or a body tube flown as its own mount (minimum diameter)
+  /**
+   * Records a motor mount's motor (for the configuration in use), cluster count, ignition and overhang.
+   * @param {Element} c the tube element
+   * @param {number} ri its inside radius, m
+   * @param {boolean} isInner an inner tube (not a body tube flown as its own mount)
+   * @param {number} xAft the tube's aft end from the nose tip, m
+   *
+   * a motor mount: an inner tube, or a body tube flown as its own mount (minimum diameter)
+   */
   function motorMountIn(c, ri, isInner, xAft) {
     // only a tube marked as a motor mount holds motors (an inner tube around a mount must not count them again)
     if (!kid(c, "motormount") && c.getElementsByTagName("motormount").length) return;
-    const mm = kid(c, "motormount") || c;
-    const mts = [...mm.getElementsByTagName("motor")];
-    const mt = mts.find((e) => e.getAttribute("configid") === cfg) || mts[0];
+    const mountEl = kid(c, "motormount") || c;
+    const motorEls = [...mountEl.getElementsByTagName("motor")];
+    const motorEl = motorEls.find((e) => e.getAttribute("configid") === cfg) || motorEls[0];
     if (isInner && sMount[curStage] == null && kid(c, "motormount")) sMount[curStage] = ord(c, "it", /^innertube$/);
     if (sMountAft[curStage] == null && kid(c, "motormount") && xAft != null) sMountAft[curStage] = xAft; // the aft end of the motor tube: where the motor sits
     if (sMountD[curStage] == null && kid(c, "motormount") && ri > 0) sMountD[curStage] = 2 * ri; // inside diameter of the motor tube
-    if (mt) {
-      const dly = (txt(mt, "delay") || "").trim().toLowerCase(),
-        ej = dly === "" || dly === "none" || dly === "p" || !isFinite(parseFloat(dly)) ? null : parseFloat(dly);
+    if (motorEl) {
+      const delayTxt = (txt(motorEl, "delay") || "").trim().toLowerCase(),
+        ej =
+          delayTxt === "" || delayTxt === "none" || delayTxt === "p" || !isFinite(parseFloat(delayTxt))
+            ? null
+            : parseFloat(delayTxt);
       const mo = {
-        designation: (txt(mt, "designation") || "").trim(),
-        mfr: (txt(mt, "manufacturer") || "").trim(),
-        dia: num(mt, "diameter"),
-        nozzle: num(mt, "nozzleexitdiameter", 0),
+        designation: (txt(motorEl, "designation") || "").trim(),
+        mfr: (txt(motorEl, "manufacturer") || "").trim(),
+        dia: num(motorEl, "diameter"),
+        nozzle: num(motorEl, "nozzleexitdiameter", 0),
         ej,
-        oi: ord(mt, "mo", /^motor$/),
+        oi: ord(motorEl, "mo", /^motor$/),
         par: parDepth > 0,
       };
       if (!sMotor[curStage]) sMotor[curStage] = mo;
       if (!motor) motor = mo;
-      const cc = (txt(c, "clusterconfiguration") || "single").trim().toLowerCase();
-      const cnt = cc === "single" ? 1 : cc === "double" ? 2 : Math.max(1, parseInt(cc, 10) || 1);
-      const ic = [...mm.getElementsByTagName("ignitionconfiguration")].find((e) => e.getAttribute("configid") === cfg);
-      const ev = ((ic && txt(ic, "ignitionevent")) || txt(mm, "ignitionevent") || "automatic").toLowerCase();
-      const dl = ic && txt(ic, "ignitiondelay") != null ? num(ic, "ignitiondelay", 0) : num(mm, "ignitiondelay", 0);
-      (sMotors[curStage] || (sMotors[curStage] = [])).push({ ...mo, count: cnt, ign: ev, ignDelay: dl, si: curStage });
-      if (!sIgn[curStage]) sIgn[curStage] = { event: ev, delay: dl };
+      const clusterCfg = (txt(c, "clusterconfiguration") || "single").trim().toLowerCase();
+      const copies =
+        clusterCfg === "single" ? 1 : clusterCfg === "double" ? 2 : Math.max(1, parseInt(clusterCfg, 10) || 1);
+      const ignCfg = [...mountEl.getElementsByTagName("ignitionconfiguration")].find(
+        (e) => e.getAttribute("configid") === cfg,
+      );
+      const ignEvent = (
+        (ignCfg && txt(ignCfg, "ignitionevent")) ||
+        txt(mountEl, "ignitionevent") ||
+        "automatic"
+      ).toLowerCase();
+      const ignDelay =
+        ignCfg && txt(ignCfg, "ignitiondelay") != null
+          ? num(ignCfg, "ignitiondelay", 0)
+          : num(mountEl, "ignitiondelay", 0);
+      (sMotors[curStage] || (sMotors[curStage] = [])).push({
+        ...mo,
+        count: copies,
+        ign: ignEvent,
+        ignDelay: ignDelay,
+        si: curStage,
+      });
+      if (!sIgn[curStage]) sIgn[curStage] = { event: ignEvent, delay: ignDelay };
     }
-    const ov = txt(mm, "overhang") ?? txt(c, "overhang") ?? txt(c, "motoroverhang");
-    if (ov != null) {
-      R.overhang = parseFloat(ov);
-      if (sOverhang[curStage] == null) sOverhang[curStage] = parseFloat(ov);
+    const overhangTxt = txt(mountEl, "overhang") ?? txt(c, "overhang") ?? txt(c, "motoroverhang");
+    if (overhangTxt != null) {
+      R.overhang = parseFloat(overhangTxt);
+      if (sOverhang[curStage] == null) sOverhang[curStage] = parseFloat(overhangTxt);
     }
   }
+  /**
+   * A component's axial position element: method (top, bottom, middle, absolute...) and value.
+   * @param {Element} c
+   * @returns {{method:string, val:number}}
+   */
   function offset(c) {
-    const ao = kid(c, "axialoffset"),
-      po = kid(c, "position");
+    const axialEl = kid(c, "axialoffset"),
+      positionEl = kid(c, "position");
     // when a file has both, OpenRocket keeps the one it reads last
-    const el = ao && po ? ([...c.children].indexOf(po) > [...c.children].indexOf(ao) ? po : ao) : ao || po;
+    const el =
+      axialEl && positionEl
+        ? [...c.children].indexOf(positionEl) > [...c.children].indexOf(axialEl)
+          ? positionEl
+          : axialEl
+        : axialEl || positionEl;
     if (!el) return { method: null, val: 0 };
     return {
       method: (el.getAttribute("method") || el.getAttribute("type") || "top").toLowerCase(),
@@ -257,7 +363,11 @@ function parseOrk(xml) {
     };
   }
   const simEls = [...doc.getElementsByTagName("simulation")];
-  // a motor configuration chosen on the Motor tab (ORK_CFG) wins; then the one the file's simulation used; then the default
+  /**
+   * The motor configuration id a simulation element flew.
+   *
+   * a motor configuration chosen on the Motor tab (ORK_CFG) wins; then the one the file's simulation used; then the default
+   */
   const simCfgOf = (sm) => {
     const c = sm && sm.getElementsByTagName("conditions")[0],
       e = c && c.getElementsByTagName("configid")[0];
@@ -297,6 +407,9 @@ function parseOrk(xml) {
     cdComp = false,
     segments = [];
   let cdCount = 0;
+  /**
+   * A part's Cd override (an override of 0 is kept as 1e-12 so it still counts as set), or 0 for none.
+   */
   const odc = (c) => {
     const e = kid(c, "overridecd");
     const v = e ? parseFloat(e.textContent) : 0;
@@ -317,6 +430,9 @@ function parseOrk(xml) {
     sSep = [];
   const R = {};
   const ORD = {};
+  /**
+   * The index of an element among all elements of matching tags (how parts are found again when saving).
+   */
   const ord = (el, key, re) => {
     if (!ORD[key]) ORD[key] = [...rocket.getElementsByTagName("*")].filter((e) => re.test(e.tagName));
     return ORD[key].indexOf(el);
@@ -328,6 +444,13 @@ function parseOrk(xml) {
     sMountD = [],
     SRC = {};
   const massPts = [];
+  /**
+   * Adds a point mass to the rocket's totals and to the current stage.
+   * @param {number} m kg
+   * @param {number} x position of its CG from the nose tip, m
+   * @param {number} [len=0] its length, for the inertia estimate
+   * @param {number} [k2=0] its own radius of gyration squared, m²
+   */
   function addMass(m, x, len = 0, k2 = 0) {
     if (m > 0 && isFinite(x)) {
       totalMass += m;
@@ -337,6 +460,12 @@ function parseOrk(xml) {
       massPts.push({ m, x, len: Math.max(len || 0, 0), k2: isFinite(k2) ? k2 : 0, si: curStage });
     }
   }
+  /**
+   * Visits a component and its subcomponents, recording geometry and mass.
+   * @param {Element} c component
+   * @param {number} x its forward end from the nose tip, m
+   * @param {object} parent the parent's position and length
+   */
   function walk(c, x, parent) {
     // returns nothing; x is absolute top of component
     const tag = c.tagName,
@@ -663,6 +792,12 @@ function parseOrk(xml) {
     if (tag === "parallelstage") parDepth--;
     if (tag === "podset" || tag === "parallelstage") R.last = lastR;
   }
+  /**
+   * The forward end of a component, from its position method relative to its parent.
+   * @param {Element} k component
+   * @param {{x:number, len:number}} p parent
+   * @returns {number} m from the nose tip
+   */
   function place(k, p) {
     const o = offset(k),
       len = lenOf(k);
@@ -751,7 +886,14 @@ function parseOrk(xml) {
       moment = parseFloat(rcg.textContent) * totalMass;
     }
   }
-  // build one airframe from a set of stages: sustainer = [0], booster = [1], single = all
+  /**
+   * Builds one airframe from a set of stages (sustainer [0], booster [1], or all for a single stage).
+   * @param {number[]} sel stage indexes
+   * @param {string} label prefix for its notes
+   * @returns {object} design fields for that airframe
+   *
+   * build one airframe from a set of stages: sustainer = [0], booster = [1], single = all
+   */
   function finalize(sel, label) {
     const pre = label ? label + ": " : "";
     const inS = (o) => sel.includes(o.si);
@@ -910,6 +1052,9 @@ function parseOrk(xml) {
   const finTag =
     (rocket.getElementsByTagName("bodytube")[0] || rocket).getElementsByTagName("finish")[0] ||
     rocket.getElementsByTagName("finish")[0];
+  /**
+   * An edge type from the file, or square if this app doesn't know it.
+   */
   const EDGE = (e) => (FIN_EDGES.some((x) => x[0] === e) ? e : "square");
   const f = S.f;
   const nd = {
@@ -1256,6 +1401,13 @@ function parseOrk(xml) {
   // each extra motor lights this long after the main one: a mount set to light at liftoff with a delay is an airstart;
   // a mount set never to light is left out
   const mainInfo = {};
+  /**
+   * A stage's extra motors (see the notes above), and the main motor's own delay and never-lights setting in
+   * mainInfo[key].
+   * @param {object[]} list the stage's motors
+   * @param {string} key "s", "b" or "f"
+   * @returns {object[]} extra motors {id, n, d, ej}
+   */
   const extrasOf = (list, key) => {
     const info = (mainInfo[key] = { delay: 0, off: false });
     if (!list || !list.length) return [];

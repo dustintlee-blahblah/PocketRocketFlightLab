@@ -1,19 +1,42 @@
+/**
+ * RockSim .rkt import. The RockSim design is rewritten as an OpenRocket .ork document (the same components, in
+ * meters and kilograms) and read by parseOrk, then RockSim's own simulation settings (motors per stage, ejection
+ * delays, launch conditions) are applied on top.
+ */
 /* ---------- RockSim .rkt import: converted to the .ork file layout, then read by the .ork importer ---------- */
+/**
+ * Reads a RockSim design.
+ * @param {string} xml the .rkt file
+ * @returns {object} the same shape as parseOrk's result
+ * @throws {Error} if the file isn't a readable RockSim design
+ */
 function parseRkt(xml) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("The RockSim file could not be read as XML.");
   const design = doc.getElementsByTagName("RocketDesign")[0];
   if (!design) throw new Error("No rocket design was found in this RockSim file.");
   const notes = [];
+  /**
+   * The first child element with a tag name.
+   */
   const kid = (el, tag) => [...el.children].find((c) => c.tagName === tag);
+  /**
+   * The trimmed text of a child element, or null.
+   */
   const txt = (el, tag) => {
     const c = kid(el, tag);
     return c ? c.textContent.trim() : null;
   };
+  /**
+   * A child element's value as a number, or def.
+   */
   const num = (el, tag, def = 0) => {
     const v = parseFloat(txt(el, tag));
     return isFinite(v) ? v : def;
   };
+  /**
+   * Escapes text for XML.
+   */
   const xe = (s) =>
     String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const FIN = ["polished", "smooth", "normal", "unfinished"];
@@ -24,6 +47,11 @@ function parseRkt(xml) {
   let mountMotor = false,
     sawChute = false;
   let usedCalc = false;
+  /**
+   * A RockSim part's material as an .ork material element (bulk, surface or line density, in SI).
+   * @param {Element} el part
+   * @returns {string} XML
+   */
   function material(el) {
     const type = num(el, "DensityType", 0),
       raw = num(el, "Density", 0);
@@ -35,6 +63,12 @@ function parseRkt(xml) {
     }
     return `<material type="${t}" density="${d}">${xe(txt(el, "Material") || "RockSim material")}</material>`;
   }
+  /**
+   * The .ork elements every component has: name, id, and (below stage level) position and mass overrides.
+   * @param {Element} el RockSim part
+   * @param {boolean} stageLevel the part is a stage
+   * @returns {string} XML
+   */
   function common(el, stageLevel) {
     let s = `<name>${xe(txt(el, "Name") || el.tagName)}</name><id>${rktPartId(RIDX.get(el))}</id>`;
     if (!stageLevel) {
@@ -61,6 +95,11 @@ function parseRkt(xml) {
   }
   const RIDX = rktIndex(design);
   let parentLen = 0;
+  /**
+   * The converted attached parts of a RockSim part, as .ork subcomponents.
+   * @param {Element} el
+   * @returns {string} XML
+   */
   function kids(el) {
     const ap = kid(el, "AttachedParts");
     if (!ap) return "";
@@ -70,6 +109,12 @@ function parseRkt(xml) {
     parentLen = prev;
     return r;
   }
+  /**
+   * Converts one RockSim part (and its attached parts) to an .ork component.
+   * @param {Element} el
+   * @param {boolean} stageLevel
+   * @returns {string} XML
+   */
   function conv(el, stageLevel) {
     const tag = el.tagName,
       c = common(el, stageLevel);
@@ -214,6 +259,9 @@ function parseRkt(xml) {
         md = pe && [...pe.children].find((c) => c.tagName === "MotorDia");
       if (md && parseFloat(md.textContent) > 0) mDia.set(sn.textContent.trim(), parseFloat(md.textContent) / 1000);
     }
+    /**
+     * The motors in one of the simulation's stage engine lists: designation, maker, ignition and ejection delay, count.
+     */
     const engs = (tag) => {
       const g = tag ? sim.getElementsByTagName(tag)[0] : sim;
       return g
@@ -286,6 +334,9 @@ function parseRkt(xml) {
   let stagesOut = stagesXml,
     rktStageEngs = null;
   if (sim && stageCount > 1) {
+    /**
+     * A stage's engine sets from the simulation, with the mount each one sits in.
+     */
     const engsOf = (tag) => {
       const g = sim.getElementsByTagName(tag)[0];
       return g
@@ -409,6 +460,11 @@ function parseRkt(xml) {
   }
   return r;
 }
+/**
+ * Finds a motor in the catalog or the uploaded motors by its file designation and maker (and diameter, if given).
+ * @param {{designation:string, mfr:string, dia:number}} mo
+ * @returns {object|null}
+ */
 function matchMotor(mo) {
   if (!mo || !mo.designation) return null;
   const norm = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");

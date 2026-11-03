@@ -1,4 +1,11 @@
+/**
+ * The quick-form field lists (launch conditions and the parts of the design the forms edit) and the stage-dependent
+ * headings and notes.
+ */
 /* ---------- forms ---------- */
+/**
+ * Form fields by group element id: [key, label, dimension, object ("L" = launch, else design), decimals, options].
+ */
 const FIELDS = {
   "g-stagelock": [
     ["ignMinAlt", "Lowest height to light the sustainer", "alt", "L"],
@@ -273,7 +280,13 @@ const FIELDS = {
     ["mainAlt", "Main deploy altitude", "alt"],
   ],
 };
+/**
+ * Design keys of the airframe shape, which a design file's body sections take over.
+ */
 const BODY_KEYS = ["length", "diameter", "noseLen", "noseShape", "tailLen", "tailDia"];
+/**
+ * Shows a note when the body shape comes from the design file's sections.
+ */
 function renderSegNote() {
   const el = document.getElementById("segnote");
   if (!el) return;
@@ -284,12 +297,21 @@ function renderSegNote() {
     el.textContent = `Body shape comes from your file: ${sg.length} sections, ${ds.length > 1 ? "diameters " + fmt(Math.min(...ds), "small") + "–" + fmt(Math.max(...ds), "small") : "diameter " + fmt(ds[0], "small")} ${uname("small")}. Editing the length, diameter, nose or boat-tail fields replaces it with a simple nose, tube and boat tail.`;
   } else el.hidden = true;
 }
+/**
+ * The booster's airframe shape keys.
+ */
 const B_BODY_KEYS = ["bLength", "bDiameter"];
+/**
+ * Labels used for these fields when the rocket has a booster.
+ */
 const SUS_LABELS = {
   dryMass: "Sustainer weight without motor",
   cgEmpty: "Sustainer CG without motor",
   motorOverhang: "Sustainer motor overhang",
 };
+/**
+ * Shows or hides the booster panels and words the headings and notes for one or two stages.
+ */
 function renderStageUI() {
   const two = !!D.twoStage;
   document.getElementById("boosterpanels").hidden = !two;

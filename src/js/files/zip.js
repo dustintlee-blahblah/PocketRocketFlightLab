@@ -1,4 +1,10 @@
+/**
+ * Writing zip files (stored, no compression): OpenRocket's own .ork format, and a wrapper for web downloads.
+ */
 /* --- zip (stored, no compression): OpenRocket's own .ork format, and a wrapper for web downloads --- */
+/**
+ * The CRC-32 lookup table.
+ */
 const CRC_T = (() => {
   const t = new Uint32Array(256);
   for (let k = 0; k < 256; k++) {
@@ -8,11 +14,21 @@ const CRC_T = (() => {
   }
   return t;
 })();
+/**
+ * CRC-32 of bytes.
+ * @param {Uint8Array} u
+ * @returns {number}
+ */
 function crc32(u) {
   let c = 0xffffffff;
   for (let i = 0; i < u.length; i++) c = CRC_T[(c ^ u[i]) & 255] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
+/**
+ * A zip archive of files, uncompressed.
+ * @param {{name:string, data:(Uint8Array|string)}[]} files
+ * @returns {Uint8Array}
+ */
 function zipStore(files) {
   const enc = new TextEncoder(),
     parts = [],
@@ -67,4 +83,7 @@ function zipStore(files) {
   }
   return out;
 }
+/**
+ * True inside the Android app (which saves files through its own bridge).
+ */
 const isAndroidApp = () => !!(window.PocketRocketApp && window.PocketRocketApp.saveFile);
