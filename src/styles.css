@@ -1705,7 +1705,8 @@ h2 .ib {
   justify-content: space-between;
 }
 #infobox h3,
-#launchask h3 {
+#launchask h3,
+#overask h3 {
   margin: 0 0 8px;
   font: 700 1.1rem var(--f-display);
 }

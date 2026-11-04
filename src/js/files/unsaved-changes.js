@@ -146,13 +146,56 @@ function renderSavePanel() {
   const n = document.getElementById("rktnote");
   if (n) n.hidden = !(SOURCE && SOURCE.format === "rkt");
 }
-let nameMode = "first";
+/**
+ * Asks whether to write over the open design file or save a copy of it.
+ * @param {string} name the file's name
+ * @param {boolean} [failed] the file couldn't be written over: offers only a copy
+ * @returns {Promise<"over"|"copy"|null>} null if cancelled
+ */
+function askOverwrite(name, failed = false) {
+  const box = document.getElementById("overask"),
+    yes = document.getElementById("overyes"),
+    cp = document.getElementById("overcopy"),
+    no = document.getElementById("overno");
+  document.getElementById("overttl").textContent = failed ? "Couldn’t write over the file" : "Save changes";
+  document.getElementById("overtxt").textContent = failed
+    ? `${name} couldn’t be written over: the app isn’t allowed to change it any more (this happens with a file opened from another app, or after it was moved or deleted). Save a copy under a new name instead? To write over the original, open it again with Open .ork / .rkt, then save.`
+    : `Write over ${name}, or save a copy under a new name? The copy is what stays open.`;
+  yes.hidden = failed;
+  box.hidden = false;
+  (failed ? cp : yes).focus();
+  return new Promise((res) => {
+    const done = (v) => {
+      box.hidden = true;
+      yes.onclick = cp.onclick = no.onclick = box.onclick = null;
+      document.removeEventListener("keydown", onKey);
+      res(v);
+    };
+    /**
+     * Escape cancels.
+     */
+    const onKey = (e) => {
+      if (e.key === "Escape") done(null);
+    };
+    document.addEventListener("keydown", onKey);
+    yes.onclick = () => done("over");
+    cp.onclick = () => done("copy");
+    no.onclick = () => done(null);
+    box.onclick = (e) => {
+      if (e.target === box) done(null);
+    };
+  });
+}
+let nameMode = "first",
+  nameExtra = {};
 /**
  * Asks for a file name: for a new design's first save, or for a copy.
  * @param {string} mode "first" or "copy"
+ * @param {object} [extra] more options for saveDesignFile (addSim to save the last run into the copy too)
  */
-function askName(mode) {
+function askName(mode, extra = {}) {
   nameMode = mode;
+  nameExtra = extra;
   const box = document.getElementById("namebox"),
     inp = document.getElementById("savename");
   document.getElementById("nametxt").innerHTML =
@@ -171,8 +214,15 @@ function askName(mode) {
   inp.focus();
   inp.select();
 }
-document.getElementById("savefile").onclick = () => {
+document.getElementById("savefile").onclick = async () => {
   if (SOURCE) {
+    // an .ork file in the Android app is written over in place: ask first, or save a copy
+    if (SOURCE.format === "ork" && isAndroidApp()) {
+      const a = await askOverwrite(SOURCE.name);
+      if (a === "over") saveDesignFile(false);
+      else if (a === "copy") askName("copy");
+      return;
+    }
     saveDesignFile(false);
     return;
   }
@@ -191,7 +241,10 @@ document.getElementById("savecopy").onclick = () => askName(SOURCE ? "copy" : "f
       return;
     }
     box.hidden = true;
-    await saveDesignFile(false, nameMode === "copy" && SOURCE ? { copyName: nm } : { name: nm });
+    await saveDesignFile(
+      false,
+      nameMode === "copy" && SOURCE ? { ...nameExtra, copyName: nm } : { ...nameExtra, name: nm },
+    );
     bldRender();
   };
   document.getElementById("nameok").onclick = go;

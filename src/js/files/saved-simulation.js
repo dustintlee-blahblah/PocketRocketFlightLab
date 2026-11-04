@@ -526,6 +526,15 @@ async function saveDesignFile(asNew, opts = {}) {
       }
     }
     if (over) res = { status: "delivered" };
+    else if (into && !copy && isAndroidApp() && window.PocketRocketApp.saveToSource) {
+      // the open file couldn't be written over: no new file is made without asking
+      msg.textContent = "Not saved.";
+      const name = SOURCE.name;
+      setTimeout(async () => {
+        if ((await askOverwrite(name, true)) === "copy") askName("copy", opts.addSim ? { addSim: true } : {});
+      }, 0);
+      return false;
+    }
     // on Android the new file is remembered once it's written, so later saves go straight into it
     else if ((first || copy) && isAndroidApp() && window.PocketRocketApp.saveFileAsSource) {
       window.PocketRocketApp.saveFileAsSource(saveName, bufToB64(data));
@@ -616,6 +625,15 @@ document.getElementById("simsave").onclick = async () => {
   if (!SOURCE) {
     prToast("Save the design to a file first (Rocket tab), then runs can be saved into it.");
     return;
+  }
+  // an .ork file in the Android app is written over in place: ask first, or save a copy with the run in it
+  if (SOURCE.format === "ork" && isAndroidApp()) {
+    const a = await askOverwrite(SOURCE.name);
+    if (!a) return;
+    if (a === "copy") {
+      askName("copy", { addSim: true });
+      return;
+    }
   }
   const b = document.getElementById("simsave");
   b.disabled = true;

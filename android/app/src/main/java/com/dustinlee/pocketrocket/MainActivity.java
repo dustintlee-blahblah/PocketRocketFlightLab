@@ -319,7 +319,10 @@ public class MainActivity extends Activity {
         if (sourceUri == null) return false;
         try {
             byte[] bytes = Base64.decode(base64, 0);
-            OutputStream o = getContentResolver().openOutputStream(sourceUri, "wt");
+            // "wt" (write, truncate); some storage apps only take "rwt"
+            OutputStream o = null;
+            try { o = getContentResolver().openOutputStream(sourceUri, "wt"); } catch (Exception e) { o = null; }
+            if (o == null) o = getContentResolver().openOutputStream(sourceUri, "rwt");
             if (o == null) return false;
             o.write(bytes);
             o.close();
