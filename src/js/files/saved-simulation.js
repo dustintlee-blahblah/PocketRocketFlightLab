@@ -10,6 +10,75 @@
  */
 const PR_SIM_TAG = "Pocket Rocket";
 /**
+ * A short fingerprint of a text (32-bit FNV-1a, in hex), to tell whether a file was changed by another program.
+ * @param {string} s
+ * @returns {string}
+ */
+function prHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16) + ":" + s.length;
+}
+/**
+ * What's saved in STATE_ORK inside the .ork: everything the app has for this design that the .ork itself doesn't hold.
+ * @param {string} text the .ork text it's saved with
+ * @returns {object}
+ */
+function prStateNow(text) {
+  const ids = [
+    motorId,
+    boostId,
+    firstId,
+    ...[...(D.extraMotors || []), ...(D.bExtraMotors || []), ...(D.s1ExtraMotors || [])].map((x) => x && x.id),
+  ];
+  const motors = [...new Set(ids.filter(Boolean))].map((id) => findMotor(id)).filter((m) => m && !m.builtin);
+  let flights = [],
+    cal = null;
+  try {
+    flights = flList();
+    cal = calGet();
+  } catch (e) {}
+  return {
+    app: "Pocket Rocket Flight Lab",
+    version: 2,
+    text: prHash(text),
+    launch: L,
+    when: document.getElementById("wxwhen").value || "",
+    cfg: (BLD && BLD.cfg) || ORK_CFG || null,
+    motorId,
+    boostId,
+    firstId,
+    motors,
+    flights,
+    cal,
+  };
+}
+/**
+ * Reads STATE_ORK (or build 256's LAUNCH_ORK) from an opened .ork, or from the copy of its extra files kept with the
+ * design.
+ * @param {ArrayBuffer|null} buf the file
+ * @param {object[]|null} extras SOURCE.extras
+ * @returns {Promise<object|null>}
+ */
+async function prStateRead(buf, extras) {
+  const get = async (nm) => {
+    try {
+      if (buf) {
+        const e = zipEntries(buf).find((e) => e.name === nm);
+        return e ? JSON.parse(new TextDecoder().decode(await zipData(buf, e))) : null;
+      }
+      const x = extras && extras.find((x) => x.name === nm);
+      return x ? JSON.parse(new TextDecoder().decode(b64ToU8(x.b64))) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const s = await get(STATE_ORK);
+  if (s && typeof s === "object") return s;
+  const l = await get(LAUNCH_ORK);
+  return l && l.launch ? { version: 1, launch: l.launch, when: l.when || "" } : null;
+}
+/**
  * A fresh run of the design for saving, without the file's own reference figures.
  * @returns {object} {st, out, m, mb}
  */
@@ -399,21 +468,13 @@ async function saveDesignFile(asNew, opts = {}) {
   const bytes = new TextEncoder().encode(text);
   const extras = into
     ? (SOURCE.extras || [])
-        .filter((x) => x.name !== BP_ORK && x.name !== LAUNCH_ORK)
+        .filter((x) => x.name !== BP_ORK && x.name !== LAUNCH_ORK && x.name !== STATE_ORK)
         .map((x) => ({ name: x.name, data: b64ToU8(x.b64) }))
     : [];
-  // every launch setting (OpenRocket's simulation holds only some of them) rides along in its own file too
-  extras.push({
-    name: LAUNCH_ORK,
-    data: new TextEncoder().encode(
-      JSON.stringify({
-        app: "Pocket Rocket Flight Lab",
-        version: 1,
-        launch: L,
-        when: document.getElementById("wxwhen").value || "",
-      }),
-    ),
-  });
+  // everything else rides along in its own file too: every launch setting (OpenRocket's simulation holds only some of
+  // them), the Get weather date, the motor configuration and motors chosen, uploaded motors the design flies (so the file
+  // opens on another device), and the flight log and drag calibration
+  extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text))) });
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
     const fe = {};

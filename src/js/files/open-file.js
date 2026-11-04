@@ -44,17 +44,19 @@ function launchSame(a, b) {
  * @param {object} fileL the file's launch settings
  * @param {string} when the launch date and time saved with them (for Get weather), or ""
  * @param {string} name the rocket's name
+ * @param {object|null} [cal] the file's drag calibration, when it differs from the one on this device
  */
-function launchOffer(fileL, when, name) {
+function launchOffer(fileL, when, name, cal = null) {
   if (!fileL) return;
   const diff = Object.keys(fileL).filter((k) => k !== "wxSet" && !launchSame(fileL[k], L[k]));
   const wxEl = document.getElementById("wxwhen");
-  if (!diff.length && !(when && when !== wxEl.value)) return;
+  if (!diff.length && !(when && when !== wxEl.value) && !cal) return;
   const groups = LAUNCH_GROUPS.filter(([, ks]) => ks.some((k) => diff.includes(k))).map(([g]) => g);
   if (diff.some((k) => !LAUNCH_GROUPS.some(([, ks]) => ks.includes(k)))) groups.push("other settings");
+  if (cal) groups.push(`drag calibration (×${cal.k.toFixed(2)} in the file)`);
   const box = document.getElementById("launchask");
   document.getElementById("launchasktxt").textContent =
-    `${name || "This rocket"} was saved with launch settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
+    `${name || "This rocket"} was saved with settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
     (when
       ? `\n\nSaved for a launch on ${new Date(when).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`
       : "") +
@@ -67,6 +69,10 @@ function launchOffer(fileL, when, name) {
     document.removeEventListener("keydown", onKey);
     if (!use) return;
     L = Object.assign(defaultLaunch(), jclone(fileL));
+    if (cal) {
+      calSet(cal);
+      applyCal();
+    }
     if (when) wxEl.value = when;
     // the saved launch site no longer matches what's shown
     siteCur = "";
@@ -76,7 +82,7 @@ function launchOffer(fileL, when, name) {
     renderForms();
     changed();
     markClean();
-    prToast("Using the file’s launch settings.");
+    prToast("Using the file’s settings.");
   };
   /**
    * Escape keeps the current settings.
@@ -105,11 +111,35 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
   const rep = document.getElementById("orkreport");
   ORK_CFG = opts.cfg || null; // a motor configuration chosen on the Motor tab, when reopening for it
   try {
+    // what the app saved in the file besides the design (prStateNow), read first: its motor configuration and uploaded
+    // motors decide which motors the design flies
+    const saved =
+      opts.cfg == null && buf && !/<RockSimDocument/i.test(xml.slice(0, 4000)) ? await prStateRead(buf, null) : null;
+    const savedNotes = [];
+    if (saved) {
+      const added = [];
+      for (const m of Array.isArray(saved.motors) ? saved.motors : [])
+        if (m && m.id && Array.isArray(m.t) && Array.isArray(m.F) && !findMotor(m.id) && !dupMotor(m, allMotors())) {
+          USER_MOTORS.push(m);
+          added.push(m.cn || m.name);
+        }
+      if (added.length) {
+        store.set("rfs-motors", USER_MOTORS);
+        savedNotes.push(
+          `Added ${added.join(", ")} from the file to your uploaded motors (the design flies ${added.length > 1 ? "them" : "it"}).`,
+        );
+      }
+      if (typeof saved.cfg === "string" && saved.cfg) ORK_CFG = saved.cfg;
+    }
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
     D = r.design;
     // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
     let fileL = jclone(r.launch),
       fileWhen = "";
+    if (saved && saved.launch && typeof saved.launch === "object") {
+      fileL = Object.assign(defaultLaunch(), saved.launch);
+      fileWhen = typeof saved.when === "string" ? saved.when : "";
+    }
     const keptWx = !!(L && L.wxSet);
     {
       const keep = {};
@@ -251,17 +281,6 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         } catch (e) {}
       if (!isR)
         try {
-          const t = await side(LAUNCH_ORK);
-          if (t) {
-            const j = JSON.parse(t);
-            if (j && j.launch && typeof j.launch === "object") {
-              fileL = Object.assign(defaultLaunch(), j.launch);
-              fileWhen = typeof j.when === "string" ? j.when : "";
-            }
-          }
-        } catch (e) {}
-      if (!isR)
-        try {
           const t = await side(BP_ORK);
           if (t) {
             const j = JSON.parse(t);
@@ -276,6 +295,14 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
           motorId = pm.motor.id;
           store.set("rfs-motor", motorId);
         }
+      }
+      // the motors chosen when the file was saved (one that doesn't fit its mount isn't written into the design), as long
+      // as the file hasn't been changed since by another program
+      if (saved && saved.text && saved.text === prHash(xml)) {
+        const ok = (id) => typeof id === "string" && !!findMotor(id);
+        if (ok(saved.motorId)) store.set("rfs-motor", (motorId = saved.motorId));
+        if (D.twoStage && ok(saved.boostId)) store.set("rfs-bmotor", (boostId = saved.boostId));
+        if (isThree(D) && ok(saved.firstId)) store.set("rfs-b1motor", (firstId = saved.firstId));
       }
       // a motor the file names but your list doesn't have stays in the file until you choose another one
       BLD.hold = [
@@ -299,6 +326,34 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       });
       document.getElementById("savemsg").innerHTML = "";
     }
+    // the flight log and drag calibration saved in the file
+    let fileCal = null;
+    if (saved)
+      try {
+        const fl = Array.isArray(saved.flights) ? saved.flights.filter((f) => f && f.id) : [];
+        if (fl.length) {
+          const cur = flList(),
+            add = fl.filter((f) => !cur.some((x) => x.id === f.id));
+          if (add.length && flPut([...cur, ...add])) {
+            flNow = {};
+            savedNotes.push(
+              `Added ${add.length} logged flight${add.length > 1 ? "s" : ""} from the file to the flight log.`,
+            );
+          }
+        }
+        if (saved.cal && saved.cal.k > 0) {
+          const c = calGet();
+          if (!c) calSet(saved.cal);
+          else if (!launchSame(c.k, saved.cal.k)) fileCal = saved.cal;
+        }
+      } catch (e) {}
+    if (savedNotes.length)
+      rep
+        .querySelector(".report")
+        ?.insertAdjacentHTML(
+          "beforeend",
+          `<div class="note" style="margin-top:6px">${esc(savedNotes.join(" "))}</div>`,
+        );
     applyCal();
     if (D.dragScale !== 1)
       rep
@@ -330,7 +385,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       }
     } catch (_) {}
     renderRecent();
-    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name);
+    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name, fileCal);
     return true;
   } catch (err) {
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
