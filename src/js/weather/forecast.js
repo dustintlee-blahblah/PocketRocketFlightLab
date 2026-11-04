@@ -525,22 +525,29 @@ async function wxFetch() {
   const msg = document.getElementById("wxmsg"),
     btn = document.getElementById("wxgo"),
     wv = document.getElementById("wxwhen").value || wxDefaultWhen();
+  /**
+   * Puts a result in the note under the button and in a pop-up, where it's easy to see.
+   */
+  const tell = (title, text, pop = text) => {
+    msg.textContent = text;
+    showInfo(title, pop);
+  };
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})/.exec(wv);
   if (!m) {
-    msg.textContent = "Choose the launch date and time first.";
+    tell("Couldn’t get the weather", "Choose the launch date and time first.");
     return;
   }
   const lat = +(L.lat ?? NaN),
     lon = +(L.lon ?? NaN);
   if (!isFinite(lat) || Math.abs(lat) > 90 || !isFinite(lon) || Math.abs(lon) > 180) {
-    msg.textContent = "Enter the site’s latitude and longitude under Launch site first.";
+    tell("Couldn’t get the weather", "Enter the site’s latitude and longitude under Launch site first.");
     return;
   }
   const date = m[1],
     key = `${date}T${m[2]}:00`,
     src = wxSource(date, wxDefaultWhen().slice(0, 10));
   if (src.error) {
-    msg.textContent = src.error;
+    tell("Couldn’t get the weather", src.error);
     return;
   }
   btn.disabled = true;
@@ -574,14 +581,14 @@ async function wxFetch() {
     const set = [];
     if (W.t2 != null) {
       L.tempC = +W.t2.toFixed(1);
-      set.push(`${Math.round(toDisp(W.t2, "temp"))} ${uname("temp")}`);
+      set.push(`temperature ${Math.round(toDisp(W.t2, "temp"))} ${uname("temp")}`);
     }
     if (W.ps != null) {
       // the forecast's ground pressure is at its own terrain height: carried to the field's elevation (hypsometric equation)
       const T = (W.t2 != null ? W.t2 : L.tempC) + 273.15,
         dz = (L.elev || 0) - (W.elev != null ? W.elev : L.elev || 0);
       L.pressure = Math.round(W.ps * 100 * Math.exp((-9.80665 * dz) / (287.05 * T)));
-      set.push(`${fmt(L.pressure, "press")} ${uname("press")}`);
+      set.push(`pressure ${fmt(L.pressure, "press")} ${uname("press")}`);
     }
     if (W.rh != null) {
       L.humidity = Math.min(1, Math.max(0, W.rh / 100));
@@ -643,25 +650,35 @@ async function wxFetch() {
     let note = "";
     if (W.elev != null && Math.abs(W.elev - (L.elev || 0)) > 150)
       note = ` The forecast’s ground here is ${fmt(W.elev, "alt")} ${uname("alt")} above sea level but your field elevation is ${fmt(L.elev || 0, "alt")} ${uname("alt")}: check both, and the coordinates.`;
-    if (noAloft) msg.textContent = `${src.name} for ${when}: no winds aloft.${gtxt}${ktxt}${note}`;
-    else {
+    // the pop-up: what was filled in, one item to a line
+    const lines = [`${src.name} for ${when}, site time.`, ""];
+    let longText;
+    if (noAloft) {
+      longText = `${src.name} for ${when}: no winds aloft.${gtxt}${ktxt}${note}`;
+      lines.push(
+        src.kind === "era5"
+          ? `No winds aloft: they’re only on record here from ${new Date(WX_HIST_FROM + "T12:00").toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" })} on.`
+          : "No winds aloft for this place and time.",
+        "The Winds aloft table has been cleared: the wind above the ground will be estimated from the ground wind and the wind profile. You can type in winds aloft by hand.",
+      );
+    } else {
       const top = W.rows[W.rows.length - 1],
         fast = W.rows.reduce((a, r) => (r.speed > a.speed ? r : a), W.rows[0]);
-      msg.textContent = `${src.name}: filled ${W.rows.length} levels, ${fmt(W.rows[0].alt, "alt")} to ${fmt(top.alt, "alt")} ${uname("alt")} above the pad, for ${when}. Strongest: ${fmt(fast.speed, "wind")} ${uname("wind")} from the ${compass(fast.dir)} at ${fmt(fast.alt, "alt")} ${uname("alt")}.${gtxt}${ktxt}${note}`;
+      longText = `${src.name}: filled ${W.rows.length} levels, ${fmt(W.rows[0].alt, "alt")} to ${fmt(top.alt, "alt")} ${uname("alt")} above the pad, for ${when}. Strongest: ${fmt(fast.speed, "wind")} ${uname("wind")} from the ${compass(fast.dir)} at ${fmt(fast.alt, "alt")} ${uname("alt")}.${gtxt}${ktxt}${note}`;
+      lines.push(
+        `Winds aloft: ${W.rows.length} levels, ${fmt(W.rows[0].alt, "alt")} to ${fmt(top.alt, "alt")} ${uname("alt")} above the pad. Strongest ${fmt(fast.speed, "wind")} ${uname("wind")} from the ${compass(fast.dir)} at ${fmt(fast.alt, "alt")} ${uname("alt")}.`,
+      );
     }
+    if (set.length) lines.push("", "Filled in:", ...set.map((x) => `• ${x}`));
+    if (kept.length) lines.push("", `Not in this record, so left as they were: ${kept.join(", ")}.`);
+    if (note) lines.push("", note.trim());
     renderForms();
     changed();
     renderAloft();
-    if (noAloft)
-      showInfo(
-        "No winds aloft for this date",
-        src.kind === "era5"
-          ? `Winds aloft are only on record here from ${new Date(WX_HIST_FROM + "T12:00").toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" })} on. The ground-level weather for ${when} has been filled in from the ERA5 reanalysis, and the Winds aloft table has been cleared: the wind above the ground will be estimated from the ground wind and the wind profile. You can type in winds aloft by hand.`
-          : `The weather service had no winds aloft for this place and time. The ground-level weather has been filled in, and the Winds aloft table has been cleared: the wind above the ground will be estimated from the ground wind and the wind profile. You can type in winds aloft by hand.`,
-      );
+    tell(noAloft ? "Weather filled in, no winds aloft" : "Weather filled in", longText, lines.join("\n"));
   } catch (e) {
     const off = typeof navigator !== "undefined" && navigator.onLine === false;
-    msg.textContent = off
+    const why = off
       ? "No internet connection. Connect and try again, or type the winds in by hand under Winds aloft."
       : `Couldn’t get the weather: ${String((e && e.message) || e)
           .replace(/^TypeError: /, "")
@@ -669,6 +686,7 @@ async function wxFetch() {
             0,
             200,
           )}. ${/fetch|network|load/i.test(String((e && e.message) || e)) ? "This view may not be allowed to go online (the Android app and a regular browser are). " : ""}You can still type the winds in by hand under Winds aloft.`;
+    tell("Couldn’t get the weather", why);
   } finally {
     btn.disabled = false;
   }
