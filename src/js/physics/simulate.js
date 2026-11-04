@@ -482,13 +482,29 @@ function simulate(D, L, m, mb, opts = {}) {
   const CdAdrogue = chuteA(drogueDia, D.drogueCd),
     CdAmain = chuteA(D.mainDia, D.mainCd),
     noChute = !(CdAmain + CdAdrogue > 0);
-  /* parachutes take time to open: the fill time is t_f = n·D/v (Knacke), with fill constant n = 8 for solid canopies,
-     and the drag area grows as (t/t_f)² while it fills. The airframe hanging below adds its own drag (Cd about 0.5). */
+  /* parachutes take time to open: a canopy fills once the air has travelled a set distance through it, n·D (Knacke's
+     fill distance, fill constant n = 8 for solid canopies), and the drag area grows as (s/(n·D))² with s the distance
+     so far. Knacke's fill time t_f = n·D/v is the same thing at a steady speed; counting distance instead keeps a chute
+     opened at apogee, where the rocket is barely moving, from taking many seconds to fill: it fills as the rocket falls.
+     The airframe hanging below adds its own drag (Cd about 0.5). */
   const FILL_N = 8;
   let openD = null,
     openM = null,
     prevPh = "rail";
-  const fill = (o, t) => (!o ? 1 : Math.min(1, Math.max(0, (t - o.t) / o.tf) ** 2));
+  /** A canopy starting to open: when, at what airspeed, the distance it needs to fill and an estimate of its fill time. */
+  const opening = (t, va, d) => {
+    const sf = Math.max(FILL_N * d, 1e-3);
+    return { t, v: va, sf, s: 0, ts: t, va, tf: Math.max(sf / Math.max(va, 1), 0.05) };
+  };
+  /** Moves each filling canopy's distance on to time t at airspeed va (after each step), and its fill-time estimate. */
+  const fillStep = (o, t, va) => {
+    if (!o || o.s >= o.sf) return;
+    o.s += 0.5 * (o.va + va) * (t - o.ts);
+    o.ts = t;
+    o.va = va;
+    o.tf = o.s >= o.sf ? Math.max(t - o.t, 0.05) : Math.max(t - o.t + (o.sf - o.s) / Math.max(va, 1), 0.05);
+  };
+  const fill = (o, t) => (!o ? 1 : Math.min(1, Math.max(0, (o.s + o.va * Math.max(t - o.ts, 0)) / o.sf) ** 2));
   /* other chutes and streamers besides the drogue and main: each opens on its own event (apogee plus its delay, its
      altitude on the way down, the motor's ejection charge, or a timer from liftoff), fills like the others, and adds its drag */
   const XC = (D.extraChutes || [])
@@ -984,6 +1000,11 @@ function simulate(D, L, m, mb, opts = {}) {
     s = s.map((v, i) => v + (dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])) / 6);
     acc = k1[k1.length - 1];
     t += dt;
+    if (openD || openM || XC.length) {
+      const W = windVec(s[1], t),
+        va = Math.hypot(s[2] - W[0], s[5] - W[1], s[3]);
+      for (const o of [openD, openM, ...XC.map((c) => c.open)]) fillStep(o, t, va);
+    }
     {
       const bl = Math.hypot(s[6], s[7], s[8]) || 1;
       s[6] /= bl;
@@ -1219,16 +1240,15 @@ function simulate(D, L, m, mb, opts = {}) {
         if (due) {
           const W = windVec(z, t),
             va = Math.hypot(vx - W[0], vy - W[1], vz);
-          c.open = { t, v: va, tf: Math.max((FILL_N * c.d) / Math.max(va, 1), 0.05) };
+          c.open = opening(t, va, c.d);
           (st.extraOpen || (st.extraOpen = [])).push({ t, alt: z, ev: c.ev });
         }
       }
     if (phase !== prevPh) {
       const W = windVec(z, t),
         va = Math.hypot(vx - W[0], vy - W[1], vz);
-      if (phase === "drogue" && !openD)
-        openD = { t, v: va, tf: Math.max((FILL_N * drogueDia) / Math.max(va, 1), 0.05) };
-      if (phase === "main" && !openM) openM = { t, v: va, tf: Math.max((FILL_N * D.mainDia) / Math.max(va, 1), 0.05) };
+      if (phase === "drogue" && !openD) openD = opening(t, va, drogueDia);
+      if (phase === "main" && !openM) openM = opening(t, va, D.mainDia);
       prevPh = phase;
     }
     // opening shock: the largest drag on the recovery harness while each canopy fills (and just after)
