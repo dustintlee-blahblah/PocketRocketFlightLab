@@ -44,16 +44,16 @@ const FIELD_INFO = {
     "Air temperature at the pad. It sets the air density and the speed of sound, so it changes both drag and Mach number.",
   pressure:
     "The barometer reading at the pad itself (station pressure), not the sea-level “altimeter setting” given in weather reports.\n\nLeave it at 0 to use the standard pressure for the field elevation.",
-  dewC: "The temperature the air would have to cool to for dew or fog to form. The closer it is to the air temperature, the more humid the air and the lower any clouds are likely to be. Get forecast fills it in; it's shown for planning and doesn't change the flight (Relative humidity is what the simulation uses).",
+  dewC: "The temperature the air would have to cool to for dew or fog to form. The closer it is to the air temperature, the more humid the air and the lower any clouds are likely to be. Get weather fills it in; it's shown for planning and doesn't change the flight (Relative humidity is what the simulation uses).",
   ceiling:
-    "How high the bottom of the lowest clouds is, measured above the pad (the same way as apogee). 0 means clear: no clouds worth counting.\n\nRockets must never be flown into clouds, so the RSO Checklist compares the predicted apogee with it. Get forecast estimates it from the forecast cloud cover at each pressure level (the lowest level where clouds cover about a quarter of the sky or more), so treat it as a rough guide and look at the sky on the day.",
+    "How high the bottom of the lowest clouds is, measured above the pad (the same way as apogee). 0 means clear: no clouds worth counting.\n\nRockets must never be flown into clouds, so the RSO Checklist compares the predicted apogee with it. Get weather estimates it from the forecast cloud cover at each pressure level (the lowest level where clouds cover about a quarter of the sky or more), so treat it as a rough guide and look at the sky on the day.",
   cloudLow:
-    "Share of the sky covered by low clouds and fog, from the ground up to about 10,000 ft (3 km). Get forecast fills it in.\n\nWhat the RSO Checklist uses is the cloud cover at the heights the rocket actually flies through, up to its predicted apogee: high-power flights (FAA Part 101.25) may not go to any altitude where clouds cover more than five-tenths of the sky. After a forecast that's worked out from the cloud cover at each forecast level; if you type these three in yourself, from the three bands.",
+    "Share of the sky covered by low clouds and fog, from the ground up to about 10,000 ft (3 km). Get weather fills it in.\n\nWhat the RSO Checklist uses is the cloud cover at the heights the rocket actually flies through, up to its predicted apogee: high-power flights (FAA Part 101.25) may not go to any altitude where clouds cover more than five-tenths of the sky. After a forecast that's worked out from the cloud cover at each forecast level; if you type these three in yourself, from the three bands.",
   cloudMid:
-    "Share of the sky covered by mid-level clouds, about 10,000–26,000 ft (3–8 km). Get forecast fills it in. See Low cloud cover for how the RSO Checklist uses it.",
+    "Share of the sky covered by mid-level clouds, about 10,000–26,000 ft (3–8 km). Get weather fills it in. See Low cloud cover for how the RSO Checklist uses it.",
   cloudHigh:
-    "Share of the sky covered by high clouds, above about 26,000 ft (8 km): mostly thin cirrus, which makes the whole sky look cloudy on forecasts but is far above almost every rocket. Get forecast fills it in.",
-  vis: "How far you can see horizontally. High-power flights (FAA Part 101.25) need at least 5 miles (8 km); the RSO Checklist checks it. 0 means not set. Get forecast fills it in.",
+    "Share of the sky covered by high clouds, above about 26,000 ft (8 km): mostly thin cirrus, which makes the whole sky look cloudy on forecasts but is far above almost every rocket. Get weather fills it in.",
+  vis: "How far you can see horizontally. High-power flights (FAA Part 101.25) need at least 5 miles (8 km); the RSO Checklist checks it. 0 means not set. Get weather fills it in.",
   precip:
     "The forecast chance of rain or snow at the launch hour. Shown for planning; it doesn't change the flight. The RSO Checklist flags a chance of 50% or more.",
   humidity:
@@ -254,6 +254,17 @@ document.addEventListener(
   },
   true,
 );
+/**
+ * Shows a message in the pop-up info box (the one the "i" buttons open).
+ * @param {string} title
+ * @param {string} text
+ */
+function showInfo(title, text) {
+  document.getElementById("infottl").textContent = title || "";
+  document.getElementById("infotxt").textContent = text || "";
+  document.getElementById("infobox").hidden = false;
+  document.getElementById("infook").focus();
+}
 (function () {
   const m = () => document.getElementById("infobox");
   document.addEventListener("click", (e) => {

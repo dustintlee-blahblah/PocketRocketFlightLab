@@ -241,12 +241,12 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <h2>Ambient conditions</h2>
       <div class="grid" id="g-ambient"></div>
       <div class="wx" id="wxbox">
-        <div class="bldh" style="margin-top:0">Weather forecast for this site</div>
+        <div class="bldh" style="margin-top:0">Weather for this site</div>
         <p class="note" id="wxsite" style="margin:2px 0 8px"></p>
-        <div class="fld"><label for="wxwhen">Launch time (the site’s local time)</label><div class="in"><input type="datetime-local" id="wxwhen" step="3600"></div></div>
-        <div class="row" style="gap:8px;margin-top:8px"><button class="btn" id="wxgo" type="button">Get forecast</button></div>
+        <div class="fld"><label for="wxwhen">Launch time (the site’s local time)</label><div class="in"><input type="datetime-local" id="wxwhen" step="3600" min="1940-01-01T00:00"></div></div>
+        <div class="row" style="gap:8px;margin-top:8px"><button class="btn" id="wxgo" type="button">Get weather</button></div>
         <p class="note" id="wxmsg" aria-live="polite"></p>
-        <p class="note wxsrc">Fills in every field above (temperature, pressure, humidity, dew point, wind, its height and direction, gustiness, cloud base elevation, low, mid and high cloud cover, visibility and chance of precipitation) and the Winds aloft table from ground level to about 100,000 ft. Forecasts from NOAA’s GFS model through <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Needs an internet connection; nothing else leaves the app.</p>
+        <p class="note wxsrc">Fills in every field above (temperature, pressure, humidity, dew point, wind, its height and direction, gustiness, cloud base elevation, low, mid and high cloud cover, visibility and chance of precipitation) and the Winds aloft table from ground level to about 100,000 ft. Any date from 1940 to 16 days ahead: from two days ago on, NOAA’s GFS forecast; back to March 2021, archived GFS forecasts; before that, the ERA5 reanalysis, which has ground-level weather only (no winds aloft, visibility or chance of precipitation). All through <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Needs an internet connection; nothing else leaves the app.</p>
       </div>
     </div>
     <div class="panel" id="stagelockpanel">
@@ -254,7 +254,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="grid" id="g-stagelock"></div>
     </div>
     <div class="panel" id="aloftpanel">
-      <h2>Winds aloft<button class="ib" type="button" data-title="Winds aloft" data-info="Wind speed and the direction it blows from, at heights above the pad. Above the lowest level these replace the surface wind’s growth with height; between levels the wind is blended, and above the top level it stays the same. Leave the list empty to use the surface wind alone. Get forecast, under Ambient conditions, fills this table from the weather forecast for your site and launch time (it needs the site’s latitude and longitude and an internet connection), or enter the levels by hand. Winds aloft matter most for high flights: the jet stream at 30,000–40,000 ft is often 50–150 mph." aria-label="About Winds aloft">i</button></h2>
+      <h2>Winds aloft<button class="ib" type="button" data-title="Winds aloft" data-info="Wind speed and the direction it blows from, at heights above the pad. Above the lowest level these replace the surface wind’s growth with height; between levels the wind is blended, and above the top level it stays the same. Leave the list empty to use the surface wind alone. Get weather, under Ambient conditions, fills this table from the weather forecast or record for your site and launch time (from March 2021 on; it needs the site’s latitude and longitude and an internet connection), or enter the levels by hand. Winds aloft matter most for high flights: the jet stream at 30,000–40,000 ft is often 50–150 mph." aria-label="About Winds aloft">i</button></h2>
       <div id="aloftlist" class="aloft"></div>
       <div class="row"><button class="btn ghost" id="aloftadd" type="button">+ Add a level</button><button class="btn ghost" id="aloftclear" type="button">Clear</button></div>
       <p class="note" id="aloftmsg" aria-live="polite"></p>
@@ -497,7 +497,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
       <h3>Software and fonts</h3>
       <p>jsPDF 2.5.1, © James Hall and yWorks GmbH, MIT License.<br>Barlow and Barlow Condensed by Jeremy Tribby, SIL Open Font License 1.1.<br>IBM Plex Mono by IBM, SIL Open Font License 1.1.</p>
       <h3>Weather data</h3>
-      <p>Forecasts from NOAA’s GFS model, served by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> under the Creative Commons Attribution 4.0 license (CC BY 4.0).</p>
+      <p>Weather from NOAA’s GFS model (forecasts and archived forecasts) and the ERA5 reanalysis, served by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> under the Creative Commons Attribution 4.0 license (CC BY 4.0). ERA5: contains modified Copernicus Climate Change Service information; Hersbach et al. (2023), ERA5 hourly data, Copernicus Climate Change Service (C3S) Climate Data Store, DOI 10.24381/cds.adbb2d47. Neither the European Commission nor ECMWF is responsible for any use of it.</p>
     </div>
     <div class="foot">
       <button class="btn" id="aboutclose">Close</button>

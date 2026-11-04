@@ -314,15 +314,36 @@ function wxSiteNote() {
   const w = document.getElementById("wxwhen");
   if (w && !w.value) w.value = wxDefaultWhen();
 }
+/* where the weather comes from, by date (all through Open-Meteo, CC BY 4.0):
+   - from two days ago to 16 days ahead: the GFS forecast, with its pressure levels (winds aloft);
+   - back to 23 March 2021: the archive of past GFS forecasts (Open-Meteo's historical forecast API), also with levels;
+   - back to 1940: the ERA5 reanalysis (Copernicus), ground-level weather only, so no winds aloft. */
+const WX_HIST_FROM = "2021-03-23",
+  WX_ERA5_FROM = "1940-01-01",
+  WX_AHEAD = 16;
 /**
- * The Open-Meteo request for the site and day: the surface fields and every level's wind, height and temperature.
- * @param {number} lat
- * @param {number} lon
- * @param {string} date YYYY-MM-DD
- * @returns {string}
+ * Which weather source covers a date.
+ * @param {string} date the launch date, YYYY-MM-DD
+ * @param {string} today today's date, YYYY-MM-DD
+ * @returns {{kind:string, name:string}|{error:string}} kind "forecast", "history" or "era5"
  */
-function wxUrl(lat, lon, date) {
-  const v = [
+function wxSource(date, today) {
+  const days = (Date.parse(date) - Date.parse(today)) / 864e5;
+  if (!isFinite(days)) return { error: "Choose the launch date and time first." };
+  if (days > WX_AHEAD) return { error: `Forecasts only reach ${WX_AHEAD} days ahead. Choose a date before then.` };
+  if (days >= -2) return { kind: "forecast", name: "GFS forecast" };
+  if (date >= WX_HIST_FROM) return { kind: "history", name: "GFS archive" };
+  if (date >= WX_ERA5_FROM) return { kind: "era5", name: "ERA5 reanalysis" };
+  return { error: "Weather records here start in 1940. Choose a later date." };
+}
+/**
+ * The hourly fields asked for from a source: the ground-level weather, plus every level's wind, height, cloud cover and
+ * temperature where the source has levels.
+ * @param {string} kind from wxSource
+ * @returns {string[]}
+ */
+function wxVars(kind) {
+  const ground = [
     "wind_speed_10m",
     "wind_direction_10m",
     "wind_gusts_10m",
@@ -332,9 +353,13 @@ function wxUrl(lat, lon, date) {
     "cloud_cover_low",
     "cloud_cover_mid",
     "cloud_cover_high",
+    "surface_pressure",
+  ];
+  if (kind === "era5") return ground;
+  return [
+    ...ground,
     "visibility",
     "precipitation_probability",
-    "surface_pressure",
     ...WX_LEVELS.flatMap((p) => [
       `wind_speed_${p}hPa`,
       `wind_direction_${p}hPa`,
@@ -343,7 +368,60 @@ function wxUrl(lat, lon, date) {
       `temperature_${p}hPa`,
     ]),
   ];
-  return `https://api.open-meteo.com/v1/gfs?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&hourly=${v.join(",")}&wind_speed_unit=ms&temperature_unit=celsius&timezone=auto&start_date=${date}&end_date=${date}`;
+}
+/**
+ * The Open-Meteo request for the site and day from a source.
+ * @param {number} lat
+ * @param {number} lon
+ * @param {string} date YYYY-MM-DD
+ * @param {string} [kind="forecast"] from wxSource
+ * @param {string[]} [vars] the hourly fields (wxVars by default)
+ * @returns {string}
+ */
+function wxUrl(lat, lon, date, kind = "forecast", vars = wxVars(kind)) {
+  const base =
+    kind === "era5"
+      ? "https://archive-api.open-meteo.com/v1/archive?"
+      : kind === "history"
+        ? "https://historical-forecast-api.open-meteo.com/v1/forecast?models=gfs_seamless&"
+        : "https://api.open-meteo.com/v1/gfs?";
+  return `${base}latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&hourly=${vars.join(",")}&wind_speed_unit=ms&temperature_unit=celsius&timezone=auto&start_date=${date}&end_date=${date}`;
+}
+/**
+ * Fetches a source's hourly weather for the day. A field the source doesn't offer makes the service refuse the whole
+ * request and name it, so it's dropped and the request sent again.
+ * @returns {Promise<object>} the service's JSON
+ */
+async function wxGet(lat, lon, date, kind) {
+  let vars = wxVars(kind);
+  for (let n = 0; n < 12; n++) {
+    let txt, j;
+    try {
+      txt = await prFetchText(wxUrl(lat, lon, date, kind, vars));
+    } catch (e) {
+      const m = /invalid String value (\w+)/.exec(String((e && e.message) || e));
+      if (m && vars.includes(m[1])) {
+        vars = vars.filter((v) => v !== m[1]);
+        continue;
+      }
+      throw e;
+    }
+    try {
+      j = JSON.parse(txt);
+    } catch (e) {
+      throw new Error("The weather service sent something unexpected.");
+    }
+    if (j && j.error) {
+      const m = /invalid String value (\w+)/.exec(j.reason || "");
+      if (m && vars.includes(m[1])) {
+        vars = vars.filter((v) => v !== m[1]);
+        continue;
+      }
+      throw new Error(j.reason || "The weather service couldn’t answer.");
+    }
+    return j;
+  }
+  throw new Error("The weather service couldn’t answer.");
 }
 /**
  * The forecast for one hour as winds-aloft rows above the pad, plus the surface weather (pure: tested on its own).
@@ -360,7 +438,7 @@ function wxRows(j, key, elev) {
   const H = j && j.hourly;
   if (!H || !Array.isArray(H.time)) throw new Error("The weather service sent something unexpected.");
   const i = H.time.indexOf(key);
-  if (i < 0) throw new Error("That hour isn’t in the forecast.");
+  if (i < 0) throw new Error("That hour isn’t in the weather record.");
   /**
    * One hourly field at the hour (null if missing).
    */
@@ -440,7 +518,8 @@ function wxRows(j, key, elev) {
   };
 }
 /**
- * Get forecast: fetches the forecast for the chosen hour and fills the launch conditions and winds aloft.
+ * Get weather: fetches the weather for the chosen hour from the source that covers its date (wxSource) and fills the
+ * launch conditions and, where the source has them, the winds aloft.
  */
 async function wxFetch() {
   const msg = document.getElementById("wxmsg"),
@@ -458,31 +537,39 @@ async function wxFetch() {
     return;
   }
   const date = m[1],
-    key = `${date}T${m[2]}:00`;
+    key = `${date}T${m[2]}:00`,
+    src = wxSource(date, wxDefaultWhen().slice(0, 10));
+  if (src.error) {
+    msg.textContent = src.error;
+    return;
+  }
   btn.disabled = true;
-  msg.textContent = "Getting the forecast…";
+  msg.textContent = src.kind === "forecast" ? "Getting the forecast…" : "Getting the weather for that day…";
   try {
-    const txt = await prFetchText(wxUrl(lat, lon, date));
-    let j;
-    try {
-      j = JSON.parse(txt);
-    } catch (e) {
-      throw new Error("The weather service sent something unexpected.");
-    }
-    if (j && j.error) throw new Error(j.reason || "The weather service couldn’t answer.");
+    const j = await wxGet(lat, lon, date, src.kind);
     const W = wxRows(j, key, L.elev || 0);
-    if (!W.rows.length) throw new Error("The forecast had no wind levels above this field.");
-    L.aloft = W.rows;
-    aloftOpen = false;
-    L.wxSet = true;
-    L.tempAloft = W.temps && W.temps.length ? W.temps : null;
     const when = new Date(`${date}T${m[2]}:00`).toLocaleString([], {
+      year: src.kind === "forecast" ? undefined : "numeric",
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
     });
-    L.aloftSrc = `GFS forecast for ${when}, site time`;
+    L.wxSet = true;
+    aloftOpen = false;
+    // no levels from this source, date or place: the winds-aloft table is cleared, and the wind above the ground comes
+    // from the ground wind and the wind profile
+    const noAloft = !W.rows.length;
+    if (noAloft) {
+      L.aloft = [];
+      L.aloftSrc = "";
+      L.tempAloft = null;
+      L.cloudProf = null;
+    } else {
+      L.aloft = W.rows;
+      L.tempAloft = W.temps && W.temps.length ? W.temps : null;
+      L.aloftSrc = `${src.name} for ${when}, site time`;
+    }
     // every Ambient conditions field: the forecast's values at 2 m (temperature, humidity) and 10 m (wind) above the ground
     const set = [];
     if (W.t2 != null) {
@@ -546,20 +633,37 @@ async function wxFetch() {
       set.push(`${Math.round(L.turb * 100)}% gustiness (gusts to ${fmt(W.wg, "wind")} ${uname("wind")})`);
     }
     const gtxt = set.length ? ` Ambient conditions: ${set.join(", ")}.` : "";
-    const top = W.rows[W.rows.length - 1],
-      fast = W.rows.reduce((a, r) => (r.speed > a.speed ? r : a), W.rows[0]);
+    // fields this source doesn't have keep what they had
+    const kept = [
+      W.vis == null && "visibility",
+      W.pp == null && "chance of precipitation",
+      !W.haveCloud && "cloud base",
+    ].filter(Boolean);
+    const ktxt = kept.length ? ` Not in this record, so left as they were: ${kept.join(", ")}.` : "";
     let note = "";
     if (W.elev != null && Math.abs(W.elev - (L.elev || 0)) > 150)
       note = ` The forecast’s ground here is ${fmt(W.elev, "alt")} ${uname("alt")} above sea level but your field elevation is ${fmt(L.elev || 0, "alt")} ${uname("alt")}: check both, and the coordinates.`;
-    msg.textContent = `Filled ${W.rows.length} levels, ${fmt(W.rows[0].alt, "alt")} to ${fmt(top.alt, "alt")} ${uname("alt")} above the pad, for ${when}. Strongest: ${fmt(fast.speed, "wind")} ${uname("wind")} from the ${compass(fast.dir)} at ${fmt(fast.alt, "alt")} ${uname("alt")}.${gtxt}${note}`;
+    if (noAloft) msg.textContent = `${src.name} for ${when}: no winds aloft.${gtxt}${ktxt}${note}`;
+    else {
+      const top = W.rows[W.rows.length - 1],
+        fast = W.rows.reduce((a, r) => (r.speed > a.speed ? r : a), W.rows[0]);
+      msg.textContent = `${src.name}: filled ${W.rows.length} levels, ${fmt(W.rows[0].alt, "alt")} to ${fmt(top.alt, "alt")} ${uname("alt")} above the pad, for ${when}. Strongest: ${fmt(fast.speed, "wind")} ${uname("wind")} from the ${compass(fast.dir)} at ${fmt(fast.alt, "alt")} ${uname("alt")}.${gtxt}${ktxt}${note}`;
+    }
     renderForms();
     changed();
     renderAloft();
+    if (noAloft)
+      showInfo(
+        "No winds aloft for this date",
+        src.kind === "era5"
+          ? `Winds aloft are only on record here from ${new Date(WX_HIST_FROM + "T12:00").toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" })} on. The ground-level weather for ${when} has been filled in from the ERA5 reanalysis, and the Winds aloft table has been cleared: the wind above the ground will be estimated from the ground wind and the wind profile. You can type in winds aloft by hand.`
+          : `The weather service had no winds aloft for this place and time. The ground-level weather has been filled in, and the Winds aloft table has been cleared: the wind above the ground will be estimated from the ground wind and the wind profile. You can type in winds aloft by hand.`,
+      );
   } catch (e) {
     const off = typeof navigator !== "undefined" && navigator.onLine === false;
     msg.textContent = off
       ? "No internet connection. Connect and try again, or type the winds in by hand under Winds aloft."
-      : `Couldn’t get the forecast: ${String((e && e.message) || e)
+      : `Couldn’t get the weather: ${String((e && e.message) || e)
           .replace(/^TypeError: /, "")
           .slice(
             0,
