@@ -20,12 +20,14 @@ function simFresh() {
   return { ...r, m, mb };
 }
 /**
- * The saved simulation's name: "Pocket Rocket: <motor>, <date>".
+ * The saved simulation's name: "Pocket Rocket: <motor>, <local date and time>", so each run saved has its own.
  * @param {object} R run
  * @returns {string}
  */
 function simName(R) {
-  return `${PR_SIM_TAG}: ${flMotorName(R.m, R.mb)}, ${new Date().toISOString().slice(0, 10)}`;
+  const d = new Date(),
+    p = (x) => String(x).padStart(2, "0");
+  return `${PR_SIM_TAG}: ${flMotorName(R.m, R.mb)}, ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 /**
  * A number as OpenRocket writes it (NaN, exponent or 6 significant digits).
