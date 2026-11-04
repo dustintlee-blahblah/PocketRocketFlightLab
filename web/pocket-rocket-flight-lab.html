@@ -1728,11 +1728,13 @@ h2 .ib {
   gap: 8px;
   justify-content: space-between;
 }
-#infobox h3 {
+#infobox h3,
+#launchask h3 {
   margin: 0 0 8px;
   font: 700 1.1rem var(--f-display);
 }
-#infobox .mbox p {
+#infobox .mbox p,
+#launchask .mbox p {
   white-space: pre-line;
   max-height: min(50vh, 320px);
   overflow-y: auto;
@@ -2931,7 +2933,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">255</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">256</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3272,6 +3274,9 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <div class="modal" id="infobox" role="dialog" aria-modal="true" aria-labelledby="infottl" hidden><div class="mbox">
   <h3 id="infottl"></h3><p id="infotxt"></p>
   <div class="row mrow"><button class="btn" id="infook" type="button">Got it</button></div></div></div>
+<div class="modal" id="launchask" role="dialog" aria-modal="true" aria-labelledby="launchaskttl" hidden><div class="mbox">
+  <h3 id="launchaskttl">Use this file’s launch settings?</h3><p id="launchasktxt"></p>
+  <div class="row mrow"><button class="btn" id="launchuse" type="button">Use the file’s settings</button><button class="btn ghost" id="launchkeep" type="button">Keep my current settings</button></div></div></div>
 <div class="modal" id="resetconfirm" role="dialog" aria-modal="true" aria-labelledby="resettxt" hidden><div class="mbox">
   <p id="resettxt">Reset the design to the LOC IV X2 starting values? Your edits will be lost.</p>
   <div class="row mrow"><button class="btn" id="resetyes">Reset design</button><button class="btn ghost" id="resetno">Keep my edits</button></div></div></div>
@@ -3425,7 +3430,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "255";
+const APP_BUILD = "256";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -4836,10 +4841,11 @@ const BP_PIN = { "2-56": 35, "4-40": 50 }; // approximate shear strength of one 
  */
 const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
 /**
- * Names of this app's extra files stored inside an .ork (ejection charges, fin edge types).
+ * Names of this app's extra files stored inside an .ork (ejection charges, fin edge types, every launch setting).
  */
 const BP_ORK = "pocketrocket/ejection-charges.json",
-  FIN_ORK = "pocketrocket/fin-edges.json";
+  FIN_ORK = "pocketrocket/fin-edges.json",
+  LAUNCH_ORK = "pocketrocket/launch.json";
 /**
  * The open design's charge settings ({comps, splits}), created on first use; settings saved on the device by older
  * builds are moved into it once.
@@ -12512,6 +12518,7 @@ function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
       if (ch("angle")) set(c, "launchrodangle", Lnew.angle);
       if (ch("elev")) set(c, "launchaltitude", Lnew.elev);
       if (ch("lat")) set(c, "launchlatitude", Lnew.lat ?? 40);
+      if (ch("lon")) set(c, "launchlongitude", Lnew.lon ?? 0);
       if (ch("wind")) set(c, "windaverage", Lnew.wind);
       if (ch("turb")) set(c, "windturbulence", Lnew.turb || 0);
       if (ch("windDir")) set(c, "winddirection", ((Lnew.windDir || 0) * Math.PI) / 180);
@@ -18499,6 +18506,83 @@ document.getElementById("orkfile").addEventListener("change", async (e) => {
   }
   e.target.value = "";
 });
+/* what each launch setting is, for the question asked on opening a file (settings not listed go under "other") */
+const LAUNCH_GROUPS = [
+  ["site (elevation and coordinates)", ["elev", "lat", "lon"]],
+  [
+    "weather",
+    ["tempC", "pressure", "humidity", "dewC", "wind", "windDir", "windRef", "windProfile", "turb", "tempAloft"],
+  ],
+  [
+    "clouds, visibility and precipitation",
+    ["ceiling", "cloudLow", "cloudMid", "cloudHigh", "cloudProf", "vis", "precip"],
+  ],
+  ["winds aloft", ["aloft", "aloftSrc"]],
+  ["launch rail", ["rail", "angle", "railType", "railMode", "railDir"]],
+  ["range and certification", ["waiver", "waiverRef", "recRadius", "cert", "flightType", "cone"]],
+];
+/**
+ * True if two launch setting values are the same (numbers to a few parts in a million).
+ */
+function launchSame(a, b) {
+  if (typeof a === "number" && typeof b === "number")
+    return Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+  if (a == null || b == null) return a == null && b == null;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+/**
+ * After a file opens: if it was saved with launch settings different from the ones you have now, asks whether to use
+ * the file's, and applies them if so. The ones you have now stay otherwise.
+ * @param {object} fileL the file's launch settings
+ * @param {string} when the launch date and time saved with them (for Get weather), or ""
+ * @param {string} name the rocket's name
+ */
+function launchOffer(fileL, when, name) {
+  if (!fileL) return;
+  const diff = Object.keys(fileL).filter((k) => k !== "wxSet" && !launchSame(fileL[k], L[k]));
+  const wxEl = document.getElementById("wxwhen");
+  if (!diff.length && !(when && when !== wxEl.value)) return;
+  const groups = LAUNCH_GROUPS.filter(([, ks]) => ks.some((k) => diff.includes(k))).map(([g]) => g);
+  if (diff.some((k) => !LAUNCH_GROUPS.some(([, ks]) => ks.includes(k)))) groups.push("other settings");
+  const box = document.getElementById("launchask");
+  document.getElementById("launchasktxt").textContent =
+    `${name || "This rocket"} was saved with launch settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
+    (when
+      ? `\n\nSaved for a launch on ${new Date(when).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`
+      : "") +
+    "\n\nUse the file’s settings, or keep your current ones?";
+  box.hidden = false;
+  document.getElementById("launchuse").focus();
+  const done = (use) => {
+    box.hidden = true;
+    box.onclick = document.getElementById("launchuse").onclick = document.getElementById("launchkeep").onclick = null;
+    document.removeEventListener("keydown", onKey);
+    if (!use) return;
+    L = Object.assign(defaultLaunch(), jclone(fileL));
+    if (when) wxEl.value = when;
+    // the saved launch site no longer matches what's shown
+    siteCur = "";
+    store.set("rfs-site", "");
+    siteRender();
+    if (SOURCE && SOURCE.base) SOURCE.base.L = jclone(L);
+    renderForms();
+    changed();
+    markClean();
+    prToast("Using the file’s launch settings.");
+  };
+  /**
+   * Escape keeps the current settings.
+   */
+  const onKey = (e) => {
+    if (e.key === "Escape") done(false);
+  };
+  document.addEventListener("keydown", onKey);
+  document.getElementById("launchuse").onclick = () => done(true);
+  document.getElementById("launchkeep").onclick = () => done(false);
+  box.onclick = (e) => {
+    if (e.target === box) done(false);
+  };
+}
 /**
  * Opens a design from .ork or .rkt text: reads it, picks the motors, sets the design, conditions and builder
  * parts, and reports what was opened.
@@ -18515,6 +18599,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
   try {
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
     D = r.design;
+    // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
+    let fileL = jclone(r.launch),
+      fileWhen = "";
     const keptWx = !!(L && L.wxSet);
     {
       const keep = {};
@@ -18656,6 +18743,17 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         } catch (e) {}
       if (!isR)
         try {
+          const t = await side(LAUNCH_ORK);
+          if (t) {
+            const j = JSON.parse(t);
+            if (j && j.launch && typeof j.launch === "object") {
+              fileL = Object.assign(defaultLaunch(), j.launch);
+              fileWhen = typeof j.when === "string" ? j.when : "";
+            }
+          }
+        } catch (e) {}
+      if (!isR)
+        try {
           const t = await side(BP_ORK);
           if (t) {
             const j = JSON.parse(t);
@@ -18724,6 +18822,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       }
     } catch (_) {}
     renderRecent();
+    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name);
     return true;
   } catch (err) {
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
@@ -23735,12 +23834,14 @@ function simFresh() {
   return { ...r, m, mb };
 }
 /**
- * The saved simulation's name: "Pocket Rocket: <motor>, <date>".
+ * The saved simulation's name: "Pocket Rocket: <motor>, <local date and time>", so each run saved has its own.
  * @param {object} R run
  * @returns {string}
  */
 function simName(R) {
-  return `${PR_SIM_TAG}: ${flMotorName(R.m, R.mb)}, ${new Date().toISOString().slice(0, 10)}`;
+  const d = new Date(),
+    p = (x) => String(x).padStart(2, "0");
+  return `${PR_SIM_TAG}: ${flMotorName(R.m, R.mb)}, ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 /**
  * A number as OpenRocket writes it (NaN, exponent or 6 significant digits).
@@ -23841,47 +23942,65 @@ function simOrkAdd(xml, R, cfg) {
   const ref = all.find((s) => s.getElementsByTagName("configid")[0]?.textContent.trim() === cfg) || all[0];
   const { out, st } = R,
     F = simFigures(R);
-  let sim;
+  let sim, c;
+  /**
+   * Adds a child element with text.
+   */
+  const add = (p, t, v) => {
+    const e = mk(t);
+    if (v != null) e.textContent = String(v);
+    p.appendChild(e);
+    return e;
+  };
+  /**
+   * Sets a child element's text, adding the element if it's missing.
+   */
+  const put = (p, t, v) => {
+    const e = kid(p, t) || add(p, t);
+    e.textContent = String(v);
+    return e;
+  };
   if (ref) {
+    // the file's simulation for this configuration, with the run's own launch conditions
     sim = ref.cloneNode(true);
     [...sim.children]
       .filter((c) => c.tagName === "flightdata" || c.tagName === "name")
       .forEach((c) => sim.removeChild(c));
+    c = kid(sim, "conditions") || add(sim, "conditions");
   } else {
     sim = mk("simulation");
-    const add = (p, t, v) => {
-      const e = mk(t);
-      if (v != null) e.textContent = String(v);
-      p.appendChild(e);
-      return e;
-    };
     add(sim, "simulator", "RK4Simulator");
     add(sim, "calculator", "BarrowmanCalculator");
-    const c = add(sim, "conditions");
+    c = add(sim, "conditions");
     if (cfg) add(c, "configid", cfg);
-    add(c, "launchrodlength", simN(L.rail));
-    add(c, "launchintowind", L.railMode !== "fixed" ? "true" : "false");
-    add(c, "launchrodangle", simN(L.angle));
-    add(c, "launchroddirection", simN(L.railDir ?? 90));
-    add(c, "windaverage", simN(L.wind));
-    add(c, "windturbulence", simN(L.turb || 0));
-    add(c, "winddirection", simN(((L.windDir || 0) * Math.PI) / 180));
+  }
+  {
+    const dir = simN(((L.windDir || 0) * Math.PI) / 180);
+    put(c, "launchrodlength", simN(L.rail));
+    put(c, "launchintowind", L.railMode !== "fixed" ? "true" : "false");
+    put(c, "launchrodangle", simN(L.angle));
+    put(c, "launchroddirection", simN(L.railDir ?? 90));
+    put(c, "windaverage", simN(L.wind));
+    put(c, "windturbulence", simN(L.turb || 0));
+    put(c, "winddirection", dir);
+    [...c.children].filter((e) => e.tagName === "wind").forEach((e) => c.removeChild(e));
     const w = add(c, "wind");
     w.setAttribute("model", "average");
     add(w, "speed", simN(L.wind));
-    add(w, "direction", simN(((L.windDir || 0) * Math.PI) / 180));
+    add(w, "direction", dir);
     add(w, "standarddeviation", simN(L.wind * (L.turb || 0)));
-    add(c, "windmodeltype", "Average");
-    add(c, "launchaltitude", simN(L.elev));
-    add(c, "launchlatitude", simN(L.lat ?? 40));
-    add(c, "launchlongitude", simN(L.lon ?? 0));
-    add(c, "geodeticmethod", "flat");
+    put(c, "windmodeltype", "Average");
+    put(c, "launchaltitude", simN(L.elev));
+    put(c, "launchlatitude", simN(L.lat ?? 40));
+    put(c, "launchlongitude", simN(L.lon ?? 0));
+    if (!kid(c, "geodeticmethod")) add(c, "geodeticmethod", "flat");
+    [...c.children].filter((e) => e.tagName === "atmosphere").forEach((e) => c.removeChild(e));
     const at = add(c, "atmosphere");
     at.setAttribute("model", "extendedisa");
     add(at, "basetemperature", simN(L.tempC + 273.15));
     add(at, "basepressure", simN(101325 * Math.pow(Math.max(1 - 2.25577e-5 * L.elev, 0.01), 5.25588)));
-    add(c, "timestep", "0.05");
-    add(c, "maxtime", "1200");
+    if (!kid(c, "timestep")) add(c, "timestep", "0.05");
+    if (!kid(c, "maxtime")) add(c, "maxtime", "1200");
   }
   sim.setAttribute("status", "uptodate");
   const nm = mk("name");
@@ -24093,8 +24212,22 @@ async function saveDesignFile(asNew, opts = {}) {
   text = text.replace(/<crosssection>(beveled|doublewedge)<\/crosssection>/g, "<crosssection>airfoil</crosssection>");
   const bytes = new TextEncoder().encode(text);
   const extras = into
-    ? (SOURCE.extras || []).filter((x) => x.name !== BP_ORK).map((x) => ({ name: x.name, data: b64ToU8(x.b64) }))
+    ? (SOURCE.extras || [])
+        .filter((x) => x.name !== BP_ORK && x.name !== LAUNCH_ORK)
+        .map((x) => ({ name: x.name, data: b64ToU8(x.b64) }))
     : [];
+  // every launch setting (OpenRocket's simulation holds only some of them) rides along in its own file too
+  extras.push({
+    name: LAUNCH_ORK,
+    data: new TextEncoder().encode(
+      JSON.stringify({
+        app: "Pocket Rocket Flight Lab",
+        version: 1,
+        launch: L,
+        when: document.getElementById("wxwhen").value || "",
+      }),
+    ),
+  });
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
     const fe = {};
