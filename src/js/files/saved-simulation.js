@@ -126,47 +126,65 @@ function simOrkAdd(xml, R, cfg) {
   const ref = all.find((s) => s.getElementsByTagName("configid")[0]?.textContent.trim() === cfg) || all[0];
   const { out, st } = R,
     F = simFigures(R);
-  let sim;
+  let sim, c;
+  /**
+   * Adds a child element with text.
+   */
+  const add = (p, t, v) => {
+    const e = mk(t);
+    if (v != null) e.textContent = String(v);
+    p.appendChild(e);
+    return e;
+  };
+  /**
+   * Sets a child element's text, adding the element if it's missing.
+   */
+  const put = (p, t, v) => {
+    const e = kid(p, t) || add(p, t);
+    e.textContent = String(v);
+    return e;
+  };
   if (ref) {
+    // the file's simulation for this configuration, with the run's own launch conditions
     sim = ref.cloneNode(true);
     [...sim.children]
       .filter((c) => c.tagName === "flightdata" || c.tagName === "name")
       .forEach((c) => sim.removeChild(c));
+    c = kid(sim, "conditions") || add(sim, "conditions");
   } else {
     sim = mk("simulation");
-    const add = (p, t, v) => {
-      const e = mk(t);
-      if (v != null) e.textContent = String(v);
-      p.appendChild(e);
-      return e;
-    };
     add(sim, "simulator", "RK4Simulator");
     add(sim, "calculator", "BarrowmanCalculator");
-    const c = add(sim, "conditions");
+    c = add(sim, "conditions");
     if (cfg) add(c, "configid", cfg);
-    add(c, "launchrodlength", simN(L.rail));
-    add(c, "launchintowind", L.railMode !== "fixed" ? "true" : "false");
-    add(c, "launchrodangle", simN(L.angle));
-    add(c, "launchroddirection", simN(L.railDir ?? 90));
-    add(c, "windaverage", simN(L.wind));
-    add(c, "windturbulence", simN(L.turb || 0));
-    add(c, "winddirection", simN(((L.windDir || 0) * Math.PI) / 180));
+  }
+  {
+    const dir = simN(((L.windDir || 0) * Math.PI) / 180);
+    put(c, "launchrodlength", simN(L.rail));
+    put(c, "launchintowind", L.railMode !== "fixed" ? "true" : "false");
+    put(c, "launchrodangle", simN(L.angle));
+    put(c, "launchroddirection", simN(L.railDir ?? 90));
+    put(c, "windaverage", simN(L.wind));
+    put(c, "windturbulence", simN(L.turb || 0));
+    put(c, "winddirection", dir);
+    [...c.children].filter((e) => e.tagName === "wind").forEach((e) => c.removeChild(e));
     const w = add(c, "wind");
     w.setAttribute("model", "average");
     add(w, "speed", simN(L.wind));
-    add(w, "direction", simN(((L.windDir || 0) * Math.PI) / 180));
+    add(w, "direction", dir);
     add(w, "standarddeviation", simN(L.wind * (L.turb || 0)));
-    add(c, "windmodeltype", "Average");
-    add(c, "launchaltitude", simN(L.elev));
-    add(c, "launchlatitude", simN(L.lat ?? 40));
-    add(c, "launchlongitude", simN(L.lon ?? 0));
-    add(c, "geodeticmethod", "flat");
+    put(c, "windmodeltype", "Average");
+    put(c, "launchaltitude", simN(L.elev));
+    put(c, "launchlatitude", simN(L.lat ?? 40));
+    put(c, "launchlongitude", simN(L.lon ?? 0));
+    if (!kid(c, "geodeticmethod")) add(c, "geodeticmethod", "flat");
+    [...c.children].filter((e) => e.tagName === "atmosphere").forEach((e) => c.removeChild(e));
     const at = add(c, "atmosphere");
     at.setAttribute("model", "extendedisa");
     add(at, "basetemperature", simN(L.tempC + 273.15));
     add(at, "basepressure", simN(101325 * Math.pow(Math.max(1 - 2.25577e-5 * L.elev, 0.01), 5.25588)));
-    add(c, "timestep", "0.05");
-    add(c, "maxtime", "1200");
+    if (!kid(c, "timestep")) add(c, "timestep", "0.05");
+    if (!kid(c, "maxtime")) add(c, "maxtime", "1200");
   }
   sim.setAttribute("status", "uptodate");
   const nm = mk("name");
@@ -378,8 +396,22 @@ async function saveDesignFile(asNew, opts = {}) {
   text = text.replace(/<crosssection>(beveled|doublewedge)<\/crosssection>/g, "<crosssection>airfoil</crosssection>");
   const bytes = new TextEncoder().encode(text);
   const extras = into
-    ? (SOURCE.extras || []).filter((x) => x.name !== BP_ORK).map((x) => ({ name: x.name, data: b64ToU8(x.b64) }))
+    ? (SOURCE.extras || [])
+        .filter((x) => x.name !== BP_ORK && x.name !== LAUNCH_ORK)
+        .map((x) => ({ name: x.name, data: b64ToU8(x.b64) }))
     : [];
+  // every launch setting (OpenRocket's simulation holds only some of them) rides along in its own file too
+  extras.push({
+    name: LAUNCH_ORK,
+    data: new TextEncoder().encode(
+      JSON.stringify({
+        app: "Pocket Rocket Flight Lab",
+        version: 1,
+        launch: L,
+        when: document.getElementById("wxwhen").value || "",
+      }),
+    ),
+  });
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
     const fe = {};

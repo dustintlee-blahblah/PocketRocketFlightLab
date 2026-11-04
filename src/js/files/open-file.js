@@ -14,6 +14,83 @@ document.getElementById("orkfile").addEventListener("change", async (e) => {
   }
   e.target.value = "";
 });
+/* what each launch setting is, for the question asked on opening a file (settings not listed go under "other") */
+const LAUNCH_GROUPS = [
+  ["site (elevation and coordinates)", ["elev", "lat", "lon"]],
+  [
+    "weather",
+    ["tempC", "pressure", "humidity", "dewC", "wind", "windDir", "windRef", "windProfile", "turb", "tempAloft"],
+  ],
+  [
+    "clouds, visibility and precipitation",
+    ["ceiling", "cloudLow", "cloudMid", "cloudHigh", "cloudProf", "vis", "precip"],
+  ],
+  ["winds aloft", ["aloft", "aloftSrc"]],
+  ["launch rail", ["rail", "angle", "railType", "railMode", "railDir"]],
+  ["range and certification", ["waiver", "waiverRef", "recRadius", "cert", "flightType", "cone"]],
+];
+/**
+ * True if two launch setting values are the same (numbers to a few parts in a million).
+ */
+function launchSame(a, b) {
+  if (typeof a === "number" && typeof b === "number")
+    return Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+  if (a == null || b == null) return a == null && b == null;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+/**
+ * After a file opens: if it was saved with launch settings different from the ones you have now, asks whether to use
+ * the file's, and applies them if so. The ones you have now stay otherwise.
+ * @param {object} fileL the file's launch settings
+ * @param {string} when the launch date and time saved with them (for Get weather), or ""
+ * @param {string} name the rocket's name
+ */
+function launchOffer(fileL, when, name) {
+  if (!fileL) return;
+  const diff = Object.keys(fileL).filter((k) => k !== "wxSet" && !launchSame(fileL[k], L[k]));
+  const wxEl = document.getElementById("wxwhen");
+  if (!diff.length && !(when && when !== wxEl.value)) return;
+  const groups = LAUNCH_GROUPS.filter(([, ks]) => ks.some((k) => diff.includes(k))).map(([g]) => g);
+  if (diff.some((k) => !LAUNCH_GROUPS.some(([, ks]) => ks.includes(k)))) groups.push("other settings");
+  const box = document.getElementById("launchask");
+  document.getElementById("launchasktxt").textContent =
+    `${name || "This rocket"} was saved with launch settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
+    (when
+      ? `\n\nSaved for a launch on ${new Date(when).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`
+      : "") +
+    "\n\nUse the file’s settings, or keep your current ones?";
+  box.hidden = false;
+  document.getElementById("launchuse").focus();
+  const done = (use) => {
+    box.hidden = true;
+    box.onclick = document.getElementById("launchuse").onclick = document.getElementById("launchkeep").onclick = null;
+    document.removeEventListener("keydown", onKey);
+    if (!use) return;
+    L = Object.assign(defaultLaunch(), jclone(fileL));
+    if (when) wxEl.value = when;
+    // the saved launch site no longer matches what's shown
+    siteCur = "";
+    store.set("rfs-site", "");
+    siteRender();
+    if (SOURCE && SOURCE.base) SOURCE.base.L = jclone(L);
+    renderForms();
+    changed();
+    markClean();
+    prToast("Using the file’s launch settings.");
+  };
+  /**
+   * Escape keeps the current settings.
+   */
+  const onKey = (e) => {
+    if (e.key === "Escape") done(false);
+  };
+  document.addEventListener("keydown", onKey);
+  document.getElementById("launchuse").onclick = () => done(true);
+  document.getElementById("launchkeep").onclick = () => done(false);
+  box.onclick = (e) => {
+    if (e.target === box) done(false);
+  };
+}
 /**
  * Opens a design from .ork or .rkt text: reads it, picks the motors, sets the design, conditions and builder
  * parts, and reports what was opened.
@@ -30,6 +107,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
   try {
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
     D = r.design;
+    // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
+    let fileL = jclone(r.launch),
+      fileWhen = "";
     const keptWx = !!(L && L.wxSet);
     {
       const keep = {};
@@ -171,6 +251,17 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         } catch (e) {}
       if (!isR)
         try {
+          const t = await side(LAUNCH_ORK);
+          if (t) {
+            const j = JSON.parse(t);
+            if (j && j.launch && typeof j.launch === "object") {
+              fileL = Object.assign(defaultLaunch(), j.launch);
+              fileWhen = typeof j.when === "string" ? j.when : "";
+            }
+          }
+        } catch (e) {}
+      if (!isR)
+        try {
           const t = await side(BP_ORK);
           if (t) {
             const j = JSON.parse(t);
@@ -239,6 +330,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       }
     } catch (_) {}
     renderRecent();
+    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name);
     return true;
   } catch (err) {
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;

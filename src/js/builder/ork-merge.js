@@ -431,6 +431,7 @@ function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
       if (ch("angle")) set(c, "launchrodangle", Lnew.angle);
       if (ch("elev")) set(c, "launchaltitude", Lnew.elev);
       if (ch("lat")) set(c, "launchlatitude", Lnew.lat ?? 40);
+      if (ch("lon")) set(c, "launchlongitude", Lnew.lon ?? 0);
       if (ch("wind")) set(c, "windaverage", Lnew.wind);
       if (ch("turb")) set(c, "windturbulence", Lnew.turb || 0);
       if (ch("windDir")) set(c, "winddirection", ((Lnew.windDir || 0) * Math.PI) / 180);

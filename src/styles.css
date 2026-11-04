@@ -1704,11 +1704,13 @@ h2 .ib {
   gap: 8px;
   justify-content: space-between;
 }
-#infobox h3 {
+#infobox h3,
+#launchask h3 {
   margin: 0 0 8px;
   font: 700 1.1rem var(--f-display);
 }
-#infobox .mbox p {
+#infobox .mbox p,
+#launchask .mbox p {
   white-space: pre-line;
   max-height: min(50vh, 320px);
   overflow-y: auto;

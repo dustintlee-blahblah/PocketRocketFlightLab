@@ -20,10 +20,11 @@ const BP_PIN = { "2-56": 35, "4-40": 50 }; // approximate shear strength of one 
  */
 const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
 /**
- * Names of this app's extra files stored inside an .ork (ejection charges, fin edge types).
+ * Names of this app's extra files stored inside an .ork (ejection charges, fin edge types, every launch setting).
  */
 const BP_ORK = "pocketrocket/ejection-charges.json",
-  FIN_ORK = "pocketrocket/fin-edges.json";
+  FIN_ORK = "pocketrocket/fin-edges.json",
+  LAUNCH_ORK = "pocketrocket/launch.json";
 /**
  * The open design's charge settings ({comps, splits}), created on first use; settings saved on the device by older
  * builds are moved into it once.
