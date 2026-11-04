@@ -265,35 +265,6 @@ function apoRound(v) {
   return (Math.round(d / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 /**
- * The explanation shown in the apogee range's info box.
- * @param {object} R from apoRange()
- * @returns {string}
- */
-function apoRangeInfo(R) {
-  const p = (x) => `${Math.round(x * 100)}%`;
-  return (
-    `About 9 in 10 real flights should land in this range.\n\n` +
-    `• Flight to flight: ${R.mc ? `${p(R.cLo)} low, ${p(R.cHi)} high (dispersion run)` : "added when the dispersion run finishes"}.\n` +
-    `• Model: ${p(R.mLo)} low, ${p(R.mHi)} high (${R.cal ? "drag calibrated to your flight" : R.est ? "weight and CG estimated; weigh and balance the rocket to narrow it" : "weighed rocket"}${R.fast ? "; wider above Mach 0.8" : ""}).\n\n` +
-    `Combined root-sum-square. The model figures are estimates, not measured from your rockets. The RSO Checklist uses the top of the range.`
-  );
-}
-/**
- * Show the likely apogee range under the predicted apogee on the Results tab.
- */
-function renderApoRange() {
-  const el = document.getElementById("aporange");
-  if (!el) return;
-  const R = lastSim ? apoRange(lastSim.st, lastSim.D) : null;
-  if (!R) {
-    el.hidden = true;
-    return;
-  }
-  const r = apoRound;
-  el.hidden = false;
-  el.innerHTML = `<span>Likely <b>${r(R.lo)}–${r(R.hi)} ${uname("alt")}</b>${R.mc ? "" : " · dispersion pending"}</span>${infoBtn("Likely apogee range", apoRangeInfo(R))}`;
-}
-/**
  * Show the dispersion run's results (statistics and the landing map) on the Results tab.
  */
 function renderMC() {
@@ -306,7 +277,6 @@ function renderMC() {
   out.hidden = false;
   const M = lastMC;
   try {
-    renderApoRange();
     renderRSO();
   } catch (e) {}
   const dist = Math.hypot(M.me, M.mn),

@@ -86,10 +86,6 @@ function renderResults() {
     document.getElementById("mchip").textContent = flightMotor().cn || flightMotor().name;
     document.getElementById("stats").hidden = true;
     document.getElementById("apogee").textContent = "—";
-    {
-      const ar = document.getElementById("aporange");
-      if (ar) ar.hidden = true;
-    }
     document.getElementById("flags").innerHTML = "";
     document.getElementById("orkref").hidden = true;
     return;
@@ -102,9 +98,6 @@ function renderResults() {
   document.getElementById("apogee").innerHTML = st.error
     ? "—"
     : `${fmt(st.maxAlt, "alt")}<small>${uname("alt")}</small>`;
-  try {
-    renderApoRange();
-  } catch (e) {}
   const SL = lastSim.SS || S;
   const tiles = resultTiles(st, SL);
   {

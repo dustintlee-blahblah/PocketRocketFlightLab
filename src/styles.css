@@ -2268,19 +2268,6 @@ html.typing .runbar {
 .animbtn {
   margin: 0;
 }
-.aporange {
-  margin: -2px 0 10px;
-  font-size: 0.92rem;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.aporange b {
-  color: var(--ink);
-  font-weight: 600;
-}
 .animrow {
   display: flex;
   align-items: center;
