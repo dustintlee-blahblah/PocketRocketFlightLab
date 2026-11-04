@@ -2933,7 +2933,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">256</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">257</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3275,7 +3275,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
   <h3 id="infottl"></h3><p id="infotxt"></p>
   <div class="row mrow"><button class="btn" id="infook" type="button">Got it</button></div></div></div>
 <div class="modal" id="launchask" role="dialog" aria-modal="true" aria-labelledby="launchaskttl" hidden><div class="mbox">
-  <h3 id="launchaskttl">Use this file’s launch settings?</h3><p id="launchasktxt"></p>
+  <h3 id="launchaskttl">Use this file’s settings?</h3><p id="launchasktxt"></p>
   <div class="row mrow"><button class="btn" id="launchuse" type="button">Use the file’s settings</button><button class="btn ghost" id="launchkeep" type="button">Keep my current settings</button></div></div></div>
 <div class="modal" id="resetconfirm" role="dialog" aria-modal="true" aria-labelledby="resettxt" hidden><div class="mbox">
   <p id="resettxt">Reset the design to the LOC IV X2 starting values? Your edits will be lost.</p>
@@ -3430,7 +3430,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "256";
+const APP_BUILD = "257";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -4841,11 +4841,13 @@ const BP_PIN = { "2-56": 35, "4-40": 50 }; // approximate shear strength of one 
  */
 const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
 /**
- * Names of this app's extra files stored inside an .ork (ejection charges, fin edge types, every launch setting).
+ * Names of this app's extra files stored inside an .ork: ejection charges, fin edge types, and everything else the
+ * .ork itself can't hold (STATE_ORK; build 256 kept only the launch settings, in LAUNCH_ORK).
  */
 const BP_ORK = "pocketrocket/ejection-charges.json",
   FIN_ORK = "pocketrocket/fin-edges.json",
-  LAUNCH_ORK = "pocketrocket/launch.json";
+  LAUNCH_ORK = "pocketrocket/launch.json",
+  STATE_ORK = "pocketrocket/state.json";
 /**
  * The open design's charge settings ({comps, splits}), created on first use; settings saved on the device by older
  * builds are moved into it once.
@@ -18536,17 +18538,19 @@ function launchSame(a, b) {
  * @param {object} fileL the file's launch settings
  * @param {string} when the launch date and time saved with them (for Get weather), or ""
  * @param {string} name the rocket's name
+ * @param {object|null} [cal] the file's drag calibration, when it differs from the one on this device
  */
-function launchOffer(fileL, when, name) {
+function launchOffer(fileL, when, name, cal = null) {
   if (!fileL) return;
   const diff = Object.keys(fileL).filter((k) => k !== "wxSet" && !launchSame(fileL[k], L[k]));
   const wxEl = document.getElementById("wxwhen");
-  if (!diff.length && !(when && when !== wxEl.value)) return;
+  if (!diff.length && !(when && when !== wxEl.value) && !cal) return;
   const groups = LAUNCH_GROUPS.filter(([, ks]) => ks.some((k) => diff.includes(k))).map(([g]) => g);
   if (diff.some((k) => !LAUNCH_GROUPS.some(([, ks]) => ks.includes(k)))) groups.push("other settings");
+  if (cal) groups.push(`drag calibration (×${cal.k.toFixed(2)} in the file)`);
   const box = document.getElementById("launchask");
   document.getElementById("launchasktxt").textContent =
-    `${name || "This rocket"} was saved with launch settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
+    `${name || "This rocket"} was saved with settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
     (when
       ? `\n\nSaved for a launch on ${new Date(when).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`
       : "") +
@@ -18559,6 +18563,10 @@ function launchOffer(fileL, when, name) {
     document.removeEventListener("keydown", onKey);
     if (!use) return;
     L = Object.assign(defaultLaunch(), jclone(fileL));
+    if (cal) {
+      calSet(cal);
+      applyCal();
+    }
     if (when) wxEl.value = when;
     // the saved launch site no longer matches what's shown
     siteCur = "";
@@ -18568,7 +18576,7 @@ function launchOffer(fileL, when, name) {
     renderForms();
     changed();
     markClean();
-    prToast("Using the file’s launch settings.");
+    prToast("Using the file’s settings.");
   };
   /**
    * Escape keeps the current settings.
@@ -18597,11 +18605,35 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
   const rep = document.getElementById("orkreport");
   ORK_CFG = opts.cfg || null; // a motor configuration chosen on the Motor tab, when reopening for it
   try {
+    // what the app saved in the file besides the design (prStateNow), read first: its motor configuration and uploaded
+    // motors decide which motors the design flies
+    const saved =
+      opts.cfg == null && buf && !/<RockSimDocument/i.test(xml.slice(0, 4000)) ? await prStateRead(buf, null) : null;
+    const savedNotes = [];
+    if (saved) {
+      const added = [];
+      for (const m of Array.isArray(saved.motors) ? saved.motors : [])
+        if (m && m.id && Array.isArray(m.t) && Array.isArray(m.F) && !findMotor(m.id) && !dupMotor(m, allMotors())) {
+          USER_MOTORS.push(m);
+          added.push(m.cn || m.name);
+        }
+      if (added.length) {
+        store.set("rfs-motors", USER_MOTORS);
+        savedNotes.push(
+          `Added ${added.join(", ")} from the file to your uploaded motors (the design flies ${added.length > 1 ? "them" : "it"}).`,
+        );
+      }
+      if (typeof saved.cfg === "string" && saved.cfg) ORK_CFG = saved.cfg;
+    }
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
     D = r.design;
     // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
     let fileL = jclone(r.launch),
       fileWhen = "";
+    if (saved && saved.launch && typeof saved.launch === "object") {
+      fileL = Object.assign(defaultLaunch(), saved.launch);
+      fileWhen = typeof saved.when === "string" ? saved.when : "";
+    }
     const keptWx = !!(L && L.wxSet);
     {
       const keep = {};
@@ -18743,17 +18775,6 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         } catch (e) {}
       if (!isR)
         try {
-          const t = await side(LAUNCH_ORK);
-          if (t) {
-            const j = JSON.parse(t);
-            if (j && j.launch && typeof j.launch === "object") {
-              fileL = Object.assign(defaultLaunch(), j.launch);
-              fileWhen = typeof j.when === "string" ? j.when : "";
-            }
-          }
-        } catch (e) {}
-      if (!isR)
-        try {
           const t = await side(BP_ORK);
           if (t) {
             const j = JSON.parse(t);
@@ -18768,6 +18789,14 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
           motorId = pm.motor.id;
           store.set("rfs-motor", motorId);
         }
+      }
+      // the motors chosen when the file was saved (one that doesn't fit its mount isn't written into the design), as long
+      // as the file hasn't been changed since by another program
+      if (saved && saved.text && saved.text === prHash(xml)) {
+        const ok = (id) => typeof id === "string" && !!findMotor(id);
+        if (ok(saved.motorId)) store.set("rfs-motor", (motorId = saved.motorId));
+        if (D.twoStage && ok(saved.boostId)) store.set("rfs-bmotor", (boostId = saved.boostId));
+        if (isThree(D) && ok(saved.firstId)) store.set("rfs-b1motor", (firstId = saved.firstId));
       }
       // a motor the file names but your list doesn't have stays in the file until you choose another one
       BLD.hold = [
@@ -18791,6 +18820,34 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       });
       document.getElementById("savemsg").innerHTML = "";
     }
+    // the flight log and drag calibration saved in the file
+    let fileCal = null;
+    if (saved)
+      try {
+        const fl = Array.isArray(saved.flights) ? saved.flights.filter((f) => f && f.id) : [];
+        if (fl.length) {
+          const cur = flList(),
+            add = fl.filter((f) => !cur.some((x) => x.id === f.id));
+          if (add.length && flPut([...cur, ...add])) {
+            flNow = {};
+            savedNotes.push(
+              `Added ${add.length} logged flight${add.length > 1 ? "s" : ""} from the file to the flight log.`,
+            );
+          }
+        }
+        if (saved.cal && saved.cal.k > 0) {
+          const c = calGet();
+          if (!c) calSet(saved.cal);
+          else if (!launchSame(c.k, saved.cal.k)) fileCal = saved.cal;
+        }
+      } catch (e) {}
+    if (savedNotes.length)
+      rep
+        .querySelector(".report")
+        ?.insertAdjacentHTML(
+          "beforeend",
+          `<div class="note" style="margin-top:6px">${esc(savedNotes.join(" "))}</div>`,
+        );
     applyCal();
     if (D.dragScale !== 1)
       rep
@@ -18822,7 +18879,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       }
     } catch (_) {}
     renderRecent();
-    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name);
+    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name, fileCal);
     return true;
   } catch (err) {
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
@@ -23147,72 +23204,10 @@ const RANGE_KEYS = [
   "dewC",
 ]; // read live by the RSO Checklist: changing them doesn't change the flight
 /**
- * Keys the design file doesn't carry (app-only settings), so changing them isn't an unsaved change.
+ * Launch keys a change in which isn't a change to the design file: the file now keeps every launch setting (STATE_ORK),
+ * so only the note of whether the weather was fetched.
  */
-const SAVE_NOT = {
-  common: [
-    "waiver",
-    "waiverRef",
-    "recRadius",
-    "cert",
-    "flightType",
-    "ignMinAlt",
-    "ignMaxTilt",
-    "blMode",
-    "lon",
-    "pressure",
-    "humidity",
-    "motorDT",
-    "aloft",
-    "tempAloft",
-    "aloftSrc",
-    "wxSet",
-    "ceiling",
-    "cloudLow",
-    "cloudMid",
-    "cloudHigh",
-    "cloudProf",
-    "vis",
-    "precip",
-    "dewC",
-    "thrustMis",
-    "finMis",
-    "cgOff",
-    "clusterFail",
-    "mcN",
-    "mcWind",
-    "mcDir",
-    "mcImp",
-    "mcMass",
-    "mcCd",
-    "mcAngle",
-    "mcMis",
-    "mcDelay",
-    "mcChute",
-    "mcThermal",
-    "thermalW",
-    "mountSel",
-    "bMountSel",
-    "cone",
-    "dryInertia",
-    "bDryInertia",
-    "railPreset",
-    "buttons",
-    "lugs",
-    "otherCd",
-    "cdOverride",
-    "nozzleDia",
-    "finCdOverride",
-    "bFinCdOverride",
-    "windRef",
-    "windProfile",
-    "recovery",
-    "bRecovery",
-    "bDiameter",
-    "bExtraMotors",
-  ],
-  ork: ["extraMotors"],
-};
+const SAVE_NOT = { common: ["wxSet"], ork: [] };
 /**
  * Recently opened files, kept on this device (IndexedDB) so they can be opened again with one tap: the list, opening
  * one, and the Android app's report of where a new design was saved. Also the prompt to save unsaved changes before
@@ -23824,6 +23819,75 @@ async function zipOthers(buf) {
  */
 const PR_SIM_TAG = "Pocket Rocket";
 /**
+ * A short fingerprint of a text (32-bit FNV-1a, in hex), to tell whether a file was changed by another program.
+ * @param {string} s
+ * @returns {string}
+ */
+function prHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16) + ":" + s.length;
+}
+/**
+ * What's saved in STATE_ORK inside the .ork: everything the app has for this design that the .ork itself doesn't hold.
+ * @param {string} text the .ork text it's saved with
+ * @returns {object}
+ */
+function prStateNow(text) {
+  const ids = [
+    motorId,
+    boostId,
+    firstId,
+    ...[...(D.extraMotors || []), ...(D.bExtraMotors || []), ...(D.s1ExtraMotors || [])].map((x) => x && x.id),
+  ];
+  const motors = [...new Set(ids.filter(Boolean))].map((id) => findMotor(id)).filter((m) => m && !m.builtin);
+  let flights = [],
+    cal = null;
+  try {
+    flights = flList();
+    cal = calGet();
+  } catch (e) {}
+  return {
+    app: "Pocket Rocket Flight Lab",
+    version: 2,
+    text: prHash(text),
+    launch: L,
+    when: document.getElementById("wxwhen").value || "",
+    cfg: (BLD && BLD.cfg) || ORK_CFG || null,
+    motorId,
+    boostId,
+    firstId,
+    motors,
+    flights,
+    cal,
+  };
+}
+/**
+ * Reads STATE_ORK (or build 256's LAUNCH_ORK) from an opened .ork, or from the copy of its extra files kept with the
+ * design.
+ * @param {ArrayBuffer|null} buf the file
+ * @param {object[]|null} extras SOURCE.extras
+ * @returns {Promise<object|null>}
+ */
+async function prStateRead(buf, extras) {
+  const get = async (nm) => {
+    try {
+      if (buf) {
+        const e = zipEntries(buf).find((e) => e.name === nm);
+        return e ? JSON.parse(new TextDecoder().decode(await zipData(buf, e))) : null;
+      }
+      const x = extras && extras.find((x) => x.name === nm);
+      return x ? JSON.parse(new TextDecoder().decode(b64ToU8(x.b64))) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const s = await get(STATE_ORK);
+  if (s && typeof s === "object") return s;
+  const l = await get(LAUNCH_ORK);
+  return l && l.launch ? { version: 1, launch: l.launch, when: l.when || "" } : null;
+}
+/**
  * A fresh run of the design for saving, without the file's own reference figures.
  * @returns {object} {st, out, m, mb}
  */
@@ -24213,21 +24277,13 @@ async function saveDesignFile(asNew, opts = {}) {
   const bytes = new TextEncoder().encode(text);
   const extras = into
     ? (SOURCE.extras || [])
-        .filter((x) => x.name !== BP_ORK && x.name !== LAUNCH_ORK)
+        .filter((x) => x.name !== BP_ORK && x.name !== LAUNCH_ORK && x.name !== STATE_ORK)
         .map((x) => ({ name: x.name, data: b64ToU8(x.b64) }))
     : [];
-  // every launch setting (OpenRocket's simulation holds only some of them) rides along in its own file too
-  extras.push({
-    name: LAUNCH_ORK,
-    data: new TextEncoder().encode(
-      JSON.stringify({
-        app: "Pocket Rocket Flight Lab",
-        version: 1,
-        launch: L,
-        when: document.getElementById("wxwhen").value || "",
-      }),
-    ),
-  });
+  // everything else rides along in its own file too: every launch setting (OpenRocket's simulation holds only some of
+  // them), the Get weather date, the motor configuration and motors chosen, uploaded motors the design flies (so the file
+  // opens on another device), and the flight log and drag calibration
+  extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text))) });
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
     const fe = {};
