@@ -2292,19 +2292,6 @@ html.typing .runbar {
 .animbtn {
   margin: 0;
 }
-.aporange {
-  margin: -2px 0 10px;
-  font-size: 0.92rem;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.aporange b {
-  color: var(--ink);
-  font-weight: 600;
-}
 .animrow {
   display: flex;
   align-items: center;
@@ -2944,7 +2931,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">254</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">255</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3026,7 +3013,6 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <div class="apogee" id="apogee">—</div>
         <div class="motorchip"><span class="sub">Motor</span><b id="mchip">—</b><button id="mchange">Change</button></div>
       </div>
-      <p class="aporange" id="aporange" hidden></p>
       <div id="flightempty"><p class="note" id="flightemptytxt">No results yet. Set up the rocket, motor and conditions, then tap Launch.</p><button class="btn" id="emptylaunch" type="button" hidden>Launch now</button></div>
       <div class="stats" id="stats"></div>
       <div class="flags" id="flags"></div>
@@ -3439,7 +3425,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "254";
+const APP_BUILD = "255";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -12667,10 +12653,6 @@ function renderResults() {
     document.getElementById("mchip").textContent = flightMotor().cn || flightMotor().name;
     document.getElementById("stats").hidden = true;
     document.getElementById("apogee").textContent = "—";
-    {
-      const ar = document.getElementById("aporange");
-      if (ar) ar.hidden = true;
-    }
     document.getElementById("flags").innerHTML = "";
     document.getElementById("orkref").hidden = true;
     return;
@@ -12683,9 +12665,6 @@ function renderResults() {
   document.getElementById("apogee").innerHTML = st.error
     ? "—"
     : `${fmt(st.maxAlt, "alt")}<small>${uname("alt")}</small>`;
-  try {
-    renderApoRange();
-  } catch (e) {}
   const SL = lastSim.SS || S;
   const tiles = resultTiles(st, SL);
   {
@@ -26294,35 +26273,6 @@ function apoRound(v) {
   return (Math.round(d / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 /**
- * The explanation shown in the apogee range's info box.
- * @param {object} R from apoRange()
- * @returns {string}
- */
-function apoRangeInfo(R) {
-  const p = (x) => `${Math.round(x * 100)}%`;
-  return (
-    `About 9 in 10 real flights should land in this range.\n\n` +
-    `• Flight to flight: ${R.mc ? `${p(R.cLo)} low, ${p(R.cHi)} high (dispersion run)` : "added when the dispersion run finishes"}.\n` +
-    `• Model: ${p(R.mLo)} low, ${p(R.mHi)} high (${R.cal ? "drag calibrated to your flight" : R.est ? "weight and CG estimated; weigh and balance the rocket to narrow it" : "weighed rocket"}${R.fast ? "; wider above Mach 0.8" : ""}).\n\n` +
-    `Combined root-sum-square. The model figures are estimates, not measured from your rockets. The RSO Checklist uses the top of the range.`
-  );
-}
-/**
- * Show the likely apogee range under the predicted apogee on the Results tab.
- */
-function renderApoRange() {
-  const el = document.getElementById("aporange");
-  if (!el) return;
-  const R = lastSim ? apoRange(lastSim.st, lastSim.D) : null;
-  if (!R) {
-    el.hidden = true;
-    return;
-  }
-  const r = apoRound;
-  el.hidden = false;
-  el.innerHTML = `<span>Likely <b>${r(R.lo)}–${r(R.hi)} ${uname("alt")}</b>${R.mc ? "" : " · dispersion pending"}</span>${infoBtn("Likely apogee range", apoRangeInfo(R))}`;
-}
-/**
  * Show the dispersion run's results (statistics and the landing map) on the Results tab.
  */
 function renderMC() {
@@ -26335,7 +26285,6 @@ function renderMC() {
   out.hidden = false;
   const M = lastMC;
   try {
-    renderApoRange();
     renderRSO();
   } catch (e) {}
   const dist = Math.hypot(M.me, M.mn),
