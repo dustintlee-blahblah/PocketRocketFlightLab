@@ -247,7 +247,11 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       let nm = (fileName || "").trim();
       if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
         nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
+      const prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null;
       BLD = bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR });
+      // your design notes, kept per motor configuration
+      const notes = prevNotes || (saved && saved.notes && typeof saved.notes === "object" ? saved.notes : null);
+      if (notes) BLD.notes = jclone(notes);
       BLD.name = r.design.name || BLD.name;
       BLD.bp = { comps: {}, splits: {} };
       // Pocket Rocket's own files inside the .ork: from the opened file, or (reopening it for another motor configuration)

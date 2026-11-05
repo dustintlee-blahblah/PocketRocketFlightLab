@@ -420,6 +420,24 @@ function bldSyncMotors() {
   } else if (BLD.stages.length > 1) put(BLD.stages[BLD.stages.length - 1], findMotor(boostId), h[1]);
 }
 /**
+ * The turning inertia worked out from the parts, as the flight uses it, for a stage's inertia setting.
+ * @param {string} key the setting: "dryInertia" (sustainer or single stage), "bDryInertia" (booster) or "s1DryInertia"
+ *   (first stage of three)
+ * @returns {number|undefined} kg·m²
+ */
+function bldCalcInertia(key) {
+  try {
+    const r = parseOrk(bldToOrk(BLD, L)).design;
+    if (key === "dryInertia") return airInertia(r.dryInertia, r.inertiaMass, D.dryMass, D.length);
+    if (key === "bDryInertia") return airInertia(r.bDryInertia, r.bInertiaMass, D.bDryMass, D.bLength);
+    const S1 = r.s1,
+      d1 = D.s1;
+    return S1 && d1 ? airInertia(S1.bDryInertia, S1.bInertiaMass, d1.bDryMass, d1.bLength) : undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+/**
  * Works out the flight design D from the parts (written as .ork and read back), keeping app-only settings.
  *
  * the flight code's summary, worked out from the parts
@@ -433,8 +451,15 @@ function bldDerive() {
   nd.name = BLD.name || nd.name;
   nd.otherCd = S.otherCd || 0;
   nd.blMode = S.blMode || "turb";
-  nd.dryInertia = S.dryInertia || 0;
-  nd.bDryInertia = S.bDryInertia || 0;
+  // turning inertia: a typed value, else the one worked out from the parts (parseOrk)
+  if (S.dryInertia > 0) {
+    nd.dryInertia = S.dryInertia;
+    nd.inertiaSource = "typed";
+  }
+  if (S.bDryInertia > 0) {
+    nd.bDryInertia = S.bDryInertia;
+    nd.bInertiaSource = "typed";
+  }
   if (BLD.ref) {
     nd.orkApogee = BLD.ref.apogee;
     nd.orkMotor = BLD.ref.motor;
@@ -892,7 +917,7 @@ function bldRenderEdit() {
     let h = `<div class="bldh">Whole rocket</div><div class="grid">`;
     for (const [key, label, kind, dim, obj, opts] of bldRootFields())
       h += bldFieldHtml(
-        { key, label, kind, dim, opts },
+        { key, label, kind, dim, opts, calc: key === "dryInertia" ? bldCalcInertia(key) : undefined },
         (obj || BLD)[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : undefined),
       );
     el.innerHTML = h + `</div>`;
@@ -903,7 +928,10 @@ function bldRenderEdit() {
     const st = f.stage;
     let h = `<div class="bldh">${esc(st.name)}</div><div class="grid">`;
     for (const [key, label, kind, dim, obj, alias] of bldStageFields(st, f.si))
-      h += bldFieldHtml({ key, label, kind, dim }, obj ? obj[alias] : st[key]);
+      h += bldFieldHtml(
+        { key, label, kind, dim, calc: key === "inertia" ? bldCalcInertia(alias) : undefined },
+        obj ? obj[alias] : st[key],
+      );
     el.innerHTML = h + `</div>`;
     bldWire(el, st, "stage", f.si);
     return;
@@ -1031,7 +1059,11 @@ function bldFieldHtml(F, val) {
       const dim = F.dim || "none",
         blankable = ["delay", "mmDelay", "knownCg"].includes(F.key),
         v = blankable && (val == null || val === "") ? "" : num(val ?? 0, dim);
-      inp = `<div class="in"><input id="${id}" type="number" inputmode="decimal" step="any" value="${v}">${uname(dim) ? `<span class="u">${uname(dim)}</span>` : ""}</div>`;
+      // a value the app works out (turning inertia) fills the field until one is typed
+      const calc = F.calc != null && !(+val > 0);
+      inp = `<div class="in"><input id="${id}" type="number" inputmode="decimal" step="any" value="${calc ? num(F.calc, dim) : v}">${uname(dim) ? `<span class="u">${uname(dim)}</span>` : ""}</div>`;
+      if (F.calc != null)
+        inp += `<div class="note fldnote">${calc ? "Calculated from the parts. Type a measured value to replace it." : `Your value. Clear the field to use the calculated ${num(F.calc, dim)} ${esc(uname(dim))}.`}</div>`;
       break;
     }
     case "check":
@@ -1243,7 +1275,10 @@ function bldWire(el, p, mode, si) {
       } else if (kind === "num" || kind === "pos") {
         const raw = inp.value.trim();
         const blank = raw === "";
-        if (blank && (key === "delay" || key === "mmDelay")) {
+        if (blank && ["dryInertia", "inertia"].includes(key)) {
+          // cleared: back to the calculated value (shown once typing is done)
+          O[k] = 0;
+        } else if (blank && (key === "delay" || key === "mmDelay")) {
           (key === "mmDelay" ? p.mm : O).delay = null;
         } else if (blank && key === "knownCg") {
           delete O.knownCg;
@@ -1277,7 +1312,10 @@ function bldWire(el, p, mode, si) {
       if (kind === "size") bldMountFilterFor(p);
     });
     // fields that change what else is shown redraw the panel once typing is done, so the keyboard stays open while typing
-    if (ev === "input" && ((key === "od" && p && p.type === "mount") || key === "known"))
+    if (
+      ev === "input" &&
+      ((key === "od" && p && p.type === "mount") || key === "known" || key === "dryInertia" || key === "inertia")
+    )
       inp.addEventListener("change", () => {
         bldChanged(true);
         if (key === "od") bldMountFilterFor(p);

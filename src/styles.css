@@ -1443,6 +1443,23 @@ h2 + .subh {
   width: 100%;
   min-width: 0;
 }
+.fldnote {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+}
+.dnotes {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  padding: 7px 9px;
+  resize: vertical;
+}
 .flbox textarea {
   width: 100%;
   box-sizing: border-box;

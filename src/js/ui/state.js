@@ -57,15 +57,44 @@ function renderRecNote() {
   }
 }
 /**
+ * The key your design notes are kept under: the motor configuration in use.
+ * @returns {string}
+ */
+const designNotesKey = () => (BLD && BLD.cfg) || "default";
+/**
+ * Puts your notes for the motor configuration in use into the Design notes box (not while you're typing in it).
+ */
+function renderDesignNotes() {
+  const ta = document.getElementById("dnotes");
+  if (!ta || document.activeElement === ta) return;
+  ta.value = (BLD && BLD.notes && BLD.notes[designNotesKey()]) || "";
+}
+{
+  const ta = document.getElementById("dnotes");
+  if (ta)
+    ta.addEventListener("input", () => {
+      if (!BLD) return;
+      const k = designNotesKey(),
+        n = { ...(BLD.notes || {}) };
+      if (ta.value.trim()) n[k] = ta.value;
+      else delete n[k];
+      BLD.notes = Object.keys(n).length ? n : undefined;
+      if (!BLD.notes) delete BLD.notes;
+      bldSave();
+      renderSavePanel();
+    });
+}
+/**
  * Writes the note under the inertia field: the value used and where it comes from.
  */
 function renderInertiaNote() {
+  renderDesignNotes();
   const el = document.getElementById("inote");
   if (!el) return;
   const unit = uname("moi"),
     part = (label, I0, m0, m, len, src) =>
       I0 > 0
-        ? `${label}turning inertia ${fmt(airInertia(I0, m0, m, len), "moi")} ${unit}${src === "file" ? ", from the design file’s parts" : ""}${m0 > 0 && Math.abs(m / m0 - 1) > 0.005 ? ", scaled to the weight above" : ""}.`
+        ? `${label}turning inertia ${fmt(airInertia(I0, m0, m, len), "moi")} ${unit}${src === "file" ? ", calculated from the parts" : src === "typed" ? ", the value you entered" : ""}${m0 > 0 && Math.abs(m / m0 - 1) > 0.005 ? ", scaled to the weight above" : ""}.`
         : `${label}turning inertia estimated as ${fmt(airInertia(0, 0, m, len), "moi")} ${unit}, with the weight spread evenly along the airframe. Enter a measured or calculated value to replace it.`;
   el.textContent =
     part(D.twoStage ? "Sustainer " : "Airframe ", D.dryInertia, D.inertiaMass, D.dryMass, D.length, D.inertiaSource) +

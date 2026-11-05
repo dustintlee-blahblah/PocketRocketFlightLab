@@ -51,6 +51,7 @@ function prStateNow(text) {
     motors,
     flights,
     cal,
+    notes: (BLD && BLD.notes) || null,
   };
 }
 /**
