@@ -2996,7 +2996,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">260</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">261</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3497,7 +3497,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "260";
+const APP_BUILD = "261";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -10351,6 +10351,33 @@ function parseRkt(xml) {
   const EDGE = ["square", "rounded", "airfoil"];
   const allChutes = [...design.getElementsByTagName("Parachute")].map((p) => num(p, "Dia") / 1000);
   const mainD = allChutes.length > 1 ? Math.max(...allChutes) : null;
+  // the simulation used: the one chosen when opening, else the first with results
+  const sims = [...doc.getElementsByTagName("SimulationResults")];
+  const sim = (ORK_SIM != null && sims[ORK_SIM]) || sims.find((s) => num(s, "MaxAltitude", 0) > 0) || sims[0];
+  /* how each recovery device deploys, by its serial number: the simulation's own events, else the design's. RockSim's
+     event types: 1 at the motor's ejection charge, 2 a time after ignition, 3 a time after apogee, 4 at apogee, 5 at an
+     altitude on the way down (in metres), 0 never (as OpenRocket reads them) */
+  const deploys = new Map();
+  for (const list of [
+    design.getElementsByTagName("SimulationEventList")[0],
+    sim && sim.getElementsByTagName("SimulationEvents")[0],
+  ])
+    for (const ev of list ? list.getElementsByTagName("SimulationEvent") : []) {
+      const sn = (txt(ev, "PartSerialNo") || "").trim();
+      if (sn)
+        deploys.set(sn, { type: num(ev, "Type", 0), alt: num(ev, "DeployAltitude", 0), t: num(ev, "DeplyTime", 0) });
+    }
+  /**
+   * A recovery device's deployment as .ork elements, from RockSim's event for it (or null if there's none).
+   * @param {Element} el the Parachute or Streamer
+   * @returns {string|null}
+   */
+  const deployXml = (el) => {
+    const e = deploys.get((txt(el, "SerialNo") || "").trim());
+    if (!e) return null;
+    const ev = { 1: "ejection", 2: "launch", 3: "apogee", 4: "apogee", 5: "altitude" }[e.type] || "never";
+    return `<deployevent>${ev}</deployevent><deployaltitude>${e.type === 5 ? e.alt : 0}</deployaltitude><deploydelay>${e.type === 2 || e.type === 3 || e.type === 1 ? Math.max(0, e.t) : 0}</deploydelay>`;
+  };
   let usedCalc = false;
   /**
    * A RockSim part's material as an .ork material element (bulk, surface or line density, in SI).
@@ -10491,14 +10518,16 @@ function parseRkt(xml) {
       }
       case "Parachute": {
         const d = num(el, "Dia") / 1000;
+        // as the file sets it; without an event for it, the largest of several parachutes is the main
         const ev =
-          mainD != null && Math.abs(d - mainD) < 1e-9
+          deployXml(el) ??
+          (mainD != null && Math.abs(d - mainD) < 1e-9
             ? `<deployevent>altitude</deployevent><deployaltitude>${D.mainAlt}</deployaltitude>`
-            : `<deployevent>apogee</deployevent>`;
+            : `<deployevent>apogee</deployevent>`);
         return `<parachute>${c}<packedlength>${L}</packedlength><diameter>${d}</diameter><cd>${num(el, "DragCoefficient", 0.8) || 0.8}</cd>${ev}<linecount>${num(el, "ShroudLineCount")}</linecount><linelength>${num(el, "ShroudLineLen") / 1000}</linelength><linematerial type="line" density="${num(el, "ShroudLineMassPerMM")}">Shroud line</linematerial></parachute>`;
       }
       case "Streamer":
-        return `<streamer>${c}<packedlength>0.05</packedlength><striplength>${L}</striplength><stripwidth>${num(el, "Width") / 1000}</stripwidth></streamer>`;
+        return `<streamer>${c}${deployXml(el) || ""}<packedlength>0.05</packedlength><striplength>${L}</striplength><stripwidth>${num(el, "Width") / 1000}</stripwidth></streamer>`;
       case "MassObject": {
         // RockSim stores a shock cord's full cord length; pack it to 1/100 of that so its mass sits near its attachment point, as it does when coiled in the tube
         const cord = num(el, "TypeCode", 0) === 1 || (parentLen > 0 && L > 2 * parentLen);
@@ -10528,11 +10557,13 @@ function parseRkt(xml) {
   let rocketOverride = "";
   const s3m = num(design, "Stage3Mass", 0),
     s3cg = num(design, "Stage3CG", 0);
-  if (stageCount === 1 && s3m > 0) {
+  // RockSim uses its stage mass and CG overrides only when UseKnownMass is set (they can be left over in the file)
+  const useKnown = num(design, "UseKnownMass", 0) !== 0;
+  if (useKnown && stageCount === 1 && s3m > 0) {
     rocketOverride += `<overridemass>${s3m / 1000}</overridemass>`;
     notes.push("Used the RockSim stage mass override.");
   }
-  if (stageCount === 1 && s3cg > 0) rocketOverride += `<overridecg>${s3cg / 1000}</overridecg>`;
+  if (useKnown && stageCount === 1 && s3cg > 0) rocketOverride += `<overridecg>${s3cg / 1000}</overridecg>`;
   // RockSim's "use a fixed Cd" option: CalculateCD = 0, with FixedCd for the upper stage (or the whole rocket when there's one stage)
   if (num(design, "CalculateCD", 1) === 0) {
     const fcd = num(design, "FixedCd", 0);
@@ -10544,8 +10575,6 @@ function parseRkt(xml) {
     }
   }
   // simulation: motor, launch conditions, reference apogee
-  const sims = [...doc.getElementsByTagName("SimulationResults")];
-  const sim = (ORK_SIM != null && sims[ORK_SIM]) || sims.find((s) => num(s, "MaxAltitude", 0) > 0) || sims[0];
   let motor = null,
     simXml = "",
     rktS3 = [],
