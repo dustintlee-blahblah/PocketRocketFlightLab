@@ -400,9 +400,10 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <div class="modal" id="infobox" role="dialog" aria-modal="true" aria-labelledby="infottl" hidden><div class="mbox">
   <h3 id="infottl"></h3><p id="infotxt"></p>
   <div class="row mrow"><button class="btn" id="infook" type="button">Got it</button></div></div></div>
-<div class="modal" id="launchask" role="dialog" aria-modal="true" aria-labelledby="launchaskttl" hidden><div class="mbox">
-  <h3 id="launchaskttl">Use this file’s settings?</h3><p id="launchasktxt"></p>
-  <div class="row mrow"><button class="btn" id="launchuse" type="button">Use the file’s settings</button><button class="btn ghost" id="launchkeep" type="button">Keep my current settings</button></div></div></div>
+<div class="modal" id="runpick" role="dialog" aria-modal="true" aria-labelledby="runttl" hidden><div class="mbox">
+  <h3 id="runttl">Open</h3><p class="note">Open only the design, or the design with one of its stored runs: that run’s motors and launch conditions.</p>
+  <div class="runlist" id="runlist" role="radiogroup" aria-labelledby="runttl"></div>
+  <div class="row mrow"><button class="btn" id="runok" type="button">Open</button><button class="btn ghost" id="runcancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="resetconfirm" role="dialog" aria-modal="true" aria-labelledby="resettxt" hidden><div class="mbox">
   <p id="resettxt">Reset the design to the LOC IV X2 starting values? Your edits will be lost.</p>
   <div class="row mrow"><button class="btn" id="resetyes">Reset design</button><button class="btn ghost" id="resetno">Keep my edits</button></div></div></div>

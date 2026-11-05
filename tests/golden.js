@@ -138,6 +138,7 @@ async function snapshot(page, label) {
   const open = async (src) =>
     page.evaluate(async (src) => {
       if (src.example != null) {
+        window.PR_NO_ASK = true; // open the example as the file says, without asking which run
         await openExample(src.example);
         return;
       }

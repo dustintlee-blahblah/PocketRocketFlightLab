@@ -225,7 +225,7 @@ async function openRecent(id) {
   }
   try {
     const xml = await unzipOrk(buf);
-    if (await loadDesignXml(xml, e.name, buf, { recent: { ...e, live } })) {
+    if (await openDesignAsk(xml, e.name, buf, { recent: { ...e, live } })) {
       await recentPut({ ...e, when: Date.now(), rocket: D.name || e.rocket, data: live ? buf.slice(0) : e.data });
       if (SOURCE) setSource({ ...SOURCE, recentId: e.id });
       if (e.uri && !live)

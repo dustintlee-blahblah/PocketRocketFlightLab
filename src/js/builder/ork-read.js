@@ -156,12 +156,19 @@ function bldFromOrk(xml, info) {
   const sims = [...doc.getElementsByTagName("simulation")],
     scfg = (sm) =>
       sm && sm.getElementsByTagName("conditions")[0]?.getElementsByTagName("configid")[0]?.textContent.trim();
-  const pickC = ORK_CFG && cfgEl.some((c) => c.getAttribute("configid") === ORK_CFG) ? ORK_CFG : null;
-  const refSim = pickC
-    ? sims.find((s) => scfg(s) === pickC && s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude")) ||
-      sims.find((s) => scfg(s) === pickC) ||
-      null
-    : sims.find((s) => s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude")) || sims[0];
+  const chosen = ORK_SIM != null ? sims[ORK_SIM] || null : null;
+  const pickC = chosen
+    ? scfg(chosen) || null
+    : ORK_CFG && cfgEl.some((c) => c.getAttribute("configid") === ORK_CFG)
+      ? ORK_CFG
+      : null;
+  const refSim = chosen
+    ? chosen
+    : pickC
+      ? sims.find((s) => scfg(s) === pickC && s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude")) ||
+        sims.find((s) => scfg(s) === pickC) ||
+        null
+      : sims.find((s) => s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude")) || sims[0];
   const simCfg = scfg(refSim);
   const cfg =
     pickC ||

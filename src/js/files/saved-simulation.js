@@ -9,6 +9,8 @@
  * The name prefix of simulations saved from this app.
  */
 const PR_SIM_TAG = "Pocket Rocket";
+/* the name of the run simOrkAdd last wrote, so its launch settings can be kept with it */
+let SIM_LAST_NAME = "";
 /**
  * A short fingerprint of a text (32-bit FNV-1a, in hex), to tell whether a file was changed by another program.
  * @param {string} s
@@ -22,9 +24,10 @@ function prHash(s) {
 /**
  * What's saved in STATE_ORK inside the .ork: everything the app has for this design that the .ork itself doesn't hold.
  * @param {string} text the .ork text it's saved with
+ * @param {object} [runs] each saved run's full launch settings and time, by the run's name
  * @returns {object}
  */
-function prStateNow(text) {
+function prStateNow(text, runs = {}) {
   const ids = [
     motorId,
     boostId,
@@ -52,6 +55,7 @@ function prStateNow(text) {
     flights,
     cal,
     notes: (BLD && BLD.notes) || null,
+    runs,
   };
 }
 /**
@@ -260,7 +264,7 @@ function simOrkAdd(xml, R, cfg) {
   }
   sim.setAttribute("status", "uptodate");
   const nm = mk("name");
-  nm.textContent = simName(R);
+  nm.textContent = SIM_LAST_NAME = simName(R);
   sim.insertBefore(nm, sim.firstChild);
   const fd = mk("flightdata"),
     A = (k, v) => fd.setAttribute(k, simN(v));
@@ -433,7 +437,8 @@ async function saveDesignFile(asNew, opts = {}) {
     return false;
   }
   // the run's results go into the file when asked for (Save this run)
-  let simNote = "";
+  let simNote = "",
+    newRun = "";
   {
     // a stand-in motor (the file's own isn't on this device) isn't written to the file, so its run can't be either
     const H = BLD.hold || [],
@@ -456,6 +461,7 @@ async function saveDesignFile(asNew, opts = {}) {
       } else if (opts.addSim) {
         try {
           text = simOrkAdd(text, R, BLD.cfg);
+          newRun = SIM_LAST_NAME;
           simNote = " This run was added to its simulations.";
         } catch (e) {
           simNote = " This run couldn’t be added to its simulations.";
@@ -475,7 +481,19 @@ async function saveDesignFile(asNew, opts = {}) {
   // everything else rides along in its own file too: every launch setting (OpenRocket's simulation holds only some of
   // them), the Get weather date, the motor configuration and motors chosen, uploaded motors the design flies (so the file
   // opens on another device), and the flight log and drag calibration
-  extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text))) });
+  // runs saved before keep their settings; a run saved now adds its own (OpenRocket's simulation holds only some of them)
+  const before = into ? await prStateRead(null, SOURCE.extras) : null,
+    runs = { ...((before && before.runs) || {}) };
+  for (const k of Object.keys(runs))
+    if (!text.includes(`<name>${k.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</name>`))
+      delete runs[k];
+  if (newRun)
+    runs[newRun] = {
+      launch: jclone(L),
+      when: document.getElementById("wxwhen").value || "",
+      at: new Date().toISOString(),
+    };
+  extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text, runs))) });
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
     const fe = {};

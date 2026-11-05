@@ -27,6 +27,9 @@ var SOURCE = null;
 /* the motor configuration of an OpenRocket file to fly (configid), when the file has several: chosen on the Motor tab.
    null takes the one the file's own simulation used, or its default. */
 var ORK_CFG = null;
+/* the stored run (simulation) chosen when the file was opened, as its index among the file's simulations: its motor
+   configuration, launch conditions and results are used. Only set while the file is read. */
+var ORK_SIM = null;
 try {
   SOURCE = JSON.parse(localStorage.getItem("rfs-source") || "null");
 } catch (e) {

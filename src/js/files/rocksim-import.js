@@ -238,7 +238,7 @@ function parseRkt(xml) {
   }
   // simulation: motor, launch conditions, reference apogee
   const sims = [...doc.getElementsByTagName("SimulationResults")];
-  const sim = sims.find((s) => num(s, "MaxAltitude", 0) > 0) || sims[0];
+  const sim = (ORK_SIM != null && sims[ORK_SIM]) || sims.find((s) => num(s, "MaxAltitude", 0) > 0) || sims[0];
   let motor = null,
     simXml = "",
     rktS3 = [],

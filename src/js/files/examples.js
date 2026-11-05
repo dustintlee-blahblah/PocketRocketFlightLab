@@ -27,7 +27,7 @@ async function openExample(i) {
   try {
     const buf = (await inflate(b64ToU8(e.gz), "gzip")).buffer.slice(0),
       xml = await unzipOrk(buf);
-    if (await loadDesignXml(xml, e.file, buf, { example: true })) {
+    if (await openDesignAsk(xml, e.file, buf, { example: true })) {
       if (e.name && (!D.name || /^RockSim rocket$/i.test(D.name))) {
         D.name = e.name;
         if (BLD) {

@@ -1443,6 +1443,51 @@ h2 + .subh {
   width: 100%;
   min-width: 0;
 }
+.runlist {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 8px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.runitem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.runitem:last-child {
+  border-bottom: 0;
+}
+.runitem input {
+  margin-top: 3px;
+  flex: none;
+}
+.runitem > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.runitem .note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+.runitem:has(input:checked) {
+  background: var(--field);
+}
+.runhead {
+  padding: 7px 11px 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
 .fldnote {
   margin: 4px 0 0;
   font-size: 0.8rem;
@@ -1722,13 +1767,13 @@ h2 .ib {
   justify-content: space-between;
 }
 #infobox h3,
-#launchask h3,
+#runpick h3,
 #overask h3 {
   margin: 0 0 8px;
   font: 700 1.1rem var(--f-display);
 }
 #infobox .mbox p,
-#launchask .mbox p {
+#runpick .mbox > p {
   white-space: pre-line;
   max-height: min(50vh, 320px);
   overflow-y: auto;

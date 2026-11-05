@@ -8,29 +8,14 @@ document.getElementById("orkfile").addEventListener("change", async (e) => {
   try {
     const buf = await f.arrayBuffer();
     const xml = await unzipOrk(buf);
-    if (await loadDesignXml(xml, f.name, buf)) await recentAdd(buf, f.name);
+    if (await openDesignAsk(xml, f.name, buf)) await recentAdd(buf, f.name);
   } catch (err) {
     document.getElementById("orkreport").innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
   }
   e.target.value = "";
 });
-/* what each launch setting is, for the question asked on opening a file (settings not listed go under "other") */
-const LAUNCH_GROUPS = [
-  ["site (elevation and coordinates)", ["elev", "lat", "lon"]],
-  [
-    "weather",
-    ["tempC", "pressure", "humidity", "dewC", "wind", "windDir", "windRef", "windProfile", "turb", "tempAloft"],
-  ],
-  [
-    "clouds, visibility and precipitation",
-    ["ceiling", "cloudLow", "cloudMid", "cloudHigh", "cloudProf", "vis", "precip"],
-  ],
-  ["winds aloft", ["aloft", "aloftSrc"]],
-  ["launch rail", ["rail", "angle", "railType", "railMode", "railDir"]],
-  ["range and certification", ["waiver", "waiverRef", "recRadius", "cert", "flightType", "cone"]],
-];
 /**
- * True if two launch setting values are the same (numbers to a few parts in a million).
+ * True if two values are the same (numbers to a few parts in a million).
  */
 function launchSame(a, b) {
   if (typeof a === "number" && typeof b === "number")
@@ -39,63 +24,150 @@ function launchSame(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 /**
- * After a file opens: if it was saved with launch settings different from the ones you have now, asks whether to use
- * the file's, and applies them if so. The ones you have now stay otherwise.
- * @param {object} fileL the file's launch settings
- * @param {string} when the launch date and time saved with them (for Get weather), or ""
- * @param {string} name the rocket's name
- * @param {object|null} [cal] the file's drag calibration, when it differs from the one on this device
+ * The runs (simulations) stored in a design file, for choosing one when it's opened.
+ * @param {string} xml the .ork or .rkt text
+ * @param {object|null} saved this app's saved state from the file (prStateRead), for its runs' times
+ * @returns {{i:number, name:string, motors:string, apogee:number|null, wind:number|null, outdated:boolean,
+ *   cfg:string|null, at:string}[]}
  */
-function launchOffer(fileL, when, name, cal = null) {
-  if (!fileL) return;
-  const diff = Object.keys(fileL).filter((k) => k !== "wxSet" && !launchSame(fileL[k], L[k]));
-  const wxEl = document.getElementById("wxwhen");
-  if (!diff.length && !(when && when !== wxEl.value) && !cal) return;
-  const groups = LAUNCH_GROUPS.filter(([, ks]) => ks.some((k) => diff.includes(k))).map(([g]) => g);
-  if (diff.some((k) => !LAUNCH_GROUPS.some(([, ks]) => ks.includes(k)))) groups.push("other settings");
-  if (cal) groups.push(`drag calibration (×${cal.k.toFixed(2)} in the file)`);
-  const box = document.getElementById("launchask");
-  document.getElementById("launchasktxt").textContent =
-    `${name || "This rocket"} was saved with settings that differ from the ones you have now${groups.length ? `: ${groups.join(", ")}` : ""}.` +
-    (when
-      ? `\n\nSaved for a launch on ${new Date(when).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`
-      : "") +
-    "\n\nUse the file’s settings, or keep your current ones?";
-  box.hidden = false;
-  document.getElementById("launchuse").focus();
-  const done = (use) => {
-    box.hidden = true;
-    box.onclick = document.getElementById("launchuse").onclick = document.getElementById("launchkeep").onclick = null;
-    document.removeEventListener("keydown", onKey);
-    if (!use) return;
-    L = Object.assign(defaultLaunch(), jclone(fileL));
-    if (cal) {
-      calSet(cal);
-      applyCal();
+function designRuns(xml, saved) {
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(xml, "application/xml");
+  } catch (e) {
+    return [];
+  }
+  const t = (el, tag) => {
+    const e = el && el.getElementsByTagName(tag)[0];
+    return e ? e.textContent.trim() : "";
+  };
+  const n = (v) => (v === "" || v == null || !isFinite(+v) ? null : +v);
+  if (/<RockSimDocument/i.test(xml.slice(0, 4000)))
+    return [...doc.getElementsByTagName("SimulationResults")].map((s, i) => ({
+      i,
+      name: t(s, "SimulationName") || `Simulation ${i + 1}`,
+      motors: [
+        ...new Set([...s.getElementsByTagName("EngineCode")].map((e) => e.textContent.trim()).filter(Boolean)),
+      ].join(", "),
+      apogee: n(t(s, "MaxAltitude")),
+      wind: n(t(s, "LaunchWindSpeed")),
+      outdated: false,
+      cfg: null,
+      at: "",
+    }));
+  const runs = (saved && saved.runs) || {};
+  return [...doc.getElementsByTagName("simulation")].map((s, i) => {
+    const cfg = t(s.getElementsByTagName("conditions")[0], "configid") || null,
+      fd = s.getElementsByTagName("flightdata")[0],
+      name = t(s, "name") || `Simulation ${i + 1}`;
+    // the motors of its configuration
+    const motors = cfg
+      ? [...doc.getElementsByTagName("motor")]
+          .filter((m) => m.getAttribute("configid") === cfg)
+          .map((m) => t(m, "designation"))
+          .filter(Boolean)
+      : [];
+    return {
+      i,
+      name,
+      motors: [...new Set(motors)].join(", "),
+      apogee: fd ? n(fd.getAttribute("maxaltitude")) : null,
+      wind: n(t(s.getElementsByTagName("conditions")[0], "windaverage")),
+      outdated: s.getAttribute("status") === "outdated",
+      cfg,
+      at: (runs[name] && runs[name].at) || "",
+    };
+  });
+}
+/**
+ * Asks how to open a design file: the design alone (keeping your launch settings), with the settings saved with it, or
+ * with one of its stored runs.
+ * @param {string} name the file's name
+ * @param {object[]} runs from designRuns
+ * @param {boolean} hasSaved the file has this app's saved settings
+ * @returns {Promise<{kind:string, i?:number, cfg?:string|null, name?:string}|null>} null if cancelled
+ */
+function askOpenRun(name, runs, hasSaved) {
+  const box = document.getElementById("runpick"),
+    list = document.getElementById("runlist");
+  document.getElementById("runttl").textContent = `Open ${name}`;
+  const item = (val, title, sub, checked) =>
+    `<label class="runitem"><input type="radio" name="runsel" value="${val}"${checked ? " checked" : ""}><span><b>${esc(title)}</b>${sub ? `<span class="note">${esc(sub)}</span>` : ""}</span></label>`;
+  let h = item("design", "Design only", "Keeps the launch settings you have now.", true);
+  if (hasSaved) h += item("saved", "Design with its saved settings", "The launch settings saved with the file.", false);
+  if (runs.length) {
+    h += `<div class="runhead">Stored runs (${runs.length})</div>`;
+    for (const r of runs) {
+      const bits = [
+        r.motors,
+        r.apogee != null ? `apogee ${fmt(r.apogee, "alt")} ${uname("alt")}` : "no results",
+        r.wind != null ? `wind ${fmt(r.wind, "wind")} ${uname("wind")}` : "",
+        r.at
+          ? new Date(r.at).toLocaleString([], {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })
+          : "",
+        r.outdated ? "out of date" : "",
+      ].filter(Boolean);
+      h += item("run:" + r.i, r.name, bits.join(" · "), false);
     }
-    if (when) wxEl.value = when;
-    // the saved launch site no longer matches what's shown
-    siteCur = "";
-    store.set("rfs-site", "");
-    siteRender();
-    if (SOURCE && SOURCE.base) SOURCE.base.L = jclone(L);
-    renderForms();
-    changed();
-    markClean();
-    prToast("Using the file’s settings.");
-  };
-  /**
-   * Escape keeps the current settings.
-   */
-  const onKey = (e) => {
-    if (e.key === "Escape") done(false);
-  };
-  document.addEventListener("keydown", onKey);
-  document.getElementById("launchuse").onclick = () => done(true);
-  document.getElementById("launchkeep").onclick = () => done(false);
-  box.onclick = (e) => {
-    if (e.target === box) done(false);
-  };
+  }
+  list.innerHTML = h;
+  list.scrollTop = 0;
+  box.hidden = false;
+  document.getElementById("runok").focus();
+  return new Promise((res) => {
+    const done = (v) => {
+      box.hidden = true;
+      document.getElementById("runok").onclick = document.getElementById("runcancel").onclick = box.onclick = null;
+      document.removeEventListener("keydown", onKey);
+      res(v);
+    };
+    /**
+     * Escape cancels.
+     */
+    const onKey = (e) => {
+      if (e.key === "Escape") done(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.getElementById("runcancel").onclick = () => done(null);
+    box.onclick = (e) => {
+      if (e.target === box) done(null);
+    };
+    document.getElementById("runok").onclick = () => {
+      const v = (list.querySelector("input[name=runsel]:checked") || {}).value || "design";
+      if (v.startsWith("run:")) {
+        const r = runs.find((x) => x.i === +v.slice(4));
+        done({ kind: "run", i: r.i, cfg: r.cfg, name: r.name });
+      } else done({ kind: v });
+    };
+  });
+}
+/**
+ * Opens a design file you chose (file picker, recent files, examples): first asks how to open it when it has stored runs
+ * or saved settings, then loads it.
+ * @param {string} xml
+ * @param {string} name
+ * @param {ArrayBuffer|null} buf
+ * @param {object} [opts] more options for loadDesignXml
+ * @returns {Promise<boolean>} true if opened
+ */
+async function openDesignAsk(xml, name, buf, opts = {}) {
+  const rkt = /<RockSimDocument/i.test(xml.slice(0, 4000)),
+    saved = !rkt && buf ? await prStateRead(buf, null) : null,
+    runs = designRuns(xml, saved);
+  // (tests open files as they come, without asking)
+  if (window.PR_NO_ASK) return loadDesignXml(xml, name, buf, opts);
+  let pick = { kind: "design" };
+  if (runs.length || (saved && saved.launch)) {
+    pick = await askOpenRun(name, runs, !!(saved && saved.launch));
+    if (!pick) return false;
+  }
+  return loadDesignXml(xml, name, buf, { ...opts, pick });
 }
 /**
  * Opens a design from .ork or .rkt text: reads it, picks the motors, sets the design, conditions and builder
@@ -110,6 +182,11 @@ function launchOffer(fileL, when, name, cal = null) {
 async function loadDesignXml(xml, fileName, buf, opts = {}) {
   const rep = document.getElementById("orkreport");
   ORK_CFG = opts.cfg || null; // a motor configuration chosen on the Motor tab, when reopening for it
+  // a stored run chosen when opening (openDesignAsk): its configuration, conditions and results
+  const pk = opts.pick || null;
+  ORK_SIM = pk && pk.kind === "run" ? pk.i : null;
+  if (pk && pk.kind === "run" && pk.cfg) ORK_CFG = pk.cfg;
+  const Lnow = jclone(L);
   try {
     // what the app saved in the file besides the design (prStateNow), read first: its motor configuration and uploaded
     // motors decide which motors the design flies
@@ -129,17 +206,13 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
           `Added ${added.join(", ")} from the file to your uploaded motors (the design flies ${added.length > 1 ? "them" : "it"}).`,
         );
       }
-      if (typeof saved.cfg === "string" && saved.cfg) ORK_CFG = saved.cfg;
+      if (typeof saved.cfg === "string" && saved.cfg && !(pk && pk.kind === "run")) ORK_CFG = saved.cfg;
     }
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
     D = r.design;
     // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
-    let fileL = jclone(r.launch),
-      fileWhen = "";
-    if (saved && saved.launch && typeof saved.launch === "object") {
-      fileL = Object.assign(defaultLaunch(), saved.launch);
-      fileWhen = typeof saved.when === "string" ? saved.when : "";
-    }
+    // the chosen run's conditions, as read (r.launch becomes L below)
+    const runL = jclone(r.launch);
     const keptWx = !!(L && L.wxSet);
     {
       const keep = {};
@@ -148,7 +221,23 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       });
       L = Object.assign(r.launch, keep);
     }
-    const keptSite = siteKeep(); // your range settings stay when you open another rocket
+    let keptSite = siteKeep(); // your range settings stay when you open another rocket
+    let savedCalUse = false;
+    if (pk && pk.kind === "design") L = Object.assign(defaultLaunch(), Lnow);
+    else if (pk && (pk.kind === "saved" || pk.kind === "run")) {
+      // the settings saved with the file, or the chosen run's: this app's runs keep all of them, others their
+      // OpenRocket or RockSim conditions (over the settings you have)
+      const sr = pk.kind === "run" && saved && saved.runs && saved.runs[pk.name];
+      const src = pk.kind === "saved" ? saved : sr && sr.launch ? sr : null;
+      if (src && src.launch) {
+        L = Object.assign(defaultLaunch(), jclone(src.launch));
+        if (typeof src.when === "string" && src.when) document.getElementById("wxwhen").value = src.when;
+      } else L = Object.assign(defaultLaunch(), Lnow, runL);
+      savedCalUse = pk.kind === "saved";
+      keptSite = null;
+      siteCur = "";
+      store.set("rfs-site", "");
+    }
     const mm = matchMotor(r.motor);
     let mnote = "";
     /**
@@ -248,7 +337,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
         nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
       const prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null;
+      if (isR) ORK_SIM = null; // RockSim files are read as one converted OpenRocket design with the chosen run
       BLD = bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR });
+      ORK_SIM = null;
       // your design notes, kept per motor configuration
       const notes = prevNotes || (saved && saved.notes && typeof saved.notes === "object" ? saved.notes : null);
       if (notes) BLD.notes = jclone(notes);
@@ -331,7 +422,6 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       document.getElementById("savemsg").innerHTML = "";
     }
     // the flight log and drag calibration saved in the file
-    let fileCal = null;
     if (saved)
       try {
         const fl = Array.isArray(saved.flights) ? saved.flights.filter((f) => f && f.id) : [];
@@ -347,8 +437,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         }
         if (saved.cal && saved.cal.k > 0) {
           const c = calGet();
-          if (!c) calSet(saved.cal);
-          else if (!launchSame(c.k, saved.cal.k)) fileCal = saved.cal;
+          if (!c || (savedCalUse && !launchSame(c.k, saved.cal.k))) calSet(saved.cal);
         }
       } catch (e) {}
     if (savedNotes.length)
@@ -389,9 +478,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       }
     } catch (_) {}
     renderRecent();
-    if (opts.cfg == null && !opts.builder) launchOffer(fileL, fileWhen, D.name, fileCal);
     return true;
   } catch (err) {
+    ORK_SIM = null;
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
     return false;
   }

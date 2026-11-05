@@ -378,14 +378,17 @@ function parseOrk(xml) {
     [...rocket.getElementsByTagName("motorconfiguration")].some((e) => e.getAttribute("configid") === ORK_CFG)
       ? ORK_CFG
       : null;
-  const refSim = pick
-    ? simEls.find(
-        (s) => simCfgOf(s) === pick && s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"),
-      ) ||
-      simEls.find((s) => simCfgOf(s) === pick) ||
-      null
-    : simEls.find((s) => s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude")) || simEls[0] || null;
-  let cfg = pick;
+  const chosen = ORK_SIM != null ? simEls[ORK_SIM] || null : null;
+  const refSim = chosen
+    ? chosen
+    : pick
+      ? simEls.find(
+          (s) => simCfgOf(s) === pick && s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude"),
+        ) ||
+        simEls.find((s) => simCfgOf(s) === pick) ||
+        null
+      : simEls.find((s) => s.getElementsByTagName("flightdata")[0]?.getAttribute("maxaltitude")) || simEls[0] || null;
+  let cfg = chosen ? simCfgOf(chosen) || pick : pick;
   if (!cfg) cfg = simCfgOf(refSim);
   if (!cfg) {
     const mcs = [...rocket.getElementsByTagName("motorconfiguration")];
