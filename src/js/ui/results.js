@@ -574,7 +574,12 @@ function resultGroups(st, S) {
           ],
         ]
       : [
-          ["Drogue descent", st.drogueRate ? spd(st.drogueRate) : "—", uname("speed")],
+          // the steady rate under the drogue, or, when the main opens before it gets there, the fastest it reached
+          [
+            "Drogue descent",
+            st.drogueRate ? spd(st.drogueMaxV != null ? Math.min(st.drogueRate, st.drogueMaxV) : st.drogueRate) : "—",
+            `${uname("speed")}${st.drogueRate && st.drogueMaxV != null && st.drogueMaxV < 0.97 * st.drogueRate ? ` · main opens before its steady ${fmt(st.drogueRate, "speed")} ${uname("speed")}` : ""}`,
+          ],
           ["Main descent", st.mainRate ? spd(st.mainRate) : "—", uname("speed")],
         ]),
     [
