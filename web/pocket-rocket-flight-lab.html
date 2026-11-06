@@ -3069,7 +3069,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">268</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">269</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3570,7 +3570,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "268";
+const APP_BUILD = "269";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -7674,73 +7674,13 @@ function simulate(D, L, m, mb, opts = {}) {
           : 0;
   const Gat = (t) => (stack1(t) ? Gst3 : stack(t) ? Gst : Gs);
   const th = (L.angle * Math.PI) / 180,
-    alpha = WIND_ALPHA[L.windProfile] ?? 1 / 7,
-    zref = Math.max(L.windRef || 2, 0.5);
-  // gusts: four steady sine waves with fixed random phases (the same every run), scaled to the gustiness as an RMS fraction
-  const turb = Math.max(0, L.turb || 0),
-    GUST = (() => {
-      let sd = 97531;
-      const r = () => {
-        sd = (sd * 16807) % 2147483647;
-        return sd / 2147483647;
-      };
-      return [2.3, 4.7, 9.1, 17.3].map((Pd) => ({ w: (2 * Math.PI) / Pd, ph: 2 * Math.PI * r() }));
-    })();
-  const gust = (t) =>
-    turb > 0 ? Math.max(0, 1 + turb * Math.SQRT1_2 * GUST.reduce((a, g) => a + Math.sin(g.w * t + g.ph), 0)) : 1;
-  /* wind as a vector [along x, along y] in the flight axes. The surface wind grows with height by the power law; a
-     winds-aloft table (height, speed, direction) takes over: below its lowest level the surface wind blends into it,
-     between levels the wind is interpolated, and above the top level it holds. Gusts scale the whole vector. */
-  const h0 = (((L.windDir ?? 270) + 180) * Math.PI) / 180;
-  const vecOf = (spd, from) => {
-    const a = ((from + 180) * Math.PI) / 180 - h0;
-    return [spd * Math.cos(a), -spd * Math.sin(a)];
-  };
-  const ALOFT = (L.aloft || [])
-    .filter((r) => r && r.alt > 0 && r.speed >= 0 && isFinite(r.dir))
-    .slice()
-    .sort((a, b) => a.alt - b.alt)
-    .map((r) => ({ z: r.alt, v: vecOf(r.speed, r.dir) }));
-  const surf = (z) =>
-    alpha === 0
-      ? L.wind
-      : L.wind * Math.pow(Math.min(Math.max(z, 0.3), ALOFT.length ? Math.max(ALOFT[0].z, 1) : 1000) / zref, alpha);
-  const windVec = (z, t = 0) => {
-    let w;
-    if (!ALOFT.length) w = [surf(z), 0];
-    else if (z <= ALOFT[0].z) {
-      const f = Math.max(z, 0) / ALOFT[0].z,
-        s0 = surf(z);
-      w = [s0 * (1 - f) + ALOFT[0].v[0] * f, ALOFT[0].v[1] * f];
-    } else {
-      let i = ALOFT.findIndex((r) => r.z >= z);
-      if (i < 0) w = ALOFT[ALOFT.length - 1].v.slice();
-      else {
-        const a = ALOFT[i - 1],
-          b = ALOFT[i],
-          f = (z - a.z) / (b.z - a.z);
-        w = [a.v[0] + (b.v[0] - a.v[0]) * f, a.v[1] + (b.v[1] - a.v[1]) * f];
-      }
-    }
-    const gm = gust(t);
-    return [w[0] * gm, w[1] * gm];
-  };
+    windVec = flightWind(L);
   // axes: x downwind, y to the left of downwind, z up. The rail leans upwind, or toward a set compass direction.
   const relAz = ((L.railMode === "fixed" ? (L.railDir || 0) - ((L.windDir ?? 270) + 180) : 180) * Math.PI) / 180;
   const rx = Math.sin(th) * Math.cos(relAz),
     ry = -Math.sin(th) * Math.sin(relAz),
     rz = Math.cos(th);
-  /* the earth's rotation (Coriolis acceleration −2Ω×v): Ω has components Ω·cos(lat) to the north and Ω·sin(lat) up;
-     in these axes (x downwind, heading h = wind direction + 180°; y to its left; z up) */
-  const OM = 7.2921159e-5,
-    latR = ((L.lat ?? 40) * Math.PI) / 180,
-    hdg = ((((L.windDir ?? 270) + 180) % 360) * Math.PI) / 180;
-  const Ox = OM * Math.cos(latR) * Math.cos(hdg),
-    Oy = OM * Math.cos(latR) * Math.sin(hdg),
-    Oz = OM * Math.sin(latR);
-  const corX = (vy, vz) => -2 * (Oy * vz - Oz * vy),
-    corY = (vx, vz) => -2 * (Oz * vx - Ox * vz),
-    corZ = (vx, vy) => -2 * (Ox * vy - Oy * vx);
+  const { corX, corY, corZ } = coriolis(L);
   /* rising or sinking air (a thermal, or sink) during the descent: a steady vertical air speed, full strength from about
      30 m up to 2.5 km above the pad, fading to nothing at the ground and at 3.5 km */
   const thW = +L.thermalW || 0,
@@ -7774,30 +7714,10 @@ function simulate(D, L, m, mb, opts = {}) {
   const CdAdrogue = chuteA(drogueDia, D.drogueCd),
     CdAmain = chuteA(D.mainDia, D.mainCd),
     noChute = !(CdAmain + CdAdrogue > 0);
-  /* parachutes take time to open: a canopy fills once the air has travelled a set distance through it, n·D (Knacke's
-     fill distance, fill constant n = 8 for solid canopies), and the drag area grows as (s/(n·D))² with s the distance
-     so far. Knacke's fill time t_f = n·D/v is the same thing at a steady speed; counting distance instead keeps a chute
-     opened at apogee, where the rocket is barely moving, from taking many seconds to fill: it fills as the rocket falls.
-     The airframe hanging below adds its own drag (Cd about 0.5). */
-  const FILL_N = 8;
   let railPrev = { d: 0, v: 0, t: 0 }, // the last step's place, speed and time on the rail
     openD = null,
     openM = null,
     prevPh = "rail";
-  /** A canopy starting to open: when, at what airspeed, the distance it needs to fill and an estimate of its fill time. */
-  const opening = (t, va, d) => {
-    const sf = Math.max(FILL_N * d, 1e-3);
-    return { t, v: va, sf, s: 0, ts: t, va, tf: Math.max(sf / Math.max(va, 1), 0.05) };
-  };
-  /** Moves each filling canopy's distance on to time t at airspeed va (after each step), and its fill-time estimate. */
-  const fillStep = (o, t, va) => {
-    if (!o || o.s >= o.sf) return;
-    o.s += 0.5 * (o.va + va) * (t - o.ts);
-    o.ts = t;
-    o.va = va;
-    o.tf = o.s >= o.sf ? Math.max(t - o.t, 0.05) : Math.max(t - o.t + (o.sf - o.s) / Math.max(va, 1), 0.05);
-  };
-  const fill = (o, t) => (!o ? 1 : Math.min(1, Math.max(0, (o.s + o.va * Math.max(t - o.ts, 0)) / o.sf) ** 2));
   /* other chutes and streamers besides the drogue and main: each opens on its own event (apogee plus its delay, its
      altitude on the way down, the motor's ejection charge, or a timer from liftoff), fills like the others, and adds its drag */
   const XC = (D.extraChutes || [])
@@ -8259,8 +8179,46 @@ function simulate(D, L, m, mb, opts = {}) {
     boosterStart = null,
     firstStart = null,
     tumbling = false;
-  while (t < 3600) {
-    // up to an hour: a slow descent from very high apogees
+  /**
+   * Adds the moment just reached to the flight's time series (out), for the charts, the animation and the report.
+   */
+  function recordSample(x, y, z, vx, vy, vz, tiltNow) {
+    out.t.push(t);
+    out.alt.push(z);
+    out.vel.push(vz);
+    out.acc.push(phase === "flight" || phase === "rail" ? acc : 0);
+    out.thrust.push(thrust(t));
+    out.drift.push(-x);
+    out.cross.push(y);
+    out.pitch.push(tiltNow);
+    {
+      // angle of attack: between the rocket's axis and the air flowing past it (its velocity less the wind), in free flight only
+      let aoa = NaN,
+        va = NaN;
+      if (phase === "flight" && !tumbling) {
+        const W = windVec(z, t),
+          rx = vx - W[0],
+          ry = vy - W[1];
+        va = Math.hypot(rx, ry, vz);
+        aoa =
+          va > 0.5
+            ? (Math.acos(Math.max(-1, Math.min(1, (s[6] * rx + s[7] * ry + s[8] * vz) / va))) * 180) / Math.PI
+            : NaN;
+      }
+      out.aoa.push(aoa);
+      out.va.push(va);
+    }
+    out.ax.push(s[6]);
+    out.az.push(s[8]);
+    out.roll.push(s[12]);
+    lastRec = t; // drift: upwind positive, downwind negative
+  }
+  /**
+   * The next time step: short on the rail and while a motor burns, short enough for the pitch and roll rates in flight,
+   * and under a chute short of the drag's response time and of each canopy's filling.
+   * @returns {number} s
+   */
+  function stepSize() {
     let dt = phase === "rail" || powered(t) ? 0.002 : phase === "flight" ? 0.01 : 0.2; // under a chute the motion is slow and smooth; the drag-response limit below still applies
     if (phase === "flight")
       dt = Math.min(
@@ -8280,19 +8238,24 @@ function simulate(D, L, m, mb, opts = {}) {
           Math.max(ms, 1e-3);
       dt = Math.min(dt, Math.max(0.5 / Math.max(lam, 1e-6), 0.0005));
     }
-    for (const bp of breaks) {
-      if (t < bp - 1e-9 && t + dt > bp) dt = bp - t;
-    }
-    const k1 = deriv(t, s, phase);
-    const s2 = s.map((v, i) => v + (k1[i] * dt) / 2),
-      k2 = deriv(t + dt / 2, s2, phase);
-    const s3 = s.map((v, i) => v + (k2[i] * dt) / 2),
-      k3 = deriv(t + dt / 2, s3, phase);
-    const s4 = s.map((v, i) => v + k3[i] * dt),
-      k4 = deriv(t + dt, s4, phase);
-    s = s.map((v, i) => v + (dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])) / 6);
-    acc = k1[k1.length - 1];
-    t += dt;
+    return dt;
+  }
+  // the state just reached, for the steps of the loop below
+  let x = 0,
+    z = 0,
+    vx = 0,
+    vz = 0,
+    y = 0,
+    vy = 0,
+    sp = 0,
+    atm = null,
+    tiltNow = 0,
+    dt = 0;
+  /**
+   * After each step: the canopies fill further, the axis is kept a unit vector at right angles to its spin, and a
+   * rocket turned too far from the airflow to recover starts tumbling.
+   */
+  function afterStep() {
     if (openD || openM || XC.length) {
       const W = windVec(s[1], t),
         va = Math.hypot(s[2] - W[0], s[5] - W[1], s[3]);
@@ -8331,10 +8294,12 @@ function simulate(D, L, m, mb, opts = {}) {
         }
       }
     }
-    const [x, z, vx, vz, y, vy] = s,
-      sp = Math.hypot(vx, vy, vz),
-      atm = atmosphere(L, Math.max(z, 0)),
-      tiltNow = (Math.acos(Math.max(-1, Math.min(1, s[8]))) * 180) / Math.PI;
+  }
+  /**
+   * On the way up: the fastest speed, Mach number and acceleration, the peak dynamic pressure and nose temperature,
+   * the transonic window, and the angle of attack.
+   */
+  function trackAscent() {
     if (phase !== "drogue" && phase !== "main" && phase !== "free" && st.tApo == null) {
       st.maxV = Math.max(st.maxV, sp);
       st.maxMach = Math.max(st.maxMach, sp / atm.a);
@@ -8364,6 +8329,12 @@ function simulate(D, L, m, mb, opts = {}) {
         }
       }
     }
+  }
+  /**
+   * Staging, ignition and burnout as they come; the drogue leg's speed; the weathercocking cone; and when the motor's
+   * charge fires.
+   */
+  function stagingEvents() {
     if (three && !st.sep1 && t >= t1Sep - 1e-9) {
       st.sep1 = { t, alt: z, v: sp, x };
       firstStart = { t, s: s.slice(), ej: S1.bEjDelay != null ? M1.tb + S1.bEjDelay : null };
@@ -8405,6 +8376,13 @@ function simulate(D, L, m, mb, opts = {}) {
       const fc = ignOK ? firstCharge() : null;
       tDep = fc != null ? fc + Math.max(0, D.ejChuteDelay || 0) : null;
     }
+  }
+  /**
+   * On the rail: leaving it (with the tip-off as the front guide clears). Off it: apogee, the deployments and the
+   * phase changes that follow.
+   * @returns {boolean} true if the flight is over
+   */
+  function railOrFlight() {
     if (phase === "rail") {
       const dist = x * rx + y * ry + z * rz;
       if (dist >= L.rail) {
@@ -8441,7 +8419,7 @@ function simulate(D, L, m, mb, opts = {}) {
         }
       } else if (t > (three ? M1.tb : staged ? MB.tb : MS.tb) + 1) {
         st.error = "Thrust never exceeds weight. The rocket does not leave the rail.";
-        break;
+        return true;
       }
       if (phase === "rail") railPrev = { d: dist, v: sp, t };
     } else {
@@ -8533,6 +8511,13 @@ function simulate(D, L, m, mb, opts = {}) {
         st.tMain = t;
       }
     }
+    return false;
+  }
+  /**
+   * Other chutes opening, phase changes, opening shocks, the highest point, and the stability and flutter margins
+   * through the climb.
+   */
+  function chutesAndStats() {
     if (XC.length && phase !== "rail")
       for (const c of XC) {
         if (c.open) continue;
@@ -8620,37 +8605,12 @@ function simulate(D, L, m, mb, opts = {}) {
         }
       }
     }
-    if (t - lastRec >= (powered(t) || phase === "rail" ? 0.01 : 0.05) - 1e-9) {
-      out.t.push(t);
-      out.alt.push(z);
-      out.vel.push(vz);
-      out.acc.push(phase === "flight" || phase === "rail" ? acc : 0);
-      out.thrust.push(thrust(t));
-      out.drift.push(-x);
-      out.cross.push(y);
-      out.pitch.push(tiltNow);
-      {
-        // angle of attack: between the rocket's axis and the air flowing past it (its velocity less the wind), in free flight only
-        let aoa = NaN,
-          va = NaN;
-        if (phase === "flight" && !tumbling) {
-          const W = windVec(z, t),
-            rx = vx - W[0],
-            ry = vy - W[1];
-          va = Math.hypot(rx, ry, vz);
-          aoa =
-            va > 0.5
-              ? (Math.acos(Math.max(-1, Math.min(1, (s[6] * rx + s[7] * ry + s[8] * vz) / va))) * 180) / Math.PI
-              : NaN;
-        }
-        out.aoa.push(aoa);
-        out.va.push(va);
-      }
-      out.ax.push(s[6]);
-      out.az.push(s[8]);
-      out.roll.push(s[12]);
-      lastRec = t; // drift: upwind positive, downwind negative
-    }
+  }
+  /**
+   * Touchdown: the moment, place and speed it hit the ground (stepping back inside the last step).
+   * @returns {boolean} true if the flight is over
+   */
+  function landing() {
     if (phase !== "rail" && z <= 0 && t > 0.5) {
       const back = vz < -1e-6 ? Math.min(z / vz, dt) : 0; // step back to the moment it touched the ground
       st.tLand = t - back;
@@ -8662,8 +8622,32 @@ function simulate(D, L, m, mb, opts = {}) {
       st.vLandZ = Math.max(0, -vz);
       st.landed = true;
       if (st.tDeploy == null) st.noDeploy = true;
-      break;
+      return true;
     }
+    return false;
+  }
+  while (t < 3600) {
+    // up to an hour: a slow descent from very high apogees
+    dt = stepSize();
+    for (const bp of breaks) {
+      if (t < bp - 1e-9 && t + dt > bp) dt = bp - t;
+    }
+    const step = rk4Step((tt, ss) => deriv(tt, ss, phase), t, s, dt);
+    s = step.s;
+    acc = step.k1[step.k1.length - 1];
+    t += dt;
+    afterStep();
+    [x, z, vx, vz, y, vy] = s;
+    sp = Math.hypot(vx, vy, vz);
+    atm = atmosphere(L, Math.max(z, 0));
+    tiltNow = (Math.acos(Math.max(-1, Math.min(1, s[8]))) * 180) / Math.PI;
+    trackAscent();
+    stagingEvents();
+    if (railOrFlight()) break;
+    chutesAndStats();
+    if (t - lastRec >= (powered(t) || phase === "rail" ? 0.01 : 0.05) - 1e-9)
+      recordSample(x, y, z, vx, vy, vz, tiltNow);
+    if (landing()) break;
   }
   const atm0 = atmosphere(L, 0),
     mLand = D.dryMass + m.totalMass - m.propMass;
@@ -8729,6 +8713,142 @@ function simulate(D, L, m, mb, opts = {}) {
     }
   }
   return { out, st };
+}
+/**
+ * The wind through a flight, as a function of height and time: [along x (downwind), along y] in m/s, in the flight
+ * axes of simulate (x along the ground wind's direction of travel).
+ * @param {object} L launch conditions (wind, its direction, profile and reference height, gustiness, winds aloft)
+ * @returns {function(number, number=): number[]} windVec(z, t)
+ */
+function flightWind(L) {
+  const alpha = WIND_ALPHA[L.windProfile] ?? 1 / 7,
+    zref = Math.max(L.windRef || 2, 0.5);
+  // gusts: four steady sine waves with fixed random phases (the same every run), scaled to the gustiness as an RMS fraction
+  const turb = Math.max(0, L.turb || 0),
+    GUST = (() => {
+      let sd = 97531;
+      const r = () => {
+        sd = (sd * 16807) % 2147483647;
+        return sd / 2147483647;
+      };
+      return [2.3, 4.7, 9.1, 17.3].map((Pd) => ({ w: (2 * Math.PI) / Pd, ph: 2 * Math.PI * r() }));
+    })();
+  const gust = (t) =>
+    turb > 0 ? Math.max(0, 1 + turb * Math.SQRT1_2 * GUST.reduce((a, g) => a + Math.sin(g.w * t + g.ph), 0)) : 1;
+  /* wind as a vector [along x, along y] in the flight axes. The surface wind grows with height by the power law; a
+     winds-aloft table (height, speed, direction) takes over: below its lowest level the surface wind blends into it,
+     between levels the wind is interpolated, and above the top level it holds. Gusts scale the whole vector. */
+  const h0 = (((L.windDir ?? 270) + 180) * Math.PI) / 180;
+  const vecOf = (spd, from) => {
+    const a = ((from + 180) * Math.PI) / 180 - h0;
+    return [spd * Math.cos(a), -spd * Math.sin(a)];
+  };
+  const ALOFT = (L.aloft || [])
+    .filter((r) => r && r.alt > 0 && r.speed >= 0 && isFinite(r.dir))
+    .slice()
+    .sort((a, b) => a.alt - b.alt)
+    .map((r) => ({ z: r.alt, v: vecOf(r.speed, r.dir) }));
+  const surf = (z) =>
+    alpha === 0
+      ? L.wind
+      : L.wind * Math.pow(Math.min(Math.max(z, 0.3), ALOFT.length ? Math.max(ALOFT[0].z, 1) : 1000) / zref, alpha);
+  const windVec = (z, t = 0) => {
+    let w;
+    if (!ALOFT.length) w = [surf(z), 0];
+    else if (z <= ALOFT[0].z) {
+      const f = Math.max(z, 0) / ALOFT[0].z,
+        s0 = surf(z);
+      w = [s0 * (1 - f) + ALOFT[0].v[0] * f, ALOFT[0].v[1] * f];
+    } else {
+      let i = ALOFT.findIndex((r) => r.z >= z);
+      if (i < 0) w = ALOFT[ALOFT.length - 1].v.slice();
+      else {
+        const a = ALOFT[i - 1],
+          b = ALOFT[i],
+          f = (z - a.z) / (b.z - a.z);
+        w = [a.v[0] + (b.v[0] - a.v[0]) * f, a.v[1] + (b.v[1] - a.v[1]) * f];
+      }
+    }
+    const gm = gust(t);
+    return [w[0] * gm, w[1] * gm];
+  };
+  return windVec;
+}
+/**
+ * The Coriolis acceleration from the earth's rotation, in the flight axes of simulate.
+ * @param {object} L launch conditions (latitude, wind direction)
+ * @returns {{corX: function, corY: function, corZ: function}} each component from the velocity's other two
+ */
+function coriolis(L) {
+  /* the earth's rotation (Coriolis acceleration −2Ω×v): Ω has components Ω·cos(lat) to the north and Ω·sin(lat) up;
+     in these axes (x downwind, heading h = wind direction + 180°; y to its left; z up) */
+  const OM = 7.2921159e-5,
+    latR = ((L.lat ?? 40) * Math.PI) / 180,
+    hdg = ((((L.windDir ?? 270) + 180) % 360) * Math.PI) / 180;
+  const Ox = OM * Math.cos(latR) * Math.cos(hdg),
+    Oy = OM * Math.cos(latR) * Math.sin(hdg),
+    Oz = OM * Math.sin(latR);
+  const corX = (vy, vz) => -2 * (Oy * vz - Oz * vy),
+    corY = (vx, vz) => -2 * (Oz * vx - Ox * vz),
+    corZ = (vx, vy) => -2 * (Ox * vy - Oy * vx);
+  return { corX, corY, corZ };
+}
+/* parachutes take time to open: a canopy fills once the air has travelled a set distance through it, n·D (Knacke's
+   fill distance, fill constant n = 8 for solid canopies), and the drag area grows as (s/(n·D))² with s the distance
+   so far. Knacke's fill time t_f = n·D/v is the same thing at a steady speed; counting distance instead keeps a chute
+   opened at apogee, where the rocket is barely moving, from taking many seconds to fill: it fills as the rocket falls.
+   The airframe hanging below adds its own drag (Cd about 0.5). */
+/**
+ * A canopy starting to open: when, at what airspeed, the distance it needs to fill and an estimate of its fill time.
+ * @param {number} t
+ * @param {number} va airspeed
+ * @param {number} d canopy diameter
+ * @returns {object}
+ */
+function opening(t, va, d) {
+  const FILL_N = 8; // fill constant n, for solid canopies
+  const sf = Math.max(FILL_N * d, 1e-3);
+  return { t, v: va, sf, s: 0, ts: t, va, tf: Math.max(sf / Math.max(va, 1), 0.05) };
+}
+/**
+ * Moves a filling canopy's distance on to time t at airspeed va (after each step), and its fill-time estimate.
+ * @param {object|null} o from opening
+ * @param {number} t
+ * @param {number} va
+ */
+function fillStep(o, t, va) {
+  if (!o || o.s >= o.sf) return;
+  o.s += 0.5 * (o.va + va) * (t - o.ts);
+  o.ts = t;
+  o.va = va;
+  o.tf = o.s >= o.sf ? Math.max(t - o.t, 0.05) : Math.max(t - o.t + (o.sf - o.s) / Math.max(va, 1), 0.05);
+}
+/**
+ * How far open a canopy is at time t, as a fraction of its full drag area (1 with none).
+ * @param {object|null} o from opening
+ * @param {number} t
+ * @returns {number}
+ */
+function fill(o, t) {
+  return !o ? 1 : Math.min(1, Math.max(0, (o.s + o.va * Math.max(t - o.ts, 0)) / o.sf) ** 2);
+}
+/**
+ * One classic fourth-order Runge–Kutta step.
+ * @param {function(number, number[]): number[]} f the derivative of the state at a time
+ * @param {number} t
+ * @param {number[]} s the state at t
+ * @param {number} dt
+ * @returns {{s: number[], k1: number[]}} the state at t + dt, and the derivative at the start
+ */
+function rk4Step(f, t, s, dt) {
+  const k1 = f(t, s);
+  const s2 = s.map((v, i) => v + (k1[i] * dt) / 2),
+    k2 = f(t + dt / 2, s2);
+  const s3 = s.map((v, i) => v + (k2[i] * dt) / 2),
+    k3 = f(t + dt / 2, s3);
+  const s4 = s.map((v, i) => v + k3[i] * dt),
+    k4 = f(t + dt, s4);
+  return { s: s.map((v, i) => v + (dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])) / 6), k1 };
 }
 /**
  * Fly a dropped stage down on its own from separation: a point mass with drag (nose first if it's stable,
@@ -10286,12 +10406,52 @@ function parseOrk(xml) {
         if (at && (at.getAttribute("model") || "").toLowerCase() === "extendedisa") {
           const bt = parseFloat(at.getElementsByTagName("basetemperature")[0]?.textContent);
           if (isFinite(bt)) newL.tempC = bt > 150 ? bt - 273.15 : bt;
+          // a chosen run's own air pressure (Pa) and relative humidity (0 to 1) at the launch site
+          const bp = parseFloat(at.getElementsByTagName("basepressure")[0]?.textContent),
+            rh = parseFloat(at.getElementsByTagName("baserelativehumidity")[0]?.textContent);
+          if (ORK_SIM != null && isFinite(bp) && bp > 1000) newL.pressure = bp;
+          if (ORK_SIM != null && isFinite(rh) && rh >= 0 && rh <= 1) newL.humidity = rh;
+        } else if (at && ORK_SIM != null) {
+          // a chosen run in OpenRocket's standard air: standard pressure and temperature at the site, dry
+          newL.pressure = 0;
+          newL.humidity = 0;
+          newL.tempC = +(15 - 0.0065 * Math.max(g("launchaltitude") || 0, 0)).toFixed(2);
         }
       }
       const wd = g("winddirection");
       if (wd != null) newL.windDir = ((((wd * 180) / Math.PI) % 360) + 360) % 360;
       const wt = g("windturbulence");
       if (wt != null) newL.turb = Math.max(0, Math.min(wt, 1));
+      // OpenRocket's multi-level wind (its winds aloft), when the run uses it: heights above sea level or the pad, a speed,
+      // the direction it blows from (radians) and a standard deviation at each. The lowest level sets the ground wind
+      // and its gustiness, the rest fill the Winds aloft table. A run with OpenRocket's average wind has none.
+      {
+        const kind = (cnd.getElementsByTagName("windmodeltype")[0]?.textContent || "").trim().toLowerCase(),
+          ml = [...cnd.getElementsByTagName("wind")].find((w) => w.getAttribute("model") === "multilevel");
+        // (only for a run chosen when opening: opening the design alone keeps your weather)
+        if (ORK_SIM != null && kind === "multilevel" && ml) {
+          const base = ml.getAttribute("altituderef") === "msl" ? g("launchaltitude") || 0 : 0;
+          const lv = [...ml.getElementsByTagName("windlevel")]
+            .map((e) => ({
+              alt: parseFloat(e.getAttribute("altitude")) - base,
+              speed: parseFloat(e.getAttribute("speed")),
+              dir: +(((((parseFloat(e.getAttribute("direction")) * 180) / Math.PI) % 360) + 360) % 360).toFixed(2),
+              sd: parseFloat(e.getAttribute("standarddeviation")),
+            }))
+            .filter((e) => isFinite(e.alt) && isFinite(e.speed) && e.speed >= 0 && isFinite(e.dir))
+            .sort((a, b) => a.alt - b.alt);
+          if (lv.length) {
+            newL.wind = lv[0].speed;
+            newL.windDir = lv[0].dir;
+            if (isFinite(lv[0].sd) && lv[0].speed > 0) newL.turb = Math.max(0, Math.min(lv[0].sd / lv[0].speed, 1));
+            newL.aloft = lv.filter((e) => e.alt > 1).map((e) => ({ alt: e.alt, speed: e.speed, dir: e.dir }));
+            newL.aloftSrc = newL.aloft.length ? "OpenRocket multi-level wind" : "";
+          }
+        } else if (ORK_SIM != null) {
+          newL.aloft = [];
+          newL.aloftSrc = "";
+        }
+      }
       const into = (cnd.getElementsByTagName("launchintowind")[0]?.textContent || "true").trim() !== "false",
         rdir = g("launchroddirection");
       newL.railMode = into ? "into" : "fixed";
@@ -17824,6 +17984,27 @@ function siteBtnUpdate() {
   btn.hidden = !(diff || inp.value.trim());
 }
 /**
+ * Which of your saved launch sites a set of launch settings is at: the one with this name, else one within about 100 m
+ * and 10 m of elevation of its coordinates.
+ * @param {string} name the site's name as saved, or ""
+ * @param {object} l launch settings (lat, lon, elev)
+ * @returns {string} the site's name, or "" if none matches
+ */
+function siteFind(name, l) {
+  const S = sitesGet();
+  if (name && S.some((x) => x.name === name)) return name;
+  if (!(isFinite(l.lat) && isFinite(l.lon))) return "";
+  const near = S.find(
+    (x) =>
+      isFinite(x.v.lat) &&
+      isFinite(x.v.lon) &&
+      Math.abs(x.v.lat - l.lat) < 0.001 &&
+      Math.abs(x.v.lon - l.lon) < 0.001 / Math.max(Math.cos((l.lat * Math.PI) / 180), 0.2) &&
+      (x.v.elev == null || l.elev == null || Math.abs(x.v.elev - l.elev) < 10),
+  );
+  return near ? near.name : "";
+}
+/**
  * Puts the chosen site's settings back into L (after a design file brought its own).
  * @returns {string|null} the site's name
  */
@@ -19177,8 +19358,14 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       } else L = Object.assign(defaultLaunch(), Lnow, runL);
       savedCalUse = pk.kind === "saved";
       keptSite = null;
-      siteCur = "";
-      store.set("rfs-site", "");
+      // the launch site it was saved with, if it's one of yours (by name, else by where it is)
+      siteCur = siteFind((src && src.site) || "", L);
+      store.set("rfs-site", siteCur);
+      siteRender();
+      if (!siteCur && src && src.site)
+        savedNotes.push(
+          `Saved at ${src.site}, which isn’t one of your launch sites: save it on the Range tab to add it.`,
+        );
     }
     const mm = matchMotor(r.motor);
     let mnote = "";
@@ -24438,6 +24625,7 @@ function prStateNow(text, runs = {}) {
     text: prHash(text),
     launch: L,
     when: document.getElementById("wxwhen").value || "",
+    site: siteCur || "",
     cfg: (BLD && BLD.cfg) || ORK_CFG || null,
     motorId,
     boostId,
@@ -24882,6 +25070,7 @@ async function saveDesignFile(asNew, opts = {}) {
     runs[newRun] = {
       launch: jclone(L),
       when: document.getElementById("wxwhen").value || "",
+      site: siteCur || "",
       at: new Date().toISOString(),
     };
   extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text, runs))) });

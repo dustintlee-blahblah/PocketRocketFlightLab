@@ -25,7 +25,7 @@ android {
         applicationId "com.dustinlee.pocketrocketpro"
         minSdk 24
         targetSdk 34
-        versionCode 268
+        versionCode 269
         versionName "1.0"
     }
 
