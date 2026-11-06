@@ -682,8 +682,10 @@ function animDraw(target) {
   const mono = css("--f-mono").split(",")[0].replace(/"/g, ""),
     fam = css("--f-body").split(",")[0].replace(/"/g, "");
   if (!video) {
-    document.getElementById("animhud").innerHTML =
-      `<b>${phase}</b><span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span><span>${Math.abs(x) < 0.5 ? "Over the pad" : `${fmt(Math.abs(x), "alt")} ${uname("alt")} ${x > 0 ? "downwind" : "upwind"}`}</span>`;
+    // nothing during the countdown; on the pad, no flight phase yet
+    document.getElementById("animhud").innerHTML = ANIM.countEnd
+      ? ""
+      : `${t > 0 ? `<b>${phase}</b>` : ""}<span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span><span>${Math.abs(x) < 0.5 ? "Over the pad" : `${fmt(Math.abs(x), "alt")} ${uname("alt")} ${x > 0 ? "downwind" : "upwind"}`}</span>`;
     const sc = document.getElementById("animscrub");
     if (document.activeElement !== sc) sc.value = String(t);
   } else {

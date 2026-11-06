@@ -2435,6 +2435,7 @@ html.typing .runbar {
 .animhud {
   display: flex;
   flex-wrap: wrap;
+  min-height: 1.4em; /* holds its line while empty (the countdown), so the picture doesn't jump */
   gap: 2px 14px;
   font: 500 0.82rem/1.4 var(--f-mono);
   color: var(--muted);
