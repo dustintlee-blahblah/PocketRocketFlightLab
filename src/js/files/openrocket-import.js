@@ -1384,12 +1384,52 @@ function parseOrk(xml) {
         if (at && (at.getAttribute("model") || "").toLowerCase() === "extendedisa") {
           const bt = parseFloat(at.getElementsByTagName("basetemperature")[0]?.textContent);
           if (isFinite(bt)) newL.tempC = bt > 150 ? bt - 273.15 : bt;
+          // a chosen run's own air pressure (Pa) and relative humidity (0 to 1) at the launch site
+          const bp = parseFloat(at.getElementsByTagName("basepressure")[0]?.textContent),
+            rh = parseFloat(at.getElementsByTagName("baserelativehumidity")[0]?.textContent);
+          if (ORK_SIM != null && isFinite(bp) && bp > 1000) newL.pressure = bp;
+          if (ORK_SIM != null && isFinite(rh) && rh >= 0 && rh <= 1) newL.humidity = rh;
+        } else if (at && ORK_SIM != null) {
+          // a chosen run in OpenRocket's standard air: standard pressure and temperature at the site, dry
+          newL.pressure = 0;
+          newL.humidity = 0;
+          newL.tempC = +(15 - 0.0065 * Math.max(g("launchaltitude") || 0, 0)).toFixed(2);
         }
       }
       const wd = g("winddirection");
       if (wd != null) newL.windDir = ((((wd * 180) / Math.PI) % 360) + 360) % 360;
       const wt = g("windturbulence");
       if (wt != null) newL.turb = Math.max(0, Math.min(wt, 1));
+      // OpenRocket's multi-level wind (its winds aloft), when the run uses it: heights above sea level or the pad, a speed,
+      // the direction it blows from (radians) and a standard deviation at each. The lowest level sets the ground wind
+      // and its gustiness, the rest fill the Winds aloft table. A run with OpenRocket's average wind has none.
+      {
+        const kind = (cnd.getElementsByTagName("windmodeltype")[0]?.textContent || "").trim().toLowerCase(),
+          ml = [...cnd.getElementsByTagName("wind")].find((w) => w.getAttribute("model") === "multilevel");
+        // (only for a run chosen when opening: opening the design alone keeps your weather)
+        if (ORK_SIM != null && kind === "multilevel" && ml) {
+          const base = ml.getAttribute("altituderef") === "msl" ? g("launchaltitude") || 0 : 0;
+          const lv = [...ml.getElementsByTagName("windlevel")]
+            .map((e) => ({
+              alt: parseFloat(e.getAttribute("altitude")) - base,
+              speed: parseFloat(e.getAttribute("speed")),
+              dir: +(((((parseFloat(e.getAttribute("direction")) * 180) / Math.PI) % 360) + 360) % 360).toFixed(2),
+              sd: parseFloat(e.getAttribute("standarddeviation")),
+            }))
+            .filter((e) => isFinite(e.alt) && isFinite(e.speed) && e.speed >= 0 && isFinite(e.dir))
+            .sort((a, b) => a.alt - b.alt);
+          if (lv.length) {
+            newL.wind = lv[0].speed;
+            newL.windDir = lv[0].dir;
+            if (isFinite(lv[0].sd) && lv[0].speed > 0) newL.turb = Math.max(0, Math.min(lv[0].sd / lv[0].speed, 1));
+            newL.aloft = lv.filter((e) => e.alt > 1).map((e) => ({ alt: e.alt, speed: e.speed, dir: e.dir }));
+            newL.aloftSrc = newL.aloft.length ? "OpenRocket multi-level wind" : "";
+          }
+        } else if (ORK_SIM != null) {
+          newL.aloft = [];
+          newL.aloftSrc = "";
+        }
+      }
       const into = (cnd.getElementsByTagName("launchintowind")[0]?.textContent || "true").trim() !== "false",
         rdir = g("launchroddirection");
       newL.railMode = into ? "into" : "fixed";
