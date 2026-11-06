@@ -1095,7 +1095,11 @@ function simulate(D, L, m, mb, opts = {}) {
     if (st.burnAlt === null && ignOK && t >= susEnd() - 1e-9) {
       st.burnAlt = z;
       st.burnTilt = tiltNow;
+      // average acceleration to burnout: the speed gained over the time it took
+      st.avgAccBurn = t > 0 ? sp / t : null;
     }
+    // fastest on the way down (vertical, after apogee)
+    if (st.tApo != null && phase !== "rail" && -vz > (st.maxDescent || 0)) st.maxDescent = -vz;
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if (phase === "flight" && !tumbling && t <= susEnd() + 1e-9) st.powerTilt = Math.max(st.powerTilt || 0, tiltNow);
     if (phase === "flight" && st.tApo == null && z > Math.max(2 * L.rail, 15))
@@ -1349,6 +1353,10 @@ function simulate(D, L, m, mb, opts = {}) {
       st.tLand = t - back;
       st.drift = x - vx * back;
       st.driftY = y - vy * back;
+      // speed hitting the ground (over the ground, wind drift included, as OpenRocket's ground hit velocity), and its
+      // vertical part
+      st.vLand = Math.hypot(vx, vy, vz);
+      st.vLandZ = Math.max(0, -vz);
       st.landed = true;
       if (st.tDeploy == null) st.noDeploy = true;
       break;

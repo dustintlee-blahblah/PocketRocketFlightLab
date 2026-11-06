@@ -99,7 +99,6 @@ function renderResults() {
     ? "—"
     : `${fmt(st.maxAlt, "alt")}<small>${uname("alt")}</small>`;
   const SL = lastSim.SS || S;
-  const tiles = resultTiles(st, SL);
   {
     const sp = document.getElementById("stagepanel");
     sp.hidden = !st.staged;
@@ -113,8 +112,13 @@ function renderResults() {
   if (st.staged)
     document.getElementById("mchip").textContent =
       `${st.three && lastSim.m1 ? (lastSim.m1.cn || lastSim.m1.name) + " → " : ""}${lastSim.mb.cn || lastSim.mb.name} → ${m.cn || m.name}`;
-  document.getElementById("stats").innerHTML = tiles
-    .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
+  document.getElementById("stats").innerHTML = resultGroups(st, SL)
+    .map(
+      ([g, t]) =>
+        `<div class="statgrp"><div class="stath">${g}</div><div class="stats">${t
+          .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
+          .join("")}</div></div>`,
+    )
     .join("");
   const flags = resultFlags(st, SL, m, D);
   renderWindTable();
@@ -448,93 +452,24 @@ function chargeEvents(st, D, outs) {
   return out.sort((a, b) => a.t - b.t);
 }
 /**
- * The main results tiles: [label, value, unit, note].
+ * The main results tiles in groups of related ones: [title, [[label, value, unit], …]].
  * @param {object} st
  * @param {object} S
  * @returns {Array[]}
  */
-function resultTiles(st, S) {
+function resultGroups(st, S) {
   const RS = lastSim || {},
-    altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null);
-  return [
-    ["Max velocity", fmt(st.maxV, "speed"), uname("speed")],
+    altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),
+    spd = (v) => (v != null ? fmt(v, "speed") : "—");
+  const speed = [
+    ["Max ascent velocity", fmt(st.maxV, "speed"), uname("speed")],
     ["Max Mach", st.maxMach.toFixed(2), ""],
-    ["Max acceleration", fmt(st.maxAcc, "acc"), "g"],
     ["Off-rail velocity", st.offRail ? fmt(st.offRail, "speed") : "—", uname("speed")],
+    ["Max acceleration", fmt(st.maxAcc, "acc"), "g"],
     [
-      "Max angle of attack",
-      st.tumble ? "Tumbles" : st.maxAoA != null ? st.maxAoA.toFixed(1) : "0.0",
-      st.tumble ? "" : "°",
-    ],
-    ["Time to apogee", st.tApo ? st.tApo.toFixed(1) : "—", "s"],
-    [st.staged ? "Stack stability at liftoff" : "Stability at liftoff", S.marginL.toFixed(2), "cal"],
-    // the CP moves with Mach number and the CG with burning propellant: the lowest margin on the way up
-    ...(st.minMargin
-      ? [
-          st.minMargin.cal < S.marginL
-            ? ["Lowest stability in flight", st.minMargin.cal.toFixed(2), `cal · Mach ${st.minMargin.M.toFixed(2)}`]
-            : ["Lowest stability in flight", S.marginL.toFixed(2), "cal · at liftoff"],
-        ]
-      : []),
-    ["Liftoff weight", fmt(st.liftMass, "mass"), uname("mass")],
-    ["Thrust-to-weight (avg)", st.avgTtw.toFixed(1), ": 1"],
-    [
-      st.staged ? "Sustainer burnout altitude" : "Burnout altitude",
-      st.burnAlt != null ? fmt(st.burnAlt, "alt") : "—",
-      uname("alt"),
-    ],
-    ...(st.single
-      ? [
-          [
-            "Speed at deployment",
-            (st.vDeploy ?? st.vApo) != null ? fmt(st.vDeploy ?? st.vApo, "speed") : "—",
-            uname("speed"),
-          ],
-          [
-            st.noChute ? "Descent rate, tumbling" : "Descent rate",
-            st.noChute
-              ? st.tumbleRate
-                ? fmt(st.tumbleRate, "speed")
-                : "—"
-              : st.mainRate
-                ? fmt(st.mainRate, "speed")
-                : "—",
-            uname("speed"),
-          ],
-        ]
-      : [
-          ["Drogue descent", st.drogueRate ? fmt(st.drogueRate, "speed") : "—", uname("speed")],
-          ["Main descent", st.mainRate ? fmt(st.mainRate, "speed") : "—", uname("speed")],
-        ]),
-    ["Flight time", st.tLand ? st.tLand.toFixed(0) : "—", "s"],
-    [
-      `Landing distance${driftDir(st.drift, st.driftY) ? ", " + driftDir(st.drift, st.driftY) : ""}`,
-      fmt(Math.hypot(st.drift, st.driftY || 0), "alt"),
-      `${uname("alt")} · ${bigDist(st.drift, st.driftY)}`,
-    ],
-    // roll, when the fins are canted (or anything else spins it)
-    ...(st.maxRoll > 0.05
-      ? [
-          [
-            "Max roll rate",
-            ((st.maxRoll * 60) / (2 * Math.PI)).toFixed(0),
-            `rpm · ${(st.maxRoll / (2 * Math.PI)).toFixed(1)} rev/s`,
-          ],
-        ]
-      : []),
-    // when each charge fires (none for a plugged motor with no chute charges)
-    ...(RS.D ? chargeEvents(st, RS.D, RS.out) : []).map((c) => {
-      const a = c.booster ? null : altAt(c.t);
-      return [
-        `${c.name} fires`,
-        c.t.toFixed(1),
-        `s${c.motor ? ` · ${+c.delay.toFixed(1)} s delay` : ""}${a != null ? ` · ${fmt(a, "alt")} ${uname("alt")}` : ""}`,
-      ];
-    }),
-    [
-      st.staged ? "Ideal sustainer motor delay for apogee" : "Ideal motor delay for apogee",
-      (st.tApoFree ?? st.tApo) && !st.ignAfterApogee ? Math.max(0, (st.tApoFree ?? st.tApo) - st.tb).toFixed(1) : "—",
-      "s",
+      st.staged ? "Average acceleration, to sustainer burnout" : "Average acceleration, to burnout",
+      st.avgAccBurn != null ? fmt(st.avgAccBurn, "acc") : "—",
+      "g",
     ],
     ...(st.maxQ
       ? [["Max dynamic pressure", fmt(st.maxQ.q, "qpress"), `${uname("qpress")} · Mach ${st.maxQ.M.toFixed(2)}`]]
@@ -548,15 +483,44 @@ function resultTiles(st, S) {
           ],
         ]
       : []),
-    ...(st.shockD
-      ? [["Drogue opening load", fmt(st.shockD.F, "force", 0), `${uname("force")} · ${st.shockD.g.toFixed(0)} g`]]
+  ];
+  const ascent = [
+    ["Liftoff weight", fmt(st.liftMass, "mass"), uname("mass")],
+    ["Thrust-to-weight (avg)", st.avgTtw.toFixed(1), ": 1"],
+    [
+      st.staged ? "Sustainer burnout altitude" : "Burnout altitude",
+      st.burnAlt != null ? fmt(st.burnAlt, "alt") : "—",
+      uname("alt"),
+    ],
+    ["Time to apogee", st.tApo ? st.tApo.toFixed(1) : "—", "s"],
+    [
+      st.staged ? "Ideal sustainer motor delay for apogee" : "Ideal motor delay for apogee",
+      (st.tApoFree ?? st.tApo) && !st.ignAfterApogee ? Math.max(0, (st.tApoFree ?? st.tApo) - st.tb).toFixed(1) : "—",
+      "s",
+    ],
+  ];
+  const stability = [
+    [st.staged ? "Stack stability at liftoff" : "Stability at liftoff", S.marginL.toFixed(2), "cal"],
+    // the CP moves with Mach number and the CG with burning propellant: the lowest margin on the way up
+    ...(st.minMargin
+      ? [
+          st.minMargin.cal < S.marginL
+            ? ["Lowest stability in flight", st.minMargin.cal.toFixed(2), `cal · Mach ${st.minMargin.M.toFixed(2)}`]
+            : ["Lowest stability in flight", S.marginL.toFixed(2), "cal · at liftoff"],
+        ]
       : []),
-    ...(st.shockM
+    [
+      "Max angle of attack",
+      st.tumble ? "Tumbles" : st.maxAoA != null ? st.maxAoA.toFixed(1) : "0.0",
+      st.tumble ? "" : "°",
+    ],
+    // roll, when the fins are canted (or anything else spins it)
+    ...(st.maxRoll > 0.05
       ? [
           [
-            st.single ? "Chute opening load" : "Main opening load",
-            fmt(st.shockM.F, "force", 0),
-            `${uname("force")} · ${st.shockM.g.toFixed(0)} g`,
+            "Max roll rate",
+            ((st.maxRoll * 60) / (2 * Math.PI)).toFixed(0),
+            `rpm · ${(st.maxRoll / (2 * Math.PI)).toFixed(1)} rev/s`,
           ],
         ]
       : []),
@@ -575,4 +539,70 @@ function resultTiles(st, S) {
       lastSim && lastSim.D.dragScale > 0 && lastSim.D.dragScale !== 1 ? " calibrated" : "",
     ],
   ];
+  const recovery = [
+    // when each charge fires (none for a plugged motor with no chute charges)
+    ...(RS.D ? chargeEvents(st, RS.D, RS.out) : []).map((c) => {
+      const a = c.booster ? null : altAt(c.t);
+      return [
+        `${c.name} fires`,
+        c.t.toFixed(1),
+        `s${c.motor ? ` · ${+c.delay.toFixed(1)} s delay` : ""}${a != null ? ` · ${fmt(a, "alt")} ${uname("alt")}` : ""}`,
+      ];
+    }),
+    ...(st.single ? [["Speed at deployment", spd(st.vDeploy ?? st.vApo), uname("speed")]] : []),
+    ...(st.shockD
+      ? [["Drogue opening load", fmt(st.shockD.F, "force", 0), `${uname("force")} · ${st.shockD.g.toFixed(0)} g`]]
+      : []),
+    ...(st.shockM
+      ? [
+          [
+            st.single ? "Chute opening load" : "Main opening load",
+            fmt(st.shockM.F, "force", 0),
+            `${uname("force")} · ${st.shockM.g.toFixed(0)} g`,
+          ],
+        ]
+      : []),
+  ];
+  const descent = [
+    ["Max descent velocity", spd(st.maxDescent), uname("speed")],
+    ...(st.single
+      ? [
+          [
+            st.noChute ? "Descent rate, tumbling" : "Descent rate",
+            st.noChute ? (st.tumbleRate ? spd(st.tumbleRate) : "—") : st.mainRate ? spd(st.mainRate) : "—",
+            uname("speed"),
+          ],
+        ]
+      : [
+          ["Drogue descent", st.drogueRate ? spd(st.drogueRate) : "—", uname("speed")],
+          ["Main descent", st.mainRate ? spd(st.mainRate) : "—", uname("speed")],
+        ]),
+    [
+      "Landing velocity",
+      st.landed && st.vLand != null ? spd(st.vLand) : "—",
+      `${uname("speed")}${st.landed && st.vLandZ != null && fmt(st.vLandZ, "speed") !== fmt(st.vLand, "speed") ? ` · ${fmt(st.vLandZ, "speed")} vertical` : ""}`,
+    ],
+    ["Flight time", st.tLand ? st.tLand.toFixed(0) : "—", "s"],
+    [
+      `Landing distance${driftDir(st.drift, st.driftY) ? ", " + driftDir(st.drift, st.driftY) : ""}`,
+      fmt(Math.hypot(st.drift, st.driftY || 0), "alt"),
+      `${uname("alt")} · ${bigDist(st.drift, st.driftY)}`,
+    ],
+  ];
+  return [
+    ["Speed and acceleration", speed],
+    ["Ascent", ascent],
+    ["Stability", stability],
+    ["Recovery", recovery],
+    ["Descent and landing", descent],
+  ].filter(([, t]) => t.length);
+}
+/**
+ * The main results tiles, all groups in order: [label, value, unit].
+ * @param {object} st
+ * @param {object} S
+ * @returns {Array[]}
+ */
+function resultTiles(st, S) {
+  return resultGroups(st, S).flatMap(([, t]) => t);
 }

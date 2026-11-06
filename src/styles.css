@@ -567,15 +567,33 @@ h2 {
   cursor: pointer;
   padding: 0;
 }
+.statgroups {
+  margin-top: 12px;
+}
+.statgrp + .statgrp {
+  margin-top: 12px;
+}
+.stath {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 2px 5px;
+}
+/* cells draw their own dividers, so a short last row leaves plain space rather than grey */
 .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--line);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
-  margin-top: 12px;
+}
+.stats .stat {
+  box-shadow:
+    1px 0 0 var(--line),
+    0 1px 0 var(--line);
 }
 @media (min-width: 560px) {
   .stats {
@@ -2985,4 +3003,7 @@ footer .linkbtn {
     stroke-dashoffset: 0;
     width: 100%;
   }
+}
+#stagestats {
+  margin-top: 12px;
 }
