@@ -591,15 +591,33 @@ h2 {
   cursor: pointer;
   padding: 0;
 }
+.statgroups {
+  margin-top: 12px;
+}
+.statgrp + .statgrp {
+  margin-top: 12px;
+}
+.stath {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 2px 5px;
+}
+/* cells draw their own dividers, so a short last row leaves plain space rather than grey */
 .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--line);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
-  margin-top: 12px;
+}
+.stats .stat {
+  box-shadow:
+    1px 0 0 var(--line),
+    0 1px 0 var(--line);
 }
 @media (min-width: 560px) {
   .stats {
@@ -3010,6 +3028,9 @@ footer .linkbtn {
     width: 100%;
   }
 }
+#stagestats {
+  margin-top: 12px;
+}
 </style>
 <script>/* the app colours picked in Settings, set before anything is drawn: the main colour (orange by default) and the accent colour (light blue) */
 (function(){
@@ -3046,7 +3067,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">262</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">263</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3129,7 +3150,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <div class="motorchip"><span class="sub">Motor</span><b id="mchip">—</b><button id="mchange">Change</button></div>
       </div>
       <div id="flightempty"><p class="note" id="flightemptytxt">No results yet. Set up the rocket, motor and conditions, then tap Launch.</p><button class="btn" id="emptylaunch" type="button" hidden>Launch now</button></div>
-      <div class="stats" id="stats"></div>
+      <div class="statgroups" id="stats"></div>
       <div class="flags" id="flags"></div>
       <div class="ref" id="orkref" hidden></div>
     </div>
@@ -3547,7 +3568,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "262";
+const APP_BUILD = "263";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -8364,7 +8385,11 @@ function simulate(D, L, m, mb, opts = {}) {
     if (st.burnAlt === null && ignOK && t >= susEnd() - 1e-9) {
       st.burnAlt = z;
       st.burnTilt = tiltNow;
+      // average acceleration to burnout: the speed gained over the time it took
+      st.avgAccBurn = t > 0 ? sp / t : null;
     }
+    // fastest on the way down (vertical, after apogee)
+    if (st.tApo != null && phase !== "rail" && -vz > (st.maxDescent || 0)) st.maxDescent = -vz;
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if (phase === "flight" && !tumbling && t <= susEnd() + 1e-9) st.powerTilt = Math.max(st.powerTilt || 0, tiltNow);
     if (phase === "flight" && st.tApo == null && z > Math.max(2 * L.rail, 15))
@@ -8618,6 +8643,10 @@ function simulate(D, L, m, mb, opts = {}) {
       st.tLand = t - back;
       st.drift = x - vx * back;
       st.driftY = y - vy * back;
+      // speed hitting the ground (over the ground, wind drift included, as OpenRocket's ground hit velocity), and its
+      // vertical part
+      st.vLand = Math.hypot(vx, vy, vz);
+      st.vLandZ = Math.max(0, -vz);
       st.landed = true;
       if (st.tDeploy == null) st.noDeploy = true;
       break;
@@ -12860,7 +12889,6 @@ function renderResults() {
     ? "—"
     : `${fmt(st.maxAlt, "alt")}<small>${uname("alt")}</small>`;
   const SL = lastSim.SS || S;
-  const tiles = resultTiles(st, SL);
   {
     const sp = document.getElementById("stagepanel");
     sp.hidden = !st.staged;
@@ -12874,8 +12902,13 @@ function renderResults() {
   if (st.staged)
     document.getElementById("mchip").textContent =
       `${st.three && lastSim.m1 ? (lastSim.m1.cn || lastSim.m1.name) + " → " : ""}${lastSim.mb.cn || lastSim.mb.name} → ${m.cn || m.name}`;
-  document.getElementById("stats").innerHTML = tiles
-    .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
+  document.getElementById("stats").innerHTML = resultGroups(st, SL)
+    .map(
+      ([g, t]) =>
+        `<div class="statgrp"><div class="stath">${g}</div><div class="stats">${t
+          .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
+          .join("")}</div></div>`,
+    )
     .join("");
   const flags = resultFlags(st, SL, m, D);
   renderWindTable();
@@ -13209,93 +13242,24 @@ function chargeEvents(st, D, outs) {
   return out.sort((a, b) => a.t - b.t);
 }
 /**
- * The main results tiles: [label, value, unit, note].
+ * The main results tiles in groups of related ones: [title, [[label, value, unit], …]].
  * @param {object} st
  * @param {object} S
  * @returns {Array[]}
  */
-function resultTiles(st, S) {
+function resultGroups(st, S) {
   const RS = lastSim || {},
-    altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null);
-  return [
-    ["Max velocity", fmt(st.maxV, "speed"), uname("speed")],
+    altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),
+    spd = (v) => (v != null ? fmt(v, "speed") : "—");
+  const speed = [
+    ["Max ascent velocity", fmt(st.maxV, "speed"), uname("speed")],
     ["Max Mach", st.maxMach.toFixed(2), ""],
-    ["Max acceleration", fmt(st.maxAcc, "acc"), "g"],
     ["Off-rail velocity", st.offRail ? fmt(st.offRail, "speed") : "—", uname("speed")],
+    ["Max acceleration", fmt(st.maxAcc, "acc"), "g"],
     [
-      "Max angle of attack",
-      st.tumble ? "Tumbles" : st.maxAoA != null ? st.maxAoA.toFixed(1) : "0.0",
-      st.tumble ? "" : "°",
-    ],
-    ["Time to apogee", st.tApo ? st.tApo.toFixed(1) : "—", "s"],
-    [st.staged ? "Stack stability at liftoff" : "Stability at liftoff", S.marginL.toFixed(2), "cal"],
-    // the CP moves with Mach number and the CG with burning propellant: the lowest margin on the way up
-    ...(st.minMargin
-      ? [
-          st.minMargin.cal < S.marginL
-            ? ["Lowest stability in flight", st.minMargin.cal.toFixed(2), `cal · Mach ${st.minMargin.M.toFixed(2)}`]
-            : ["Lowest stability in flight", S.marginL.toFixed(2), "cal · at liftoff"],
-        ]
-      : []),
-    ["Liftoff weight", fmt(st.liftMass, "mass"), uname("mass")],
-    ["Thrust-to-weight (avg)", st.avgTtw.toFixed(1), ": 1"],
-    [
-      st.staged ? "Sustainer burnout altitude" : "Burnout altitude",
-      st.burnAlt != null ? fmt(st.burnAlt, "alt") : "—",
-      uname("alt"),
-    ],
-    ...(st.single
-      ? [
-          [
-            "Speed at deployment",
-            (st.vDeploy ?? st.vApo) != null ? fmt(st.vDeploy ?? st.vApo, "speed") : "—",
-            uname("speed"),
-          ],
-          [
-            st.noChute ? "Descent rate, tumbling" : "Descent rate",
-            st.noChute
-              ? st.tumbleRate
-                ? fmt(st.tumbleRate, "speed")
-                : "—"
-              : st.mainRate
-                ? fmt(st.mainRate, "speed")
-                : "—",
-            uname("speed"),
-          ],
-        ]
-      : [
-          ["Drogue descent", st.drogueRate ? fmt(st.drogueRate, "speed") : "—", uname("speed")],
-          ["Main descent", st.mainRate ? fmt(st.mainRate, "speed") : "—", uname("speed")],
-        ]),
-    ["Flight time", st.tLand ? st.tLand.toFixed(0) : "—", "s"],
-    [
-      `Landing distance${driftDir(st.drift, st.driftY) ? ", " + driftDir(st.drift, st.driftY) : ""}`,
-      fmt(Math.hypot(st.drift, st.driftY || 0), "alt"),
-      `${uname("alt")} · ${bigDist(st.drift, st.driftY)}`,
-    ],
-    // roll, when the fins are canted (or anything else spins it)
-    ...(st.maxRoll > 0.05
-      ? [
-          [
-            "Max roll rate",
-            ((st.maxRoll * 60) / (2 * Math.PI)).toFixed(0),
-            `rpm · ${(st.maxRoll / (2 * Math.PI)).toFixed(1)} rev/s`,
-          ],
-        ]
-      : []),
-    // when each charge fires (none for a plugged motor with no chute charges)
-    ...(RS.D ? chargeEvents(st, RS.D, RS.out) : []).map((c) => {
-      const a = c.booster ? null : altAt(c.t);
-      return [
-        `${c.name} fires`,
-        c.t.toFixed(1),
-        `s${c.motor ? ` · ${+c.delay.toFixed(1)} s delay` : ""}${a != null ? ` · ${fmt(a, "alt")} ${uname("alt")}` : ""}`,
-      ];
-    }),
-    [
-      st.staged ? "Ideal sustainer motor delay for apogee" : "Ideal motor delay for apogee",
-      (st.tApoFree ?? st.tApo) && !st.ignAfterApogee ? Math.max(0, (st.tApoFree ?? st.tApo) - st.tb).toFixed(1) : "—",
-      "s",
+      st.staged ? "Average acceleration, to sustainer burnout" : "Average acceleration, to burnout",
+      st.avgAccBurn != null ? fmt(st.avgAccBurn, "acc") : "—",
+      "g",
     ],
     ...(st.maxQ
       ? [["Max dynamic pressure", fmt(st.maxQ.q, "qpress"), `${uname("qpress")} · Mach ${st.maxQ.M.toFixed(2)}`]]
@@ -13309,15 +13273,44 @@ function resultTiles(st, S) {
           ],
         ]
       : []),
-    ...(st.shockD
-      ? [["Drogue opening load", fmt(st.shockD.F, "force", 0), `${uname("force")} · ${st.shockD.g.toFixed(0)} g`]]
+  ];
+  const ascent = [
+    ["Liftoff weight", fmt(st.liftMass, "mass"), uname("mass")],
+    ["Thrust-to-weight (avg)", st.avgTtw.toFixed(1), ": 1"],
+    [
+      st.staged ? "Sustainer burnout altitude" : "Burnout altitude",
+      st.burnAlt != null ? fmt(st.burnAlt, "alt") : "—",
+      uname("alt"),
+    ],
+    ["Time to apogee", st.tApo ? st.tApo.toFixed(1) : "—", "s"],
+    [
+      st.staged ? "Ideal sustainer motor delay for apogee" : "Ideal motor delay for apogee",
+      (st.tApoFree ?? st.tApo) && !st.ignAfterApogee ? Math.max(0, (st.tApoFree ?? st.tApo) - st.tb).toFixed(1) : "—",
+      "s",
+    ],
+  ];
+  const stability = [
+    [st.staged ? "Stack stability at liftoff" : "Stability at liftoff", S.marginL.toFixed(2), "cal"],
+    // the CP moves with Mach number and the CG with burning propellant: the lowest margin on the way up
+    ...(st.minMargin
+      ? [
+          st.minMargin.cal < S.marginL
+            ? ["Lowest stability in flight", st.minMargin.cal.toFixed(2), `cal · Mach ${st.minMargin.M.toFixed(2)}`]
+            : ["Lowest stability in flight", S.marginL.toFixed(2), "cal · at liftoff"],
+        ]
       : []),
-    ...(st.shockM
+    [
+      "Max angle of attack",
+      st.tumble ? "Tumbles" : st.maxAoA != null ? st.maxAoA.toFixed(1) : "0.0",
+      st.tumble ? "" : "°",
+    ],
+    // roll, when the fins are canted (or anything else spins it)
+    ...(st.maxRoll > 0.05
       ? [
           [
-            st.single ? "Chute opening load" : "Main opening load",
-            fmt(st.shockM.F, "force", 0),
-            `${uname("force")} · ${st.shockM.g.toFixed(0)} g`,
+            "Max roll rate",
+            ((st.maxRoll * 60) / (2 * Math.PI)).toFixed(0),
+            `rpm · ${(st.maxRoll / (2 * Math.PI)).toFixed(1)} rev/s`,
           ],
         ]
       : []),
@@ -13336,6 +13329,72 @@ function resultTiles(st, S) {
       lastSim && lastSim.D.dragScale > 0 && lastSim.D.dragScale !== 1 ? " calibrated" : "",
     ],
   ];
+  const recovery = [
+    // when each charge fires (none for a plugged motor with no chute charges)
+    ...(RS.D ? chargeEvents(st, RS.D, RS.out) : []).map((c) => {
+      const a = c.booster ? null : altAt(c.t);
+      return [
+        `${c.name} fires`,
+        c.t.toFixed(1),
+        `s${c.motor ? ` · ${+c.delay.toFixed(1)} s delay` : ""}${a != null ? ` · ${fmt(a, "alt")} ${uname("alt")}` : ""}`,
+      ];
+    }),
+    ...(st.single ? [["Speed at deployment", spd(st.vDeploy ?? st.vApo), uname("speed")]] : []),
+    ...(st.shockD
+      ? [["Drogue opening load", fmt(st.shockD.F, "force", 0), `${uname("force")} · ${st.shockD.g.toFixed(0)} g`]]
+      : []),
+    ...(st.shockM
+      ? [
+          [
+            st.single ? "Chute opening load" : "Main opening load",
+            fmt(st.shockM.F, "force", 0),
+            `${uname("force")} · ${st.shockM.g.toFixed(0)} g`,
+          ],
+        ]
+      : []),
+  ];
+  const descent = [
+    ["Max descent velocity", spd(st.maxDescent), uname("speed")],
+    ...(st.single
+      ? [
+          [
+            st.noChute ? "Descent rate, tumbling" : "Descent rate",
+            st.noChute ? (st.tumbleRate ? spd(st.tumbleRate) : "—") : st.mainRate ? spd(st.mainRate) : "—",
+            uname("speed"),
+          ],
+        ]
+      : [
+          ["Drogue descent", st.drogueRate ? spd(st.drogueRate) : "—", uname("speed")],
+          ["Main descent", st.mainRate ? spd(st.mainRate) : "—", uname("speed")],
+        ]),
+    [
+      "Landing velocity",
+      st.landed && st.vLand != null ? spd(st.vLand) : "—",
+      `${uname("speed")}${st.landed && st.vLandZ != null && fmt(st.vLandZ, "speed") !== fmt(st.vLand, "speed") ? ` · ${fmt(st.vLandZ, "speed")} vertical` : ""}`,
+    ],
+    ["Flight time", st.tLand ? st.tLand.toFixed(0) : "—", "s"],
+    [
+      `Landing distance${driftDir(st.drift, st.driftY) ? ", " + driftDir(st.drift, st.driftY) : ""}`,
+      fmt(Math.hypot(st.drift, st.driftY || 0), "alt"),
+      `${uname("alt")} · ${bigDist(st.drift, st.driftY)}`,
+    ],
+  ];
+  return [
+    ["Speed and acceleration", speed],
+    ["Ascent", ascent],
+    ["Stability", stability],
+    ["Recovery", recovery],
+    ["Descent and landing", descent],
+  ].filter(([, t]) => t.length);
+}
+/**
+ * The main results tiles, all groups in order: [label, value, unit].
+ * @param {object} st
+ * @param {object} S
+ * @returns {Array[]}
+ */
+function resultTiles(st, S) {
+  return resultGroups(st, S).flatMap(([, t]) => t);
 }
 /**
  * The RSO checklist (the go/no-go items a range safety officer asks about), the results flags, the wind table and the
