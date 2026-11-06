@@ -5,7 +5,7 @@
 /**
  * Animation state: open, current time (s), playback speed, playing, animation frame id, last frame time, camera.
  */
-const ANIM = { on: false, t: 0, speed: 1, playing: false, raf: 0, last: 0, cam: null };
+const ANIM = { on: false, t: 0, speed: 1, playing: false, raf: 0, last: 0, cam: null, countEnd: 0, countHide: 0 };
 /**
  * The rocket's outline in its own frame, for drawing: x from the nose tip, r out from the axis.
  * @param {object} DD design (or stack)
@@ -86,6 +86,7 @@ function animClose() {
   ANIM.on = false;
   ANIM.playing = false;
   cancelAnimationFrame(ANIM.raf);
+  animCount(null);
   document.getElementById("animmodal").hidden = true;
 }
 /**
@@ -95,20 +96,60 @@ function animClose() {
 function animPlay(on) {
   ANIM.playing = on;
   document.getElementById("animplay").textContent = on ? "Pause" : "Play";
+  animCount(null);
   if (on) {
     if (ANIM.t >= ANIM.tEnd - 1e-6) ANIM.t = 0;
     ANIM.last = performance.now();
+    // from the pad: count down 3, 2, 1 first (the clock starts at liftoff)
+    if (ANIM.t <= 1e-6) ANIM.countEnd = ANIM.last + 3000;
     cancelAnimationFrame(ANIM.raf);
     ANIM.raf = requestAnimationFrame(animTick);
   }
+}
+/**
+ * Shows the countdown over the animation, or hides it.
+ * @param {string|null} text "3", "2", "1" or "Liftoff!"; null hides it and stops a countdown
+ * @param {number} [ms] hide it after this long
+ */
+function animCount(text, ms) {
+  const el = document.getElementById("animcount");
+  clearTimeout(ANIM.countHide);
+  if (text == null) {
+    ANIM.countEnd = 0;
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  if (el.dataset.n !== text || el.hidden) {
+    el.dataset.n = text;
+    el.className = "animcount" + (/\d/.test(text) ? "" : " go");
+    el.innerHTML = `<span>${esc(text)}</span>`;
+    el.hidden = false;
+  }
+  if (ms)
+    ANIM.countHide = setTimeout(() => {
+      el.hidden = true;
+      el.dataset.n = "";
+    }, ms);
 }
 /**
  * One animation frame: advances the time while playing and draws.
  * @param {number} now frame time, ms
  */
 function animTick(now) {
-  if (!ANIM.on || (typeof VID !== "undefined" && VID.busy)) return; // a video being made owns the animation
-  if (ANIM.playing) {
+  if (!ANIM.on || (typeof VID !== "undefined" && VID.busy)) {
+    // a video being made owns the animation
+    if (ANIM.countEnd) animCount(null);
+    return;
+  }
+  if (ANIM.playing && ANIM.countEnd) {
+    if (now < ANIM.countEnd) animCount(String(Math.ceil((ANIM.countEnd - now) / 1000)));
+    else {
+      ANIM.countEnd = 0;
+      animCount("Liftoff!", 900);
+    }
+    ANIM.last = now;
+  } else if (ANIM.playing) {
     ANIM.t = Math.min(ANIM.tEnd, ANIM.t + ((now - ANIM.last) / 1000) * ANIM.speed);
     ANIM.last = now;
     if (ANIM.t >= ANIM.tEnd) animPlay(false);

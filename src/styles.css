@@ -2376,6 +2376,55 @@ html.typing .runbar {
 .animtop h2 {
   margin: 0;
 }
+.animstage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+/* the 3, 2, 1 before liftoff, over the rocket on the pad */
+.animcount {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font: 800 clamp(4rem, 18vmin, 9rem) / 1 var(--f-body);
+  color: #fff;
+  text-shadow:
+    0 2px 18px rgba(0, 0, 0, 0.55),
+    0 0 2px rgba(0, 0, 0, 0.6);
+}
+.animcount.go {
+  font-size: clamp(2.6rem, 11vmin, 5.5rem);
+  letter-spacing: 0.04em;
+}
+.animcount span {
+  animation: animcount 1s ease-out both;
+}
+@keyframes animcount {
+  0% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  18% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animcount span {
+    animation: none;
+  }
+}
 #animcv {
   flex: 1;
   width: 100%;

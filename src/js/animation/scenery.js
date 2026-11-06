@@ -825,6 +825,11 @@ document.getElementById("animspeed").onchange = (e) => {
   ANIM.speed = parseFloat(e.target.value) || 1;
 };
 document.getElementById("animscrub").addEventListener("input", (e) => {
+  // scrubbing skips the countdown
+  if (ANIM.countEnd) {
+    animCount(null);
+    ANIM.last = performance.now();
+  }
   ANIM.t = parseFloat(e.target.value) || 0;
   ANIM.cam = null;
   if (!ANIM.playing) animDraw();

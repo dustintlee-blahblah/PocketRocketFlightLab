@@ -446,7 +446,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
   <div class="row mrow"><button class="btn" id="railfix">Change rail length</button><button class="btn ghost" id="railok">OK</button></div></div></div>
 <div class="animmodal" id="animmodal" role="dialog" aria-modal="true" aria-labelledby="animtitle" hidden><div class="animbox">
   <div class="animtop"><h2 id="animtitle">Flight animation</h2><button class="btn ghost" id="animvideo" type="button">Export video</button></div>
-  <canvas id="animcv" aria-label="Animated side view of the flight"></canvas>
+  <div class="animstage"><canvas id="animcv" aria-label="Animated side view of the flight"></canvas><div class="animcount" id="animcount" aria-live="assertive" hidden></div></div>
   <div class="animhud" id="animhud"></div>
   <div class="animctl"><button class="btn" id="animplay" type="button">Pause</button><button class="btn ghost" id="animrestart" type="button">Restart</button>
     <select id="animspeed" aria-label="Playback speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
