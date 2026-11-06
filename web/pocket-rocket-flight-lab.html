@@ -3069,7 +3069,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">267</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">268</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3570,7 +3570,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "267";
+const APP_BUILD = "268";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -7780,7 +7780,8 @@ function simulate(D, L, m, mb, opts = {}) {
      opened at apogee, where the rocket is barely moving, from taking many seconds to fill: it fills as the rocket falls.
      The airframe hanging below adds its own drag (Cd about 0.5). */
   const FILL_N = 8;
-  let openD = null,
+  let railPrev = { d: 0, v: 0, t: 0 }, // the last step's place, speed and time on the rail
+    openD = null,
     openM = null,
     prevPh = "rail";
   /** A canopy starting to open: when, at what airspeed, the distance it needs to fill and an estimate of its fill time. */
@@ -8408,8 +8409,13 @@ function simulate(D, L, m, mb, opts = {}) {
       const dist = x * rx + y * ry + z * rz;
       if (dist >= L.rail) {
         phase = "flight";
-        st.offRail = sp;
-        st.offRailT = t;
+        // the moment it reaches the end of the rail, inside this step: speed by constant acceleration over the step
+        // (v² grows linearly with distance), time by the mean speed over the last bit
+        const p = railPrev,
+          f = dist > p.d ? Math.min(Math.max((L.rail - p.d) / (dist - p.d), 0), 1) : 1,
+          vExit = Math.sqrt(Math.max(p.v * p.v + (sp * sp - p.v * p.v) * f, 0));
+        st.offRail = vExit;
+        st.offRailT = p.v + vExit > 1e-9 ? p.t + (2 * (L.rail - p.d)) / (p.v + vExit) : t;
         s[6] = rx;
         s[7] = ry;
         s[8] = rz;
@@ -8437,6 +8443,7 @@ function simulate(D, L, m, mb, opts = {}) {
         st.error = "Thrust never exceeds weight. The rocket does not leave the rail.";
         break;
       }
+      if (phase === "rail") railPrev = { d: dist, v: sp, t };
     } else {
       if (st.tApo == null && vz < 0 && t > 0.2) {
         if (three && t < tOff) {
