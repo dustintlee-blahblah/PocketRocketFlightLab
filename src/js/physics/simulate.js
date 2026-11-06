@@ -488,7 +488,8 @@ function simulate(D, L, m, mb, opts = {}) {
      opened at apogee, where the rocket is barely moving, from taking many seconds to fill: it fills as the rocket falls.
      The airframe hanging below adds its own drag (Cd about 0.5). */
   const FILL_N = 8;
-  let openD = null,
+  let railPrev = { d: 0, v: 0, t: 0 }, // the last step's place, speed and time on the rail
+    openD = null,
     openM = null,
     prevPh = "rail";
   /** A canopy starting to open: when, at what airspeed, the distance it needs to fill and an estimate of its fill time. */
@@ -1116,8 +1117,13 @@ function simulate(D, L, m, mb, opts = {}) {
       const dist = x * rx + y * ry + z * rz;
       if (dist >= L.rail) {
         phase = "flight";
-        st.offRail = sp;
-        st.offRailT = t;
+        // the moment it reaches the end of the rail, inside this step: speed by constant acceleration over the step
+        // (v² grows linearly with distance), time by the mean speed over the last bit
+        const p = railPrev,
+          f = dist > p.d ? Math.min(Math.max((L.rail - p.d) / (dist - p.d), 0), 1) : 1,
+          vExit = Math.sqrt(Math.max(p.v * p.v + (sp * sp - p.v * p.v) * f, 0));
+        st.offRail = vExit;
+        st.offRailT = p.v + vExit > 1e-9 ? p.t + (2 * (L.rail - p.d)) / (p.v + vExit) : t;
         s[6] = rx;
         s[7] = ry;
         s[8] = rz;
@@ -1145,6 +1151,7 @@ function simulate(D, L, m, mb, opts = {}) {
         st.error = "Thrust never exceeds weight. The rocket does not leave the rail.";
         break;
       }
+      if (phase === "rail") railPrev = { d: dist, v: sp, t };
     } else {
       if (st.tApo == null && vz < 0 && t > 0.2) {
         if (three && t < tOff) {
