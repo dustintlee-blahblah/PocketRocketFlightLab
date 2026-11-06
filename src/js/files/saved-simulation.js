@@ -47,6 +47,7 @@ function prStateNow(text, runs = {}) {
     text: prHash(text),
     launch: L,
     when: document.getElementById("wxwhen").value || "",
+    site: siteCur || "",
     cfg: (BLD && BLD.cfg) || ORK_CFG || null,
     motorId,
     boostId,
@@ -491,6 +492,7 @@ async function saveDesignFile(asNew, opts = {}) {
     runs[newRun] = {
       launch: jclone(L),
       when: document.getElementById("wxwhen").value || "",
+      site: siteCur || "",
       at: new Date().toISOString(),
     };
   extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text, runs))) });

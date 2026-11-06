@@ -158,6 +158,27 @@ function siteBtnUpdate() {
   btn.hidden = !(diff || inp.value.trim());
 }
 /**
+ * Which of your saved launch sites a set of launch settings is at: the one with this name, else one within about 100 m
+ * and 10 m of elevation of its coordinates.
+ * @param {string} name the site's name as saved, or ""
+ * @param {object} l launch settings (lat, lon, elev)
+ * @returns {string} the site's name, or "" if none matches
+ */
+function siteFind(name, l) {
+  const S = sitesGet();
+  if (name && S.some((x) => x.name === name)) return name;
+  if (!(isFinite(l.lat) && isFinite(l.lon))) return "";
+  const near = S.find(
+    (x) =>
+      isFinite(x.v.lat) &&
+      isFinite(x.v.lon) &&
+      Math.abs(x.v.lat - l.lat) < 0.001 &&
+      Math.abs(x.v.lon - l.lon) < 0.001 / Math.max(Math.cos((l.lat * Math.PI) / 180), 0.2) &&
+      (x.v.elev == null || l.elev == null || Math.abs(x.v.elev - l.elev) < 10),
+  );
+  return near ? near.name : "";
+}
+/**
  * Puts the chosen site's settings back into L (after a design file brought its own).
  * @returns {string|null} the site's name
  */

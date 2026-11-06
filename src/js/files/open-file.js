@@ -235,8 +235,14 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       } else L = Object.assign(defaultLaunch(), Lnow, runL);
       savedCalUse = pk.kind === "saved";
       keptSite = null;
-      siteCur = "";
-      store.set("rfs-site", "");
+      // the launch site it was saved with, if it's one of yours (by name, else by where it is)
+      siteCur = siteFind((src && src.site) || "", L);
+      store.set("rfs-site", siteCur);
+      siteRender();
+      if (!siteCur && src && src.site)
+        savedNotes.push(
+          `Saved at ${src.site}, which isn’t one of your launch sites: save it on the Range tab to add it.`,
+        );
     }
     const mm = matchMotor(r.motor);
     let mnote = "";
