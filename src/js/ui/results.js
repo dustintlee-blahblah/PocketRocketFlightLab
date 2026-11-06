@@ -574,12 +574,17 @@ function resultGroups(st, S) {
           ],
         ]
       : [
-          // the steady rate under the drogue, or, when the main opens before it gets there, the fastest it reached
-          [
-            "Drogue descent",
-            st.drogueRate ? spd(st.drogueMaxV != null ? Math.min(st.drogueRate, st.drogueMaxV) : st.drogueRate) : "—",
-            `${uname("speed")}${st.drogueRate && st.drogueMaxV != null && st.drogueMaxV < 0.97 * st.drogueRate ? ` · main opens before its steady ${fmt(st.drogueRate, "speed")} ${uname("speed")}` : ""}`,
-          ],
+          // the average under the drogue: height lost over the time from its opening to the main's (the fall from apogee
+          // speeding up included), with the steady rate it heads for
+          (() => {
+            const sp = st.drogueSpan,
+              avg = sp && sp.t1 - sp.t0 > 0.2 ? Math.max(0, (sp.z0 - sp.z1) / (sp.t1 - sp.t0)) : null;
+            return [
+              "Drogue descent, average",
+              avg != null ? spd(avg) : st.drogueRate ? spd(st.drogueRate) : "—",
+              `${uname("speed")}${avg != null && st.drogueRate && fmt(avg, "speed") !== fmt(st.drogueRate, "speed") ? ` · steady ${fmt(st.drogueRate, "speed")}` : ""}`,
+            ];
+          })(),
           ["Main descent", st.mainRate ? spd(st.mainRate) : "—", uname("speed")],
         ]),
     [

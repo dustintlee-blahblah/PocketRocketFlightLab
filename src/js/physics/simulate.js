@@ -1100,8 +1100,12 @@ function simulate(D, L, m, mb, opts = {}) {
     }
     // fastest on the way down (vertical, after apogee)
     if (st.tApo != null && phase !== "rail" && -vz > (st.maxDescent || 0)) st.maxDescent = -vz;
-    // fastest under the drogue alone (it may not reach its steady rate before the main opens)
-    if (phase === "drogue" && -vz > (st.drogueMaxV || 0)) st.drogueMaxV = -vz;
+    // under the drogue alone: where it started and where it got to, for the average descent rate
+    if (phase === "drogue") {
+      if (!st.drogueSpan) st.drogueSpan = { t0: t, z0: z, t1: t, z1: z };
+      st.drogueSpan.t1 = t;
+      st.drogueSpan.z1 = z;
+    }
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if (phase === "flight" && !tumbling && t <= susEnd() + 1e-9) st.powerTilt = Math.max(st.powerTilt || 0, tiltNow);
     if (phase === "flight" && st.tApo == null && z > Math.max(2 * L.rail, 15))
