@@ -1098,13 +1098,11 @@ function simulate(D, L, m, mb, opts = {}) {
       // average acceleration to burnout: the speed gained over the time it took
       st.avgAccBurn = t > 0 ? sp / t : null;
     }
-    // fastest on the way down (vertical, after apogee)
-    if (st.tApo != null && phase !== "rail" && -vz > (st.maxDescent || 0)) st.maxDescent = -vz;
-    // under the drogue alone: where it started and where it got to, for the average descent rate
+    // drogue descent: the fastest it falls (vertically) once the drogue is fully open, until the main opens; and the
+    // fastest under the drogue at all, for when the main opens before the drogue has filled
     if (phase === "drogue") {
-      if (!st.drogueSpan) st.drogueSpan = { t0: t, z0: z, t1: t, z1: z };
-      st.drogueSpan.t1 = t;
-      st.drogueSpan.z1 = z;
+      if (-vz > (st.drogueAnyV || 0)) st.drogueAnyV = -vz;
+      if (openD && openD.s >= openD.sf && -vz > (st.drogueMaxV || 0)) st.drogueMaxV = -vz;
     }
     // weathercocking cone: the airframe's tilt while a motor is burning, and how far off vertical the flight path is seen from the pad
     if (phase === "flight" && !tumbling && t <= susEnd() + 1e-9) st.powerTilt = Math.max(st.powerTilt || 0, tiltNow);
