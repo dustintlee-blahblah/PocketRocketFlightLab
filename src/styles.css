@@ -1699,6 +1699,8 @@ canvas {
 }
 #chart {
   height: 240px;
+  touch-action: pan-y; /* sideways drags move the read-out line; the page still scrolls up and down */
+  cursor: crosshair;
 }
 #chart.tall {
   height: 340px;

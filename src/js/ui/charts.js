@@ -53,11 +53,92 @@ function renderSeries() {
     (b) =>
       (b.onclick = () => {
         series = b.dataset.s;
+        CHART_CUR.t = null;
         store.set("rfs-series", series);
         renderSeries();
         drawChart();
       }),
   );
+}
+/* the flight chart's read-out line: the time you touched (null for none), the run it's for, and how the last drawing
+   mapped time to the screen (for turning a touch into a time) */
+const CHART_CUR = { t: null, sim: null, geo: null };
+/**
+ * A value of a series at a time, read off straight between its samples (null outside them).
+ * @param {number[]} ts times, increasing
+ * @param {number[]} vs values
+ * @param {number} t
+ * @returns {number|null}
+ */
+function chartValAt(ts, vs, t) {
+  if (!ts || ts.length < 2 || t < ts[0] || t > ts[ts.length - 1]) return null;
+  let lo = 0,
+    hi = ts.length - 1;
+  while (hi - lo > 1) {
+    const m = (lo + hi) >> 1;
+    ts[m] <= t ? (lo = m) : (hi = m);
+  }
+  const a = vs[lo],
+    b = vs[hi];
+  if (!isFinite(a) || !isFinite(b)) return isFinite(a) ? a : isFinite(b) ? b : null;
+  return ts[hi] > ts[lo] ? a + ((b - a) * (t - ts[lo])) / (ts[hi] - ts[lo]) : a;
+}
+/**
+ * Draws the read-out line at the touched time, with each line's value where it crosses it.
+ * @param {CanvasRenderingContext2D} c
+ * @param {object} g the chart's layout: X, Y, W, H, pads, x1, and the lines [{ts, vs, color, fmt}]
+ */
+function drawChartCursor(c, g) {
+  const t = CHART_CUR.t;
+  if (t == null || t < 0 || t > g.x1) return;
+  const x = g.X(t),
+    top = g.padT,
+    bot = g.H - g.padB;
+  c.save();
+  c.strokeStyle = css("--ink");
+  c.globalAlpha = 0.7;
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(x, top);
+  c.lineTo(x, bot);
+  c.stroke();
+  c.globalAlpha = 1;
+  c.font = "10px " + css("--f-mono").split(",")[0].replace(/"/g, "") + ", monospace";
+  // the time, along the bottom
+  c.textBaseline = "bottom";
+  const left = x > g.W - 70;
+  c.textAlign = left ? "right" : "left";
+  c.fillStyle = css("--muted");
+  c.fillText(`${t.toFixed(t < 10 ? 2 : 1)} s`, x + (left ? -4 : 4), bot - 2);
+  // each line's value, beside where it crosses (kept apart and inside the plot)
+  const marks = g.lines
+    .map((L) => {
+      const v = chartValAt(L.ts, L.vs, t);
+      return v == null ? null : { y: g.Y(v), text: L.fmt(v), color: L.color };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.y - b.y);
+  let last = -Infinity;
+  const panel = css("--panel");
+  for (const m of marks) {
+    c.fillStyle = m.color;
+    c.beginPath();
+    c.arc(x, m.y, 3.5, 0, 7);
+    c.fill();
+    const ty = Math.min(Math.max(m.y - 7, top + 6, last + 13), bot - 18);
+    last = ty;
+    const w = c.measureText(m.text).width;
+    const tx = left ? x - 7 - w : x + 7;
+    c.fillStyle = panel;
+    c.globalAlpha = 0.85;
+    c.fillRect(tx - 2, ty - 6, w + 4, 12);
+    c.globalAlpha = 1;
+    c.fillStyle = m.color;
+    c.textAlign = "left";
+    c.textBaseline = "middle";
+    c.fillText(m.text, tx, ty);
+  }
+  c.restore();
 }
 /**
  * The events marked on the flight chart (burnout, apogee, chute, main, landing...).
@@ -179,6 +260,17 @@ function drawChart() {
   xt.forEach((t) => c.fillText(String(+t.toFixed(2)), X(t), H - padB + 6));
   c.textAlign = "left";
   c.fillText("s", W - padR - 8, H - padB + 6);
+  if (CHART_CUR.sim !== lastSim) {
+    CHART_CUR.sim = lastSim;
+    CHART_CUR.t = null;
+  }
+  // the lines the read-out line reads values from, as they're drawn below
+  const curDec = dim === "acc" ? 1 : series === "pitch" || series === "aoa" ? 1 : 0,
+    curFmt = (v) =>
+      series === "pitch" || series === "aoa"
+        ? `${v.toFixed(1)}°`
+        : `${(Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(Math.max(curDec, Math.abs(v) < 10 ? 1 : 0))).replace(/^-0(\.0+)?$/, "0")} ${uname(dim)}`,
+    curLines = [{ ts: xs, vs: ys, color: css("--accent"), fmt: curFmt }];
   // events
   const ev = chartEvents(st);
   c.setLineDash([3, 3]);
@@ -244,21 +336,23 @@ function drawChart() {
   c.fillStyle = css("--ink");
   c.textBaseline = "bottom";
   c.textAlign = X(xs[im]) > W - 90 ? "right" : "left";
-  c.fillText(
-    series === "drift"
-      ? `${Math.abs(ys[im]).toFixed(0)} ${uname(dim)} ${ys[im] < 0 ? "downwind" : "upwind"}`
-      : series === "pitch"
-        ? `${ys[im].toFixed(1)}° max`
-        : series === "aoa"
-          ? `${ys[im].toFixed(1)}° off the rail`
-          : `${ys[im].toFixed(dim === "acc" ? 1 : 0)} ${uname(dim)}`,
-    X(xs[im]) + (c.textAlign === "left" ? 7 : -7),
-    series === "drift" && ys[im] < 0 && Y(ys[im]) + 18 < H - padB
-      ? Y(ys[im]) + 18
-      : Y(ys[im]) - 3 > 14
-        ? Y(ys[im]) - 3
-        : Y(ys[im]) + 16,
-  );
+  // (the peak's label gives way to the read-out line's)
+  if (CHART_CUR.t == null || CHART_CUR.sim !== lastSim)
+    c.fillText(
+      series === "drift"
+        ? `${Math.abs(ys[im]).toFixed(0)} ${uname(dim)} ${ys[im] < 0 ? "downwind" : "upwind"}`
+        : series === "pitch"
+          ? `${ys[im].toFixed(1)}° max`
+          : series === "aoa"
+            ? `${ys[im].toFixed(1)}° off the rail`
+            : `${ys[im].toFixed(dim === "acc" ? 1 : 0)} ${uname(dim)}`,
+      X(xs[im]) + (c.textAlign === "left" ? 7 : -7),
+      series === "drift" && ys[im] < 0 && Y(ys[im]) + 18 < H - padB
+        ? Y(ys[im]) + 18
+        : Y(ys[im]) - 3 > 14
+          ? Y(ys[im]) - 3
+          : Y(ys[im]) + 16,
+    );
   let bLeg = "";
   if (MEAS) {
     const mc = css("--ink");
@@ -303,6 +397,7 @@ function drawChart() {
         }
       });
       c.restore();
+      curLines.push({ ts: o.t, vs: o.y, color: mc, fmt: curFmt });
       bLeg += `<span style="--c:${mc}">${esc(o.label)}${o.ev.length ? " (" + o.ev.map((e) => e[1] + " " + e[0].toFixed(1) + " s").join(", ") + ")" : ""}</span>`;
     });
   }
@@ -320,6 +415,7 @@ function drawChart() {
     });
     c.stroke();
     c.restore();
+    curLines.push({ ts: out.bt, vs: out.balt.map((v) => toDisp(v, "alt")), color: bc, fmt: curFmt });
     bLeg += `<span style="--c:${bc}">Booster altitude</span>`;
   }
   if (series === "alt" && out.b1alt && out.b1alt.length) {
@@ -336,6 +432,7 @@ function drawChart() {
     });
     c.stroke();
     c.restore();
+    curLines.push({ ts: out.b1t, vs: out.b1alt.map((v) => toDisp(v, "alt")), color: bc, fmt: curFmt });
     bLeg += `<span style="--c:${bc}">First-stage altitude</span>`;
   }
   if (series === "pitch") {
@@ -380,6 +477,8 @@ function drawChart() {
     const cr = toDisp(Math.abs(out.cross[out.cross.length - 1] || 0), dim);
     bLeg = `<span style="--c:${acc}">Lands ${Math.abs(v).toFixed(0)} ${uname(dim)} ${v < 0 ? "downwind" : "upwind"}${cr >= Math.max(3, 0.1 * Math.abs(v)) ? `, ${cr.toFixed(0)} ${uname(dim)} crosswind` : ""}</span>`;
   }
+  CHART_CUR.geo = { padL, padR, W, x1 };
+  drawChartCursor(c, { X, Y, W, H, padT, padB, x1, lines: curLines });
   document.getElementById("chartlegend").innerHTML =
     `<span style="--c:${acc}">${series === "drift" ? "Drift (+ upwind, − downwind)" : series === "pitch" ? "Pitch from vertical" : series === "aoa" ? "Angle of attack" : label} (${uname(dim)}) vs time</span>` +
     bLeg +
@@ -387,6 +486,50 @@ function drawChart() {
       .filter((e) => e[0] != null && e[0] <= x1)
       .map((e) => `<span style="--c:var(--muted)">${e[1]} ${e[0].toFixed(1)} s</span>`)
       .join("");
+}
+// touch (or click, or drag) the flight chart to read its values at a time; touch the line again to clear it
+{
+  const cv = document.getElementById("chart");
+  let down = null;
+  const tAt = (e) => {
+    const g = CHART_CUR.geo,
+      r = cv.getBoundingClientRect();
+    if (!g) return null;
+    const t = ((e.clientX - r.left - g.padL) / (g.W - g.padL - g.padR)) * g.x1;
+    return Math.min(Math.max(t, 0), g.x1);
+  };
+  const isTime = () => lastSim && series !== "cone" && series !== "land";
+  cv.addEventListener("pointerdown", (e) => {
+    if (!isTime() || !CHART_CUR.geo) return;
+    const t = tAt(e),
+      g = CHART_CUR.geo,
+      px = (dt) => (Math.abs(dt) / g.x1) * (g.W - g.padL - g.padR);
+    down = { x: e.clientX, y: e.clientY, clear: CHART_CUR.t != null && px(t - CHART_CUR.t) < 10, moved: false };
+    if (!down.clear) {
+      CHART_CUR.t = t;
+      drawChart();
+    }
+    try {
+      cv.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!down) return;
+    if (Math.abs(e.clientX - down.x) > 4) down.moved = true;
+    if (down.moved) {
+      CHART_CUR.t = tAt(e);
+      drawChart();
+    }
+  });
+  const up = () => {
+    if (down && down.clear && !down.moved) {
+      CHART_CUR.t = null;
+      drawChart();
+    }
+    down = null;
+  };
+  cv.addEventListener("pointerup", up);
+  cv.addEventListener("pointercancel", () => (down = null));
 }
 /**
  * Writes the highest wind (from the wind sweep) that keeps the airframe inside the safety cone while the motor burns.
