@@ -2400,6 +2400,55 @@ html.typing .runbar {
 .animtop h2 {
   margin: 0;
 }
+.animstage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+/* the 3, 2, 1 before liftoff, over the rocket on the pad */
+.animcount {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font: 800 clamp(4rem, 18vmin, 9rem) / 1 var(--f-body);
+  color: #fff;
+  text-shadow:
+    0 2px 18px rgba(0, 0, 0, 0.55),
+    0 0 2px rgba(0, 0, 0, 0.6);
+}
+.animcount.go {
+  font-size: clamp(2.6rem, 11vmin, 5.5rem);
+  letter-spacing: 0.04em;
+}
+.animcount span {
+  animation: animcount 1s ease-out both;
+}
+@keyframes animcount {
+  0% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  18% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animcount span {
+    animation: none;
+  }
+}
 #animcv {
   flex: 1;
   width: 100%;
@@ -2410,6 +2459,7 @@ html.typing .runbar {
 .animhud {
   display: flex;
   flex-wrap: wrap;
+  min-height: 1.4em; /* holds its line while empty (the countdown), so the picture doesn't jump */
   gap: 2px 14px;
   font: 500 0.82rem/1.4 var(--f-mono);
   color: var(--muted);
@@ -2996,7 +3046,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">261</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">262</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3383,7 +3433,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
   <div class="row mrow"><button class="btn" id="railfix">Change rail length</button><button class="btn ghost" id="railok">OK</button></div></div></div>
 <div class="animmodal" id="animmodal" role="dialog" aria-modal="true" aria-labelledby="animtitle" hidden><div class="animbox">
   <div class="animtop"><h2 id="animtitle">Flight animation</h2><button class="btn ghost" id="animvideo" type="button">Export video</button></div>
-  <canvas id="animcv" aria-label="Animated side view of the flight"></canvas>
+  <div class="animstage"><canvas id="animcv" aria-label="Animated side view of the flight"></canvas><div class="animcount" id="animcount" aria-live="assertive" hidden></div></div>
   <div class="animhud" id="animhud"></div>
   <div class="animctl"><button class="btn" id="animplay" type="button">Pause</button><button class="btn ghost" id="animrestart" type="button">Restart</button>
     <select id="animspeed" aria-label="Playback speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
@@ -3497,7 +3547,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "261";
+const APP_BUILD = "262";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -14448,7 +14498,7 @@ const SERIES = {
 /**
  * Animation state: open, current time (s), playback speed, playing, animation frame id, last frame time, camera.
  */
-const ANIM = { on: false, t: 0, speed: 1, playing: false, raf: 0, last: 0, cam: null };
+const ANIM = { on: false, t: 0, speed: 1, playing: false, raf: 0, last: 0, cam: null, countEnd: 0, countHide: 0 };
 /**
  * The rocket's outline in its own frame, for drawing: x from the nose tip, r out from the axis.
  * @param {object} DD design (or stack)
@@ -14529,6 +14579,7 @@ function animClose() {
   ANIM.on = false;
   ANIM.playing = false;
   cancelAnimationFrame(ANIM.raf);
+  animCount(null);
   document.getElementById("animmodal").hidden = true;
 }
 /**
@@ -14538,20 +14589,60 @@ function animClose() {
 function animPlay(on) {
   ANIM.playing = on;
   document.getElementById("animplay").textContent = on ? "Pause" : "Play";
+  animCount(null);
   if (on) {
     if (ANIM.t >= ANIM.tEnd - 1e-6) ANIM.t = 0;
     ANIM.last = performance.now();
+    // from the pad: count down 3, 2, 1 first (the clock starts at liftoff)
+    if (ANIM.t <= 1e-6) ANIM.countEnd = ANIM.last + 3000;
     cancelAnimationFrame(ANIM.raf);
     ANIM.raf = requestAnimationFrame(animTick);
   }
+}
+/**
+ * Shows the countdown over the animation, or hides it.
+ * @param {string|null} text "3", "2", "1" or "Liftoff!"; null hides it and stops a countdown
+ * @param {number} [ms] hide it after this long
+ */
+function animCount(text, ms) {
+  const el = document.getElementById("animcount");
+  clearTimeout(ANIM.countHide);
+  if (text == null) {
+    ANIM.countEnd = 0;
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  if (el.dataset.n !== text || el.hidden) {
+    el.dataset.n = text;
+    el.className = "animcount" + (/\d/.test(text) ? "" : " go");
+    el.innerHTML = `<span>${esc(text)}</span>`;
+    el.hidden = false;
+  }
+  if (ms)
+    ANIM.countHide = setTimeout(() => {
+      el.hidden = true;
+      el.dataset.n = "";
+    }, ms);
 }
 /**
  * One animation frame: advances the time while playing and draws.
  * @param {number} now frame time, ms
  */
 function animTick(now) {
-  if (!ANIM.on || (typeof VID !== "undefined" && VID.busy)) return; // a video being made owns the animation
-  if (ANIM.playing) {
+  if (!ANIM.on || (typeof VID !== "undefined" && VID.busy)) {
+    // a video being made owns the animation
+    if (ANIM.countEnd) animCount(null);
+    return;
+  }
+  if (ANIM.playing && ANIM.countEnd) {
+    if (now < ANIM.countEnd) animCount(String(Math.ceil((ANIM.countEnd - now) / 1000)));
+    else {
+      ANIM.countEnd = 0;
+      animCount("Liftoff!", 900);
+    }
+    ANIM.last = now;
+  } else if (ANIM.playing) {
     ANIM.t = Math.min(ANIM.tEnd, ANIM.t + ((now - ANIM.last) / 1000) * ANIM.speed);
     ANIM.last = now;
     if (ANIM.t >= ANIM.tEnd) animPlay(false);
@@ -15266,8 +15357,10 @@ function animDraw(target) {
   const mono = css("--f-mono").split(",")[0].replace(/"/g, ""),
     fam = css("--f-body").split(",")[0].replace(/"/g, "");
   if (!video) {
-    document.getElementById("animhud").innerHTML =
-      `<b>${phase}</b><span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span><span>${Math.abs(x) < 0.5 ? "Over the pad" : `${fmt(Math.abs(x), "alt")} ${uname("alt")} ${x > 0 ? "downwind" : "upwind"}`}</span>`;
+    // nothing during the countdown; on the pad, no flight phase yet
+    document.getElementById("animhud").innerHTML = ANIM.countEnd
+      ? ""
+      : `${t > 0 ? `<b>${phase}</b>` : ""}<span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span><span>${Math.abs(x) < 0.5 ? "Over the pad" : `${fmt(Math.abs(x), "alt")} ${uname("alt")} ${x > 0 ? "downwind" : "upwind"}`}</span>`;
     const sc = document.getElementById("animscrub");
     if (document.activeElement !== sc) sc.value = String(t);
   } else {
@@ -15409,6 +15502,11 @@ document.getElementById("animspeed").onchange = (e) => {
   ANIM.speed = parseFloat(e.target.value) || 1;
 };
 document.getElementById("animscrub").addEventListener("input", (e) => {
+  // scrubbing skips the countdown
+  if (ANIM.countEnd) {
+    animCount(null);
+    ANIM.last = performance.now();
+  }
   ANIM.t = parseFloat(e.target.value) || 0;
   ANIM.cam = null;
   if (!ANIM.playing) animDraw();
