@@ -41,6 +41,7 @@ function boosterFinSets(D) {
       cdo: D.bFinCdOverride || 0,
       pts: D.bFinPts || null,
       cant: D.bFinCant || 0,
+      par: D.bFinPar || 0,
     },
     ...xfinSets(D.bExtraFins, D.bFinFinish ?? D.finish),
   ];
@@ -146,7 +147,16 @@ function stackStability(D, mS, mB, m1) {
   };
   const cgL = cgWith(mBurn.totalMass),
     cgB = cgWith(mBurn.totalMass - mBurn.propMass);
-  return { cp, cgL, cgB, marginL: (cp - cgL) / d, marginB: (cp - cgB) / d, d };
+  return {
+    cp,
+    cgL,
+    cgB,
+    marginL: (cp - cgL) / d,
+    marginB: (cp - cgB) / d,
+    marginL5: (cpAtAoA(A, 5) - cgL) / d,
+    marginL10: (cpAtAoA(A, 10) - cgL) / d,
+    d,
+  };
 }
 /**
  * A motor's thrust curve as functions of time from ignition.
@@ -464,7 +474,6 @@ function simulate(D, L, m, mb, opts = {}) {
   /* pitch motion after rail exit: Barrowman normal force acting at the CP, Allen–Perkins body crossflow at larger angles,
      aerodynamic damping and jet damping (Mandell, Caporaso & Bengen, Topics in Advanced Model Rocketry, 1973).
      Moment of inertia: each airframe as a uniform rod, each motor as a uniform rod at its own position. */
-  const CROSS = 0.65 * 1.2; // crossflow: η·Cdc for a circular cylinder
   const GUIDES = railGuides(staged ? fullStack(D) : D); // where the rail guides are (on the whole stack), for the friction on the rail
   const airSp = (z, vx, vy, vz, t) => {
     const W = windVec(z, t);
@@ -589,7 +598,7 @@ function simulate(D, L, m, mb, opts = {}) {
             ca = Math.abs(Math.cos(al)),
             C = cnaPartsM(G, vrel / atm.a);
           const cL = C.cn * sa * ca,
-            cX = ((CROSS * G.sideArea) / G.Aref) * sa * sa,
+            cX = ((CROSS_K * G.sideArea) / G.Aref) * sa * sa,
             Nf = 0.5 * atm.rho * vrel * vrel * G.Aref * (cL + cX);
           fw = [(Nf * cx) / cm, (Nf * cy) / cm, (Nf * cz) / cm];
           xN = cL + cX > 0 ? (cL * C.cp + cX * G.xPlan) / (cL + cX) : cg;
@@ -664,7 +673,7 @@ function simulate(D, L, m, mb, opts = {}) {
       const sb = ca >= 0 ? 1 : -1,
         cnB = C.cn - C.cnFin,
         cnLin = (sb * cnB + ks * C.cnFin) * sa * Math.abs(ca),
-        cnX = ((CROSS * G.sideArea) / G.Aref) * sa * sa,
+        cnX = ((CROSS_K * G.sideArea) / G.Aref) * sa * sa,
         cnXf =
           ald <= 18
             ? 0

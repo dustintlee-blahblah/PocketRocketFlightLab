@@ -440,6 +440,7 @@ function finSetsOf(D) {
       cdo: D.finCdOverride || 0,
       pts: D.finPts || null,
       cant: D.finCant || 0,
+      par: D.finPar || 0,
     },
     ...xfinSets(D.extraFins, D.finFinish ?? D.finish),
   ];
@@ -467,6 +468,7 @@ function xfinSets(list, rs) {
     cdo: f.cdo || 0,
     pts: f.pts || null,
     cant: f.cant || 0,
+    par: f.par || 0,
   }));
 }
 /**
@@ -678,6 +680,10 @@ function aero(D) {
   });
   const last = segs[segs.length - 1],
     baseArea = Math.PI * last.r2 * last.r2;
+  /* fin-fin interference: more than four fins around the body at one station shield each other, so each set's lift is
+     scaled by the count of all fins on the same body overlapping it along its length (Barrowman's 3- and 4-fin results don't cover more;
+     factors as in OpenRocket: 5 fins 0.948, 6 0.913, 7 0.854, 8 0.81, more 0.75) */
+  const finInterK = (n) => (n <= 4 ? 1 : n === 5 ? 0.948 : n === 6 ? 0.913 : n === 7 ? 0.854 : n === 8 ? 0.81 : 0.75);
   const fins = finSetsOf(D)
     .filter((f) => f && f.n > 0 && f.a > 0 && f.s > 0)
     .map((f) => {
@@ -714,6 +720,15 @@ function aero(D) {
         cant: f.cant || 0,
       };
     });
+  for (const f of fins) {
+    const a0 = f.xLead,
+      a1 = f.xLead + f.a;
+    // fins on the same body only (pods carry their own)
+    const n = fins
+      .filter((g) => (g.par || 0) === (f.par || 0) && g.xLead < a1 - 0.005 && g.xLead + g.a > a0 + 0.005)
+      .reduce((t, g) => t + g.n, 0);
+    f.kff = finInterK(Math.max(n, f.n));
+  }
   let buttons = [];
   if (D.railPreset === "custom")
     buttons = (D.buttons || []).map((b) => ({
@@ -1021,7 +1036,7 @@ function cnaParts(A, M = 0) {
       xb = f.xLead,
       rf = radiusAt(A, xb + a / 2);
     const fm = finLiftRatio(f, M),
-      cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * fm.k;
+      cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * fm.k * (f.kff || 1);
     parts.push({ cn: cnf, x: xb + f.xcp + fm.dx, fin: true });
   }
   const cn = parts.reduce((t, p) => t + p.cn, 0),
@@ -1088,12 +1103,29 @@ function cpOf(A) {
     const { a, s, n } = f,
       xb = f.xLead,
       rf = radiusAt(A, xb + a / 2);
-    const cnf = ((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2));
+    const cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * (f.kff || 1);
     const xf = xb + f.xcp;
     CN += cnf;
     CNx += cnf * xf;
   }
   return CN > 0 ? CNx / CN : A.L / 2;
+}
+/** body crossflow: η·Cdc for a circular cylinder (Allen–Perkins), the normal force a body makes across the flow */
+const CROSS_K = 0.65 * 1.2;
+/**
+ * The center of pressure at an angle of attack, as the flight works it out: Barrowman's normal force (sin α·cos α)
+ * plus the body's crossflow lift (sin²α), which acts at the middle of the body's side outline. On a long rocket that's
+ * ahead of the Barrowman CP, so the CP moves forward as the rocket tilts. Below the fins' stall (about 18°).
+ * @param {object} A aerodynamic model
+ * @param {number} deg angle of attack, degrees
+ * @returns {number} m from the nose tip
+ */
+function cpAtAoA(A, deg) {
+  const C = cnaParts(A, 0),
+    a = (deg * Math.PI) / 180,
+    lin = C.cn * Math.sin(a) * Math.cos(a),
+    x = ((CROSS_K * A.sideArea) / A.Aref) * Math.sin(a) ** 2;
+  return lin + x > 0 ? (lin * C.cp + x * A.xPlan) / (lin + x) : C.cp;
 }
 /**
  * Static stability with a motor: the center of pressure, the CG at liftoff and at burnout, and the margins.
@@ -1110,5 +1142,13 @@ function stability(D, m) {
   const cgL = (D.dryMass * D.cgEmpty + m.totalMass * mx) / (D.dryMass + m.totalMass);
   const mb = m.totalMass - m.propMass;
   const cgB = (D.dryMass * D.cgEmpty + mb * mx) / (D.dryMass + mb);
-  return { cp, cgL, cgB, marginL: (cp - cgL) / d, marginB: (cp - cgB) / d };
+  return {
+    cp,
+    cgL,
+    cgB,
+    marginL: (cp - cgL) / d,
+    marginB: (cp - cgB) / d,
+    marginL5: (cpAtAoA(A, 5) - cgL) / d,
+    marginL10: (cpAtAoA(A, 10) - cgL) / d,
+  };
 }

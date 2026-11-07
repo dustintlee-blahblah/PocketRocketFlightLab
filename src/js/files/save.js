@@ -68,6 +68,8 @@ const SAVE_IGNORE = new Set([
   "bMountDia",
   "finPts",
   "bFinPts",
+  "finPar",
+  "bFinPar",
   "inertiaMass",
   "inertiaSource",
   "bInertiaMass",

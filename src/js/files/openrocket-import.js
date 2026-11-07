@@ -422,6 +422,7 @@ function parseOrk(xml) {
     const v = e ? parseFloat(e.textContent) : 0;
     return !isFinite(v) || v < 0 ? 0 : v > 0 ? v : e ? 1e-12 : 0;
   }; // an override of 0 (OpenRocket: the part adds no drag) is kept as 1e-12
+  let compUid = 0; // numbers each component, so fin sets know which body they're on
   let curStage = 0,
     parDepth = 0;
   const sMountAft = [],
@@ -675,6 +676,7 @@ function parseOrk(xml) {
         si: curStage,
         cdo: odc(c),
         oi: ord(c, "f", FINRE),
+        par: parent ? parent.uid : 0,
       });
     } else if (tag === "masscomponent") {
       m = num(c, "mass");
@@ -779,7 +781,7 @@ function parseOrk(xml) {
     // children
     const kids = subs(c);
     const innerOR = Math.max(0, ...kids.filter((k) => k.tagName === "innertube").map((k) => num(k, "outerradius")));
-    const me = { x, len, ri: ri || ro, ro: ro || (parent && parent.ro) || 0, innerOR };
+    const me = { x, len, ri: ri || ro, ro: ro || (parent && parent.ro) || 0, innerOR, uid: ++compUid };
     // pods and side boosters have their own outline: they don't change what an automatic size on the main body follows
     const lastR = R.last;
     if (tag === "parallelstage") parDepth++; // an OpenRocket parallel (side booster) stage: its motors' charges are its own
@@ -979,6 +981,7 @@ function parseOrk(xml) {
       edge: EDGE0(g.edge),
       cdo: g.cdo || 0,
       oi: g.oi,
+      par: g.par || 0,
       ...(g.pts ? { pts: g.pts } : {}),
     }));
     const length = x1 - x0;
@@ -1086,6 +1089,7 @@ function parseOrk(xml) {
     finThick: f.t,
     finAft: S.fAft,
     finPts: f.pts || null,
+    finPar: f.par || 0,
     finEdge: EDGE(f.edge),
     finCdOverride: f.cdo || 0,
     bFinCdOverride: 0,
@@ -1145,6 +1149,7 @@ function parseOrk(xml) {
       bFinSpan: bf.span,
       bFinSweep: bf.sweep,
       bFinPts: bf.pts || null,
+      bFinPar: bf.par || 0,
       bFinThick: bf.t,
       bFinAft: B.fAft,
       bFinEdge: EDGE(bf.edge),
@@ -1213,6 +1218,7 @@ function parseOrk(xml) {
       bFinSpan: cf.span,
       bFinSweep: cf.sweep,
       bFinPts: cf.pts || null,
+      bFinPar: cf.par || 0,
       bFinThick: cf.t,
       bFinAft: C1.fAft,
       bFinEdge: EDGE(cf.edge),
