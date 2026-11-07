@@ -260,6 +260,18 @@ function bldNew(type, R = 0.0333) {
  * Design-wide builder settings that aren't parts (finish, inertia, drag adjustments), at their defaults.
  * @returns {object}
  */
+/**
+ * True when an override field is in use: it has a value and its Override switch isn't off. Values from a design file
+ * have no switch yet and count as on.
+ * @param {object} O the part, stage or rocket settings that hold it
+ * @param {string} k the field (known, knownCg, cdo, cdOverride, dryInertia, bDryInertia, s1DryInertia)
+ * @returns {boolean}
+ */
+function bldOvOn(O, k) {
+  if (!O || O[k + "On"] === false) return false;
+  const v = O[k];
+  return k === "knownCg" || k === "cdo" ? v != null && isFinite(v) : +v > 0;
+}
 function bldSettings() {
   return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
 }

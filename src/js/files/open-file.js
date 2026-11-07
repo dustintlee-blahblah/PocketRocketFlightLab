@@ -343,21 +343,15 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
         nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
       const prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null,
-        prevOv = opts.cfg != null && BLD && BLD.settings ? bldOv() : null;
+        prevOff = opts.cfg != null && BLD ? bldOffList() : null;
       if (isR) ORK_SIM = null; // RockSim files are read as one converted OpenRocket design with the chosen run
       BLD = bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR });
       ORK_SIM = null;
       // your design notes, kept per motor configuration
       const notes = prevNotes || (saved && saved.notes && typeof saved.notes === "object" ? saved.notes : null);
       if (notes) BLD.notes = jclone(notes);
-      // the override switches saved with the file (or kept while reopening it for another motor configuration)
-      const ovs = prevOv || (saved && saved.overrides && typeof saved.overrides === "object" ? saved.overrides : null);
-      if (ovs) {
-        BLD.settings = BLD.settings || bldSettings();
-        if (ovs.mass === false) BLD.settings.ovMass = false;
-        if (ovs.cg === false) BLD.settings.ovCg = false;
-        if (ovs.cd === false) BLD.settings.ovCd = false;
-      }
+      // overrides switched off when the file was saved (or while reopening it for another motor configuration)
+      bldOffApply(prevOff || (saved && Array.isArray(saved.overridesOff) ? saved.overridesOff : []));
       BLD.name = r.design.name || BLD.name;
       BLD.bp = { comps: {}, splits: {} };
       // Pocket Rocket's own files inside the .ork: from the opened file, or (reopening it for another motor configuration)

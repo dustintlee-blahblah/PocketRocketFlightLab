@@ -3009,3 +3009,61 @@ footer .linkbtn {
 #stagestats {
   margin-top: 12px;
 }
+/* an override field: the value and its Override switch side by side */
+.ovrow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ovrow .in {
+  flex: 1;
+  min-width: 0;
+}
+.ovrow .in input:disabled {
+  opacity: 0.6;
+}
+.ovsw {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+  user-select: none;
+}
+.ovsw input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.ovtrack {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--line);
+  position: relative;
+  transition: background 0.15s;
+}
+.ovtrack::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+.ovsw input:checked + .ovtrack {
+  background: var(--accent, #d9501c);
+}
+.ovsw input:checked + .ovtrack::after {
+  transform: translateX(16px);
+}
+.ovsw input:focus-visible + .ovtrack {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

@@ -125,23 +125,20 @@ function bldInfo(F) {
       "The surface finish for every part. Rougher finishes add skin-friction drag.\n\nAs set on each part keeps the finishes from the design file.",
     known: t
       ? F.p && F.p.knownCalc
-        ? "The weight RockSim calculated for this part, kept from the design file. Enter 0 to have this app calculate it from the part’s size and material."
-        : "A weighed value for this part. It replaces the weight calculated from its size and material.\n\n0 calculates it."
-      : "The weight of the rocket ready to fly but without its motor, if you’ve weighed it. It replaces the total the parts add up to.\n\n0 uses the parts.",
+        ? "This part’s weight. With Override on, it uses the weight RockSim calculated (kept from the design file); switch Override off to calculate it from the part’s size and material instead."
+        : "This part’s weight. Off, it’s calculated from the part’s size and material. Switch Override on to enter a weighed value, which replaces the calculated one."
+      : "The rocket’s weight ready to fly, without its motor. Off, it’s the total the parts add up to. Switch Override on to enter the weight you measured, which replaces that total.",
     knownAll:
       "Tick if the weight you entered includes everything attached inside this part (fins, mounts, recovery and so on), so those parts aren’t counted twice.",
     knownCg:
-      "The measured balance point without the motor, measured from the nose tip (for a booster, from its front end). Balance the rocket ready to fly, without its motor.\n\nLeave blank to use the parts.",
+      "The balance point without the motor, measured from the nose tip (for a booster, from its front end). Off, it’s worked out from the parts. Switch Override on to enter the point you measured, balancing the rocket ready to fly without its motor.",
     dryInertia:
-      "The rocket’s resistance to turning end over end about its CG, without the motor. It sets how quickly the rocket weathercocks and how strongly it oscillates.\n\n0 estimates it from the parts; enter a measured value if you have one (for example from a swing test).",
-    ovMass:
-      "Untick to fly the rocket at the weight its parts add up to, leaving out every weight override in the design: the measured weights entered for parts or stages, and any whole-rocket weight from the design file.\n\nRockSim’s own calculated part weights aren’t overrides, so they stay. Saving to the design file keeps the overrides either way.",
-    ovCg: "Untick to use the balance point the parts give, leaving out every CG override in the design (the measured CGs entered for parts or stages, and any from the design file).\n\nSaving to the design file keeps the overrides either way.",
-    ovCd: "Untick to use the calculated drag, leaving out every drag override in the design: a fixed Cd for the whole rocket (the Cd override below, or RockSim’s fixed Cd) and any Cd overrides on single parts from an OpenRocket file.\n\nSaving to the design file keeps the overrides either way.",
+      "The rocket’s resistance to turning end over end about its CG, without the motor. It sets how quickly the rocket weathercocks and how strongly it oscillates.\n\nOff, it’s estimated from the parts. Switch Override on to enter a measured value (for example from a swing test).",
+    cdo: "A fixed drag coefficient for this part from the design file. Override on uses it; off calculates the part’s drag.",
     otherCd:
       "Extra drag coefficient for things the parts don’t include, such as camera shrouds, switch bands or screw heads. Usually 0.",
     cdOverride:
-      "A fixed drag coefficient that replaces the calculated drag at every speed.\n\n0 uses the calculated drag.",
+      "The rocket’s drag coefficient. Off, it’s calculated from the shape and finish at every speed (the field shows it at Mach 0.3). Switch Override on to use one fixed Cd at every speed instead, such as RockSim’s fixed Cd or one from a real flight.",
     blMode:
       "Turbulent from the nose is right for nearly all rockets, since nose tips, joints and lugs trip the airflow early.\n\nNatural transition lets the flow stay smooth (laminar) over the front of a very smooth, polished rocket, which lowers friction drag.",
     ignDelay: "Seconds between the booster burning out and the sustainer motor lighting.",

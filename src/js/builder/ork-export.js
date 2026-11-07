@@ -53,17 +53,16 @@ function bldToOrk(model, L, opts = {}) {
   /**
    * Fields of a part opened from a file that the builder doesn't edit, written back as they were.
    */
-  /* opts.ov turns the file's weight, CG and Cd overrides off for the flight ({mass, cg, cd}: false leaves that kind out).
-     A saved file always keeps them. RockSim's own calculated part weights aren't overrides, so they stay. */
-  const ov = { mass: true, cg: true, cd: true, ...(opts.ov || {}) };
+  // overrides are written only while they're switched on (an override switched off is kept with the app's settings)
   const known = (k) =>
-    (ov.cd && k.cdo != null && isFinite(k.cdo)
+    (bldOvOn(k, "cdo")
       ? `<overridecd>${n(k.cdo)}</overridecd><overridesubcomponentscd>${!!k.cdoAll}</overridesubcomponentscd>`
       : "") +
-    (k.known > 0 && (ov.mass || k.knownCalc)
+    (bldOvOn(k, "known")
       ? `<overridemass>${n(k.known)}</overridemass><overridesubcomponentsmass>${!!k.knownAll}</overridesubcomponentsmass>`
       : "") +
-    ((ov.cg || k.knownCalc) && k.knownCg != null && isFinite(k.knownCg)
+    // RockSim's calculated CG goes with its calculated weight
+    (bldOvOn(k, "knownCg") && !(k.knownCalc && !bldOvOn(k, "known"))
       ? `<overridecg>${n(k.knownCg)}</overridecg><overridesubcomponentscg>${!!k.knownAll}</overridesubcomponentscg>`
       : "");
   /**
@@ -197,16 +196,14 @@ function bldToOrk(model, L, opts = {}) {
   const stages = model.stages
     .map((st, si) => {
       const all = st.knownAll !== false,
-        known =
-          ov.mass && st.known > 0
-            ? `<overridemass>${n(st.known)}</overridemass><overridesubcomponentsmass>${all}</overridesubcomponentsmass>`
-            : "",
-        kcg =
-          ov.cg && st.knownCg != null && isFinite(st.knownCg)
-            ? `<overridecg>${n(st.knownCg)}</overridecg><overridesubcomponentscg>${all}</overridesubcomponentscg>`
-            : "";
+        known = bldOvOn(st, "known")
+          ? `<overridemass>${n(st.known)}</overridemass><overridesubcomponentsmass>${all}</overridesubcomponentsmass>`
+          : "",
+        kcg = bldOvOn(st, "knownCg")
+          ? `<overridecg>${n(st.knownCg)}</overridecg><overridesubcomponentscg>${all}</overridesubcomponentscg>`
+          : "";
       const cdo =
-        ov.cd && si === 0 && S.cdOverride > 0
+        si === 0 && bldOvOn(S, "cdOverride")
           ? `<overridecd>${n(S.cdOverride)}</overridecd><overridesubcomponentscd>true</overridesubcomponentscd>`
           : "";
       return `<stage><name>${e(st.name)}</name><id>${st.id}</id>${known}${kcg}${cdo}${si > 0 ? `<separationevent>${e(st.sepEvent || "burnout")}</separationevent><separationdelay>${n(st.sepDelay || 0)}</separationdelay>` : ""}<subcomponents>${lay.bodies
