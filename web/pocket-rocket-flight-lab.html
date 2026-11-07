@@ -3033,6 +3033,64 @@ footer .linkbtn {
 #stagestats {
   margin-top: 12px;
 }
+/* an override field: the value and its Override switch side by side */
+.ovrow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ovrow .in {
+  flex: 1;
+  min-width: 0;
+}
+.ovrow .in input:disabled {
+  opacity: 0.6;
+}
+.ovsw {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+  user-select: none;
+}
+.ovsw input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.ovtrack {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--line);
+  position: relative;
+  transition: background 0.15s;
+}
+.ovtrack::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+.ovsw input:checked + .ovtrack {
+  background: var(--accent, #d9501c);
+}
+.ovsw input:checked + .ovtrack::after {
+  transform: translateX(16px);
+}
+.ovsw input:focus-visible + .ovtrack {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
 </style>
 <script>/* the app colours picked in Settings, set before anything is drawn: the main colour (orange by default) and the accent colour (light blue) */
 (function(){
@@ -3069,7 +3127,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">271</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">272</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3570,7 +3628,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "271";
+const APP_BUILD = "272";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -4810,23 +4868,20 @@ function bldInfo(F) {
       "The surface finish for every part. Rougher finishes add skin-friction drag.\n\nAs set on each part keeps the finishes from the design file.",
     known: t
       ? F.p && F.p.knownCalc
-        ? "The weight RockSim calculated for this part, kept from the design file. Enter 0 to have this app calculate it from the part’s size and material."
-        : "A weighed value for this part. It replaces the weight calculated from its size and material.\n\n0 calculates it."
-      : "The weight of the rocket ready to fly but without its motor, if you’ve weighed it. It replaces the total the parts add up to.\n\n0 uses the parts.",
+        ? "This part’s weight. With Override on, it uses the weight RockSim calculated (kept from the design file); switch Override off to calculate it from the part’s size and material instead."
+        : "This part’s weight. Off, it’s calculated from the part’s size and material. Switch Override on to enter a weighed value, which replaces the calculated one."
+      : "The rocket’s weight ready to fly, without its motor. Off, it’s the total the parts add up to. Switch Override on to enter the weight you measured, which replaces that total.",
     knownAll:
       "Tick if the weight you entered includes everything attached inside this part (fins, mounts, recovery and so on), so those parts aren’t counted twice.",
     knownCg:
-      "The measured balance point without the motor, measured from the nose tip (for a booster, from its front end). Balance the rocket ready to fly, without its motor.\n\nLeave blank to use the parts.",
+      "The balance point without the motor, measured from the nose tip (for a booster, from its front end). Off, it’s worked out from the parts. Switch Override on to enter the point you measured, balancing the rocket ready to fly without its motor.",
     dryInertia:
-      "The rocket’s resistance to turning end over end about its CG, without the motor. It sets how quickly the rocket weathercocks and how strongly it oscillates.\n\n0 estimates it from the parts; enter a measured value if you have one (for example from a swing test).",
-    ovMass:
-      "Untick to fly the rocket at the weight its parts add up to, leaving out every weight override in the design: the measured weights entered for parts or stages, and any whole-rocket weight from the design file.\n\nRockSim’s own calculated part weights aren’t overrides, so they stay. Saving to the design file keeps the overrides either way.",
-    ovCg: "Untick to use the balance point the parts give, leaving out every CG override in the design (the measured CGs entered for parts or stages, and any from the design file).\n\nSaving to the design file keeps the overrides either way.",
-    ovCd: "Untick to use the calculated drag, leaving out every drag override in the design: a fixed Cd for the whole rocket (the Cd override below, or RockSim’s fixed Cd) and any Cd overrides on single parts from an OpenRocket file.\n\nSaving to the design file keeps the overrides either way.",
+      "The rocket’s resistance to turning end over end about its CG, without the motor. It sets how quickly the rocket weathercocks and how strongly it oscillates.\n\nOff, it’s estimated from the parts. Switch Override on to enter a measured value (for example from a swing test).",
+    cdo: "A fixed drag coefficient for this part from the design file. Override on uses it; off calculates the part’s drag.",
     otherCd:
       "Extra drag coefficient for things the parts don’t include, such as camera shrouds, switch bands or screw heads. Usually 0.",
     cdOverride:
-      "A fixed drag coefficient that replaces the calculated drag at every speed.\n\n0 uses the calculated drag.",
+      "The rocket’s drag coefficient. Off, it’s calculated from the shape and finish at every speed (the field shows it at Mach 0.3). Switch Override on to use one fixed Cd at every speed instead, such as RockSim’s fixed Cd or one from a real flight.",
     blMode:
       "Turbulent from the nose is right for nearly all rockets, since nose tips, joints and lugs trip the airflow early.\n\nNatural transition lets the flow stay smooth (laminar) over the front of a very smooth, polished rocket, which lowers friction drag.",
     ignDelay: "Seconds between the booster burning out and the sustainer motor lighting.",
@@ -11358,6 +11413,18 @@ function bldNew(type, R = 0.0333) {
  * Design-wide builder settings that aren't parts (finish, inertia, drag adjustments), at their defaults.
  * @returns {object}
  */
+/**
+ * True when an override field is in use: it has a value and its Override switch isn't off. Values from a design file
+ * have no switch yet and count as on.
+ * @param {object} O the part, stage or rocket settings that hold it
+ * @param {string} k the field (known, knownCg, cdo, cdOverride, dryInertia, bDryInertia, s1DryInertia)
+ * @returns {boolean}
+ */
+function bldOvOn(O, k) {
+  if (!O || O[k + "On"] === false) return false;
+  const v = O[k];
+  return k === "knownCg" || k === "cdo" ? v != null && isFinite(v) : +v > 0;
+}
 function bldSettings() {
   return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
 }
@@ -11571,17 +11638,16 @@ function bldToOrk(model, L, opts = {}) {
   /**
    * Fields of a part opened from a file that the builder doesn't edit, written back as they were.
    */
-  /* opts.ov turns the file's weight, CG and Cd overrides off for the flight ({mass, cg, cd}: false leaves that kind out).
-     A saved file always keeps them. RockSim's own calculated part weights aren't overrides, so they stay. */
-  const ov = { mass: true, cg: true, cd: true, ...(opts.ov || {}) };
+  // overrides are written only while they're switched on (an override switched off is kept with the app's settings)
   const known = (k) =>
-    (ov.cd && k.cdo != null && isFinite(k.cdo)
+    (bldOvOn(k, "cdo")
       ? `<overridecd>${n(k.cdo)}</overridecd><overridesubcomponentscd>${!!k.cdoAll}</overridesubcomponentscd>`
       : "") +
-    (k.known > 0 && (ov.mass || k.knownCalc)
+    (bldOvOn(k, "known")
       ? `<overridemass>${n(k.known)}</overridemass><overridesubcomponentsmass>${!!k.knownAll}</overridesubcomponentsmass>`
       : "") +
-    ((ov.cg || k.knownCalc) && k.knownCg != null && isFinite(k.knownCg)
+    // RockSim's calculated CG goes with its calculated weight
+    (bldOvOn(k, "knownCg") && !(k.knownCalc && !bldOvOn(k, "known"))
       ? `<overridecg>${n(k.knownCg)}</overridecg><overridesubcomponentscg>${!!k.knownAll}</overridesubcomponentscg>`
       : "");
   /**
@@ -11715,16 +11781,14 @@ function bldToOrk(model, L, opts = {}) {
   const stages = model.stages
     .map((st, si) => {
       const all = st.knownAll !== false,
-        known =
-          ov.mass && st.known > 0
-            ? `<overridemass>${n(st.known)}</overridemass><overridesubcomponentsmass>${all}</overridesubcomponentsmass>`
-            : "",
-        kcg =
-          ov.cg && st.knownCg != null && isFinite(st.knownCg)
-            ? `<overridecg>${n(st.knownCg)}</overridecg><overridesubcomponentscg>${all}</overridesubcomponentscg>`
-            : "";
+        known = bldOvOn(st, "known")
+          ? `<overridemass>${n(st.known)}</overridemass><overridesubcomponentsmass>${all}</overridesubcomponentsmass>`
+          : "",
+        kcg = bldOvOn(st, "knownCg")
+          ? `<overridecg>${n(st.knownCg)}</overridecg><overridesubcomponentscg>${all}</overridesubcomponentscg>`
+          : "";
       const cdo =
-        ov.cd && si === 0 && S.cdOverride > 0
+        si === 0 && bldOvOn(S, "cdOverride")
           ? `<overridecd>${n(S.cdOverride)}</overridecd><overridesubcomponentscd>true</overridesubcomponentscd>`
           : "";
       return `<stage><name>${e(st.name)}</name><id>${st.id}</id>${known}${kcg}${cdo}${si > 0 ? `<separationevent>${e(st.sepEvent || "burnout")}</separationevent><separationdelay>${n(st.sepDelay || 0)}</separationdelay>` : ""}<subcomponents>${lay.bodies
@@ -19488,21 +19552,15 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
         nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
       const prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null,
-        prevOv = opts.cfg != null && BLD && BLD.settings ? bldOv() : null;
+        prevOff = opts.cfg != null && BLD ? bldOffList() : null;
       if (isR) ORK_SIM = null; // RockSim files are read as one converted OpenRocket design with the chosen run
       BLD = bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR });
       ORK_SIM = null;
       // your design notes, kept per motor configuration
       const notes = prevNotes || (saved && saved.notes && typeof saved.notes === "object" ? saved.notes : null);
       if (notes) BLD.notes = jclone(notes);
-      // the override switches saved with the file (or kept while reopening it for another motor configuration)
-      const ovs = prevOv || (saved && saved.overrides && typeof saved.overrides === "object" ? saved.overrides : null);
-      if (ovs) {
-        BLD.settings = BLD.settings || bldSettings();
-        if (ovs.mass === false) BLD.settings.ovMass = false;
-        if (ovs.cg === false) BLD.settings.ovCg = false;
-        if (ovs.cd === false) BLD.settings.ovCd = false;
-      }
+      // overrides switched off when the file was saved (or while reopening it for another motor configuration)
+      bldOffApply(prevOff || (saved && Array.isArray(saved.overridesOff) ? saved.overridesOff : []));
       BLD.name = r.design.name || BLD.name;
       BLD.bp = { comps: {}, splits: {} };
       // Pocket Rocket's own files inside the .ork: from the opened file, or (reopening it for another motor configuration)
@@ -22147,8 +22205,9 @@ const BLD_ROOT = "__rocket";
 function bldFields(p) {
   const posF = [["pos", "Position", "pos"]],
     kw = [
-      ["known", p.knownCalc ? "Weight from RockSim’s calculation" : "Measured weight", "num", "smass"],
-      ...(p.known > 0 ? [["knownAll", "Includes the parts attached to it", "check"]] : []),
+      ["known", "Weight", "ovr", "smass"],
+      ...(bldOvOn(p, "known") ? [["knownAll", "Includes the parts attached to it", "check"]] : []),
+      ...(p.cdo != null ? [["cdo", "Drag coefficient (Cd)", "ovr", "none"]] : []),
     ];
   /**
    * The material field of a part.
@@ -22402,15 +22461,12 @@ function bldRootFields() {
     ...(two
       ? []
       : [
-          ["known", "Measured weight without motor", "num", "mass", s0],
-          ["knownCg", "Measured CG from the nose tip", "num", "len", s0],
-          ["dryInertia", "Turning inertia about the CG", "num", "moi", BLD.settings],
+          ["known", "Weight without motor", "ovr", "mass", s0],
+          ["knownCg", "CG without motor, from the nose tip", "ovr", "len", s0],
+          ["dryInertia", "Turning inertia about the CG", "ovr", "moi", BLD.settings],
         ]),
-    ["ovMass", "Use the weight overrides", "check", null, BLD.settings],
-    ["ovCg", "Use the CG overrides", "check", null, BLD.settings],
-    ["ovCd", "Use the Cd overrides", "check", null, BLD.settings],
+    ["cdOverride", "Drag coefficient (Cd)", "ovr", "none", BLD.settings],
     ["otherCd", "Other drag (ΔCd)", "num", "none", BLD.settings],
-    ["cdOverride", "Cd override", "num", "none", BLD.settings],
     [
       "blMode",
       "Boundary layer",
@@ -22438,12 +22494,17 @@ function bldStageFields(st, si) {
     ["name", "Name", "text"],
     ...(upper ? [["ignDelay", `Lights after ${below.toLowerCase()} burnout`, "num", "time"]] : []),
     ...(si > 0 ? [["sepDelay", "Separates after its motor burns out", "num", "time"]] : []),
-    ["known", "Measured weight without motor", "num", "mass"],
-    ["knownCg", si === 0 ? "Measured CG from the nose tip" : "Measured CG from its front end", "num", "len"],
+    ["known", "Weight without motor", "ovr", "mass"],
+    [
+      "knownCg",
+      si === 0 ? "CG without motor, from the nose tip" : "CG without motor, from its front end",
+      "ovr",
+      "len",
+    ],
     [
       "inertia",
       "Turning inertia about the CG",
-      "num",
+      "ovr",
       "moi",
       BLD.settings,
       si === 0 ? "dryInertia" : n === 3 && si === 2 ? "s1DryInertia" : "bDryInertia",
@@ -22516,7 +22577,7 @@ function bldSyncMotors() {
  */
 function bldCalcInertia(key) {
   try {
-    const r = parseOrk(bldToOrk(BLD, L, { ov: bldOv() })).design;
+    const r = parseOrk(bldToOrk(BLD, L)).design;
     if (key === "dryInertia") return airInertia(r.dryInertia, r.inertiaMass, D.dryMass, D.length);
     if (key === "bDryInertia") return airInertia(r.bDryInertia, r.bInertiaMass, D.bDryMass, D.bLength);
     const S1 = r.s1,
@@ -22526,15 +22587,128 @@ function bldCalcInertia(key) {
     return undefined;
   }
 }
-/** the rocket-wide switches for the file's overrides (on unless switched off) */
-const BLD_OV_KEYS = ["ovMass", "ovCg", "ovCd"];
 /**
- * Which of the design's weight, CG and Cd overrides the flight uses, from the rocket-wide switches.
- * @returns {{mass:boolean, cg:boolean, cd:boolean}}
+ * The design worked out from a copy of the builder model with every stage's weight and CG overrides off.
+ * @param {function} [edit] changes the copy first
+ * @returns {object} design
  */
-function bldOv() {
-  const S = (BLD && BLD.settings) || {};
-  return { mass: S.ovMass !== false, cg: S.ovCg !== false, cd: S.ovCd !== false };
+function bldCalcDesign(edit) {
+  const M = jclone(BLD);
+  M.stages.forEach((st) => {
+    st.knownOn = false;
+    st.knownCgOn = false;
+  });
+  if (edit) edit(M);
+  return parseOrk(bldToOrk(M, L)).design;
+}
+/**
+ * The calculated value behind a rocket or stage override field: what the design gives without it.
+ * @param {string} key known, knownCg, cdOverride, dryInertia, bDryInertia or s1DryInertia
+ * @param {number} si stage index (for known and knownCg)
+ * @returns {number|undefined}
+ */
+function bldCalcOv(key, si) {
+  try {
+    if (/DryInertia$|^dryInertia$/.test(key)) return bldCalcInertia(key);
+    if (key === "cdOverride") {
+      const A = aero({ ...D, cdOverride: 0 }),
+        atm = atmosphere(L, 0);
+      return cdParts(A, 0.3 * atm.a, atm).cd;
+    }
+    if (key !== "known" && key !== "knownCg") return undefined;
+    const r = bldCalcDesign(),
+      n = BLD.stages.length;
+    const x =
+      si === 0
+        ? { m: r.dryMass, cg: r.cgEmpty }
+        : n === 3 && si === 2
+          ? r.s1 && { m: r.s1.bDryMass, cg: r.s1.bCg }
+          : { m: r.bDryMass, cg: r.bCg };
+    return x ? (key === "known" ? x.m : x.cg) : undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+/**
+ * A part's weight as calculated from its size and material (with anything attached to it counted separately).
+ * @param {string} id part id
+ * @returns {number|undefined} kg
+ */
+function bldCalcPartMass(id) {
+  try {
+    const tot = (r) => r.dryMass + (r.bDryMass || 0) + ((r.s1 && r.s1.bDryMass) || 0);
+    const pick = (M) => {
+      for (const st of M.stages)
+        for (const q of st.parts || []) {
+          if (q.id === id) return q;
+          const k = (q.kids || []).find((x) => x.id === id);
+          if (k) return k;
+        }
+      return null;
+    };
+    const a = tot(
+      bldCalcDesign((M) => {
+        const q = pick(M);
+        if (q) {
+          q.knownOn = false;
+          q.knownCgOn = false;
+        }
+      }),
+    );
+    const b = tot(
+      bldCalcDesign((M) => {
+        const q = pick(M);
+        if (q) {
+          Object.assign(q, { known: 1e-9, knownOn: true, knownAll: false, knownCgOn: false });
+          delete q.knownCalc;
+        }
+      }),
+    );
+    return Math.max(a - b, 0);
+  } catch (e) {
+    return undefined;
+  }
+}
+/**
+ * The overrides switched off, to keep with the app's settings in the file (a saved .ork leaves them out, as
+ * OpenRocket does).
+ * @returns {object[]} {id, k, v, all, calc}
+ */
+function bldOffList() {
+  const out = [];
+  const add = (id, O, k) => {
+    if (O && O[k + "On"] === false && O[k] != null && isFinite(O[k]))
+      out.push({ id, k, v: O[k], ...(O.knownAll ? { all: true } : {}), ...(O.knownCalc ? { calc: true } : {}) });
+  };
+  if (!BLD) return out;
+  ["cdOverride", "dryInertia", "bDryInertia", "s1DryInertia"].forEach((k) => add("settings", BLD.settings, k));
+  for (const st of BLD.stages) {
+    ["known", "knownCg"].forEach((k) => add(st.id, st, k));
+    for (const q of st.parts || [])
+      for (const x of [q, ...(q.kids || [])]) ["known", "knownCg", "cdo"].forEach((k) => add(x.id, x, k));
+  }
+  return out;
+}
+/**
+ * Puts back overrides that were switched off when the file was saved (unless the file now has that override on).
+ * @param {object[]} list from bldOffList
+ */
+function bldOffApply(list) {
+  if (!BLD || !Array.isArray(list)) return;
+  for (const e of list) {
+    if (!e || typeof e.k !== "string" || !isFinite(e.v)) continue;
+    let O = null;
+    if (e.id === "settings") O = BLD.settings = BLD.settings || bldSettings();
+    else {
+      const f = bldFind(e.id);
+      O = f ? f.stage || f.p : null;
+    }
+    if (!O || bldOvOn(O, e.k)) continue;
+    O[e.k] = e.v;
+    O[e.k + "On"] = false;
+    if (e.all) O.knownAll = true;
+    if (e.calc) O.knownCalc = true;
+  }
 }
 /**
  * Works out the flight design D from the parts (written as .ork and read back), keeping app-only settings.
@@ -22544,18 +22718,18 @@ function bldOv() {
 function bldDerive() {
   bldSyncMotors();
   const prev = D,
-    r = parseOrk(bldToOrk(BLD, L, { ov: bldOv() })),
+    r = parseOrk(bldToOrk(BLD, L)),
     nd = r.design,
     S = BLD.settings || bldSettings();
   nd.name = BLD.name || nd.name;
   nd.otherCd = S.otherCd || 0;
   nd.blMode = S.blMode || "turb";
   // turning inertia: a typed value, else the one worked out from the parts (parseOrk)
-  if (S.dryInertia > 0) {
+  if (bldOvOn(S, "dryInertia")) {
     nd.dryInertia = S.dryInertia;
     nd.inertiaSource = "typed";
   }
-  if (S.bDryInertia > 0) {
+  if (bldOvOn(S, "bDryInertia")) {
     nd.bDryInertia = S.bDryInertia;
     nd.bInertiaSource = "typed";
   }
@@ -22610,7 +22784,7 @@ function bldDerive() {
     nd.bMountSel = prev.bMountSel || "file";
   }
   if (nd.s1 && prev && prev.s1 && prev.s1.mountSel != null) nd.s1.mountSel = prev.s1.mountSel;
-  if (nd.s1 && S.s1DryInertia > 0) nd.s1.bDryInertia = S.s1DryInertia;
+  if (nd.s1 && bldOvOn(S, "s1DryInertia")) nd.s1.bDryInertia = S.s1DryInertia;
   D = nd;
   applyCal();
   return r;
@@ -23014,18 +23188,21 @@ function bldRenderEdit() {
   }
   if (f.root) {
     let h = `<div class="bldh">Whole rocket</div><div class="grid">`;
-    for (const [key, label, kind, dim, obj, opts] of bldRootFields())
+    for (const [key, label, kind, dim, obj, opts] of bldRootFields()) {
+      const O = obj || BLD;
       h += bldFieldHtml(
-        { key, label, kind, dim, opts, calc: key === "dryInertia" ? bldCalcInertia(key) : undefined },
-        (obj || BLD)[key] ??
-          (key === "finish"
-            ? BLD.settings.finish
-            : key === "blMode"
-              ? "turb"
-              : BLD_OV_KEYS.includes(key)
-                ? true
-                : undefined),
+        {
+          key,
+          label,
+          kind,
+          dim,
+          opts,
+          on: kind === "ovr" ? bldOvOn(O, key) : undefined,
+          calc: kind === "ovr" ? bldCalcOv(key, 0) : undefined,
+        },
+        O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : undefined),
       );
+    }
     el.innerHTML = h + `</div>`;
     bldWire(el, null, "root");
     return;
@@ -23035,7 +23212,14 @@ function bldRenderEdit() {
     let h = `<div class="bldh">${esc(st.name)}</div><div class="grid">`;
     for (const [key, label, kind, dim, obj, alias] of bldStageFields(st, f.si))
       h += bldFieldHtml(
-        { key, label, kind, dim, calc: key === "inertia" ? bldCalcInertia(alias) : undefined },
+        {
+          key,
+          label,
+          kind,
+          dim,
+          on: kind === "ovr" ? bldOvOn(obj || st, obj ? alias : key) : undefined,
+          calc: kind === "ovr" ? bldCalcOv(obj ? alias : key, f.si) : undefined,
+        },
         obj ? obj[alias] : st[key],
       );
     el.innerHTML = h + `</div>`;
@@ -23079,6 +23263,8 @@ function bldRenderEdit() {
         opts: Array.isArray(opt) ? opt : null,
         p,
         parent: f.parent,
+        on: kind === "ovr" ? bldOvOn(p, key) : undefined,
+        calc: kind === "ovr" && key === "known" ? bldCalcPartMass(p.id) : undefined,
       },
       val,
     );
@@ -23139,7 +23325,7 @@ function bldRenderEdit() {
  */
 function bldFieldHtml(F, val) {
   const id = "bf-" + F.key,
-    wide = F.kind === "pts" || F.kind === "motor" || F.kind === "pos" || F.kind === "check";
+    wide = F.kind === "pts" || F.kind === "motor" || F.kind === "pos" || F.kind === "check" || F.kind === "ovr";
   let inp = "";
   const num = (v, dim) =>
     v == null || v === "" || !isFinite(v)
@@ -23175,6 +23361,20 @@ function bldFieldHtml(F, val) {
     case "check":
       inp = `<label class="chk"><input id="${id}" type="checkbox" ${val ? "checked" : ""}> <span>${esc(F.label)}</span></label>`;
       break;
+    case "ovr": {
+      // a value worked out from the design, or your own when the Override switch is on
+      const dim = F.dim || "none",
+        hasCalc = F.calc != null && isFinite(F.calc),
+        shown = F.on ? num(val, dim) : hasCalc ? num(F.calc, dim) : "";
+      inp = `<div class="ovrow"><div class="in"><input id="${id}" type="number" inputmode="decimal" step="any" value="${shown}" ${F.on ? "" : "disabled"} placeholder="${F.on ? "" : "calculated"}">${uname(dim) ? `<span class="u">${uname(dim)}</span>` : ""}</div><label class="ovsw"><input id="bfo-${F.key}" type="checkbox" ${F.on ? "checked" : ""}><span class="ovtrack" aria-hidden="true"></span><span>Override</span></label></div>`;
+      const rs = F.p && F.p.knownCalc && F.key === "known",
+        calcTxt = hasCalc ? ` This app calculates ${num(F.calc, dim)} ${esc(uname(dim))}.` : "";
+      const note = F.on
+        ? (rs ? "RockSim’s calculated weight, from the design file." : "Your value.") + calcTxt
+        : "Calculated from the design.";
+      inp += `<div class="note fldnote">${note}</div>`;
+      break;
+    }
     case "sel":
       inp = `<div class="in"><select id="${id}">${F.opts.map(([k, l]) => `<option value="${esc(k)}" ${String(val) === String(k) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`;
       break;
@@ -23378,10 +23578,13 @@ function bldWire(el, p, mode, si) {
           if (typeof renderMotors === "function") renderMotors();
         }
         full = true;
-      } else if (kind === "num" || kind === "pos") {
+      } else if (kind === "num" || kind === "pos" || kind === "ovr") {
         const raw = inp.value.trim();
         const blank = raw === "";
-        if (blank && ["dryInertia", "inertia"].includes(key)) {
+        if (blank && kind === "ovr") {
+          if (k === "knownCg" || k === "cdo") delete O[k];
+          else O[k] = 0;
+        } else if (blank && ["dryInertia", "inertia"].includes(key)) {
           // cleared: back to the calculated value (shown once typing is done)
           O[k] = 0;
         } else if (blank && (key === "delay" || key === "mmDelay")) {
@@ -23428,6 +23631,30 @@ function bldWire(el, p, mode, si) {
       });
     if (ev === "input" && p && p.type === "tube" && p.mm && (key === "od" || key === "wall"))
       inp.addEventListener("change", () => bldMountFilterFor(p));
+  });
+  // the Override switches: on uses the value in the field (starting from the calculated one), off the calculated value
+  el.querySelectorAll("[id^=bfo-]").forEach((sw) => {
+    const key = sw.id.slice(4),
+      f = spec.find((x) => x[0] === key);
+    if (!f) return;
+    sw.addEventListener("change", () => {
+      let O = p,
+        k = key;
+      if (mode === "root") O = f[4] || BLD;
+      if (mode === "stage" && f[4]) {
+        O = f[4];
+        k = f[5];
+      }
+      if (sw.checked) {
+        O[k + "On"] = true;
+        if (!bldOvOn(O, k)) {
+          const c = mode === "part" ? (k === "known" ? bldCalcPartMass(p.id) : undefined) : bldCalcOv(k, si || 0);
+          if (c != null && isFinite(c) && (c > 0 || k === "knownCg" || k === "cdo")) O[k] = c;
+          if (k === "known") delete O.knownCalc;
+        }
+      } else O[k + "On"] = false;
+      bldChanged(true);
+    });
   });
 }
 /**
@@ -24685,7 +24912,7 @@ function prStateNow(text, runs = {}) {
     flights,
     cal,
     notes: (BLD && BLD.notes) || null,
-    overrides: BLD && BLD.settings ? bldOv() : null,
+    overridesOff: BLD ? bldOffList() : [],
     runs,
   };
 }
