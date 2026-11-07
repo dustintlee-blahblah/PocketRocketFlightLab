@@ -239,9 +239,13 @@ function parseOrk(xml) {
       area += cr;
       cx += (x1 + x2) * cr;
     }
+    /* OpenRocket's outline runs from the root's leading edge (the first point) round to its trailing edge (the last), and
+       the fin's length, which places it on the body, is that root chord. The tip can sweep past the root's trailing edge
+       (or reach ahead of its leading edge), so the outline's full extent isn't the root. */
     const xs = pts.map((p) => p[0]),
       ys = pts.map((p) => p[1]),
-      x0 = Math.min(...xs),
+      rootLen = pts.length > 2 ? pts[pts.length - 1][0] - pts[0][0] : 0,
+      x0 = rootLen > 0 ? pts[0][0] : Math.min(...xs),
       span = Math.max(...ys);
     // quarter point of the mean aerodynamic chord, by spanwise strips (where Barrowman puts a fin's lift)
     let A2 = 0,
@@ -267,7 +271,7 @@ function parseOrk(xml) {
       }
     }
     return {
-      root: Math.max(...xs) - x0,
+      root: rootLen > 0 ? rootLen : Math.max(...xs) - x0,
       span,
       area: Math.abs(area) / 2,
       xc: area ? cx / (3 * area) - x0 : (Math.max(...xs) - x0) / 2,
