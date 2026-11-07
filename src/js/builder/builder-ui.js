@@ -320,6 +320,9 @@ function bldRootFields() {
           ["knownCg", "Measured CG from the nose tip", "num", "len", s0],
           ["dryInertia", "Turning inertia about the CG", "num", "moi", BLD.settings],
         ]),
+    ["ovMass", "Use the weight overrides", "check", null, BLD.settings],
+    ["ovCg", "Use the CG overrides", "check", null, BLD.settings],
+    ["ovCd", "Use the Cd overrides", "check", null, BLD.settings],
     ["otherCd", "Other drag (ΔCd)", "num", "none", BLD.settings],
     ["cdOverride", "Cd override", "num", "none", BLD.settings],
     [
@@ -427,7 +430,7 @@ function bldSyncMotors() {
  */
 function bldCalcInertia(key) {
   try {
-    const r = parseOrk(bldToOrk(BLD, L)).design;
+    const r = parseOrk(bldToOrk(BLD, L, { ov: bldOv() })).design;
     if (key === "dryInertia") return airInertia(r.dryInertia, r.inertiaMass, D.dryMass, D.length);
     if (key === "bDryInertia") return airInertia(r.bDryInertia, r.bInertiaMass, D.bDryMass, D.bLength);
     const S1 = r.s1,
@@ -437,6 +440,16 @@ function bldCalcInertia(key) {
     return undefined;
   }
 }
+/** the rocket-wide switches for the file's overrides (on unless switched off) */
+const BLD_OV_KEYS = ["ovMass", "ovCg", "ovCd"];
+/**
+ * Which of the design's weight, CG and Cd overrides the flight uses, from the rocket-wide switches.
+ * @returns {{mass:boolean, cg:boolean, cd:boolean}}
+ */
+function bldOv() {
+  const S = (BLD && BLD.settings) || {};
+  return { mass: S.ovMass !== false, cg: S.ovCg !== false, cd: S.ovCd !== false };
+}
 /**
  * Works out the flight design D from the parts (written as .ork and read back), keeping app-only settings.
  *
@@ -445,7 +458,7 @@ function bldCalcInertia(key) {
 function bldDerive() {
   bldSyncMotors();
   const prev = D,
-    r = parseOrk(bldToOrk(BLD, L)),
+    r = parseOrk(bldToOrk(BLD, L, { ov: bldOv() })),
     nd = r.design,
     S = BLD.settings || bldSettings();
   nd.name = BLD.name || nd.name;
@@ -918,7 +931,14 @@ function bldRenderEdit() {
     for (const [key, label, kind, dim, obj, opts] of bldRootFields())
       h += bldFieldHtml(
         { key, label, kind, dim, opts, calc: key === "dryInertia" ? bldCalcInertia(key) : undefined },
-        (obj || BLD)[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : undefined),
+        (obj || BLD)[key] ??
+          (key === "finish"
+            ? BLD.settings.finish
+            : key === "blMode"
+              ? "turb"
+              : BLD_OV_KEYS.includes(key)
+                ? true
+                : undefined),
       );
     el.innerHTML = h + `</div>`;
     bldWire(el, null, "root");

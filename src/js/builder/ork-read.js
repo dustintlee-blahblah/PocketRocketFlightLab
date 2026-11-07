@@ -510,7 +510,8 @@ function bldFromOrk(xml, info) {
                 cd: /auto/i.test(txt(e, "cd") || "") ? 0.8 : num(e, "cd", 0.8),
                 ...dep(e),
                 lines: Math.round(num(e, "linecount", 6)),
-                lineLen: num(e, "linelength"),
+                // a file's line length of 0 means no shroud lines (the builder's 0 means as long as the chute is wide)
+                lineLen: kid(e, "linelength") && num(e, "linelength") === 0 ? 1e-9 : num(e, "linelength"),
                 packLen: num(e, "packedlength"),
                 packR: num(e, "packedradius"),
               });

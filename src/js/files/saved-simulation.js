@@ -56,6 +56,7 @@ function prStateNow(text, runs = {}) {
     flights,
     cal,
     notes: (BLD && BLD.notes) || null,
+    overrides: BLD && BLD.settings ? bldOv() : null,
     runs,
   };
 }

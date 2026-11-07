@@ -53,14 +53,17 @@ function bldToOrk(model, L, opts = {}) {
   /**
    * Fields of a part opened from a file that the builder doesn't edit, written back as they were.
    */
+  /* opts.ov turns the file's weight, CG and Cd overrides off for the flight ({mass, cg, cd}: false leaves that kind out).
+     A saved file always keeps them. RockSim's own calculated part weights aren't overrides, so they stay. */
+  const ov = { mass: true, cg: true, cd: true, ...(opts.ov || {}) };
   const known = (k) =>
-    (k.cdo != null && isFinite(k.cdo)
+    (ov.cd && k.cdo != null && isFinite(k.cdo)
       ? `<overridecd>${n(k.cdo)}</overridecd><overridesubcomponentscd>${!!k.cdoAll}</overridesubcomponentscd>`
       : "") +
-    (k.known > 0
+    (k.known > 0 && (ov.mass || k.knownCalc)
       ? `<overridemass>${n(k.known)}</overridemass><overridesubcomponentsmass>${!!k.knownAll}</overridesubcomponentsmass>`
       : "") +
-    (k.knownCg != null && isFinite(k.knownCg)
+    ((ov.cg || k.knownCalc) && k.knownCg != null && isFinite(k.knownCg)
       ? `<overridecg>${n(k.knownCg)}</overridecg><overridesubcomponentscg>${!!k.knownAll}</overridesubcomponentscg>`
       : "");
   /**
@@ -195,15 +198,15 @@ function bldToOrk(model, L, opts = {}) {
     .map((st, si) => {
       const all = st.knownAll !== false,
         known =
-          st.known > 0
+          ov.mass && st.known > 0
             ? `<overridemass>${n(st.known)}</overridemass><overridesubcomponentsmass>${all}</overridesubcomponentsmass>`
             : "",
         kcg =
-          st.knownCg != null && isFinite(st.knownCg)
+          ov.cg && st.knownCg != null && isFinite(st.knownCg)
             ? `<overridecg>${n(st.knownCg)}</overridecg><overridesubcomponentscg>${all}</overridesubcomponentscg>`
             : "";
       const cdo =
-        si === 0 && S.cdOverride > 0
+        ov.cd && si === 0 && S.cdOverride > 0
           ? `<overridecd>${n(S.cdOverride)}</overridecd><overridesubcomponentscd>true</overridesubcomponentscd>`
           : "";
       return `<stage><name>${e(st.name)}</name><id>${st.id}</id>${known}${kcg}${cdo}${si > 0 ? `<separationevent>${e(st.sepEvent || "burnout")}</separationevent><separationdelay>${n(st.sepDelay || 0)}</separationdelay>` : ""}<subcomponents>${lay.bodies

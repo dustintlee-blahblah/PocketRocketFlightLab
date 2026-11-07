@@ -134,6 +134,10 @@ function bldInfo(F) {
       "The measured balance point without the motor, measured from the nose tip (for a booster, from its front end). Balance the rocket ready to fly, without its motor.\n\nLeave blank to use the parts.",
     dryInertia:
       "The rocket’s resistance to turning end over end about its CG, without the motor. It sets how quickly the rocket weathercocks and how strongly it oscillates.\n\n0 estimates it from the parts; enter a measured value if you have one (for example from a swing test).",
+    ovMass:
+      "Untick to fly the rocket at the weight its parts add up to, leaving out every weight override in the design: the measured weights entered for parts or stages, and any whole-rocket weight from the design file.\n\nRockSim’s own calculated part weights aren’t overrides, so they stay. Saving to the design file keeps the overrides either way.",
+    ovCg: "Untick to use the balance point the parts give, leaving out every CG override in the design (the measured CGs entered for parts or stages, and any from the design file).\n\nSaving to the design file keeps the overrides either way.",
+    ovCd: "Untick to use the calculated drag, leaving out every drag override in the design: a fixed Cd for the whole rocket (the Cd override below, or RockSim’s fixed Cd) and any Cd overrides on single parts from an OpenRocket file.\n\nSaving to the design file keeps the overrides either way.",
     otherCd:
       "Extra drag coefficient for things the parts don’t include, such as camera shrouds, switch bands or screw heads. Usually 0.",
     cdOverride:
