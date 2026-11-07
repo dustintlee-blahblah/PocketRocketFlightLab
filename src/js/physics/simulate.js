@@ -345,10 +345,20 @@ function simulate(D, L, m, mb, opts = {}) {
   const Gs = aero(D),
     Gst = staged ? aero(stackDesign(D)) : Gs,
     Gst3 = three ? aero(stackDesign3(D)) : Gst;
-  // nozzle exit area: as entered, or estimated at 45% of the motor diameter for each motor (typical of commercial reloads)
-  const nMot = (mm) => (mm && mm.members ? mm.members.reduce((a, e) => a + e.n, 0) : 1),
-    nozEst = (mm) =>
-      mm ? nMot(mm) * Math.PI * (0.225 * (mm.members ? mm.members[0].m.dia : mm.dia || 0.029)) ** 2 : 0;
+  /* nozzle exit area: as entered, or estimated from each motor's average thrust. The throat is sized by F = Cf·Pc·At
+     (Cf ≈ 1.4, chamber pressure ≈ 5 MPa, typical of hobby composite motors) and the exit by an expansion ratio of
+     about 5, so Ae ≈ F_avg / 1.4 MN. It's capped at 45% of the motor diameter, the widest commercial reloads use. */
+  const nozOne = (mo) => {
+      const t = mo.t || [],
+        F = mo.F || [];
+      let I = 0;
+      for (let i = 1; i < t.length; i++) I += ((t[i] - t[i - 1]) * (F[i] + F[i - 1])) / 2;
+      const tb = t.length ? t[t.length - 1] - t[0] : 0,
+        dia = mo.dia || 0.029,
+        cap = Math.PI * (0.225 * dia) ** 2;
+      return tb > 0 && I > 0 ? Math.min(I / tb / 1.4e6, cap) : cap;
+    },
+    nozEst = (mm) => (mm ? (mm.members ? mm.members.reduce((a, e) => a + e.n * nozOne(e.m), 0) : nozOne(mm)) : 0);
   const An = D.nozzleDia > 0 ? Math.PI * (D.nozzleDia / 2) ** 2 : nozEst(m),
     AnB = staged ? nozEst(mb) : 0,
     An1 = three ? nozEst(mb1) : 0;
