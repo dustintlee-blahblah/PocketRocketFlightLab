@@ -1081,8 +1081,27 @@ function rollParts(A, M = 0) {
   }
   return { force, damp };
 }
+/* the static center of pressure, as a wind tunnel measures it: from the slope of the normal force and pitching moment over
+   small angles (±2°), not at exactly 0°. Over that range the body's lift across the flow, K·(planform/reference area)·
+   sin α·|sin α|, adds a slope of K·(planform/reference area)·¾·2° acting at the middle of the side outline. Barrowman
+   leaves it out. Against the Arcas sounding rocket's measured center of pressure (NASA TN D-4013, Mach 0.6–0.9, two body
+   lengths, and TN D-4014, Mach 1.5–4.6), including it brings the error from 3.0% to 2.3% of body length overall (below
+   Mach 1, where Barrowman sits aft of the measurements, from 3.6% to 2.5%; above, from 1.5% to 1.8%). It matters most on
+   long, thin rockets, and moves their CP forward: the margins it gives are a little lower and safer. */
+const STATIC_AOA = (2 * Math.PI) / 180;
 /**
- * Subsonic (low-speed) center of pressure by Barrowman's method.
+ * Adds the body's small-angle lift (see above) to a normal-force slope and where it acts.
+ * @param {object} A aerodynamic model
+ * @param {number} cn normal-force slope without it (per radian)
+ * @param {number} cp where that acts, m from the nose tip
+ * @returns {number} the center of pressure with it, m from the nose tip
+ */
+function cpWithBodyLift(A, cn, cp) {
+  const add = ((CROSS_K * (A.sideArea || 0)) / A.Aref) * 0.75 * STATIC_AOA;
+  return cn + add > 0 && A.xPlan != null ? (cn * cp + add * A.xPlan) / (cn + add) : cp;
+}
+/**
+ * Static center of pressure at low speed: Barrowman's method and the body's small-angle lift.
  * @param {object} A aerodynamic model
  * @returns {number} m from the nose tip
  */
@@ -1108,7 +1127,7 @@ function cpOf(A) {
     CN += cnf;
     CNx += cnf * xf;
   }
-  return CN > 0 ? CNx / CN : A.L / 2;
+  return CN > 0 ? cpWithBodyLift(A, CN, CNx / CN) : A.L / 2;
 }
 /** body lift across the flow: CN = K·(planform area / reference area)·sin²α, with Galejs's K = 1.1 (as OpenRocket
     uses; the Allen–Perkins cylinder value η·Cdc ≈ 0.78 moves the CP forward less as the rocket tilts) */
