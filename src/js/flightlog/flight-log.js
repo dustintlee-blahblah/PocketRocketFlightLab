@@ -59,6 +59,31 @@ function flSaveAll(all) {
     return false;
   }
 }
+/** flights you deleted, so opening a design file that still carries them doesn't bring them back */
+const FL_DELETED = "rfs-fl-deleted";
+/**
+ * The ids of flights you deleted.
+ * @returns {Set<string>}
+ */
+function flDeleted() {
+  try {
+    const a = JSON.parse(localStorage.getItem(FL_DELETED) || "[]");
+    return new Set(Array.isArray(a) ? a : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+/**
+ * Remembers a deleted flight's id (the newest 2000 are kept).
+ * @param {string} id
+ */
+function flMarkDeleted(id) {
+  try {
+    const a = [...flDeleted()].filter((x) => x !== id);
+    a.push(id);
+    localStorage.setItem(FL_DELETED, JSON.stringify(a.slice(-2000)));
+  } catch (e) {}
+}
 /**
  * Saves the open design's flights (an empty list removes its entry).
  * @param {object[]} list
@@ -474,6 +499,7 @@ function flAct(id, what, btn) {
     }
     if (flShow === id) flShow = null;
     flPut(list.filter((x) => x.id !== id));
+    flMarkDeleted(id);
     renderFlightLog();
     drawChart();
     prToast("Flight deleted");

@@ -57,6 +57,10 @@ function prStateNow(text, runs = {}) {
     cal,
     notes: (BLD && BLD.notes) || null,
     overridesOff: BLD ? bldOffList() : [],
+    settings:
+      BLD && BLD.settings
+        ? Object.fromEntries(BLD_APP_SETTINGS.filter((k) => BLD.settings[k] != null).map((k) => [k, BLD.settings[k]]))
+        : null,
     runs,
   };
 }
@@ -420,7 +424,7 @@ async function saveDesignFile(asNew, opts = {}) {
       } catch (_) {
         baseXml = null;
       }
-      text = bldMergeOrk(SOURCE.text, fresh, BLD.cfg, L, RB.L, baseXml);
+      text = bldMergeOrk(SOURCE.text, fresh, BLD.cfg, baseXml);
       fname = copy
         ? clean(copy) + ".ork"
         : /\.ork$/i.test(SOURCE.name)
@@ -529,7 +533,8 @@ async function saveDesignFile(asNew, opts = {}) {
         ),
       });
   }
-  const fileBytes = zipStore([{ name: "rocket.ork", data: bytes }, ...extras]);
+  // compressed, as OpenRocket writes it (a run's time history makes a stored file several times larger)
+  const fileBytes = await zipDeflate([{ name: "rocket.ork", data: bytes }, ...extras]);
   // the web viewer can only hand out common file types, so the design comes wrapped in a .zip there
   const wrap = !isAndroidApp() && !(downloadsNS && downloadsNS.browser);
   const saveName = wrap ? fname + ".zip" : fname,

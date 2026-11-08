@@ -417,6 +417,9 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <div class="modal" id="overask" role="dialog" aria-modal="true" aria-labelledby="overttl" hidden><div class="mbox">
   <h3 id="overttl">Save changes</h3><p id="overtxt"></p>
   <div class="row mrow"><button class="btn" id="overyes" type="button">Overwrite</button><button class="btn" id="overcopy" type="button">Save a copy</button><button class="btn ghost" id="overno" type="button">Cancel</button></div></div></div>
+<div class="modal" id="motorask" role="dialog" aria-modal="true" aria-labelledby="motorttl" hidden><div class="mbox">
+  <h3 id="motorttl">Motors in this file</h3><p id="motortxt"></p>
+  <div class="row mrow"><button class="btn" id="motoryes" type="button">Add them</button><button class="btn ghost" id="motorno" type="button">Don’t add</button></div></div></div>
 <div class="modal" id="namebox" role="dialog" aria-modal="true" aria-labelledby="nametxt" hidden><div class="mbox">
   <p id="nametxt" style="margin-top:0"><b>Name your rocket</b><br><span class="note">It’s saved as an OpenRocket (.ork) file with this name.</span></p>
   <input type="text" id="savename" maxlength="80" autocomplete="off" style="width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink)">

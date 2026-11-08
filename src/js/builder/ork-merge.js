@@ -288,12 +288,10 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
  * @param {string} origXml the original file
  * @param {string} newXml the design now, as .ork
  * @param {string} cfg motor configuration id
- * @param {object} Lnew launch conditions now
- * @param {object} Lold launch conditions as opened
  * @param {string} [baseXml] the design as opened, as .ork
  * @returns {string} XML
  */
-function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
+function bldMergeOrk(origXml, newXml, cfg, baseXml) {
   const P = new DOMParser(),
     od = P.parseFromString(origXml, "application/xml"),
     nd = P.parseFromString(newXml, "application/xml");
@@ -312,7 +310,7 @@ function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
       }
     // a merge that failed part way leaves nothing behind: start again from the file
     if (m3 === false) {
-      return bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, null);
+      return bldMergeOrk(origXml, newXml, cfg, null);
     }
   }
   let rocketChanged = true;
@@ -407,60 +405,11 @@ function bldMergeOrk(origXml, newXml, cfg, Lnew, Lold, baseXml) {
     }
     oRocket.parentNode.replaceChild(od.importNode(nRocket, true), oRocket);
   }
-  let condChanged = false;
-  // launch conditions the user changed go into the simulation that flies this configuration
-  if (Lnew && Lold) {
-    const sims = [...od.getElementsByTagName("simulation")],
-      sim = sims.find((s) => s.getElementsByTagName("configid")[0]?.textContent.trim() === cfg) || sims[0];
-    const c = sim && [...sim.children].find((x) => x.tagName === "conditions");
-    const ch = (...k) => {
-      const r = k.some((x) => JSON.stringify(Lnew[x]) !== JSON.stringify(Lold[x]));
-      if (r) condChanged = true;
-      return r;
-    };
-    const set = (el, t, v) => {
-      let x = [...el.children].find((y) => y.tagName === t);
-      if (!x) {
-        x = od.createElementNS(el.namespaceURI, t);
-        el.appendChild(x);
-      }
-      x.textContent = String(+(+v).toPrecision(10));
-    };
-    if (c) {
-      if (ch("rail")) set(c, "launchrodlength", Lnew.rail);
-      if (ch("angle")) set(c, "launchrodangle", Lnew.angle);
-      if (ch("elev")) set(c, "launchaltitude", Lnew.elev);
-      if (ch("lat")) set(c, "launchlatitude", Lnew.lat ?? 40);
-      if (ch("lon")) set(c, "launchlongitude", Lnew.lon ?? 0);
-      if (ch("wind")) set(c, "windaverage", Lnew.wind);
-      if (ch("turb")) set(c, "windturbulence", Lnew.turb || 0);
-      if (ch("windDir")) set(c, "winddirection", ((Lnew.windDir || 0) * Math.PI) / 180);
-      if (ch("wind", "windDir", "turb")) {
-        const w = [...c.children].find((e) => e.tagName === "wind" && e.getAttribute("model") === "average");
-        if (w) {
-          set(w, "speed", Lnew.wind);
-          set(w, "direction", ((Lnew.windDir || 0) * Math.PI) / 180);
-          set(w, "standarddeviation", Lnew.wind * (Lnew.turb || 0));
-        }
-      }
-      if (ch("tempC", "elev")) {
-        [...c.children].filter((e) => e.tagName === "atmosphere").forEach((e) => c.removeChild(e));
-        const at = od.createElementNS(c.namespaceURI, "atmosphere");
-        at.setAttribute("model", "extendedisa");
-        c.insertBefore(at, [...c.children].find((e) => e.tagName === "timestep") || null);
-        set(at, "basetemperature", Lnew.tempC + 273.15);
-        set(at, "basepressure", 101325 * Math.pow(Math.max(1 - 2.25577e-5 * Lnew.elev, 0.01), 5.25588));
-      }
-      if (ch("railMode", "railDir")) {
-        const t = [...c.children].find((e) => e.tagName === "launchintowind");
-        if (t) t.textContent = Lnew.railMode !== "fixed" ? "true" : "false";
-        if (Lnew.railMode === "fixed") set(c, "launchroddirection", Lnew.railDir);
-      }
-    }
-  }
-  // the rocket or its launch conditions changed, so saved flight results are out of date
-  if (rocketChanged || condChanged)
-    for (const s of od.getElementsByTagName("simulation")) s.setAttribute("status", "outdated");
+  /* launch conditions aren't written into the file's simulations: those are the other program's own runs, with their
+     own conditions. Your full launch settings are kept with the app's settings in the file, and Save this run adds a
+     simulation with them. */
+  // the rocket changed, so saved flight results are out of date
+  if (rocketChanged) for (const s of od.getElementsByTagName("simulation")) s.setAttribute("status", "outdated");
   return new XMLSerializer().serializeToString(od);
 }
 /**

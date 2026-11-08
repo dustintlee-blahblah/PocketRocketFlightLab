@@ -1,8 +1,7 @@
 /**
- * Zip files: writing them (stored, no compression: OpenRocket's own .ork format, and a wrapper for web downloads),
+ * Zip files: writing them (compressed for a saved .ork, as OpenRocket writes it; stored for the web download wrapper),
  * and keeping an .ork file's other entries (decal images) when it is saved.
  */
-/* --- zip (stored, no compression): OpenRocket's own .ork format, and a wrapper for web downloads --- */
 /**
  * The CRC-32 lookup table.
  */
@@ -26,11 +25,11 @@ function crc32(u) {
   return (c ^ 0xffffffff) >>> 0;
 }
 /**
- * A zip archive of files, uncompressed.
- * @param {{name:string, data:(Uint8Array|string)}[]} files
+ * A zip archive of files, each stored as given or already deflated.
+ * @param {{name:string, data:Uint8Array, z?:Uint8Array}[]} files data is the file; z, when given, its raw deflate
  * @returns {Uint8Array}
  */
-function zipStore(files) {
+function zipBuild(files) {
   const enc = new TextEncoder(),
     parts = [],
     cd = [];
@@ -41,32 +40,37 @@ function zipStore(files) {
   for (const f of files) {
     const nm = enc.encode(f.name),
       crc = crc32(f.data),
-      sz = f.data.length;
+      sz = f.data.length,
+      body = f.z || f.data,
+      method = f.z ? 8 : 0,
+      csz = body.length;
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0, 0x04034b50, true);
     h.setUint16(4, 20, true);
     h.setUint16(6, 0x0800, true);
+    h.setUint16(8, method, true);
     h.setUint16(10, tm, true);
     h.setUint16(12, dt, true);
     h.setUint32(14, crc, true);
-    h.setUint32(18, sz, true);
+    h.setUint32(18, csz, true);
     h.setUint32(22, sz, true);
     h.setUint16(26, nm.length, true);
-    parts.push(new Uint8Array(h.buffer), nm, f.data);
+    parts.push(new Uint8Array(h.buffer), nm, body);
     const c = new DataView(new ArrayBuffer(46));
     c.setUint32(0, 0x02014b50, true);
     c.setUint16(4, 20, true);
     c.setUint16(6, 20, true);
     c.setUint16(8, 0x0800, true);
+    c.setUint16(10, method, true);
     c.setUint16(12, tm, true);
     c.setUint16(14, dt, true);
     c.setUint32(16, crc, true);
-    c.setUint32(20, sz, true);
+    c.setUint32(20, csz, true);
     c.setUint32(24, sz, true);
     c.setUint16(28, nm.length, true);
     c.setUint32(42, off, true);
     cd.push(new Uint8Array(c.buffer), nm);
-    off += 30 + nm.length + sz;
+    off += 30 + nm.length + csz;
   }
   const cdSize = cd.reduce((a, b) => a + b.length, 0),
     z = new DataView(new ArrayBuffer(22));
@@ -83,6 +87,37 @@ function zipStore(files) {
     p += a.length;
   }
   return out;
+}
+/**
+ * A zip archive of files, uncompressed.
+ * @param {{name:string, data:Uint8Array}[]} files
+ * @returns {Uint8Array}
+ */
+function zipStore(files) {
+  return zipBuild(files.map((f) => ({ name: f.name, data: f.data })));
+}
+/**
+ * A zip archive of files, each deflated where that makes it smaller (stored where the browser can't compress).
+ * @param {{name:string, data:Uint8Array}[]} files
+ * @returns {Promise<Uint8Array>}
+ */
+async function zipDeflate(files) {
+  const out = [];
+  for (const f of files) {
+    let z = null;
+    try {
+      if (typeof CompressionStream === "function" && f.data.length > 64)
+        z = new Uint8Array(
+          await new Response(
+            new Blob([f.data]).stream().pipeThrough(new CompressionStream("deflate-raw")),
+          ).arrayBuffer(),
+        );
+    } catch (e) {
+      z = null;
+    }
+    out.push({ name: f.name, data: f.data, ...(z && z.length < f.data.length ? { z } : {}) });
+  }
+  return zipBuild(out);
 }
 /**
  * True inside the Android app (which saves files through its own bridge).

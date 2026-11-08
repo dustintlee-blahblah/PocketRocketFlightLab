@@ -170,6 +170,43 @@ async function openDesignAsk(xml, name, buf, opts = {}) {
   return loadDesignXml(xml, name, buf, { ...opts, pick });
 }
 /**
+ * Asks before adding motors carried in a design file to your uploaded motors.
+ * @param {string[]} names
+ * @returns {Promise<boolean>} true to add them
+ */
+function askAddMotors(names) {
+  if (window.PR_NO_ASK) return Promise.resolve(true);
+  const box = document.getElementById("motorask"),
+    yes = document.getElementById("motoryes"),
+    no = document.getElementById("motorno");
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
+  document.getElementById("motortxt").textContent =
+    `This file flies ${list}, which ${names.length > 1 ? "aren’t" : "isn’t"} in your motor list. It was uploaded on the device that saved the file. Add ${names.length > 1 ? "them" : "it"} to your uploaded motors? If not, the design flies the nearest motor you have until you choose one.`;
+  yes.textContent = names.length > 1 ? "Add them" : "Add it";
+  box.hidden = false;
+  yes.focus();
+  return new Promise((res) => {
+    const done = (v) => {
+      box.hidden = true;
+      yes.onclick = no.onclick = box.onclick = null;
+      document.removeEventListener("keydown", onKey);
+      res(v);
+    };
+    /**
+     * Escape doesn't add them.
+     */
+    const onKey = (e) => {
+      if (e.key === "Escape") done(false);
+    };
+    document.addEventListener("keydown", onKey);
+    yes.onclick = () => done(true);
+    no.onclick = () => done(false);
+    box.onclick = (e) => {
+      if (e.target === box) done(false);
+    };
+  });
+}
+/**
  * Opens a design from .ork or .rkt text: reads it, picks the motors, sets the design, conditions and builder
  * parts, and reports what was opened.
  * @param {string} xml
@@ -194,19 +231,27 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       opts.cfg == null && buf && !/<RockSimDocument/i.test(xml.slice(0, 4000)) ? await prStateRead(buf, null) : null;
     const savedNotes = [];
     if (saved) {
-      const added = [];
-      for (const m of Array.isArray(saved.motors) ? saved.motors : [])
-        if (m && m.id && Array.isArray(m.t) && Array.isArray(m.F) && !findMotor(m.id) && !dupMotor(m, allMotors())) {
-          USER_MOTORS.push(m);
-          added.push(m.cn || m.name);
-        }
-      if (added.length) {
-        store.set("rfs-motors", USER_MOTORS);
-        savedNotes.push(
-          `Added ${added.join(", ")} from the file to your uploaded motors (the design flies ${added.length > 1 ? "them" : "it"}).`,
-        );
+      // uploaded motors the design flies, carried in the file: added to yours only if you say so
+      const fresh = (Array.isArray(saved.motors) ? saved.motors : []).filter(
+        (m) => m && m.id && Array.isArray(m.t) && Array.isArray(m.F) && !findMotor(m.id) && !dupMotor(m, allMotors()),
+      );
+      if (fresh.length) {
+        const names = fresh.map((m) => m.cn || m.name);
+        if (await askAddMotors(names)) {
+          USER_MOTORS.push(...fresh);
+          store.set("rfs-motors", USER_MOTORS);
+          savedNotes.push(
+            `Added ${names.join(", ")} from the file to your uploaded motors (the design flies ${names.length > 1 ? "them" : "it"}).`,
+          );
+        } else savedNotes.push(`Not added to your motors: ${names.join(", ")}.`);
       }
-      if (typeof saved.cfg === "string" && saved.cfg && !(pk && pk.kind === "run")) ORK_CFG = saved.cfg;
+      // the motor configuration and motors chosen here are used only if no other program has changed the file since
+      const same = saved.text && saved.text === prHash(xml);
+      if (same && typeof saved.cfg === "string" && saved.cfg && !(pk && pk.kind === "run")) ORK_CFG = saved.cfg;
+      if (!same && saved.text && (saved.cfg || saved.motorId))
+        savedNotes.push(
+          "The file was changed in another program after it was last saved here, so it opens with its own motor configuration and motors, not the ones chosen here.",
+        );
     }
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
     D = r.design;
@@ -343,7 +388,11 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
         nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
       const prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null,
-        prevOff = opts.cfg != null && BLD ? bldOffList() : null;
+        prevOff = opts.cfg != null && BLD ? bldOffList() : null,
+        prevSet =
+          opts.cfg != null && BLD && BLD.settings
+            ? Object.fromEntries(BLD_APP_SETTINGS.map((k) => [k, BLD.settings[k]]))
+            : null;
       if (isR) ORK_SIM = null; // RockSim files are read as one converted OpenRocket design with the chosen run
       BLD = bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR });
       ORK_SIM = null;
@@ -352,6 +401,19 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       if (notes) BLD.notes = jclone(notes);
       // overrides switched off when the file was saved (or while reopening it for another motor configuration)
       bldOffApply(prevOff || (saved && Array.isArray(saved.overridesOff) ? saved.overridesOff : []));
+      // rocket-wide settings the .ork can't hold: other drag, boundary layer, turning inertia
+      {
+        const ss = prevSet || (saved && saved.settings && typeof saved.settings === "object" ? saved.settings : null);
+        if (ss) {
+          BLD.settings = BLD.settings || bldSettings();
+          for (const k of BLD_APP_SETTINGS) {
+            const v = ss[k];
+            if (v === undefined) continue;
+            if (k.endsWith("On") ? typeof v === "boolean" : k === "blMode" ? typeof v === "string" : isFinite(v))
+              BLD.settings[k] = v;
+          }
+        }
+      }
       BLD.name = r.design.name || BLD.name;
       BLD.bp = { comps: {}, splits: {} };
       // Pocket Rocket's own files inside the .ork: from the opened file, or (reopening it for another motor configuration)
@@ -433,10 +495,11 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
     // the flight log and drag calibration saved in the file
     if (saved)
       try {
-        const fl = Array.isArray(saved.flights) ? saved.flights.filter((f) => f && f.id) : [];
+        const gone = flDeleted(),
+          fl = Array.isArray(saved.flights) ? saved.flights.filter((f) => f && f.id) : [];
         if (fl.length) {
           const cur = flList(),
-            add = fl.filter((f) => !cur.some((x) => x.id === f.id));
+            add = fl.filter((f) => !cur.some((x) => x.id === f.id) && !gone.has(f.id));
           if (add.length && flPut([...cur, ...add])) {
             flNow = {};
             savedNotes.push(

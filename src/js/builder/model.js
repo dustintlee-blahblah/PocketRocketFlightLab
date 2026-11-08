@@ -272,6 +272,17 @@ function bldOvOn(O, k) {
   const v = O[k];
   return k === "knownCg" || k === "cdo" ? v != null && isFinite(v) : +v > 0;
 }
+/** rocket-wide settings the .ork itself can't hold, kept with the app's settings in the file */
+const BLD_APP_SETTINGS = [
+  "otherCd",
+  "blMode",
+  "dryInertia",
+  "dryInertiaOn",
+  "bDryInertia",
+  "bDryInertiaOn",
+  "s1DryInertia",
+  "s1DryInertiaOn",
+];
 function bldSettings() {
   return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
 }
