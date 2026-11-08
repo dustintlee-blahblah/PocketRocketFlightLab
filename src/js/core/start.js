@@ -1,5 +1,5 @@
 /**
- * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
+ * App start: strict mode and the build number, which tools/set-build.js writes here and into the splash screen.
  */
 "use strict";
 const APP_BUILD = "278";

@@ -50,9 +50,11 @@ tools/build-release-apk.sh          builds and checks the signed release APK (us
 tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
 tools/unused-globals.js             lint: top-level names nothing uses
 .github/workflows/                  Check (every push and pull request) and Release (on a version tag)
-RELEASE_NOTES.md                    the newest release's description, newest build first
+CHANGELOG.md                        what changed in each build; a release's description comes from its section
 LICENSE                             GNU GPL v3
 THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library and data
+CONTRIBUTING.md, ARCHITECTURE.md    how to contribute; how the app works
+SECURITY.md, CODE_OF_CONDUCT.md     reporting security problems; how we treat each other
 ```
 
 `src/` holds the page (`index.html`, with `@@include` lines where the other files go), its styles
@@ -79,6 +81,10 @@ src/js/weather/     winds aloft and the weather forecast
 The files are plain scripts that share one global scope, in the order `src/index.html` lists them.
 
 ## Working on the code
+
+New here? [CONTRIBUTING.md](CONTRIBUTING.md) says how to report problems and send changes, and
+[ARCHITECTURE.md](ARCHITECTURE.md) explains how the app works and how a flight is computed. What changed in each build is
+in [CHANGELOG.md](CHANGELOG.md).
 
 Requirements: Node.js 18 or later.
 
@@ -150,13 +156,14 @@ Official releases are built and signed on GitHub (`.github/workflows/release.yml
 
 ```
 node tools/set-build.js 279         # APP_BUILD, the splash screen and the Android versionCode
-# add "### What's new in build 279" at the top of RELEASE_NOTES.md
+# add "## Build 279 (date)" with its changes at the top of CHANGELOG.md
 git commit -am "Build 279" && git push
 git tag v1.0-build279 && git push origin v1.0-build279
 ```
 
 The workflow checks that the tag and the source agree on the build number, builds the page and the signed APK,
-checks the APK's certificate, and publishes both with `RELEASE_NOTES.md` as the description. The signing keystore and
+checks the APK's certificate, and publishes both, with the build's `CHANGELOG.md` section in the description
+(`.github/release-template.md`). The signing keystore and
 its passwords are repository secrets, never files in the repository.
 
 ### Signing your own build

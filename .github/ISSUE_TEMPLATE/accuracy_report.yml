@@ -1,0 +1,50 @@
+name: Accuracy report
+description: A prediction that disagrees with a real flight, OpenRocket or RockSim.
+labels: ["accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks: these reports are how the physics gets better. The more of the details below you can give, the more
+        likely the cause can be found.
+  - type: input
+    id: build
+    attributes:
+      label: App build
+      description: Shown under the app's name, e.g. "v1.0 · build 278".
+    validations:
+      required: true
+  - type: dropdown
+    id: against
+    attributes:
+      label: Compared against
+      options:
+        - A real flight (altimeter)
+        - OpenRocket
+        - RockSim
+        - Published data (a report or paper)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: The numbers
+      description: What the app predicts and what the other source says, for each figure that differs.
+      placeholder: |
+        Apogee: app 2,410 ft, altimeter 2,180 ft
+        Max speed: app 420 ft/s, altimeter 395 ft/s
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Rocket, motor and conditions
+      description: Motor (and delay), launch site elevation, temperature, wind, rail length and angle. For OpenRocket or RockSim, its version and any settings you changed.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: The design file, and the altimeter file for a real flight (zip them first if GitHub won't take them). Say if the rocket's weight or CG was measured or overridden.

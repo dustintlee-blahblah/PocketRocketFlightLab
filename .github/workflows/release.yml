@@ -2,12 +2,13 @@
 #
 # To release build N:
 #   node tools/set-build.js N          (APP_BUILD, the splash screen and the Android versionCode)
-#   add "### What's new in build N" at the top of RELEASE_NOTES.md
+#   add "## Build N (date)" with its changes at the top of CHANGELOG.md
 #   git commit -am "Build N" && git push
 #   git tag v1.0-buildN && git push origin v1.0-buildN
 #
 # The workflow checks that the tag, the source and build.gradle agree on the build number, builds the page and the
-# signed release APK, and publishes them with RELEASE_NOTES.md as the description:
+# signed release APK, and publishes them. The description is .github/release-template.md with the build's CHANGELOG.md
+# section (tools/release-notes.js). The files:
 #   PocketRocketFlightLab-v<version>-build<N>.apk    the signed Android app
 #   pocket-rocket-flight-lab-v<version>-build<N>.html  the web version
 #   PocketRocketFlightLab.apk                        the same APK, so .../releases/latest/download/PocketRocketFlightLab.apk
@@ -64,7 +65,7 @@ jobs:
           grep -q "<span id=\"spbuild\">$N</span>" src/index.html || { echo "::error::the splash screen isn't build $N"; exit 1; }
           grep -q "versionCode $N\$" android/app/build.gradle || { echo "::error::build.gradle's versionCode isn't $N"; exit 1; }
           grep -q "versionName \"$V\"" android/app/build.gradle || { echo "::error::build.gradle's versionName isn't $V"; exit 1; }
-          grep -q "^### What's new in build $N\$" RELEASE_NOTES.md || { echo "::error::RELEASE_NOTES.md has no \"### What's new in build $N\""; exit 1; }
+          node tools/release-notes.js "$V" "$N" > /dev/null || { echo "::error::CHANGELOG.md has no \"## Build $N (date)\" section"; exit 1; }
 
       - uses: actions/setup-node@v5
         with:
@@ -96,8 +97,9 @@ jobs:
           N: ${{ steps.tag.outputs.build }}
         run: |
           set -euo pipefail
+          node tools/release-notes.js "$V" "$N" notes.md
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file RELEASE_NOTES.md
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
             echo "::notice::Release $TAG already exists; only its description was updated."; exit 0
           fi
           mkdir out
@@ -105,4 +107,4 @@ jobs:
           cp out/PocketRocketFlightLab-v${V}-build${N}.apk out/PocketRocketFlightLab.apk
           cp web/pocket-rocket-flight-lab.html "out/pocket-rocket-flight-lab-v${V}-build${N}.html"
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --latest \
-            --title "Pocket Rocket Flight Lab ${V} (build ${N})" --notes-file RELEASE_NOTES.md out/*
+            --title "Pocket Rocket Flight Lab ${V} (build ${N})" --notes-file notes.md out/*

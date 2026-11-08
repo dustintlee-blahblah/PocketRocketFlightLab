@@ -1,0 +1,46 @@
+name: Bug report
+description: Something in the app doesn't work or looks wrong.
+labels: ["bug"]
+body:
+  - type: input
+    id: build
+    attributes:
+      label: App build
+      description: Shown under the app's name, e.g. "v1.0 · build 278".
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where you use it
+      options:
+        - Android app
+        - Web version in a browser
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android or browser version
+      placeholder: "Pixel 8, Android 15 / Chrome 131 on Windows 11"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      placeholder: |
+        1. Open the Big Bertha example
+        2. Pick a B6-4 on the Motor tab
+        3. Tap Launch
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Design file, screenshots
+      description: Attach the .ork or .rkt file if you can share it (zip it first if GitHub won't take it), and any screenshots.
