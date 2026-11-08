@@ -21,6 +21,7 @@ import { showFitWarn, showMountWarn, showRailWarn } from "./launch-warnings.js";
 import { motorFit, mountTooBig, s1View } from "./motor-tab.js";
 import { lastSim, renderResults, runAll, setLastSim } from "./results.js";
 import { fmt, fromDisp, uname } from "./units.js";
+import { wtRefresh } from "./wind-tunnel.js";
 /**
  * Called after any edit: saves the design and launch conditions, marks the results out of date and refreshes the
  * notes and panels that depend on them.
@@ -32,6 +33,7 @@ export function changed() {
   siteRender();
   drawProfile();
   renderDragTable();
+  wtRefresh();
   renderInertiaNote();
   renderRecNote();
   renderSavePanel();

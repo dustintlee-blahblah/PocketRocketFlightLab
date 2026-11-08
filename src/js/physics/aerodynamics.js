@@ -1392,6 +1392,42 @@ export function cpAtAoA(A, deg, M = 0) {
   return lin + x > 0 ? (lin * C.cp + x * A.xPlan) / (lin + x) : C.cp;
 }
 /**
+ * Normal force at an angle of attack (nose into the flow, 0–90°), as the flight works it out: Barrowman's slope
+ * (sin α·cos α), the fins stalling from 18° to 35° (their linear lift fading to 60%) and then acting as flat plates
+ * across the flow (Hoerner, Cd ≈ 1.17 on 2/π of their area), and the body's crossflow lift (Allen–Perkins, K·sin²α).
+ * @param {object} A aerodynamic model
+ * @param {number} M Mach number
+ * @param {number} deg angle of attack, degrees
+ * @returns {{cn:number, cnBody:number, cnFins:number, cp:number}} normal-force coefficients on A.Aref, and where the
+ *   total acts (m from the nose tip)
+ */
+export function normalForceAt(A, M, deg) {
+  const C = cnaPartsM(A, M),
+    al = (deg * Math.PI) / 180,
+    sa = Math.sin(al),
+    ca = Math.cos(al),
+    ks = deg <= 18 ? 1 : deg >= 35 ? 0.6 : 1 - 0.4 * smooth01((deg - 18) / 17),
+    cnB = C.cn - C.cnFin,
+    linB = cnB * sa * Math.abs(ca),
+    linF = ks * C.cnFin * sa * Math.abs(ca),
+    cnX = ((CROSS_K * A.sideArea) / A.Aref) * sa * sa,
+    cnXf =
+      deg <= 18
+        ? 0
+        : ((smooth01((deg - 18) / 17) * 1.17 * (2 / Math.PI) * A.fins.reduce((t, f) => t + f.n * f.area, 0)) / A.Aref) *
+          sa *
+          sa,
+    xFin = C.cnFin > 0 ? C.momFin / C.cnFin : A.L,
+    xB = cnB > 0 ? (C.cn * C.cp - C.momFin) / cnB : C.cp,
+    cn = linB + linF + cnX + cnXf;
+  return {
+    cn,
+    cnBody: linB + cnX,
+    cnFins: linF + cnXf,
+    cp: cn > 0 ? (linB * xB + linF * xFin + cnX * A.xPlan + cnXf * xFin) / cn : C.cp,
+  };
+}
+/**
  * How well the rocket damps its own wobble: the damping ratio of its pitch oscillation and the oscillation's frequency
  * (Barrowman; Mandell, Caporaso & Bengen, Topics in Advanced Model Rocketry). The corrective moment coefficient is
  * C1 = ½ρV²·A·CNα·(Xcp − Xcg); the damping moment coefficient C2 = ½ρV·A·Σ CNα,i·(Xi − Xcg)² from the airflow, plus

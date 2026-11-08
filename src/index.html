@@ -322,6 +322,27 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div id="imperfbody" hidden>
       <div class="grid" id="g-imperf" style="margin-top:10px"></div></div>
     </div>
+    <div class="panel" id="wtpanel">
+      <div class="foldhead"><h2 style="margin:0">Wind Tunnel<button class="ib" type="button" data-title="Wind Tunnel" data-info="Your rocket in a wind tunnel, from a crawl to Mach 6, at any angle of attack. The drag, normal force and center of pressure are the same numbers the flight simulation uses, worked out from the parts on this tab (a staged rocket is tested as the whole stack at liftoff). Above Mach 1 the test section also shows where the shocks stand and how the pressure runs along the body, drawn from inviscid theory (Taylor–Maccoll cone flow and the shock-expansion method); that picture is for looking at only and doesn't feed any number. Skin friction, form factors, nose drag (NASA TR R-100), base drag (Fleeman; NACA TN 3819 above Mach 1) and fin lift (Barrowman below Mach 0.9, supersonic theory above 1.5) are as described in the app's documentation." aria-label="About Wind Tunnel">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="wtbody" aria-expanded="false" aria-controls="wtbody">Show</button></div>
+      <div id="wtbody" hidden>
+        <div class="wtsec"><canvas id="wtcv" aria-label="The rocket in the wind tunnel's test section at the chosen speed and angle of attack, with the shocks above Mach 1, the CP and the CG"></canvas><span class="wtbadge" id="wtregime"></span></div>
+        <div class="wtslide"><label for="wtmach">Speed</label><input type="range" id="wtmach" min="0" max="2" step="0.01" value="0.5"><span id="wtmachv"></span></div>
+        <div class="wtslide"><label for="wtaoa">Angle of attack</label><input type="range" id="wtaoa" min="0" max="40" step="0.5" value="4"><span id="wtaoav"></span></div>
+        <div class="stats wttiles" id="wttiles"></div>
+        <div class="grid" style="margin-top:12px">
+          <div class="fld"><div class="lh"><label for="wtalt">Height above the pad</label></div><div class="in"><input id="wtalt" type="number" inputmode="decimal" step="any" value="0"><span class="u" id="wtaltu"></span></div></div>
+          <div class="fld"><div class="lh"><label for="wtmax">Speeds charted up to</label></div><div class="in"><select id="wtmax"><option value="1">Mach 1</option><option value="2" selected>Mach 2</option><option value="3">Mach 3</option><option value="6">Mach 6</option></select></div></div>
+        </div>
+        <div class="wtcharts">
+          <div class="wtchart" id="wtc-cd"></div>
+          <div class="wtchart" id="wtc-parts"></div>
+          <div class="wtchart" id="wtc-cna"></div>
+          <div class="wtchart" id="wtc-cp"></div>
+          <div class="wtchart" id="wtc-aoa"></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn ghost" type="button" id="wtcsvbtn">Download CSV</button></div>
+      </div>
+    </div>
     <div class="panel"><div class="foldhead"><h2 style="margin:0">Drag table<button class="ib" type="button" data-title="Drag table" data-info="Calculated with a component drag buildup from published aerodynamic methods and NASA flight data (Hoerner, Schlichting, Fleeman, NASA TR R-100) for your launch-site air at zero angle of attack. A Cd override replaces them at every speed." aria-label="About Drag">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="dragbody" aria-expanded="false" aria-controls="dragbody">Show</button></div><div id="dragbody" hidden><div class="dtab" id="dragtable" style="margin-top:10px"></div></div>
       </div>
     <div class="panel"><h2>Design notes</h2><label class="note" for="dnotes">Your notes, saved in the design file with this motor configuration</label><textarea id="dnotes" class="dnotes" rows="4" placeholder="Build notes, flight plans, what to change next…"></textarea><p class="note" id="mountsizenote" hidden></p><p class="note" id="recnote"></p><p class="note" id="inote"></p></div>

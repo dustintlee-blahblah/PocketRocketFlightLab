@@ -136,6 +136,10 @@ computed. In outline:
 
 - **Motors** (`motors/`): the built-in catalog (`data/motor-catalog.js`, generated; see `tools/motor-catalog/`), RASP
   `.eng` and RockSim `.rse` files, and clusters and airstarts combined into one motor per stage.
+- **Wind Tunnel** (`ui/wind-tunnel.js`, on the Rocket tab): the design's drag, normal force and CP against Mach number
+  and angle of attack, from the same functions the flight uses (`cdParts()`, `cnaPartsM()`, `normalForceAt()`). The
+  shocks and surface pressures in its test section come from `physics/flow-picture.js` (Taylor–Maccoll cone flow,
+  second-order shock-expansion), which is drawn only and feeds no number.
 - **Recovery** (`recovery/ejection-charge.js`): black powder charge sizes for each compartment.
 - **Flight log** (`flightlog/`): real flights logged with altimeter files (several makers' CSV formats, Excel), compared
   with the prediction, and a drag correction fitted to them.
