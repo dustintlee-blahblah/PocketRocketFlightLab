@@ -14,7 +14,19 @@ cd "$(dirname "$0")/../android"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp" keystore.properties' EXIT
 umask 077
-printf '%s' "$KEYSTORE_B64" | base64 -d > "$tmp/release.p12"
+# tolerate line breaks and spaces picked up when the text was copied
+printf '%s' "$KEYSTORE_B64" | tr -d ' \t\r\n' | base64 -d > "$tmp/release.p12" || {
+  echo "SIGNING_KEYSTORE_B64 isn't valid base64 text" >&2
+  exit 1
+}
+# a PKCS#12 keystore is a DER structure: it starts with 0x30 0x82; report what arrived otherwise (sizes and the
+# first two bytes only)
+if [ "$(head -c 2 "$tmp/release.p12" | od -An -tx1 | tr -d ' ')" != "3082" ]; then
+  echo "SIGNING_KEYSTORE_B64 doesn't decode to a keystore: $(wc -c < "$tmp/release.p12") bytes starting" \
+    "$(head -c 2 "$tmp/release.p12" | od -An -tx1) (expected 30 82); the secret holds $(printf '%s' "$KEYSTORE_B64" | wc -c)" \
+    "characters. Paste the whole contents of the base64 text file again." >&2
+  exit 1
+fi
 {
   echo "storeFile=$tmp/release.p12"
   echo "storeType=pkcs12"
