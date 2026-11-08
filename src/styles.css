@@ -3084,3 +3084,11 @@ footer .linkbtn {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
+/* Compare motors: a button at the bottom of the Filter Motor List block */
+.cmpbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}

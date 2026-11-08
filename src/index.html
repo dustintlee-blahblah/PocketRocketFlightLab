@@ -368,11 +368,13 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
       <div id="mtbody" hidden><div class="grid" id="g-motortemp" style="margin-top:10px"></div></div>
     </div>
     <div class="panel">
-      <div class="row" style="justify-content:space-between">
-        <h2 style="margin:0">Upload a Motor</h2>
+      <div class="foldhead"><h2 style="margin:0">Upload a Motor</h2><button class="rsomore foldbtn" type="button" data-fold="engbody" aria-expanded="false" aria-controls="engbody">Show</button></div>
+      <div id="engbody" style="margin-top:10px" hidden>
+      <div class="row" style="justify-content:flex-end">
         <label class="file btn" for="engfile">Upload .eng / .rse / .zip<input type="file" id="engfile" multiple accept=".eng,.rse,.zip,.ENG,.RSE,.ZIP,text/plain,application/xml,text/xml,application/zip,application/x-zip-compressed"></label>
       </div>
       <p class="note">Upload a new motor to your database.</p>
+      </div>
       <div id="engreport"></div>
     </div>
     <div class="panel filters">
@@ -385,15 +387,10 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
       <div class="fld"><label for="fsearch">Search name, propellant or case</label><div class="in"><input id="fsearch" type="search" autocomplete="off" placeholder="H148, Blue Thunder, 38/240"></div></div>
       </div>
       <div class="note" id="fcount" style="margin:0"></div>
-    </div>
-    <div class="panel" id="cmppanel">
-      <div class="foldhead"><h2 style="margin:0">Compare motors<button class="ib" type="button" data-title="Compare motors" data-info="Flies your rocket on every motor in the list below (the one filtered to your motor mount), in today's launch conditions, and lists the results side by side. Each motor is flown with the chute opening at apogee, so the apogee isn't cut short by an ejection delay meant for a different motor; the Best delay column is the motor delay that would fire at apogee. RSO shows Go when nothing on the RSO checklist fails, with the number of cautions, or the first item that fails. Tap a column heading to sort, and tap a motor for its details.">i</button> <span class="foldsum" id="cmpsum"></span></h2><button class="rsomore foldbtn" id="cmptog" type="button" aria-expanded="false" aria-controls="cmpbody">Show</button></div>
-      <div id="cmpbody" hidden>
-      <p class="note" id="cmpnote" style="margin:6px 0 10px">Fly the rocket on every motor in the list below and see them side by side.</p>
-      <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="cmpgo" type="button">Compare motors</button><button class="btn ghost" id="cmpstop" type="button" hidden>Stop</button></div>
+      <div class="cmpbar"><button class="btn" id="cmpgo" type="button">Compare motors</button><button class="btn ghost" id="cmpstop" type="button" hidden>Stop</button><button class="ib" type="button" data-title="Compare motors" aria-label="About Compare motors" data-info="Flies your rocket on every motor in the list below (the one filtered to your motor mount), in today's launch conditions, and lists the results side by side. Each motor is flown with the chute opening at apogee, so the apogee isn't cut short by an ejection delay meant for a different motor; the Best delay column is the motor delay that would fire at apogee. RSO shows Go when nothing on the RSO checklist fails, with the number of cautions, or the first item that fails. Tap a column heading to sort, and tap a motor for its details.">i</button></div>
+      <p class="note" id="cmpnote" style="margin:8px 0 0" hidden></p>
       <p class="note" id="cmpmsg" aria-live="polite" style="margin:8px 0 0"></p>
       <div class="cmpwrap" id="cmpwrap" hidden></div>
-      </div>
     </div>
     <div class="motors" id="motorlist" role="radiogroup" aria-label="Motor"></div>
     <button class="btn ghost more" id="moremotors" hidden>Show more</button>

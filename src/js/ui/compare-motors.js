@@ -188,7 +188,6 @@ export function cmpRender() {
   const w = document.getElementById("cmpwrap"),
     note = document.getElementById("cmpnote");
   if (!w) return;
-  cmpSum();
   const two = !!D.twoStage,
     lab = two ? (TGT_NAME[motorTarget] || "Sustainer").toLowerCase() + " " : "";
   const n = filterMotors(F.dia, F.sys, F.q).length;
@@ -196,11 +195,11 @@ export function cmpRender() {
     `Compare ${n} motor${n === 1 ? "" : "s"}${two ? " for the " + lab.trim() : ""}`;
   document.getElementById("cmpgo").disabled = CMP.running || !n;
   const valid = CMP.rows && CMP.rows.length && (CMP.running || CMP.key === cmpKey());
-  if (CMP.rows && CMP.rows.length && !valid && !CMP.running) {
-    note.textContent =
-      "The rocket, conditions or other motors changed since this comparison. Compare again to update it.";
-  } else
-    note.textContent = `Fly the rocket on every motor in the list below${two ? ` as the ${lab}motor` : ""} and see them side by side.`;
+  // a note only when the table shown is out of date
+  note.hidden = !(CMP.rows && CMP.rows.length && !valid && !CMP.running);
+  note.textContent = note.hidden
+    ? ""
+    : "The rocket, conditions or other motors changed since this comparison. Compare again to update it.";
   if (!CMP.rows || !CMP.rows.length) {
     w.hidden = true;
     return;
@@ -290,29 +289,6 @@ export function cmpRender() {
         drawProfile();
       }),
   );
-}
-/**
- * Opens or folds the comparison section (remembered).
- * @param {boolean} open
- *
- * the section folds up; whether it's open is remembered
- */
-function cmpFold(open) {
-  const t = document.getElementById("cmptog");
-  t.setAttribute("aria-expanded", String(open));
-  document.getElementById("cmpbody").hidden = !open;
-  t.textContent = open ? "Hide" : "Show";
-  store.set("rfs-cmpopen", open);
-  cmpSum();
-}
-/**
- * Writes the folded comparison's one-line summary.
- */
-function cmpSum() {
-  const el = document.getElementById("cmpsum");
-  if (!el) return;
-  const open = document.getElementById("cmptog").getAttribute("aria-expanded") === "true";
-  el.textContent = !open && CMP.running ? "running…" : "";
 }
 /**
  * Draws the Motor tab's cluster panel: the main motor and each extra motor with its count and delay.
@@ -451,9 +427,6 @@ export function start() {
     };
     new MutationObserver(fold).observe(box, { childList: true, subtree: true });
   }
-  document.getElementById("cmptog").onclick = () =>
-    cmpFold(document.getElementById("cmptog").getAttribute("aria-expanded") !== "true");
-  cmpFold(!!store.get("rfs-cmpopen", false));
   document.getElementById("cmpstop").onclick = () => {
     CMP.stop = true;
   };
