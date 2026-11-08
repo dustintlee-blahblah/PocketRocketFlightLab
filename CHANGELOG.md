@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 281 (2026-11-08)
+
+**Results tab**
+- **No more empty boxes in the results tables**: the space a group's last row leaves is now plain, with no border around it (also in the staging and landing dispersion tables).
+
 ## Build 280 (2026-11-08)
 
 **Motor tab**
