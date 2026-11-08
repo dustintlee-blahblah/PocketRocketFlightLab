@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 280 (2026-11-08)
+
+**Motor tab**
+- **Upload a Motor starts folded**, with a Show button like the other blocks; messages from an upload still show.
+- **Compare motors is a button at the bottom of Filter Motor List** ("Compare 13 motors"), visible even with the filters folded. The comparison table opens under it once it runs.
+
 ## Build 279 (2026-11-08)
 
 **Under the hood** (no change to results or how the app works)
