@@ -162,7 +162,7 @@ export function bldOffApply(list) {
 export function bldDerive() {
   bldSyncMotors();
   const prev = D,
-    r = parseOrk(bldToOrk(BLD, L)),
+    r = parseOrk(bldToOrk(BLD, L), { offIds: BLD.offIds }),
     nd = r.design,
     S = BLD.settings || bldSettings();
   nd.name = BLD.name || nd.name;
@@ -207,15 +207,21 @@ export function bldDerive() {
         mid = m ? m.id : id,
         d = +e.d || 0,
         ej = e.ej != null && +e.ej >= 0 ? +e.ej : null,
-        o = out.find((x) => x.id === mid && Math.abs((x.d || 0) - d) < 1e-6 && x.ej === ej);
+        sb = e.sb ?? null, // a side booster's motor drops away with it; its charge can set when
+        sbEj = e.sbEj ?? null,
+        o = out.find((x) => x.id === mid && Math.abs((x.d || 0) - d) < 1e-6 && x.ej === ej && (x.sb ?? null) === sb);
       if (o) o.n += e.count || 1;
-      else out.push({ id: mid, n: e.count || 1, d, ej });
+      else out.push({ id: mid, n: e.count || 1, d, ej, ...(sb != null ? { sb, sbEj } : {}) });
     }
     // the same motors as before (perhaps chosen on the Motor tab): kept, with the mounts' lighting times unless changed there
     if (want && had === want) {
       const pv = prev[key];
       if (pv.length === out.length)
-        return pv.map((p, i) => (p.dUser ? { ...p, ej: out[i].ej } : { ...p, d: out[i].d, ej: out[i].ej }));
+        return pv.map((p, i) =>
+          p.dUser
+            ? { ...p, ej: out[i].ej, sb: out[i].sb, sbEj: out[i].sbEj }
+            : { ...p, d: out[i].d, ej: out[i].ej, sb: out[i].sb, sbEj: out[i].sbEj },
+        );
       return pv;
     }
     return out;

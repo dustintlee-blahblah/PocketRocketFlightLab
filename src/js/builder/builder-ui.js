@@ -66,7 +66,7 @@ export function bldSyncMotors() {
    */
   const put = (st, m, hold) => {
     const k = bldMounts(st)[0];
-    if (!k || !m) return;
+    if (!k || !m || st.noMotor) return;
     if (hold && m.id === hold) return;
     if (m.dia > k.od - 2 * (k.wall || 0) + 0.0006 && k.od > 0) return; // a motor that can't go in this mount isn't written into the design
     if (m && (!k.motor || k.motor.name !== m.name || (k.motor.mfr || "") !== (m.mfr || m.brand || "")))
@@ -75,7 +75,7 @@ export function bldSyncMotors() {
   };
   const h = BLD.hold || [];
   // a design where only one stage has a motor mount (a payload section on top): the motor goes in that stage
-  const mounted = BLD.stages.filter((st) => bldMounts(st).length);
+  const mounted = BLD.stages.filter((st) => bldMounts(st).length && !st.noMotor);
   if (BLD.stages.length > 1 && mounted.length === 1) {
     put(mounted[0], findMotor(motorId), h[0]);
     return;

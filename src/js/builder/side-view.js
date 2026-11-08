@@ -58,9 +58,32 @@ export function bldDraw() {
       xLo = Math.min(xLo, kk.x + lo);
       xHi = Math.max(xHi, kk.x + hi);
     }
+  // pods and tube fins (kept as the file has them; their shape comes from the design), each stage's from its front
+  const lay0 = BLD.stages.map((_, si) => {
+    const b = lay.bodies.find((q) => q.si === si);
+    return b ? b.x : 0;
+  });
+  const podSets = [
+      [D.pods, 0],
+      [D.bPods, 1],
+      [D.s1 && D.s1.bPods, 2],
+    ].flatMap(([l, si]) => (l || []).map((pd) => ({ pd, dx: lay0[si] || 0 }))),
+    tubeSets = [
+      [D.tubeFins, 0],
+      [D.bTubeFins, 1],
+      [D.s1 && D.s1.bTubeFins, 2],
+    ].flatMap(([l, si]) => (l || []).map((t) => ({ t, dx: lay0[si] || 0 })));
+  let rOut = R + span;
+  for (const { pd, dx } of podSets)
+    for (const sg of pd.segs) {
+      rOut = Math.max(rOut, (pd.rOff || 0) + Math.max(sg.r1, sg.r2));
+      xLo = Math.min(xLo, sg.x + dx);
+      xHi = Math.max(xHi, sg.x + dx + sg.len);
+    }
+  for (const { t } of tubeSets) rOut = Math.max(rOut, t.rb + 2 * t.ro);
   const ext = Math.max(xHi - xLo, 0.05);
   const padX = 14,
-    sc = Math.min((W - 2 * padX) / ext, (H - 40) / (2 * (R + span) + 0.002)),
+    sc = Math.min((W - 2 * padX) / ext, (H - 40) / (2 * rOut + 0.002)),
     x0 = padX + (W - 2 * padX - ext * sc) / 2 - xLo * sc,
     yc = (H - 22) / 2 + 2;
   const X = (x) => x0 + x * sc,
@@ -165,6 +188,79 @@ export function bldDraw() {
         pri: 2,
       });
     }
+  // pods: each copy where it sits around the rocket, seen from the side; tube fins likewise
+  const segR = (sg, x) => {
+    const t = Math.min(Math.max(x - sg.x, 0), sg.len);
+    if (sg.kind === "tube") return sg.r1;
+    if (sg.kind === "nose") return noseR(sg.shape, sg.param, t, sg.r2, sg.len);
+    return sg.r2 >= sg.r1
+      ? sg.r1 + (sg.r2 - sg.r1) * noseR(sg.shape, sg.param, t, 1, sg.len)
+      : sg.r2 + (sg.r1 - sg.r2) * noseR(sg.shape, sg.param, sg.len - t, 1, sg.len);
+  };
+  for (const { pd, dx } of podSets) {
+    if (!pd.segs.length) continue;
+    const on = pd.id && pd.id === bldSel,
+      n = Math.max(1, pd.n || 1);
+    for (let i = 0; i < n; i++) {
+      const ph = (pd.ang || 0) + (2 * Math.PI * i) / n,
+        yo = (pd.rOff || 0) * Math.cos(ph);
+      const draw = () => {
+        for (const sg of pd.segs) {
+          const N = sg.kind === "tube" ? 2 : 24;
+          c.beginPath();
+          for (let j = 0; j <= N; j++) {
+            const x = sg.x + (sg.len * j) / N;
+            j ? c.lineTo(X(x + dx), Y(yo + segR(sg, x))) : c.moveTo(X(x + dx), Y(yo + segR(sg, x)));
+          }
+          for (let j = N; j >= 0; j--) {
+            const x = sg.x + (sg.len * j) / N;
+            c.lineTo(X(x + dx), Y(yo - segR(sg, x)));
+          }
+          c.closePath();
+          c.fillStyle = on ? acc + "33" : col("--panel");
+          c.fill();
+          c.strokeStyle = on ? acc : ink;
+          c.lineWidth = on ? 2 : 1.2;
+          c.stroke();
+        }
+      };
+      if (Math.sin(ph) > 0.01) frontFins.push(draw);
+      else draw();
+    }
+    if (pd.id) {
+      const x1 = Math.min(...pd.segs.map((sg) => sg.x)) + dx,
+        x2 = Math.max(...pd.segs.map((sg) => sg.x + sg.len)) + dx,
+        pr = Math.max(...pd.segs.map((sg) => Math.max(sg.r1, sg.r2))),
+        reach = (pd.rOff || 0) + pr;
+      bldHits.push({ id: pd.id, x1: X(x1), x2: X(x2), y1: Y(reach), y2: Yb(reach), pri: 2 });
+    }
+  }
+  for (const { t, dx } of tubeSets) {
+    const on = t.id && t.id === bldSel,
+      n = Math.max(1, t.n || 1);
+    for (let i = 0; i < n; i++) {
+      const ph = (t.rot || 0) + (2 * Math.PI * i) / n,
+        yo = (t.rb + t.ro) * Math.cos(ph);
+      const draw = () => {
+        c.fillStyle = on ? acc + "33" : fld;
+        c.fillRect(X(t.x + dx), Y(yo + t.ro), t.len * sc, 2 * t.ro * sc);
+        c.strokeStyle = on ? acc : ink;
+        c.lineWidth = on ? 2 : 1.2;
+        c.strokeRect(X(t.x + dx), Y(yo + t.ro), t.len * sc, 2 * t.ro * sc);
+      };
+      if (Math.sin(ph) > 0.01) frontFins.push(draw);
+      else draw();
+    }
+    if (t.id)
+      bldHits.push({
+        id: t.id,
+        x1: X(t.x + dx),
+        x2: X(t.x + dx + t.len),
+        y1: Y(t.rb + 2 * t.ro),
+        y2: Yb(t.rb + 2 * t.ro),
+        pri: 2,
+      });
+  }
   // body outline
   for (const b of lay.bodies) {
     const on = b.p.id === bldSel,
@@ -360,6 +456,8 @@ export function bldDraw() {
           break;
         }
         case "raw": {
+          // pods and tube fins are drawn with the body, from the design
+          if (["podset", "parallelstage", "tubefinset"].includes(k.tag)) break;
           const pr = ri * 0.6;
           c.setLineDash([1, 3]);
           c.strokeRect(x1, Y(pr), Math.max(kk.len * sc, 4), 2 * pr * sc);

@@ -334,7 +334,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
       D[key] = [];
       for (const e of list || []) {
         const x = matchMotor(e);
-        if (x) D[key].push({ id: x.id, n: e.count || 1 });
+        if (x) D[key].push({ id: x.id, n: e.count || 1, ...(e.sb != null ? { sb: e.sb } : {}) });
         else miss.push(`${e.mfr} ${e.designation}`.trim());
       }
       return miss.length

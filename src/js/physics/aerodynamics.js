@@ -443,6 +443,7 @@ export function finSetsOf(D) {
       pts: D.finPts || null,
       cant: D.finCant || 0,
       par: D.finPar || 0,
+      ...(D.finPod != null ? { pod: D.finPod, rb: D.finRb, sb: D.finSb } : {}),
     },
     ...xfinSets(D.extraFins, D.finFinish ?? D.finish),
   ];
@@ -471,6 +472,7 @@ export function xfinSets(list, rs) {
     pts: f.pts || null,
     cant: f.cant || 0,
     par: f.par || 0,
+    ...(f.pod != null ? { pod: f.pod, rb: f.rb, sb: f.sb } : {}),
   }));
 }
 /**
@@ -615,6 +617,8 @@ export function aero(D) {
     D.lugs,
     D.otherCd,
     D.cdOverride,
+    D.pods,
+    D.tubeFins,
   ]);
   if (aeroCache.has(key)) return aeroCache.get(key);
   const segs = bodySegments(D).map((s) => ({ ...s }));
@@ -762,15 +766,25 @@ export function aero(D) {
     (1.2 * sideArea + 1.17 * (2 / Math.PI) * fins.reduce((a, f) => a + f.n * f.area, 0) + 0.8 * Aref);
   const fineness = L / (2 * R),
     ffBody = 1 + 1.5 / Math.pow(fineness, 1.5) + 7 / Math.pow(fineness, 3);
+  const pods = (D.pods || []).map((pd) => podAero(pd, D.finish)).filter(Boolean);
+  for (const pd of pods) {
+    sideArea += pd.k * pd.sideArea;
+    sideMom += pd.k * pd.sideArea * pd.xPlan;
+  }
+  const xPlanAll = sideArea > 0 ? sideMom / sideArea : xPlan;
+  const tumbleAll = tumbleCdA + (4 / (3 * Math.PI)) * 1.2 * pods.reduce((a, pd) => a + pd.k * pd.sideArea, 0);
+  const tubeFins = (D.tubeFins || []).map((tf) => tubeFinAero(tf, Aref, D.finish)).filter(Boolean);
   const val = {
     blMode: D.blMode || "turb",
     segs,
     R,
     Aref,
-    tumbleCdA,
+    tumbleCdA: tumbleAll,
     L,
     sideArea,
-    xPlan,
+    xPlan: xPlanAll,
+    pods,
+    tubeFins,
     Ln: nose && nose.kind === "nose" ? nose.len : 0,
     fins,
     Rs: D.finish,
@@ -789,6 +803,164 @@ export function aero(D) {
   if (aeroCache.size > 40) aeroCache.clear();
   aeroCache.set(key, val);
   return val;
+}
+/**
+ * A pod's or side booster's body (OpenRocket pod sets and parallel stages, RockSim external pods), for its lift and
+ * drag: its sections worked out as the rocket's own are (wetted area, volume, the steps and slopes that cause pressure
+ * drag), its base, and its side outline. Each copy of the pod adds the same again (k), as OpenRocket counts them.
+ * @param {object} pd pod from the design: {count, segs, sb}
+ * @param {number} finish surface roughness, m
+ * @returns {object|null}
+ */
+function podAero(pd, finish) {
+  const segs = (pd.segs || []).filter((sg) => sg.len > 0).map((sg) => ({ ...sg }));
+  if (!segs.length) return null;
+  segs.sort((a, b) => a.x - b.x);
+  const fore = [],
+    aft = [];
+  let sideArea = 0,
+    sideMom = 0;
+  segs.forEach((sg, i) => {
+    const N = sg.kind === "tube" ? 1 : 100;
+    let wet = 0,
+      vol = 0,
+      prev = segR(sg, 0),
+      kN = 0;
+    for (let j = 1; j <= N; j++) {
+      const x0 = ((j - 1) / N) * sg.len,
+        x1 = (j / N) * sg.len,
+        r = segR(sg, x1),
+        ds = Math.hypot(x1 - x0, r - prev);
+      wet += Math.PI * (prev + r) * ds;
+      vol += (Math.PI * (x1 - x0) * (prev * prev + prev * r + r * r)) / 3;
+      if (r > prev && ds > 0) kN += ((r - prev) / ds) ** 2 * Math.PI * (r * r - prev * prev);
+      sideArea += (prev + r) * (x1 - x0);
+      sideMom += (prev + r) * (x1 - x0) * (sg.x + (x0 + x1) / 2);
+      prev = r;
+    }
+    sg.wet = wet;
+    sg.vol = vol;
+    sg.rs = sg.rs ?? finish;
+    const rPrev = i > 0 ? segs[i - 1].r2 : 0;
+    if (sg.r1 > rPrev + 1e-6) fore.push({ seg: i, step: true, area: Math.PI * (sg.r1 * sg.r1 - rPrev * rPrev) });
+    else if (sg.r1 < rPrev - 1e-6) aft.push({ seg: i, k: 1, area: Math.PI * (rPrev * rPrev - sg.r1 * sg.r1) });
+    if (sg.kind === "tube" || Math.abs(sg.r2 - sg.r1) < 1e-6) return;
+    const area = Math.PI * Math.abs(sg.r2 * sg.r2 - sg.r1 * sg.r1),
+      dr = Math.abs(sg.r2 - sg.r1);
+    if (sg.r2 > sg.r1) {
+      const e = sg.len * 1e-3,
+        slope = (segR(sg, sg.len) - segR(sg, sg.len - e)) / e;
+      fore.push({
+        seg: i,
+        step: false,
+        area,
+        sub: 0.8 * Math.sin(Math.atan(slope)) ** 2,
+        sig: Math.atan(dr / sg.len),
+        blunt: sg.r1 < 1e-6 && (sg.shape === "ellipsoid" || (sg.shape === "power" && sg.param < 0.5)),
+        kN: area > 0 ? kN / area : 0,
+        nose:
+          i === 0 && sg.r1 < 1e-6
+            ? {
+                shape: sg.shape,
+                param: sg.param,
+                scale: finenessScale(sg.len / (2 * sg.r2)),
+                fin: sg.len / (2 * sg.r2),
+              }
+            : null,
+      });
+    } else aft.push({ seg: i, k: smooth01(((Math.atan(dr / sg.len) * 180) / Math.PI - 8) / 12), area });
+  });
+  const x0 = segs[0].x,
+    L = segs[segs.length - 1].x + segs[segs.length - 1].len - x0,
+    R = Math.max(...segs.map((sg) => Math.max(sg.r1, sg.r2)), 1e-4),
+    f = L / (2 * R);
+  return {
+    k: pd.count || 1,
+    sb: pd.sb ?? null,
+    segs,
+    fore,
+    aft,
+    baseArea: Math.PI * segs[segs.length - 1].r2 ** 2,
+    L,
+    R,
+    ffBody: 1 + 1.5 / Math.pow(f, 1.5) + 7 / Math.pow(f, 3),
+    sideArea,
+    xPlan: sideArea > 0 ? sideMom / sideArea : x0 + L / 2,
+  };
+}
+/**
+ * A set of tube fins (short open tubes around the body), as OpenRocket models them (TubeFinSetCalc): each tube's lift
+ * from Ribner's ring-airfoil result ("The ring airfoil in nonaxial flow", J. Aeronautical Sciences 14(9), 1947,
+ * equation 5), CNα = 2π²·r·c·A′/(1 + A′) with A′ = (2/π)·(2r/c), acting at a quarter of the chord at low speed; its
+ * outside surface less the strip the body hides, for skin friction; and its front face, the flow through it, and the
+ * wedge-shaped gap where it meets the body, for pressure drag.
+ * @param {object} tf tube fin set from the design: {n, len, ro, ri, x, rb}
+ * @param {number} Aref reference area, m²
+ * @param {number} finish surface roughness, m
+ * @returns {object|null}
+ */
+function tubeFinAero(tf, Aref, finish) {
+  const { n, len: c, ro, ri, rb } = tf;
+  if (!(n > 0 && c > 0 && ro > 0.001)) return null;
+  const ar = (2 * ri) / c,
+    arp = (2 * ar) / Math.PI,
+    cna1 = (2 * (arp / (1 + arp)) * Math.PI * Math.PI * ri * c) / Aref;
+  // where a tube touches the body: the gap between them, and the strip of each it hides
+  const d = Math.sqrt(Math.max((rb + ro) ** 2 - ro * ro, 0)),
+    th1 = Math.acos(ro / (ro + rb || 1)),
+    th2 = Math.PI / 2 - th1;
+  const gap = Math.max(d * ro - ro * ro * th1 - rb * rb * th2, 0),
+    wet = Math.max(c * 2 * (Math.PI - th1) * ro - c * 2 * th2 * rb, 0);
+  return {
+    n,
+    x: tf.x,
+    c,
+    ro,
+    ri,
+    rb,
+    ar,
+    cna1,
+    wet,
+    gap,
+    front: Math.PI * (ro * ro - ri * ri),
+    inner: Math.PI * ri * ri,
+    rs: tf.rs ?? finish,
+    cdo: tf.cdo || 0,
+    pod: tf.pod ?? null,
+    sb: tf.sb ?? null,
+  };
+}
+/**
+ * A tube fin's center of pressure as a share of its chord: a quarter of the chord up to Mach 0.9, moving to the
+ * supersonic location x/c = (AR·β − 0.67)/(2·AR·β − 1) by Mach 1.5, as for flat fins.
+ * @param {object} t tube fin set from aero()
+ * @param {number} M Mach number
+ * @returns {number}
+ */
+function tubeFinCp(t, M) {
+  if (M <= FIN_SUB_M) return 0.25;
+  const arb = t.ar * Math.sqrt(Math.max(Math.max(M, FIN_SUP_M) ** 2 - 1, 0)),
+    sup = arb > 1 ? Math.min(Math.max((arb - 0.67) / (2 * arb - 1), 0.25), 0.5) : 0.25;
+  return 0.25 + (sup - 0.25) * smooth01((M - FIN_SUB_M) / (FIN_SUP_M - FIN_SUB_M));
+}
+/**
+ * The normal-force slope of every pod's nose and transitions, and of every tube fin set, with where each acts.
+ * @param {object} A aerodynamic model
+ * @param {number} M Mach number
+ * @returns {{cn:number, x:number, fin?:boolean}[]}
+ */
+function extraCnParts(A, M) {
+  const parts = [];
+  for (const pd of A.pods || [])
+    for (const sg of pd.segs) {
+      const A1 = Math.PI * sg.r1 * sg.r1,
+        A2 = Math.PI * sg.r2 * sg.r2;
+      if (Math.abs(A2 - A1) < 1e-12) continue;
+      const xp = sg.x + (sg.len * A2 - sg.vol) / (A2 - A1);
+      parts.push({ cn: (pd.k * 2 * (A2 - A1)) / A.Aref, x: isFinite(xp) ? xp : sg.x + sg.len / 2 });
+    }
+  for (const t of A.tubeFins || []) parts.push({ cn: t.n * t.cna1, x: t.x + tubeFinCp(t, M) * t.c, fin: true });
+  return parts;
 }
 /**
  * Kinematic viscosity of the air (Sutherland's law for the dynamic viscosity).
@@ -887,6 +1059,43 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       pressure += (((trF * subLE * finWaveK(f.edge) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
     }
     if (!finBlunt(f.edge)) pressure += (finTransonicCd(M, f.tc, f.cosL) * f.n * f.area) / S;
+  }
+  // pods and side boosters: each copy's skin friction (with its own form factor), nose and transition pressure drag, and base
+  for (const pd of A.pods || []) {
+    const trP = transonic(mEq(M, pd.L / (2 * pd.R)));
+    let fr = 0;
+    for (const sg of pd.segs) fr += plateCf((v * pd.L) / nu, pd.L, sg.rs, M, A.blMode) * sg.wet;
+    friction += (pd.k * fr * pd.ffBody) / S;
+    for (const it of pd.fore) {
+      let cd;
+      if (it.step) cd = 0.8 * q0;
+      else if (it.nose) {
+        cd = Math.max(it.sub, noseCdTR100(it.nose.shape, it.nose.param, mEq(M, it.nose.fin)) * it.nose.scale);
+        if (M > 4) cd = mix(cd, stagCp(M) * it.kN, smooth01((M - 4) / 2));
+      } else {
+        const wave = (m) => (it.blunt ? stagCp(m) * it.kN : bonneyCd(m, it.sig));
+        cd = M < 1 ? (1 - trP) * it.sub + trP * wave(1) : wave(M);
+      }
+      pressure += (pd.k * cd * it.area) / S;
+    }
+    for (const it of pd.aft) base += (pd.k * it.k * cb * it.area) / S;
+    base += (pd.k * cb * pd.baseArea) / S;
+  }
+  // tube fins (OpenRocket's TubeFinSetCalc): friction on each tube's outside; the flow through it (Darcy–Weisbach, with the
+  // Swamee–Jain friction factor); 0.7 of the stagnation and base pressure on its front face; and both on the gap at the body
+  for (const t of A.tubeFins || []) {
+    if (t.cdo > 0) {
+      ovr += t.cdo;
+      continue;
+    }
+    friction += (t.n * plateCf((v * t.c) / nu, t.c, t.rs, M, A.blMode) * t.wet) / S;
+    let inner = 0;
+    if (t.inner > 1e-10) {
+      const Re = Math.max((v * 2 * t.ri) / nu, 1),
+        fd = 0.25 / Math.log10((t.rs || 0) / (3.7 * 2 * t.ri) + 5.74 / Math.pow(Re, 0.9)) ** 2;
+      inner = ((fd * t.c) / (2 * t.ri)) * t.inner;
+    }
+    pressure += (t.n * (inner + 0.7 * (q0 + cb) * t.front + (q0 + cb) * t.gap)) / S;
   }
   for (const bt of A.buttons)
     if (bt.cdo > 0) ovr += bt.cdo;
@@ -1036,11 +1245,12 @@ function cnaParts(A, M = 0) {
   for (const f of A.fins) {
     const { a, s, n } = f,
       xb = f.xLead,
-      rf = radiusAt(A, xb + a / 2);
+      rf = f.rb != null ? f.rb : radiusAt(A, xb + a / 2);
     const fm = finLiftRatio(f, M),
       cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * fm.k * (f.kff || 1);
     parts.push({ cn: cnf, x: xb + f.xcp + fm.dx, fin: true });
   }
+  parts.push(...extraCnParts(A, M));
   const cn = parts.reduce((t, p) => t + p.cn, 0),
     fp = parts.filter((p) => p.fin);
   return {
@@ -1068,7 +1278,7 @@ function rollParts(A, M = 0) {
     damp = 0;
   const strip = stripLiftRatio(M);
   for (const f of A.fins) {
-    const rf = radiusAt(A, f.xLead + f.a / 2),
+    const rf = f.rb != null ? f.rb : radiusAt(A, f.xLead + f.a / 2),
       cna1 = ((8 * (f.s / d) ** 2) / (1 + Math.sqrt(1 + f.cnX ** 2))) * finLiftRatio(f, M).k;
     // with the body's interference factor (1 + r/(s + r)), as for the fins' normal force
     force += ((f.n * cna1 * (1 + rf / (f.s + rf)) * (f.cant || 0) * Math.PI) / 180) * (rf + (f.yMac ?? f.s / 3));
@@ -1081,6 +1291,8 @@ function rollParts(A, M = 0) {
         (f.area > 0 ? f.area * rf * rf + 2 * rf * (f.I1 || 0) + (f.I2 || 0) : f.a * f.s * (rf + f.s / 2) ** 2)) /
       A.Aref;
   }
+  // tube fins: each tube's lift, at its distance from the axis, resists the spin as OpenRocket's model has it
+  for (const t of A.tubeFins || []) damp += t.n * t.cna1 * (t.rb + t.ro) ** 2;
   return { force, damp };
 }
 /* the static center of pressure, as a wind tunnel measures it: from the slope of the normal force and pitching moment over
@@ -1126,11 +1338,15 @@ export function cpOf(A) {
   for (const f of A.fins) {
     const { a, s, n } = f,
       xb = f.xLead,
-      rf = radiusAt(A, xb + a / 2);
+      rf = f.rb != null ? f.rb : radiusAt(A, xb + a / 2);
     const cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * (f.kff || 1);
     const xf = xb + f.xcp;
     CN += cnf;
     CNx += cnf * xf;
+  }
+  for (const p of extraCnParts(A, 0)) {
+    CN += p.cn;
+    CNx += p.cn * p.x;
   }
   return CN > 0 ? cpWithBodyLift(A, CN, CNx / CN) : A.L / 2;
 }

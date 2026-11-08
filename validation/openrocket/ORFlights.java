@@ -62,8 +62,14 @@ public class ORFlights {
                     boolean early = dep != null && (apo == null || dep.getTime() < apo.getTime() - 1e-6);
                     double impulse = 0;
                     var cfg = s.getRocket().getFlightConfiguration(s.getFlightConfigurationId());
-                    for (MotorConfiguration mc : cfg.getActiveMotors())
-                        impulse += mc.getMotor().getTotalImpulseEstimate() * mc.getMotorCount();
+                    for (MotorConfiguration mc : cfg.getActiveMotors()) {
+                        // each copy: a cluster's motors, in every copy of the pods or side boosters it sits in
+                        int copies = 1;
+                        for (var c = ((info.openrocket.core.rocketcomponent.RocketComponent) mc.getMount()).getParent(); c != null; c = c.getParent())
+                            if (c instanceof info.openrocket.core.rocketcomponent.PodSet || c instanceof info.openrocket.core.rocketcomponent.ParallelStage)
+                                copies *= ((info.openrocket.core.rocketcomponent.ComponentAssembly) c).getInstanceCount();
+                        impulse += mc.getMotor().getTotalImpulseEstimate() * mc.getMotorCount() * copies;
+                    }
                     out.println(head + ",\"apogee\":" + n(fd.getMaxAltitude()) + ",\"maxVelocity\":" + n(fd.getMaxVelocity())
                         + ",\"maxMach\":" + n(fd.getMaxMachNumber()) + ",\"impulse\":" + n(impulse)
                         + ",\"deployedBeforeApogee\":" + early + ",\"extensions\":" + s.getSimulationExtensions().size() + "}");

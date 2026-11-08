@@ -8,8 +8,8 @@ In short:
 
 | Check | Against | Result |
 |---|---|---|
-| Apogee, 33 design files | OpenRocket 24.12, same files and conditions | median +1.4%, typical ±1.6% (61 flights) |
-| Apogee, OpenRocket's own examples | OpenRocket 24.12 | median +1.2%, typical ±4.1% (30 flights) |
+| Apogee, 33 design files | OpenRocket 24.12, same files and conditions | median +0.9%, typical ±1.5% (65 flights) |
+| Apogee, OpenRocket's own examples | OpenRocket 24.12 | median −0.2%, typical ±2.3% (34 flights) |
 | Center of pressure | NASA wind-tunnel data, Arcas rocket, Mach 0.6–4.6 | RMS error 2.3% of body length |
 | Total drag | NACA wind-tunnel data, Mach 0.6–4.6 | mean error 17% |
 | Fin drag | NACA free-flight data, Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
@@ -24,34 +24,35 @@ simulation (motor, delay, launch site, weather, rail) in both programs: OpenRock
 (`validation/openrocket/ORFlights.java`), and the app the way it does when you open that file and pick that run.
 
 **33 design files** (OpenRocket's examples, the app's built-in examples, and designs flyers shared, from model
-rockets on A motors to Mach 1.1 high-power flights): of their stored flights, 61 compare fairly. The app's apogee is
-a median **1.4% higher** than OpenRocket's, with a typical difference of **±1.6%**, and 50 of the 61 within ±5%; top
-speeds agree within a median 1.1%. The shared designs belong to the people who shared them and aren't in this
+rockets on A motors to Mach 1.1 high-power flights): of their stored flights, 65 compare fairly. The app's apogee is
+a median **0.9% higher** than OpenRocket's, with a typical difference of **±1.5%**, and 56 of the 65 within ±5%; top
+speeds agree within a median 1.0%. The shared designs belong to the people who shared them and aren't in this
 repository, so only the summary is given here. An earlier, broader comparison (98 OpenRocket and RockSim designs, up
 to Mach 2.3, at build 270, with each program flying the same motor) found a median of +0.5% and a typical ±3.0%.
 
 **OpenRocket's bundled examples** (anyone can rerun this; the per-flight results are in
 [`validation/results/openrocket-examples.csv`](validation/results/openrocket-examples.csv)): of 60 stored flights,
-30 can be compared fairly. The app's apogee is a median **1.2% higher**, typical **±4.1%**, with 21 of the 30 within
-±5%; top speeds agree within a median 0.4%. The other 30 aren't compared, for reasons the script reports:
+34 can be compared fairly. The app's apogee is a median **0.2% lower**, typical **±2.3%**, with 27 of the 34 within
+±5%; top speeds agree within a median 0.0%. The other 26 aren't compared, for reasons the script reports:
 
 - **A parachute opens before apogee** (15): when the motor's delay is too short, the reported "apogee" is wherever the
   parachute happened to open, which depends on each program's deployment model more than on its flight physics.
-- **Different motor data** (10): the app's motor catalog and OpenRocket's have a different curve for some motors
-  (more than 3% apart in total impulse), so the two programs aren't flying the same motor.
+- **Different motor data** (7): the app's motor catalog and OpenRocket's have a different curve for some motors
+  (more than 3% apart in total impulse), or the app doesn't have the motor at all, so the two programs aren't flying
+  the same motor.
 - **Simulation extensions or scripts** (4): OpenRocket runs that use plug-ins, such as active roll control.
-- **Tube fins** (1): the app can't model tube fins yet.
 
 Where the compared flights differ most:
 
-- **Pods**: "Unpowered Pods" in *Pods--powered with recovery deployment* reaches 68 m in the app against 290 m in
-  OpenRocket. Pods are modeled only in part.
+- **Pods with one- and two-fin sets**: in *Pods--powered with recovery deployment*, "Unpowered Pods" is 9% lower in
+  the app and "BoosterOnly" 6% lower. Its pods carry fin sets of one and two fins, which OpenRocket treats by their
+  actual direction and the app averages around the roll. The other pod, side-booster and tube-fin examples agree
+  within 2%.
 - **Airstarts and short, wide rockets**: the airstart examples fly 4–7% higher in the app; the "base drag hack"
   example 8% lower.
 
-One finding among the flights not compared: in *Simulation extensions* and *Simulation scripting*, even the runs
-without plug-ins fly a 1,297 N·s motor in the app against 4,602 N·s in OpenRocket, so the app reads those files'
-motor configuration differently. That's a bug to find.
+Among the flights not compared: *Simulation extensions* and *Simulation scripting* fly a HyperTEK L540 hybrid, which
+isn't in the app's motor catalog, so the app keeps the motor that was chosen before (and says so).
 
 ## Center of pressure against wind-tunnel data
 

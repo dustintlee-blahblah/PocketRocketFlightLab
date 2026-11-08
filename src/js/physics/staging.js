@@ -38,9 +38,19 @@ function boosterFinSets(D) {
       pts: D.bFinPts || null,
       cant: D.bFinCant || 0,
       par: D.bFinPar || 0,
+      ...(D.bFinPod != null ? { pod: D.bFinPod, rb: D.bFinRb, sb: D.bFinSb } : {}),
     },
     ...xfinSets(D.bExtraFins, D.bFinFinish ?? D.finish),
   ];
+}
+/**
+ * A pod moved aft by a distance (a booster's pod, placed behind the sustainer in the stack).
+ * @param {object} pd pod
+ * @param {number} dx m
+ * @returns {object}
+ */
+function shiftPod(pd, dx) {
+  return { ...pd, segs: pd.segs.map((sg) => ({ ...sg, x: sg.x + dx })) };
 }
 /**
  * The sustainer and booster joined into one airframe, for the aerodynamics of the whole stack before separation.
@@ -58,6 +68,12 @@ export function stackDesign(D) {
     diameter: Math.max(D.diameter, D.bDiameter),
     segments: segs,
     finSets: fs,
+    // the booster's pods and tube fins, behind the sustainer
+    pods: D.pods || D.bPods ? [...(D.pods || []), ...(D.bPods || []).map((pd) => shiftPod(pd, Ls))] : null,
+    tubeFins:
+      D.tubeFins || D.bTubeFins
+        ? [...(D.tubeFins || []), ...(D.bTubeFins || []).map((t) => ({ ...t, x: t.x + Ls }))]
+        : null,
     buttons: custom ? [...(D.buttons || []), ...(D.bButtons || []).map((b) => ({ ...b, x: b.x + Ls }))] : D.buttons,
     lugs: custom ? [...(D.lugs || []), ...(D.bLugs || []).map((l) => ({ ...l, x: l.x + Ls }))] : D.lugs,
     cdOverride: 0,
@@ -93,6 +109,8 @@ export function boosterDesign(D) {
     diameter: D.bDiameter,
     segments: boosterSegments(D),
     finSets: boosterFinSets(D),
+    pods: D.bPods || null,
+    tubeFins: D.bTubeFins || null,
     finish: D.finish,
     railPreset: "none",
     buttons: [],

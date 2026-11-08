@@ -77,7 +77,9 @@ IndexedDB (`files/recent.js`).
   up to 0.2 s under a parachute, shortened while a canopy fills or where the drag response is fast.
 - **Phases.** On the rail (motion along the rail only), free flight (powered and coasting; a rocket that loses
   stability tumbles, with crossflow drag), then under drogue and main parachutes: deployed at apogee or by the motor's
-  ejection charge, after any delay, with a main parachute at a set height for dual deployment. Lower stages separate and are flown down on their own by `flyBooster()`.
+  ejection charge, after any delay, with a main parachute at a set height for dual deployment. Lower stages separate and are flown down on their own by `flyBooster()`. Side boosters (OpenRocket's
+  parallel stages, RockSim's detachable pods) drop away at their set event, taking their structure, motors, pods and
+  fins with them (`GsAt()` switches to the aerodynamics without them).
 - **Forces and moments.** Thrust from the motor's curve (`motorModel`), with the mass and inertia falling as propellant
   burns; gravity; drag from `cdParts()`; the normal force and its moment from `cnaPartsM()` with the angle of attack;
   pitch damping; fin cant roll forcing and roll damping (`rollPartsM()`); the earth's rotation (`coriolis()`, `physics/wind.js`).
@@ -118,6 +120,9 @@ computed. In outline:
 - Base drag: Fleeman's base-pressure correlation, with the motor nozzle's exit area during the burn.
 - Boattail separation (Hoerner), fin edges (stagnation pressure, Newtonian and Ackeret wave drag by edge type), launch
   lugs and rail buttons (Hoerner protuberance drag), tumbling (Allen–Perkins crossflow).
+- Pods and tube fins (`podAero()`, `tubeFinAero()`): each pod's body adds its nose and transition lift, friction,
+  pressure and base drag, once per copy; tube fins as OpenRocket models them, with Ribner's lift for a short ring and
+  the flow through the tubes from Darcy–Weisbach pipe friction.
 - `tests/drag-benchmarks.js` checks the drag model against two NACA reports (RM A53D02, RM E50D28).
 
 ## The other parts

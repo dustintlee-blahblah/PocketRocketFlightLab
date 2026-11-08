@@ -57,6 +57,17 @@ export function parseRkt(xml) {
      event types: 1 at the motor's ejection charge, 2 a time after ignition, 3 a time after apogee, 4 at apogee, 5 at an
      altitude on the way down (in metres), 0 never (as OpenRocket reads them) */
   const deploys = new Map();
+  /* pods and their motors: the pod a motor mount (by its serial number) sits in, and the detachable pods that carry a
+     motor in this simulation, numbered in file order as the side boosters are */
+  const simMounts = new Set(
+    sim ? [...sim.getElementsByTagName("EngineSet")].map((es) => (txt(es, "MountSerialNo") || "").trim()) : [],
+  );
+  const podOfSerial = new Map();
+  for (const pe of design.getElementsByTagName("ExternalPod"))
+    for (const bt of pe.getElementsByTagName("BodyTube"))
+      if (txt(bt, "IsMotorMount") === "1") podOfSerial.set((txt(bt, "SerialNo") || "").trim(), pe);
+  const poweredPod = (pe) => [...podOfSerial].some(([sn, p]) => p === pe && simMounts.has(sn));
+  const sideIdx = new Map();
   for (const list of [
     design.getElementsByTagName("SimulationEventList")[0],
     sim && sim.getElementsByTagName("SimulationEvents")[0],
@@ -102,12 +113,15 @@ export function parseRkt(xml) {
    */
   function common(el, stageLevel) {
     let s = `<name>${xe(txt(el, "Name") || el.tagName)}</name><id>${rktPartId(RIDX.get(el))}</id>`;
-    if (!stageLevel) {
+    // a pod's nose, tubes and transitions follow one another from the pod's front, as a stage's do (as OpenRocket reads them)
+    if (stageLevel || (podBody.has(el) && ["NoseCone", "BodyTube", "Transition"].includes(el.tagName)))
+      s += `<axialoffset method="after">0</axialoffset>`;
+    else {
       const mode = num(el, "LocationMode", 0),
-        xb = num(el, "Xb", 0) / 1000;
+        xb = (num(el, "Xb", 0) + (mode === 0 ? xbShift.get(el) || 0 : 0)) / 1000;
       const method = ["top", "absolute", "bottom"][mode] || "top";
       s += `<axialoffset method="${method}">${method === "bottom" ? -xb : xb}</axialoffset>`;
-    } else s += `<axialoffset method="after">0</axialoffset>`;
+    }
     // RockSim measures a transition's CG from the front of its front shoulder, which sits inside the tube ahead of it
     const cgShift = el.tagName === "Transition" ? num(el, "FrontShoulderLen", 0) : 0;
     if (txt(el, "UseKnownCG") === "1") {
@@ -125,6 +139,9 @@ export function parseRkt(xml) {
     return s + material(el);
   }
   const RIDX = rktIndex(design);
+  // pods RockSim attaches to a fin set go on the fins' body instead (OpenRocket's files can't hang a pod on fins): their position, moved from the fins' frame to the body's
+  const xbShift = new WeakMap(),
+    podBody = new WeakSet();
   let parentLen = 0;
   /**
    * The converted attached parts of a RockSim part, as .ork subcomponents.
@@ -195,18 +212,50 @@ export function parseRkt(xml) {
           cant = Math.abs(cantR) > 1e-6 ? (cantR * 180) / Math.PI : 0; // RockSim stores the cant angle in radians
         if (cant) notes.push(`Fin cant of ${cant.toFixed(1)}° read from the file.`);
         const head = `${c}<fincount>${n}</fincount><thickness>${t}</thickness><crosssection>${edge}</crosssection>${cant ? `<cant>${cant}</cant>` : ""}`;
-        if (code === 1)
-          return `<ellipticalfinset>${head}<rootchord>${num(el, "RootChord") / 1000}</rootchord><height>${num(el, "SemiSpan") / 1000}</height></ellipticalfinset>`;
-        if (code === 2) {
-          const pts = (txt(el, "PointList") || "")
-            .split("|")
-            .map((p) => p.split(",").map(parseFloat))
-            .filter((p) => p.length > 1 && isFinite(p[0]) && isFinite(p[1]));
-          // RockSim lists the outline from the trailing edge; OpenRocket's starts at the leading edge of the root (the other way round it reads as a fin of negative size)
-          if (pts.length > 2 && pts[0][0] > pts[pts.length - 1][0]) pts.reverse();
-          return `<freeformfinset>${head}<finpoints>${pts.map(([x, y]) => `<point x="${x / 1000}" y="${y / 1000}"/>`).join("")}</finpoints></freeformfinset>`;
+        // pods RockSim attaches to the fins: on the fins' body, at the same place
+        const finPods = [...(kid(el, "AttachedParts")?.children || [])].filter((k) => k.tagName === "ExternalPod");
+        let podsXml = "";
+        if (finPods.length) {
+          for (const pe of finPods) if (num(el, "LocationMode", 0) === 0) xbShift.set(pe, num(el, "Xb", 0));
+          podsXml = finPods.map((pe) => conv(pe, false)).join("");
+          notes.push("A pod attached to a fin set was placed on the fins’ body tube, at the same position.");
         }
-        return `<trapezoidfinset>${head}<rootchord>${num(el, "RootChord") / 1000}</rootchord><tipchord>${num(el, "TipChord") / 1000}</tipchord><height>${num(el, "SemiSpan") / 1000}</height><sweeplength>${num(el, "SweepDistance") / 1000}</sweeplength></trapezoidfinset>`;
+        return finXml() + podsXml;
+        function finXml() {
+          if (code === 1)
+            return `<ellipticalfinset>${head}<rootchord>${num(el, "RootChord") / 1000}</rootchord><height>${num(el, "SemiSpan") / 1000}</height></ellipticalfinset>`;
+          if (code === 2) {
+            const pts = (txt(el, "PointList") || "")
+              .split("|")
+              .map((p) => p.split(",").map(parseFloat))
+              .filter((p) => p.length > 1 && isFinite(p[0]) && isFinite(p[1]));
+            // RockSim lists the outline from the trailing edge; OpenRocket's starts at the leading edge of the root (the other way round it reads as a fin of negative size)
+            if (pts.length > 2 && pts[0][0] > pts[pts.length - 1][0]) pts.reverse();
+            return `<freeformfinset>${head}<finpoints>${pts.map(([x, y]) => `<point x="${x / 1000}" y="${y / 1000}"/>`).join("")}</finpoints></freeformfinset>`;
+          }
+          return `<trapezoidfinset>${head}<rootchord>${num(el, "RootChord") / 1000}</rootchord><tipchord>${num(el, "TipChord") / 1000}</tipchord><height>${num(el, "SemiSpan") / 1000}</height><sweeplength>${num(el, "SweepDistance") / 1000}</sweeplength></trapezoidfinset>`;
+        }
+      }
+      case "ExternalPod": {
+        const name = txt(el, "Name") || "Pod";
+        if (txt(el, "Removed") === "1") {
+          notes.push(`The pod “${name}” is marked as removed in the file, so it was left off.`);
+          return "";
+        }
+        // one pod per RockSim part, at its distance from the rocket's axis; a detachable pod is a side booster that drops off when its motor burns out
+        const t = txt(el, "Detachable") === "1" && poweredPod(el) ? "parallelstage" : "podset";
+        if (t === "parallelstage") {
+          sideIdx.set(el, sideIdx.size);
+          notes.push(`The detachable pod “${name}” drops off when its motor burns out.`);
+        }
+        for (const k of kid(el, "AttachedParts")?.children || []) podBody.add(k);
+        const head = c.replace(/<material[^>]*>[^<]*<\/material>/, "").replace(/<finish>[^<]*<\/finish>/, "");
+        return `<${t}>${head}<instancecount>1</instancecount><radiusoffset method="free">${num(el, "RadialLoc", 0) / 1000}</radiusoffset><angleoffset method="relative">${(num(el, "RadialAngle", 0) * 180) / Math.PI}</angleoffset>${t === "parallelstage" ? "<separationevent>burnout</separationevent><separationdelay>0</separationdelay>" : ""}<subcomponents>${kids(el)}</subcomponents></${t}>`;
+      }
+      case "TubeFinSet": {
+        const od = num(el, "OD") / 2000,
+          id = num(el, "ID") / 2000;
+        return `<tubefinset>${c}<fincount>${Math.max(1, Math.round(num(el, "TubeCount", 6)))}</fincount><rotation>${(num(el, "RadialAngle", 0) * 180) / Math.PI}</rotation><length>${L}</length><radius>${od}</radius><thickness>${Math.max(od - id, 0)}</thickness></tubefinset>`;
       }
       case "Ring":
         return `<centeringring>${c}<length>${L}</length><outerradius>${num(el, "OD") / 2000}</outerradius><innerradius>${num(el, "ID") / 2000}</innerradius></centeringring>`;
@@ -301,13 +350,16 @@ export function parseRkt(xml) {
               mfr: txt(es, "EngineMfg") || "",
               delay: num(es, "IgnitionDelay", 0),
               mountDia: mDia.get((txt(es, "MountSerialNo") || "").trim()) || 0,
+              mountSerial: (txt(es, "MountSerialNo") || "").trim(),
               ej: num(es, "EjectionDelay", -1),
               count: Math.max(1, Math.round(num(es, "EngineCount", 1))),
             }))
             .filter((e) => e.designation)
         : [];
     };
-    rktS3 = engs("Stage3Engines");
+    // the core's motor first (a pod's motors are the cluster's extras, and a side booster's drop off with it)
+    const inPod = (e) => (podOfSerial.has(e.mountSerial) ? 1 : 0);
+    rktS3 = engs("Stage3Engines").sort((a, b) => inPod(a) - inPod(b));
     rktS2 = engs("Stage2Engines");
     if (!rktS3.length) rktS3 = engs(null).slice(0, 1);
     motor = rktS3[0] || null;
@@ -414,7 +466,10 @@ export function parseRkt(xml) {
     const [m0, ...rest] = list;
     return [...(m0.count > 1 ? [{ ...m0, count: m0.count - 1 }] : []), ...rest];
   };
-  r.motorExtras = rx2(rktS3);
+  r.motorExtras = rx2(rktS3).map((e) => {
+    const pe = podOfSerial.get(e.mountSerial);
+    return pe && sideIdx.has(pe) ? { ...e, sb: sideIdx.get(pe) } : e;
+  });
   r.boosterExtras = r.design.twoStage ? rx2(rktS2) : [];
   if (r.motorExtras.length || r.boosterExtras.length)
     r.notes.push("The file has a motor cluster. All motors in a stage are lit together and their thrust is added.");

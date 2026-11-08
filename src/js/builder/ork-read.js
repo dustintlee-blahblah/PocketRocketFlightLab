@@ -14,6 +14,7 @@ import {
   bldPts,
   bldSettings,
 } from "./model.js";
+import { unflipNoses } from "../files/openrocket-import.js";
 import { matchMotor } from "../files/rocksim-import.js";
 import { ORK_CFG, ORK_SIM } from "../files/save.js";
 import { rktEj } from "../recovery/ejection-charge.js";
@@ -29,6 +30,7 @@ import { rktEj } from "../recovery/ejection-charge.js";
  */
 export function bldFromOrk(xml, info) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
+  unflipNoses(doc);
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];
   if (!rocket) throw new Error("No rocket was found in this file.");
   /**
@@ -220,7 +222,10 @@ export function bldFromOrk(xml, info) {
    */
   const mountOf = (mm, k) => {
     const motors = [...mm.children].filter((c) => c.tagName === "motor"),
-      mo = motors.find((m) => m.getAttribute("configid") === cfg) || motors[0];
+      // the motor for this configuration; a mount with motors only for other configurations is empty in this one
+      mo =
+        motors.find((m) => m.getAttribute("configid") === cfg) ||
+        (motors.some((m) => m.getAttribute("configid")) ? null : motors[0]);
     const ic = [...mm.children]
       .filter((c) => c.tagName === "ignitionconfiguration")
       .find((c) => c.getAttribute("configid") === cfg);
@@ -244,11 +249,24 @@ export function bldFromOrk(xml, info) {
     }
     return k;
   };
+  // stages and side booster sets switched off in this flight configuration (by id, so the flight leaves them out)
+  const offIds = [];
+  {
+    const mc = cfgEl.find((c) => c.getAttribute("configid") === cfg);
+    const all = [...rocket.getElementsByTagName("*")].filter(
+      (e) => e.tagName === "stage" || e.tagName === "parallelstage",
+    );
+    if (mc)
+      for (const st of mc.getElementsByTagName("stage"))
+        if (st.getAttribute("active") === "false" && all[+st.getAttribute("number")])
+          offIds.push(txt(all[+st.getAttribute("number")], "id"));
+  }
   const model = {
     name: txt(rocket, "name") || "Rocket",
     rid: txt(rocket, "id") || bldId(),
     src: "ork",
     cfg,
+    ...(offIds.filter(Boolean).length ? { offIds: offIds.filter(Boolean) } : {}),
     settings: bldSettings(),
     ref: null,
     stages: [],
@@ -724,6 +742,13 @@ export function bldFromOrk(xml, info) {
     fins.forEach((f) => (cnt[f] = (cnt[f] || 0) + 1));
     model.settings.finish = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0][0];
   }
+  // a stage whose mounts have no motor in this flight configuration (when the file sets motors per configuration) flies
+  // without one: the Motor tab's choice isn't put into it
+  if ([...doc.getElementsByTagName("motor")].some((m) => m.getAttribute("configid")))
+    for (const st of model.stages) {
+      const ms = bldMounts(st);
+      if (ms.length && ms.every((k) => !k.motor)) st.noMotor = true;
+    }
   return model;
 }
 /**

@@ -18,6 +18,7 @@ import {
   cpWithBodyLift,
   CROSS_K,
   finLiftRatio,
+  finSetsOf,
   pitchDamping,
   radiusAt,
   rollPartsM,
@@ -192,14 +193,58 @@ export function simulate(D, L, m, mb, opts = {}) {
   const stack1 = (t) => three && t < t1Sep - 1e-9;
   const stack = (t) => staged && (t < tSep - 1e-9 || !midOK); // a booster that never lit stays on
   const mbm = (t) => (midOK ? MB.mass(t - tOff) : mb.totalMass);
+  /* side boosters (OpenRocket parallel stages): their motors burn as part of the cluster; at their separation they drop
+     away with their structure, their motors and whatever those still hold, and their pods and fins stop adding lift and
+     drag. Separation: at their motors' burnout or ejection charge, at launch, or never, plus the set delay (single-stage
+     rockets; on a staged rocket they stay on). */
+  const SB = staged
+    ? []
+    : (D.sideBoosters || []).map((b) => {
+        const mot = (D.extraMotors || [])
+          .filter((e) => e && e.sb === b.i && findMotor(e.id))
+          .map((e) => ({
+            mm: tempScale(motorModel(findMotor(e.id))),
+            n: e.n || 1,
+            d: +e.d || 0,
+            ej: e.sbEj ?? e.ej,
+          }));
+        const tb = mot.length ? Math.max(...mot.map((x) => x.d + x.mm.tb)) : 0,
+          ej =
+            mot.length && mot.every((x) => x.ej != null)
+              ? Math.min(...mot.map((x) => x.d + x.mm.tb + +x.ej))
+              : Infinity;
+        const ev = b.event || "burnout",
+          t0 =
+            ev === "never"
+              ? Infinity
+              : ev === "launch" || ev === "ignition" || ev === "upper_ignition"
+                ? 0
+                : ev === "ejection"
+                  ? ej
+                  : tb;
+        return { ...b, mot, t: t0 + Math.max(0, +b.delay || 0) };
+      });
+  const sbOff = (t) => SB.filter((b) => t >= b.t - 1e-9);
+  const sbThrust = (t) => sbOff(t).reduce((a, b) => a + b.mot.reduce((q, x) => q + x.n * x.mm.thrust(t - x.d), 0), 0);
+  const sbMass = (t) =>
+    sbOff(t).reduce((a, b) => a + b.mass + b.mot.reduce((q, x) => q + x.n * x.mm.mass(Math.max(0, t - x.d)), 0), 0);
   const thrust = (t) =>
-    stack1(t) ? M1.thrust(t) : stack(t) ? (midOK ? MB.thrust(t - tOff) : 0) : ignOK ? MS.thrust(t - tIgn) : 0;
-  const mass = (t) =>
+    stack1(t)
+      ? M1.thrust(t)
+      : stack(t)
+        ? midOK
+          ? MB.thrust(t - tOff)
+          : 0
+        : ignOK
+          ? MS.thrust(t - tIgn) - (SB.length ? sbThrust(t) : 0)
+          : 0;
+  const mass0 = (t) =>
     stack1(t)
       ? D.dryMass + m.totalMass + D.bDryMass + mb.totalMass + S1.bDryMass + M1.mass(t)
       : stack(t)
         ? D.dryMass + m.totalMass + D.bDryMass + mbm(t)
         : D.dryMass + (ignOK ? MS.mass(t - tIgn) : m.totalMass);
+  const mass = (t) => (SB.length ? mass0(t) - sbMass(t) : mass0(t));
   const nozzleAt = (t) =>
     stack1(t)
       ? t < M1.tb
@@ -212,7 +257,28 @@ export function simulate(D, L, m, mb, opts = {}) {
         : ignOK && t > tIgn && t < susEnd()
           ? An
           : 0;
-  const Gat = (t) => (stack1(t) ? Gst3 : stack(t) ? Gst : Gs);
+  // after side boosters separate: the rocket without their pods, fins and tube fins
+  const GsSep = new Map();
+  const GsAt = (t) => {
+    const off = sbOff(t);
+    if (!off.length) return Gs;
+    const key = off.map((b) => b.i).join(",");
+    if (!GsSep.has(key)) {
+      const gone = new Set(off.map((b) => b.i)),
+        keep = (o) => o.sb == null || !gone.has(o.sb);
+      GsSep.set(
+        key,
+        aero({
+          ...D,
+          finSets: finSetsOf(D).filter(keep),
+          pods: (D.pods || []).filter(keep),
+          tubeFins: (D.tubeFins || []).filter(keep),
+        }),
+      );
+    }
+    return GsSep.get(key);
+  };
+  const Gat = (t) => (stack1(t) ? Gst3 : stack(t) ? Gst : SB.length ? GsAt(t) : Gs);
   const th = (L.angle * Math.PI) / 180,
     windVec = flightWind(L);
   // axes: x downwind, y to the left of downwind, z up. The rail leans upwind, or toward a set compass direction.
@@ -326,6 +392,12 @@ export function simulate(D, L, m, mb, opts = {}) {
     } else {
       const mm = ignOK ? MS.mass(t - tIgn) : m.totalMass;
       it.push([mm, xMs, (mm * m.len * m.len) / 12]);
+      // side boosters gone: their structure, and their motors (taken to sit where the cluster's do)
+      for (const b of sbOff(t)) {
+        it.push([-b.mass, b.cg, 0]);
+        const mb = b.mot.reduce((q, x) => q + x.n * x.mm.mass(Math.max(0, t - x.d)), 0);
+        if (mb > 0) it.push([-mb, xMs, 0]);
+      }
     }
     const M = it.reduce((a, p) => a + p[0], 0),
       cg = it.reduce((a, p) => a + p[0] * p[1], 0) / M;
@@ -880,6 +952,12 @@ export function simulate(D, L, m, mb, opts = {}) {
       if (phase === "rail") st.error = "The first stage burns out before the rocket leaves the rail.";
     }
     if (three && midOK && !st.ignMid && t >= tOff - 1e-9) st.ignMid = { t, alt: z, v: sp, vz, tilt: tiltNow };
+    // side boosters dropping away
+    for (const b of SB)
+      if (!b.done && t >= b.t - 1e-9) {
+        b.done = true;
+        (st.sbSep || (st.sbSep = [])).push({ t, alt: z, v: sp });
+      }
     if (staged && midOK && !st.sep && t >= tSep - 1e-9) {
       st.sep = { t, alt: z, v: sp, x };
       boosterStart = { t, s: s.slice(), ej: D.bEjDelay != null && midOK ? tBurnB + D.bEjDelay : null };

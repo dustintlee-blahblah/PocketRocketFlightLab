@@ -63,6 +63,35 @@ function orkShell(rAt, len, t, solid) {
   return { V, x: V > 0 ? M / V : len / 2 };
 }
 /**
+ * Turns each reversed ("flipped") nose cone in an OpenRocket design into the transition it is: a tail cone from the
+ * nose's base radius down to a point, its shoulder at the front.
+ * @param {Document} doc the design, changed in place
+ */
+export function unflipNoses(doc) {
+  for (const nc of [...doc.getElementsByTagName("nosecone")]) {
+    const fl = [...nc.children].find((e) => e.tagName === "isflipped");
+    if (!fl || fl.textContent.trim() !== "true") continue;
+    const tr = doc.createElement("transition");
+    for (const e of [...nc.children]) {
+      const t = e.tagName;
+      if (t === "isflipped") continue;
+      const ne = doc.createElement(t === "aftradius" ? "foreradius" : t.replace(/^aftshoulder/, "foreshoulder"));
+      for (const a of e.attributes) ne.setAttribute(a.name, a.value);
+      while (e.firstChild) ne.appendChild(e.firstChild);
+      tr.appendChild(ne);
+      if (t === "thickness" && /filled/i.test(ne.textContent)) {
+        const f = doc.createElement("filled");
+        f.textContent = "true";
+        tr.appendChild(f);
+      }
+    }
+    const ar = doc.createElement("aftradius");
+    ar.textContent = "0";
+    tr.appendChild(ar);
+    nc.replaceWith(tr);
+  }
+}
+/**
  * Reads an OpenRocket design.
  * @param {string} xml the design XML
  * @returns {{design:object, launch:object, notes:string[], motor:object, boosterMotor:object, firstMotor:object,
@@ -71,9 +100,10 @@ function orkShell(rAt, len, t, solid) {
  *   motors, and where the parts are in the file (for saving changes back into it)
  * @throws {Error} if the file isn't a readable rocket design
  */
-export function parseOrk(xml) {
+export function parseOrk(xml, opts = {}) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("The design file could not be read as XML.");
+  unflipNoses(doc);
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];
   if (!rocket) throw new Error("No rocket was found in this file.");
   const notes = [];
@@ -119,9 +149,15 @@ export function parseOrk(xml) {
    * The radius of the next body part aft that has an explicit (not automatic) radius.
    */
   const nextExplicit = (c) => {
-    const i = bodyOrder.indexOf(c);
-    for (let j = i + 1; j < bodyOrder.length; j++) {
-      const e = bodyOrder[j];
+    // the rocket's body parts in order, or a pod's own (a pod's parts follow one another inside it)
+    const par = c.parentElement && c.parentElement.parentElement,
+      order =
+        par && (par.tagName === "podset" || par.tagName === "parallelstage")
+          ? [...c.parentElement.children].filter((e) => ["nosecone", "bodytube", "transition"].includes(e.tagName))
+          : bodyOrder;
+    const i = order.indexOf(c);
+    for (let j = i + 1; j < order.length; j++) {
+      const e = order[j];
       if (e.tagName === "bodytube" && !isAuto(e, "radius")) return num(e, "radius");
       if (e.tagName === "transition" && !isAuto(e, "foreradius")) return num(e, "foreradius");
     }
@@ -156,6 +192,16 @@ export function parseOrk(xml) {
       case "shockcord":
       case "masscomponent":
         return num(c, "packedlength");
+      case "podset":
+      case "parallelstage": {
+        // a pod's length: its body parts end to end
+        const k = [...c.children].find((e) => e.tagName === "subcomponents");
+        return k
+          ? [...k.children]
+              .filter((e) => ["nosecone", "bodytube", "transition"].includes(e.tagName))
+              .reduce((a, e) => a + lenOf(e), 0)
+          : 0;
+      }
       default:
         return num(c, "length");
     }
@@ -236,7 +282,10 @@ export function parseOrk(xml) {
     if (!kid(c, "motormount") && c.getElementsByTagName("motormount").length) return;
     const mountEl = kid(c, "motormount") || c;
     const motorEls = [...mountEl.getElementsByTagName("motor")];
-    const motorEl = motorEls.find((e) => e.getAttribute("configid") === cfg) || motorEls[0];
+    // the motor for this configuration; a mount with motors only for other configurations is empty in this one
+    const motorEl =
+      motorEls.find((e) => e.getAttribute("configid") === cfg) ||
+      (cfg && motorEls.some((e) => e.getAttribute("configid")) ? null : motorEls[0]);
     if (isInner && sMount[curStage] == null && kid(c, "motormount")) sMount[curStage] = ord(c, "it", /^innertube$/);
     if (sMountAft[curStage] == null && kid(c, "motormount") && xAft != null) sMountAft[curStage] = xAft; // the aft end of the motor tube: where the motor sits
     if (sMountD[curStage] == null && kid(c, "motormount") && ri > 0) sMountD[curStage] = 2 * ri; // inside diameter of the motor tube
@@ -254,12 +303,13 @@ export function parseOrk(xml) {
         ej,
         oi: ord(motorEl, "mo", /^motor$/),
         par: parDepth > 0,
+        sb: sbCur ? sbCur.i : null,
       };
       if (!sMotor[curStage]) sMotor[curStage] = mo;
       if (!motor) motor = mo;
       const clusterCfg = (txt(c, "clusterconfiguration") || "single").trim().toLowerCase();
       const copies =
-        clusterCfg === "single" ? 1 : clusterCfg === "double" ? 2 : Math.max(1, parseInt(clusterCfg, 10) || 1);
+        (clusterCfg === "single" ? 1 : clusterCfg === "double" ? 2 : Math.max(1, parseInt(clusterCfg, 10) || 1)) * podK;
       const ignCfg = [...mountEl.getElementsByTagName("ignitionconfiguration")].find(
         (e) => e.getAttribute("configid") === cfg,
       );
@@ -341,7 +391,34 @@ export function parseOrk(xml) {
     const dc = mcs.find((e) => e.getAttribute("default") === "true") || mcs[0];
     cfg = dc ? dc.getAttribute("configid") : null;
   }
-  let tubeFins = false;
+  /* stages switched off in this flight configuration (OpenRocket numbers its stages, side booster sets included, in the
+     order they appear): they aren't on the rocket at all for this flight */
+  const offStages = new Set();
+  {
+    const mc = [...rocket.getElementsByTagName("motorconfiguration")].find((e) => e.getAttribute("configid") === cfg);
+    const allStages = [...rocket.getElementsByTagName("*")].filter(
+      (e) => e.tagName === "stage" || e.tagName === "parallelstage",
+    );
+    if (mc)
+      for (const st of mc.getElementsByTagName("stage"))
+        if (st.getAttribute("active") === "false") {
+          const el = allStages[+st.getAttribute("number")];
+          if (el) offStages.add(el);
+        }
+    // the builder passes the ones the file had switched off by their ids (its own file numbers only its stages)
+    for (const el of allStages) if ((opts.offIds || []).includes(txt(el, "id"))) offStages.add(el);
+  }
+  /* pods and side boosters (OpenRocket pod sets and parallel stages, RockSim external pods): each one's body sections,
+     for its drag and lift; how many copies of it there are (podK multiplies the mass, motors and fins of everything
+     inside); and, for a side booster, what it weighs and when it separates. Tube fins: each set's tubes, for their
+     lift, drag and weight. */
+  const pods = [],
+    sideBoosters = [],
+    tubeFinSets = [];
+  let podK = 1,
+    podCur = null,
+    sbCur = null,
+    podROff = 0;
   let maxR = 0,
     totalMass = 0,
     moment = 0,
@@ -403,6 +480,15 @@ export function parseOrk(xml) {
    */
   function addMass(m, x, len = 0, k2 = 0) {
     if (m > 0 && isFinite(x)) {
+      // inside pods: every copy, off the rocket's axis
+      if (podK > 1 || podROff) {
+        m *= podK;
+        k2 += podROff * podROff;
+      }
+      if (sbCur) {
+        sbCur.mass += m;
+        sbCur.mom += m * x;
+      }
       totalMass += m;
       moment += m * x;
       sMass[curStage] = (sMass[curStage] || 0) + m;
@@ -460,7 +546,8 @@ export function parseOrk(xml) {
         }
       }
       R.last = ro;
-      if (!nose) nose = { len, r: ro, shape: shp + ":" + +sp.toFixed(4), x, oi: ord(c, "nc", /^nosecone$/) };
+      if (!nose && !podCur) nose = { len, r: ro, shape: shp + ":" + +sp.toFixed(4), x, oi: ord(c, "nc", /^nosecone$/) };
+      if (parent.podTop) podCur.segs.push({ kind: "nose", x, len, r1: 0, r2: ro, shape: shp, param: sp, rs: cfin });
       if (parent.top)
         segments.push({
           kind: "nose",
@@ -481,6 +568,7 @@ export function parseOrk(xml) {
       ri = Math.max(ro - num(c, "thickness", 0.001), 0);
       m = rho * Math.PI * (ro * ro - ri * ri) * len;
       if (parent.top) segments.push({ kind: "tube", x, len, r1: ro, r2: ro, rs: cfin, si: curStage, cdo: odc(c) });
+      if (parent.podTop) podCur.segs.push({ kind: "tube", x, len, r1: ro, r2: ro, rs: cfin });
       if (kid(c, "motormount")) {
         motorMountIn(c, ri, false, x + len);
         if (sMountD[curStage] == null && ri > 0) sMountD[curStage] = 2 * ri;
@@ -531,6 +619,7 @@ export function parseOrk(xml) {
       R.last = r2;
       if (parent.top)
         segments.push({ kind: "trans", x, len, r1, r2, shape: tshp, param: tp, rs: cfin, si: curStage, cdo: odc(c) });
+      if (parent.podTop) podCur.segs.push({ kind: "trans", x, len, r1, r2, shape: tshp, param: tp, rs: cfin });
     } else if (tag === "launchlug") {
       ro = num(c, "radius", num(c, "outerradius", 0.003));
       ri = Math.max(ro - num(c, "thickness", 0.0005), 0);
@@ -634,6 +723,8 @@ export function parseOrk(xml) {
         cdo: odc(c),
         oi: ord(c, "f", FINRE),
         par: parent ? parent.uid : 0,
+        // on a pod: every pod's fins, around the pod's own body
+        ...(podCur ? { n: n * podK, rb: parent.ro || 0, pod: podCur.i, sb: sbCur ? sbCur.i : null } : {}),
       });
     } else if (tag === "masscomponent") {
       m = num(c, "mass");
@@ -650,7 +741,17 @@ export function parseOrk(xml) {
       const ev = ((dc && txt(dc, "deployevent")) || txt(c, "deployevent") || "apogee").toLowerCase();
       const da = dc && txt(dc, "deployaltitude") != null ? num(dc, "deployaltitude", 0) : num(c, "deployaltitude", 0);
       const dd = dc && txt(dc, "deploydelay") != null ? num(dc, "deploydelay", 0) : num(c, "deploydelay", 0);
-      chutes.push({ d, cd, ev, alt: da, dd, x, si: curStage, oi: ord(c, "c", CHRE) });
+      chutes.push({
+        d,
+        cd,
+        ev,
+        alt: da,
+        dd,
+        x,
+        si: curStage,
+        oi: ord(c, "c", CHRE),
+        ...(sbCur ? { sb: sbCur.i } : {}),
+      });
     } else if (tag === "streamer") {
       m = rho * num(c, "striplength") * num(c, "stripwidth");
       const L_ = num(c, "striplength"),
@@ -666,14 +767,37 @@ export function parseOrk(xml) {
           x,
           si: curStage,
           streamer: true,
+          ...(sbCur ? { sb: sbCur.i } : {}),
           oi: ord(c, "c", CHRE),
         });
     } else if (tag === "shockcord") {
       m = rho * num(c, "cordlength");
     } else if (tag === "stage" || tag === "podset" || tag === "parallelstage") {
       m = 0;
-    } else if (tag === "tubefinset") tubeFins = true;
-    else if (tag !== "subcomponents") {
+    } else if (tag === "tubefinset") {
+      /* tube fins: short tubes around the body, touching it. "auto" outer radius: as OpenRocket sizes them, so that
+         neighbors touch each other and the body (fewer than 3: the body's radius) */
+      const n = Math.max(1, num(c, "fincount", num(c, "instancecount", 6))),
+        rb = parent.ro || 0;
+      const sinH = Math.sin(Math.PI / n);
+      ro = isAuto(c, "radius") || txt(c, "radius") == null ? (n < 3 ? rb : (rb * sinH) / (1 - sinH)) : num(c, "radius");
+      ri = Math.max(ro - num(c, "thickness", 0.0005), 0);
+      m = rho * Math.PI * (ro * ro - ri * ri) * len * n;
+      tubeFinSets.push({
+        n: n * podK,
+        len,
+        ro,
+        ri,
+        x,
+        rb,
+        rs: cfin,
+        si: curStage,
+        cdo: odc(c),
+        rot: (num(c, "rotation", 0) * Math.PI) / 180,
+        id: txt(c, "id") || null,
+        ...(podCur ? { pod: podCur.i, sb: sbCur ? sbCur.i : null } : {}),
+      });
+    } else if (tag !== "subcomponents") {
       notes.push(`Skipped a “${tag}” component.`);
     }
     if (parent.top && ["nosecone", "bodytube", "transition"].includes(tag))
@@ -715,7 +839,7 @@ export function parseOrk(xml) {
     if (tag === "nosecone")
       k2 = (num(c, "thickness", 0) >= ro * 0.999 || txt(c, "filled") === "true" ? 0.3 : 0.5) * ro * ro;
     else if (tag === "transition") k2 = 0.5 * ro * ro;
-    else if (tag === "launchlug") k2 = (pr + ro) ** 2;
+    else if (tag === "launchlug" || tag === "tubefinset") k2 = (pr + ro) ** 2;
     else if (["bodytube", "innertube", "tubecoupler", "centeringring", "bulkhead", "engineblock"].includes(tag))
       k2 = (ro * ro + ri * ri) / 2;
     else if (/finset$/.test(tag)) {
@@ -742,7 +866,67 @@ export function parseOrk(xml) {
     // pods and side boosters have their own outline: they don't change what an automatic size on the main body follows
     const lastR = R.last;
     if (tag === "parallelstage") parDepth++; // an OpenRocket parallel (side booster) stage: its motors' charges are its own
-    if (!skipKids) for (const k of kids) walk(k, place(k, me), me);
+    if (tag === "parallelstage" && offStages.has(c)) {
+      // switched off in this flight configuration: not on the rocket
+    } else if (tag === "podset" || tag === "parallelstage") {
+      // a pod set or side boosters: everything inside, once per copy, on a body of its own
+      const saved = [podK, podCur, sbCur, podROff],
+        count = Math.max(1, Math.round(num(c, "instancecount", 1)));
+      podK *= count;
+      const ao = kid(c, "angleoffset");
+      // for the drawing: which part it is, its copies around the rocket (this set's own), and where the first one sits
+      podCur = {
+        i: pods.length,
+        count: podK,
+        segs: [],
+        si: curStage,
+        sb: null,
+        id: txt(c, "id") || null,
+        n: count,
+        ang: ao ? ((parseFloat(ao.textContent) || 0) * Math.PI) / 180 : 0,
+        rOff: 0,
+      };
+      pods.push(podCur);
+      const ro = kid(c, "radiusoffset"),
+        rv = ro ? parseFloat(ro.textContent) || 0 : 0,
+        rm = ro ? (ro.getAttribute("method") || "relative").toLowerCase() : "relative";
+      // the pod's distance from the rocket's axis (for the roll inertia): from the parent's surface unless set from the axis
+      podROff = rm === "free" || rm === "coaxial" ? rv : (parent.ro || 0) * 1.5 + rv;
+      if (tag === "parallelstage") {
+        const sc = [...c.children]
+          .filter((e) => e.tagName === "separationconfiguration")
+          .find((e) => e.getAttribute("configid") === cfg);
+        sbCur = {
+          i: sideBoosters.length,
+          count: podK,
+          mass: 0,
+          mom: 0,
+          si: curStage,
+          event: ((sc && txt(sc, "separationevent")) || txt(c, "separationevent") || "burnout").toLowerCase(),
+          delay: sc ? num(sc, "separationdelay", 0) : num(c, "separationdelay", 0),
+        };
+        sideBoosters.push(sbCur);
+        podCur.sb = sbCur.i;
+      }
+      me.podTop = true;
+      // a pod's "auto" sizes follow its own body, not the rocket's
+      R.last = 0;
+      // its body parts follow one another from the pod's position, as a stage's do
+      let cur = x;
+      for (const k of kids) {
+        const o = offset(k),
+          body = ["nosecone", "bodytube", "transition"].includes(k.tagName);
+        const kx = body && (!o.method || o.method === "after") ? cur + (o.method ? o.val : 0) : place(k, me);
+        walk(k, kx, me);
+        if (body) cur = Math.max(cur, kx + lenOf(k));
+      }
+      // its distance from the rocket's axis: as set from the axis, or from the parent's surface to the pod's
+      {
+        const pR = Math.max(0, ...podCur.segs.map((sg) => Math.max(sg.r1, sg.r2)));
+        podCur.rOff = rm === "free" || rm === "coaxial" ? rv : (parent.ro || 0) + rv + pR;
+      }
+      [podK, podCur, sbCur, podROff] = saved;
+    } else if (!skipKids) for (const k of kids) walk(k, place(k, me), me);
     else
       for (const k of kids) {
         if (/finset/.test(k.tagName) || k.tagName === "parachute" || k.tagName === "innertube") {
@@ -785,6 +969,12 @@ export function parseOrk(xml) {
   let cursor = 0;
   for (const stage of subs(rocket)) {
     if (stage.tagName !== "stage") continue;
+    if (offStages.has(stage)) {
+      notes.push(
+        `The stage “${txt(stage, "name") || "stage"}” is switched off in this flight configuration, so it’s left off.`,
+      );
+      continue;
+    }
     stages++;
     curStage = stages - 1;
     sMass[curStage] = sMass[curStage] || 0;
@@ -893,16 +1083,22 @@ export function parseOrk(xml) {
         return o;
       })
       .sort((a, b) => a.x - b.x);
-    const fl = fins.filter(inS);
+    const fl = fins.filter(inS),
+      tfl = tubeFinSets.filter(inS);
+    if (!fl.length && !tfl.length)
+      throw new Error(`${pre}No fin set was found, so stability and drag can’t be estimated.`);
+    // tube fins only: the main (flat) fin set is empty
     if (!fl.length)
-      throw new Error(
-        tubeFins
-          ? `${pre}This rocket has tube fins, which the app can’t model yet, so its stability and drag can’t be worked out. Designs with flat fins (trapezoidal, elliptical or free-form) open normally.`
-          : `${pre}No fin set was found, so stability and drag can’t be estimated.`,
-      );
+      fl.push({ n: 0, root: 0, tip: 0, span: 0, sweep: 0, t: 0, x: x1, edge: "square", si: sel[0], oi: -1, par: 0 });
     const groups = new Map();
     for (const fs of fl) {
-      const k = [fs.x, fs.root, fs.span].map((v) => Math.round(v * 500)).join("|");
+      // (fins on different bodies, or on a pod, stay apart)
+      const k =
+        [fs.x, fs.root, fs.span].map((v) => Math.round(v * 500)).join("|") +
+        "|" +
+        (fs.pod ?? "") +
+        "|" +
+        (fs.par ?? "");
       const g = groups.get(k);
       if (g) {
         g.n += fs.n;
@@ -910,8 +1106,10 @@ export function parseOrk(xml) {
       } else groups.set(k, { ...fs, oi: [fs.oi] });
     }
     const garea = (g) => ((g.n * (g.root + g.tip)) / 2) * g.span;
-    // the main set is the aft-most one (its trailing edge is closest to the tail); others become extra sets
-    const f = [...groups.values()].reduce((a, b) => {
+    // the main set is the aft-most one on the rocket's own body (its trailing edge is closest to the tail), unless every
+    // set is on a pod; others become extra sets
+    const onBody = [...groups.values()].filter((g) => g.pod == null);
+    const f = (onBody.length ? onBody : [...groups.values()]).reduce((a, b) => {
       const ta = a.x + a.root,
         tb = b.x + b.root;
       return tb > ta + 1e-4 || (Math.abs(tb - ta) <= 1e-4 && garea(b) > garea(a)) ? b : a;
@@ -940,6 +1138,7 @@ export function parseOrk(xml) {
       oi: g.oi,
       par: g.par || 0,
       ...(g.pts ? { pts: g.pts } : {}),
+      ...(g.pod != null ? { pod: g.pod, rb: g.rb, sb: g.sb } : {}),
     }));
     const length = x1 - x0;
     const diameter = 2 * (Math.max(0, ...segs.map((s) => Math.max(s.r1, s.r2))) || maxR || nose?.r || 0.05);
@@ -995,9 +1194,20 @@ export function parseOrk(xml) {
       inertia,
       rollI,
       fAft: length - (f.x - x0 + f.root),
-      /* negative when the fins reach past the aft end (V-2 style fins over a boattail) */ chutes: chutes.filter(inS),
+      /* negative when the fins reach past the aft end (V-2 style fins over a boattail) */ // a side booster's own chutes bring it down after it separates: not the rocket's
+      chutes: chutes.filter((c) => inS(c) && c.sb == null),
       buttons: buttons.filter(inS).map(shift),
       lugs: lugs.filter(inS).map(shift),
+      pods: pods.filter(inS).map((pd) => ({ ...shift(pd), segs: pd.segs.map(shift) })),
+      tubeFins: tfl.map(shift),
+      sideBoosters: sideBoosters.filter(inS).map((b) => ({
+        i: b.i,
+        count: b.count,
+        mass: b.mass,
+        cg: b.mass > 0 ? b.mom / b.mass - x0 : 0,
+        event: b.event,
+        delay: b.delay,
+      })),
     };
   }
   const all = [...Array(Math.max(stages, 1)).keys()];
@@ -1047,11 +1257,17 @@ export function parseOrk(xml) {
     finAft: S.fAft,
     finPts: f.pts || null,
     finPar: f.par || 0,
+    finPod: f.pod ?? null,
+    finRb: f.rb ?? null,
+    finSb: f.sb ?? null,
     finEdge: EDGE(f.edge),
     finCdOverride: f.cdo || 0,
     bFinCdOverride: 0,
     extraFins: S.extra,
     bExtraFins: [],
+    pods: S.pods.length ? S.pods : null,
+    tubeFins: S.tubeFins.length ? S.tubeFins : null,
+    sideBoosters: S.sideBoosters.length ? S.sideBoosters : null,
     extraMotors: [],
     bExtraMotors: [],
     dryInertia: S.inertia,
@@ -1107,6 +1323,11 @@ export function parseOrk(xml) {
       bFinSweep: bf.sweep,
       bFinPts: bf.pts || null,
       bFinPar: bf.par || 0,
+      bFinPod: bf.pod ?? null,
+      bFinRb: bf.rb ?? null,
+      bFinSb: bf.sb ?? null,
+      bPods: B.pods.length ? B.pods : null,
+      bTubeFins: B.tubeFins.length ? B.tubeFins : null,
       bFinThick: bf.t,
       bFinAft: B.fAft,
       bFinEdge: EDGE(bf.edge),
@@ -1176,6 +1397,11 @@ export function parseOrk(xml) {
       bFinSweep: cf.sweep,
       bFinPts: cf.pts || null,
       bFinPar: cf.par || 0,
+      bFinPod: cf.pod ?? null,
+      bFinRb: cf.rb ?? null,
+      bFinSb: cf.sb ?? null,
+      bPods: C1.pods.length ? C1.pods : null,
+      bTubeFins: C1.tubeFins.length ? C1.tubeFins : null,
       bFinThick: cf.t,
       bFinAft: C1.fAft,
       bFinEdge: EDGE(cf.edge),
@@ -1449,7 +1675,8 @@ export function parseOrk(xml) {
     }
     // a motor in another stage (an OpenRocket parallel booster or pod stage) has its own charge for its own recovery: it
     // doesn't open this stage's chutes, so its delay isn't carried here
-    out = out.map((e) => (e.si !== m0.si || !!e.par !== !!m0.par ? { ...e, ej: null } : e));
+    // (a side booster keeps its charge's delay as sbEj: it can set when the booster separates)
+    out = out.map((e) => (e.si !== m0.si || !!e.par !== !!m0.par ? { ...e, ej: null, sbEj: e.ej } : e));
     if (out.some((e) => e.d > 0) || info.delay > 0)
       notes.push(
         "Some motors light after others (an airstart); each one's thrust starts that many seconds after the first motor lights.",
@@ -1471,6 +1698,18 @@ export function parseOrk(xml) {
     ![...motorExtras, ...boosterExtras, ...firstExtras].some((e) => e.d > 0)
   )
     notes.push("The file has a motor cluster. All motors in a stage are lit together and their thrust is added.");
+  if (pods.length)
+    notes.push(
+      `Pods: ${pods.length === 1 ? "the pod adds its" : "each pod adds its"} weight, lift and drag, once for every copy.`,
+    );
+  if (tubeFinSets.length)
+    notes.push("Tube fins are modeled as OpenRocket models them (lift, and drag inside and out).");
+  if (sideBoosters.length)
+    notes.push(
+      twoStage
+        ? "This rocket has stages, so its side boosters stay on for the whole flight here."
+        : "The side boosters drop away at their separation event; their own descent isn’t flown.",
+    );
   const smo = twoStage ? sMotor[0] : motor;
   Object.assign(SRC, {
     cfg,
