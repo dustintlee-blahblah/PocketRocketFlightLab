@@ -21,7 +21,7 @@ Security problems: see [SECURITY.md](SECURITY.md), not a public issue.
 
 ## Setting up
 
-You need Node.js 18 or later.
+You need Node.js 22.18 or later.
 
 ```
 git clone https://github.com/dustintlee-blahblah/PocketRocketFlightLab.git
