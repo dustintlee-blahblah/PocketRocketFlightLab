@@ -1039,7 +1039,7 @@ h2 + .subh {
 .bldstats {
   cursor: pointer;
 }
-.bldstats:not(.open) > span:not(.bldsum),
+.bldstats:not(.open) > .bldmore,
 .bldstats.open > .bldsum {
   display: none;
 }
@@ -1052,7 +1052,6 @@ h2 + .subh {
   font-style: normal;
   font-weight: 600;
   color: var(--gulf-ink);
-  margin-left: 10px;
 }
 .bldstats b {
   color: var(--ink);

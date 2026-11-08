@@ -1919,15 +1919,15 @@ function bldDraw() {
     const cls = (v) => (v >= 1.5 ? "good" : v >= 1 ? "warn" : "bad"),
       mname =
         (m1 ? `${m1.cn || m1.name} → ` : "") + (two && mb ? `${mb.cn || mb.name} → ${m.cn || m.name}` : m.cn || m.name);
-    // collapsed: one line with the liftoff stability; tapping the panel shows the full list
+    // collapsed: size, weights, CG and CP; tapping the panel shows the stability lines below them
     const worst = Math.min(S.marginL, S.marginL10);
     st.innerHTML =
-      `<span class="bldsum ${cls(worst)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff${worst < 1 ? " · check the details" : ""}<em>${bldStatsOpen ? "Hide details ▴" : "Show details ▾"}</em></span>` +
       `<span>Length <b>${fmt(lay.length, "len", 1)} ${uname("len")}</b></span><span>Diameter <b>${fmt(2 * lay.maxR, "len")} ${uname("len")}</b></span>` +
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
       `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
-      `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
-      `<span class="${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
+      `<span class="bldsum${worst < 1 ? " bad" : ""}">${worst < 1 ? "Stability under 1 cal · " : ""}<em>Show details ▾</em></span>` +
+      `<span class="bldmore ${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
+      `<span class="bldmore ${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
   } catch (e) {
     st.innerHTML = `<span class="bldsum bad">${esc(e.message || String(e))}</span>`;
   }
@@ -1998,8 +1998,6 @@ function bldStatsToggle() {
   const st = document.getElementById("bldstats");
   st.classList.toggle("open", bldStatsOpen);
   st.setAttribute("aria-expanded", String(bldStatsOpen));
-  const em = st.querySelector(".bldsum em");
-  if (em) em.textContent = bldStatsOpen ? "Hide details ▴" : "Show details ▾";
 }
 document.getElementById("bldstats").addEventListener("click", bldStatsToggle);
 document.getElementById("bldstats").addEventListener("keydown", (e) => {
