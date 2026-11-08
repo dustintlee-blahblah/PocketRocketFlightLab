@@ -422,7 +422,13 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
       let nm = (fileName || "").trim();
       if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
         nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
-      const prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null,
+      const prevTips =
+          opts.cfg != null && BLD
+            ? BLD.stages.flatMap((st) =>
+                st.parts.filter((q) => q.type === "nose" && +q.tipR > 0).map((q) => ({ id: q.id, r: +q.tipR })),
+              )
+            : null,
+        prevNotes = opts.cfg != null && BLD && BLD.notes ? BLD.notes : null,
         prevOff = opts.cfg != null && BLD ? bldOffList() : null,
         prevSet =
           opts.cfg != null && BLD && BLD.settings
@@ -434,6 +440,11 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
       // your design notes, kept per motor configuration
       const notes = prevNotes || (saved && saved.notes && typeof saved.notes === "object" ? saved.notes : null);
       if (notes) BLD.notes = jclone(notes);
+      // nose tips rounded when the file was saved
+      for (const t of prevTips || (saved && Array.isArray(saved.tips) ? saved.tips : [])) {
+        const q = t && isFinite(t.r) && t.r > 0 && BLD.stages.flatMap((st) => st.parts).find((x) => x.id === t.id);
+        if (q && q.type === "nose") q.tipR = +t.r;
+      }
       // overrides switched off when the file was saved (or while reopening it for another motor configuration)
       bldOffApply(prevOff || (saved && Array.isArray(saved.overridesOff) ? saved.overridesOff : []));
       // rocket-wide settings the .ork can't hold: other drag, boundary layer, turning inertia

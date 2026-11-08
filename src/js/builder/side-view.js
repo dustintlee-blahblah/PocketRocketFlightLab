@@ -8,7 +8,7 @@ import { esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { stability } from "../physics/aerodynamics.js";
-import { noseR } from "../physics/geometry.js";
+import { noseR, noseRTip, noseTip } from "../physics/geometry.js";
 import { isThree, stackStability } from "../physics/staging.js";
 import { setupCanvas } from "../ui/charts.js";
 import { fmt, uname } from "../ui/units.js";
@@ -93,10 +93,13 @@ export function bldDraw() {
     acc = col("--accent"),
     mut = col("--muted"),
     fld = col("--field");
+  // a nose cone's rounded tip, if it has one
+  const tipOf = (b) =>
+    b.p.type === "nose" && +b.p.tipR > 0 ? noseTip(b.p.shape, b.p.param, b.r2, b.len, Math.min(+b.p.tipR, b.r2)) : null;
   const rAt = (b, x) => {
     const t = Math.min(Math.max(x - b.x, 0), b.len);
     if (b.p.type === "tube") return b.r1;
-    if (b.p.type === "nose") return noseR(b.p.shape, b.p.param, t, b.r2, b.len);
+    if (b.p.type === "nose") return noseRTip(b.p.shape, b.p.param, t, b.r2, b.len, tipOf(b));
     return b.r2 >= b.r1
       ? b.r1 + (b.r2 - b.r1) * noseR(b.p.shape, b.p.param, t, 1, b.len)
       : b.r2 + (b.r1 - b.r2) * noseR(b.p.shape, b.p.param, b.len - t, 1, b.len);
@@ -264,16 +267,19 @@ export function bldDraw() {
   // body outline
   for (const b of lay.bodies) {
     const on = b.p.id === bldSel,
-      N = b.p.type === "tube" ? 2 : 40;
+      N = b.p.type === "tube" ? 2 : 40,
+      s0 = tipOf(b)?.xs || 0,
+      // points closer together toward a nose's tip, where it curves most
+      xAt = (i) => b.x + s0 + (b.len - s0) * (b.p.type === "nose" ? (i / N) ** 2 : i / N);
     c.beginPath();
     for (let i = 0; i <= N; i++) {
-      const x = b.x + (b.len * i) / N;
+      const x = xAt(i);
       const px = X(x),
         py = Y(rAt(b, x));
       i ? c.lineTo(px, py) : c.moveTo(px, py);
     }
     for (let i = N; i >= 0; i--) {
-      const x = b.x + (b.len * i) / N;
+      const x = xAt(i);
       c.lineTo(X(x), Yb(rAt(b, x)));
     }
     c.closePath();

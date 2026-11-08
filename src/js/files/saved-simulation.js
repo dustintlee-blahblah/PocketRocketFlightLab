@@ -79,6 +79,12 @@ function prStateNow(text, runs = {}) {
     cal,
     notes: (BLD && BLD.notes) || null,
     overridesOff: BLD ? bldOffList() : [],
+    // parts' settings the .ork has no place for: a nose cone's rounded tip
+    tips: BLD
+      ? BLD.stages.flatMap((st) =>
+          st.parts.filter((q) => q.type === "nose" && +q.tipR > 0).map((q) => ({ id: q.id, r: +q.tipR })),
+        )
+      : [],
     settings:
       BLD && BLD.settings
         ? Object.fromEntries(BLD_APP_SETTINGS.filter((k) => BLD.settings[k] != null).map((k) => [k, BLD.settings[k]]))

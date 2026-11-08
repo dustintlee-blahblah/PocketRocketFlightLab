@@ -112,6 +112,7 @@ export function bldNew(type, R = 0.0333) {
         dia: 2 * R,
         wall: 0.002,
         filled: false,
+        tipR: 0,
         shLen: 2 * R,
         mat: "Polystyrene (PS)",
         known: 0,

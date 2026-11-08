@@ -173,6 +173,7 @@ export function bldInfo(F) {
       t === "chute"
         ? "Canopy diameter as given by the maker (the flat diameter for flat chutes)."
         : "Diameter of the nose cone’s base, normally the airframe’s outside diameter.",
+    tipR: "Radius of the rounded tip of the nose cone. 0 is a sharp point.\n\nThe tip is a ball of this radius that blends into the nose’s shape, as most molded and turned noses have. Below about Mach 0.8 a rounded tip adds no drag; faster than that it adds drag, rising through Mach 1. A tip no rounder than the shape already is (an elliptical nose, for example) changes nothing. The nose keeps its length.\n\nOpenRocket and RockSim files have no place for it, so it’s saved in this app’s own data inside the file.",
     filled:
       "Tick for a solid nose cone (for example wood or foam). Otherwise it’s hollow, with the wall thickness given.",
     wall:

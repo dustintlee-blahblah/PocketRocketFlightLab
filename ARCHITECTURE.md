@@ -117,6 +117,8 @@ computed. In outline:
   compressibility correction. Form factors from Hoerner (Fluid-Dynamic Drag).
 - Nose pressure drag: Hoerner's shoulder-angle rule below the critical Mach number; NASA TR R-100 measurements through
   the transonic and supersonic range. Flares and shoulders above Mach 1: Bonney's cone correlation (via Fleeman).
+  A rounded nose tip (`tipCapCd()`) costs nothing below Mach 0.8 and rises to modified Newtonian theory over its
+  frontal area by Mach 1.3, with the sharp nose's drag over the rest, as DATCOM builds a spherically blunted cone.
 - Base drag: Fleeman's base-pressure correlation, with the motor nozzle's exit area during the burn.
 - Boattail separation (Hoerner), fin edges (stagnation pressure, Newtonian and Ackeret wave drag by edge type), launch
   lugs and rail buttons (Hoerner protuberance drag), tumbling (Allen–Perkins crossflow).

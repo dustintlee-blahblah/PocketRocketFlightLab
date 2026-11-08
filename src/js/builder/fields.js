@@ -88,6 +88,7 @@ export function bldFields(p) {
         ...param,
         ["len", "Length", "num", "len"],
         ["dia", "Base diameter", "num", "len"],
+        ["tipR", "Tip radius", "num", "small"],
         ["filled", "Solid", "check"],
         ...(p.filled ? [] : [["wall", "Wall thickness", "num", "small"]]),
         ["shLen", "Shoulder length", "num", "len"],

@@ -8,7 +8,7 @@
  * Sources for each term are given where it is computed.
  */
 import { FIN_SWEEP_N, finBlunt, finSweepRatio, finTransonicCd, finWaveK } from "../core/units-and-fin-edges.js";
-import { noseR, noseSpec } from "./geometry.js";
+import { noseR, noseSpec, noseTip } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
    Skin friction: Prandtl–Schlichting turbulent flat-plate law, boundary layer turbulent from the tip (Schlichting, Boundary-Layer Theory),
      fully rough plate law (White, Viscous Fluid Flow) blended in by roughness Reynolds number between Nikuradse's smooth (k+≈5)
@@ -44,6 +44,18 @@ function stagCp(M) {
       (Math.pow(((GAM + 1) ** 2 * M2) / (4 * GAM * M2 - 2 * (GAM - 1)), GAM / (GAM - 1)) * (1 - GAM + 2 * GAM * M2)) /
       (GAM + 1);
   return (2 / (GAM * M2)) * (p02 - 1);
+}
+/**
+ * Pressure drag of a rounded (hemispherical) nose tip, on its own frontal area. Below about Mach 0.8 a rounded tip
+ * costs nothing (the flow stays attached round it; Hoerner, Fluid-Dynamic Drag); from there it rises through
+ * the transonic range to modified Newtonian theory, Cp,max/2 for a hemisphere (Lees), reached by Mach 1.3. A blunted
+ * nose's drag is then the sharp nose's over the rest of its frontal area plus this over the tip's, as DATCOM builds a
+ * spherically blunted cone.
+ * @param {number} M Mach number
+ * @returns {number}
+ */
+function tipCapCd(M) {
+  return M <= 0.8 ? 0 : (stagCp(M) / 2) * smooth01((M - 0.8) / 0.5);
 }
 /**
  * Base drag coefficient on the base area at Mach M (Fleeman's correlation).
@@ -619,9 +631,13 @@ export function aero(D) {
     D.cdOverride,
     D.pods,
     D.tubeFins,
+    D.noseTip,
   ]);
   if (aeroCache.has(key)) return aeroCache.get(key);
   const segs = bodySegments(D).map((s) => ({ ...s }));
+  // a rounded nose tip, no bigger than the nose's base
+  if (D.noseTip > 0 && segs[0] && segs[0].kind === "nose" && segs[0].r1 < 1e-9)
+    segs[0].tip = Math.min(D.noseTip, segs[0].r2);
   const R = Math.max(...segs.map((s) => Math.max(s.r1, s.r2)), 1e-4),
     Aref = Math.PI * R * R;
   const L = Math.max(D.length, ...segs.map((s) => s.x + s.len));
@@ -676,6 +692,11 @@ export function aero(D) {
                 param: sg.param,
                 scale: finenessScale(sg.len / (2 * sg.r2)),
                 fin: sg.len / (2 * sg.r2),
+                // a rounded tip: the share of the nose's frontal area it makes blunter than the shape already is
+                tipF: (() => {
+                  const tp = sg.tip > 0 ? noseTip(sg.shape, sg.param, sg.r2, sg.len, sg.tip) : null;
+                  return tp ? Math.min(1, (tp.rt * tp.rt - tp.rNat * tp.rNat) / (sg.r2 * sg.r2)) : 0;
+                })(),
               }
             : null,
       });
@@ -1030,6 +1051,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       let cdn = Math.max(it.sub, noseCdTR100(it.nose.shape, it.nose.param, mEq(M, it.nose.fin)) * it.nose.scale);
       // beyond the measured data, blend from Mach 4 to 6 into modified Newtonian theory: Cp,max·sin²θ over the nose (Lees)
       if (M > 4) cdn = mix(cdn, stagCp(M) * it.kN, smooth01((M - 4) / 2));
+      if (it.nose.tipF > 0) cdn = (1 - it.nose.tipF) * cdn + it.nose.tipF * tipCapCd(M);
       pressure += (cdn * it.area) / S;
       continue;
     } // measured nose drag (NASA TR R-100)

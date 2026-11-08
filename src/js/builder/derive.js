@@ -166,6 +166,11 @@ export function bldDerive() {
     nd = r.design,
     S = BLD.settings || bldSettings();
   nd.name = BLD.name || nd.name;
+  // a rounded nose tip (the .ork has no place for it)
+  {
+    const np = BLD.stages[0] && BLD.stages[0].parts.find((q) => q.type === "nose");
+    nd.noseTip = np && +np.tipR > 0 ? +np.tipR : 0;
+  }
   nd.otherCd = S.otherCd || 0;
   nd.blMode = S.blMode || "turb";
   // turning inertia: a typed value, else the one worked out from the parts (parseOrk)

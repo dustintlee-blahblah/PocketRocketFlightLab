@@ -58,3 +58,52 @@ export function noseR(shape, param, x, R, L) {
   }
   return (R * x) / L;
 }
+/**
+ * A rounded nose tip: a sphere of radius rt on the axis, tangent to the nose's profile, in place of the point. Where it
+ * touches is where the profile's radius of curvature across the axis, r·√(1 + r′²), reaches rt.
+ * @param {string} shape nose shape (as noseR)
+ * @param {number} param shape parameter
+ * @param {number} R base radius, m
+ * @param {number} L length, m
+ * @param {number} rt tip radius, m
+ * @returns {{rt:number, xs:number, xc:number, xt:number, rNat:number}|null} the sphere's front (xs) and center (xc),
+ *   where it meets the profile (xt), and how round the tip already is (rNat); null if it's no rounder than the shape's
+ *   own tip
+ */
+export function noseTip(shape, param, R, L, rt) {
+  if (!(rt > 0) || !(R > 0) || !(L > 0)) return null;
+  const g = (t) => {
+    const e = Math.max(L * 1e-6, 1e-9),
+      r = noseR(shape, param, t, R, L),
+      d = (noseR(shape, param, Math.min(t + e, L), R, L) - noseR(shape, param, Math.max(t - e, 0), R, L)) / (2 * e);
+    return { r, d, g: r * Math.sqrt(1 + d * d) };
+  };
+  const rNat = g(L * 1e-5).g;
+  if (rt <= rNat) return null;
+  let lo = L * 1e-5,
+    hi = L;
+  if (g(hi).g <= rt) lo = hi;
+  else
+    for (let i = 0; i < 60; i++) {
+      const m = (lo + hi) / 2;
+      if (g(m).g < rt) lo = m;
+      else hi = m;
+    }
+  const p = g(lo),
+    xc = lo + p.r * p.d;
+  return { rt, xs: xc - rt, xc, xt: lo, rNat };
+}
+/**
+ * Radius of a nose with a rounded tip (noseTip) at a distance from where its point would be.
+ * @param {string} shape
+ * @param {number} param
+ * @param {number} x distance from the sharp tip, m
+ * @param {number} R base radius, m
+ * @param {number} L length, m
+ * @param {object|null} tip from noseTip
+ * @returns {number} radius, m
+ */
+export function noseRTip(shape, param, x, R, L, tip) {
+  if (!tip || x >= tip.xt) return noseR(shape, param, x, R, L);
+  return x < tip.xs ? 0 : Math.sqrt(Math.max(tip.rt * tip.rt - (x - tip.xc) ** 2, 0));
+}
