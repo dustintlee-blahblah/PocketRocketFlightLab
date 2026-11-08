@@ -3127,7 +3127,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">273</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">274</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3410,11 +3410,13 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <button class="btn ghost addmot" id="addmotor" type="button">+ Add a motor</button>
     </div>
     <div class="panel" id="cfgpanel" hidden>
-      <h2>Motor configuration<button class="ib" type="button" data-title="Motor configuration" data-info="An OpenRocket file can hold several motor configurations: different motors, delays, ignition and deployment settings for the same rocket. This chooses which one to fly. It reopens the rocket from its file with that configuration, so changes you haven't saved are replaced by the file's.
+      <div class="foldhead"><h2 style="margin:0">Motor Config from File<button class="ib" type="button" data-title="Motor Config from File" data-info="An OpenRocket file can hold several motor configurations: different motors, delays, ignition and deployment settings for the same rocket. This chooses which one to fly. It reopens the rocket from its file with that configuration, so changes you haven't saved are replaced by the file's.
 
-Opening a file takes the configuration its own simulation used, or its default. Saving back into the file writes your changes to the configuration chosen here." aria-label="About Motor configuration">i</button></h2>
-      <div class="grid"><div class="fld"><label for="cfgsel">From the file</label><div class="in"><select id="cfgsel"></select></div></div></div>
+Opening a file takes the configuration its own simulation used, or its default. Saving back into the file writes your changes to the configuration chosen here." aria-label="About Motor Config from File">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="cfgbody" aria-expanded="false" aria-controls="cfgbody">Show</button></div>
+      <div id="cfgbody" hidden>
+      <div class="grid" style="margin-top:10px"><div class="fld"><label for="cfgsel">From the file</label><div class="in"><select id="cfgsel"></select></div></div></div>
       <p class="note" id="cfgnote"></p>
+      </div>
     </div>
     <div class="panel" id="mdelaypanel">
       <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and chutes set on the Rocket tab to open at the motor ejection charge open then. As in OpenRocket, chutes set to open some other way (apogee, an altitude, a timer) stay packed until then; the Results tab and the RSO Checklist warn when a live charge fires while one of them is still packed, since a real charge can blow it out early.
@@ -3442,12 +3444,14 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
       <div id="engreport"></div>
     </div>
     <div class="panel filters">
-      <h2 style="margin:0">Select from database</h2>
+      <div class="foldhead"><h2 style="margin:0">Filter Motor List</h2><button class="rsomore foldbtn" type="button" data-fold="fltbody" aria-expanded="false" aria-controls="fltbody">Show</button></div>
+      <div id="fltbody" class="filters" style="margin-top:10px" hidden>
       <div><p class="eyebrow">Filter by manufacturer</p><div class="seg" id="fbrand" role="group" aria-label="Filter by manufacturer"></div></div>
       <div><p class="eyebrow">Filter by diameter</p><div class="seg" id="fdia" role="group" aria-label="Filter by diameter"></div></div>
       <div><p class="eyebrow">Filter by motor system</p><div class="seg" id="fsys" role="group" aria-label="Filter by motor system"></div></div>
       <div><p class="eyebrow">Sparky motors<button class="ib" type="button" data-title="Sparky motors" data-info="Sparky propellants (AeroTech Metalstorm and Dark Matter, Cesaroni Skidmark, Loki Spitfire) throw a shower of burning metal sparks. Many fields and clubs ban them in dry, brushy or fire-season conditions, and some require extra clearance from the pad. Check with your RSO before flying one. The sparky label comes from ThrustCurve.org's motor data; motors you upload yourself aren't labeled, so they count as not sparky here." aria-label="About sparky motors">i</button></p><div class="seg" id="fspark" role="group" aria-label="Filter sparky motors"></div></div>
       <div class="fld"><label for="fsearch">Search name, propellant or case</label><div class="in"><input id="fsearch" type="search" autocomplete="off" placeholder="H148, Blue Thunder, 38/240"></div></div>
+      </div>
       <div class="note" id="fcount" style="margin:0"></div>
     </div>
     <div class="panel" id="cmppanel">
@@ -3628,7 +3632,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "273";
+const APP_BUILD = "274";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
