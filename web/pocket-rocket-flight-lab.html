@@ -1063,7 +1063,7 @@ h2 + .subh {
 .bldstats {
   cursor: pointer;
 }
-.bldstats:not(.open) > span:not(.bldsum),
+.bldstats:not(.open) > .bldmore,
 .bldstats.open > .bldsum {
   display: none;
 }
@@ -1076,7 +1076,6 @@ h2 + .subh {
   font-style: normal;
   font-weight: 600;
   color: var(--gulf-ink);
-  margin-left: 10px;
 }
 .bldstats b {
   color: var(--ink);
@@ -3145,7 +3144,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">277</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">278</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3655,7 +3654,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "277";
+const APP_BUILD = "278";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -24519,15 +24518,15 @@ function bldDraw() {
     const cls = (v) => (v >= 1.5 ? "good" : v >= 1 ? "warn" : "bad"),
       mname =
         (m1 ? `${m1.cn || m1.name} → ` : "") + (two && mb ? `${mb.cn || mb.name} → ${m.cn || m.name}` : m.cn || m.name);
-    // collapsed: one line with the liftoff stability; tapping the panel shows the full list
+    // collapsed: size, weights, CG and CP; tapping the panel shows the stability lines below them
     const worst = Math.min(S.marginL, S.marginL10);
     st.innerHTML =
-      `<span class="bldsum ${cls(worst)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff${worst < 1 ? " · check the details" : ""}<em>${bldStatsOpen ? "Hide details ▴" : "Show details ▾"}</em></span>` +
       `<span>Length <b>${fmt(lay.length, "len", 1)} ${uname("len")}</b></span><span>Diameter <b>${fmt(2 * lay.maxR, "len")} ${uname("len")}</b></span>` +
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
       `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
-      `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
-      `<span class="${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
+      `<span class="bldsum${worst < 1 ? " bad" : ""}">${worst < 1 ? "Stability under 1 cal · " : ""}<em>Show details ▾</em></span>` +
+      `<span class="bldmore ${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
+      `<span class="bldmore ${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
   } catch (e) {
     st.innerHTML = `<span class="bldsum bad">${esc(e.message || String(e))}</span>`;
   }
@@ -24598,8 +24597,6 @@ function bldStatsToggle() {
   const st = document.getElementById("bldstats");
   st.classList.toggle("open", bldStatsOpen);
   st.setAttribute("aria-expanded", String(bldStatsOpen));
-  const em = st.querySelector(".bldsum em");
-  if (em) em.textContent = bldStatsOpen ? "Hide details ▴" : "Show details ▾";
 }
 document.getElementById("bldstats").addEventListener("click", bldStatsToggle);
 document.getElementById("bldstats").addEventListener("keydown", (e) => {
