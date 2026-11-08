@@ -581,19 +581,23 @@ h2 {
   color: var(--muted);
   margin: 0 2px 5px;
 }
-/* cells draw their own dividers, so a short last row leaves plain space rather than grey */
+/* each cell draws its own outline (neighbors' lines fall on the same pixels), and the grid itself has no frame, so the
+   space a short last row leaves is plain, with no box drawn around it */
 .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
+  margin: 1px;
 }
 .stats .stat {
   box-shadow:
     1px 0 0 var(--line),
-    0 1px 0 var(--line);
+    -1px 0 0 var(--line),
+    0 1px 0 var(--line),
+    0 -1px 0 var(--line),
+    1px 1px 0 var(--line),
+    -1px -1px 0 var(--line),
+    1px -1px 0 var(--line),
+    -1px 1px 0 var(--line);
 }
 @media (min-width: 560px) {
   .stats {
