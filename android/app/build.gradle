@@ -54,7 +54,7 @@ android {
     }
 
     sourceSets {
-        main.assets.srcDirs += ["$buildDir/generated/webAsset"]
+        main.assets.srcDir(layout.buildDirectory.dir("generated/webAsset"))
     }
 }
 
@@ -63,7 +63,7 @@ android {
 tasks.register("generateWebAsset") {
     def page = rootProject.file("../web/pocket-rocket-flight-lab.html")
     def fontCss = file("src/main/fontface.css")
-    def out = file("$buildDir/generated/webAsset/index.html")
+    def out = layout.buildDirectory.file("generated/webAsset/index.html").get().asFile
     inputs.files(page, fontCss)
     outputs.file(out)
     doLast {
