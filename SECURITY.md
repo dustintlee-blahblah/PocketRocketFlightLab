@@ -17,7 +17,7 @@ Only the newest release is supported; fixes come out as a new build.
 
 ## How releases are protected
 
-Releases are built from a tagged commit by GitHub Actions (`.github/workflows/release.yml`). The signing key is a
+Releases are built from a commit on main by GitHub Actions (`.github/workflows/release.yml`). The signing key is a
 repository secret, never a file in the repository, and the workflow refuses to publish an APK that isn't signed with
 the release certificate:
 

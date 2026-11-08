@@ -5,8 +5,8 @@
  *
  *   node tools/set-build.js 279
  *
- * Then add "## Build 279 (date)" with its changes at the top of CHANGELOG.md, commit ("Build 279"), and tag the commit
- * v<versionName>-build279 to publish the release (see .github/workflows/release.yml).
+ * Then add "## Build 279 (date)" with its changes at the top of CHANGELOG.md, commit ("Build 279") and push: the release
+ * workflow publishes v<versionName>-build279 from main (see .github/workflows/release.yml).
  */
 "use strict";
 const fs = require("fs");
@@ -42,4 +42,4 @@ for (const file of ["package.json", "package-lock.json"]) {
   if (j.packages && j.packages[""]) j.packages[""].version = semver;
   fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
 }
-console.log(`build ${n} set (package version ${semver}); release tag: v${version}-build${n}`);
+console.log(`build ${n} set (package version ${semver}); its release will be v${version}-build${n}`);

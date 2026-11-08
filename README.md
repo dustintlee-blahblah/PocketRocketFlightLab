@@ -52,7 +52,7 @@ tools/motor-catalog/                builds src/data/motor-catalog.js from the Op
 tools/unused-exports.js             lint: module exports nothing uses
 tools/check-module-tops.js          lint: modules only define things when they load
 tools/relink.js, tools/move-code.js rewrite imports from what each module uses; move code between modules
-.github/workflows/                  Check (every push and pull request) and Release (on a version tag)
+.github/workflows/                  Check (every push and pull request) and Release (a new build number on main)
 CHANGELOG.md                        what changed in each build; a release's description comes from its section
 LICENSE                             GNU GPL v3
 THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library and data
@@ -157,16 +157,16 @@ and PDF library, so the app works offline (only the weather forecast uses the in
 
 ## Releasing
 
-Official releases are built and signed on GitHub (`.github/workflows/release.yml`), from the tagged commit:
+Official releases are built and signed on GitHub (`.github/workflows/release.yml`) when main gets a build number that
+has no release yet:
 
 ```
-node tools/set-build.js 279         # APP_BUILD, the splash screen and the Android versionCode
-# add "## Build 279 (date)" with its changes at the top of CHANGELOG.md
-git commit -am "Build 279" && git push
-git tag v1.0-build279 && git push origin v1.0-build279
+node tools/set-build.js 280         # APP_BUILD, the splash screen, the Android versionCode, package.json
+# add "## Build 280 (date)" with its changes at the top of CHANGELOG.md
+git commit -am "Build 280" && git push
 ```
 
-The workflow checks that the tag and the source agree on the build number, builds the page and the signed APK,
+The workflow checks that the source agrees on the build number, builds the page and the signed APK,
 checks the APK's certificate, and publishes both, with the build's `CHANGELOG.md` section in the description
 (`.github/release-template.md`). The signing keystore and
 its passwords are repository secrets, never files in the repository.

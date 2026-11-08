@@ -64,7 +64,7 @@ npm test
 
 ## Releases
 
-Releases are made by the maintainer from a version tag; the README's "Releasing" section has the steps. Add a line for
+Releases are made by the maintainer, by setting a new build number on main; the README's "Releasing" section has the steps. Add a line for
 your change under the next build in `CHANGELOG.md` if it's something users will notice, or the maintainer will.
 
 ## Code of conduct
