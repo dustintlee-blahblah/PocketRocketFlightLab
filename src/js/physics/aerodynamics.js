@@ -1089,6 +1089,9 @@ function rollParts(A, M = 0) {
    Mach 1, where Barrowman sits aft of the measurements, from 3.6% to 2.5%; above, from 1.5% to 1.8%). It matters most on
    long, thin rockets, and moves their CP forward: the margins it gives are a little lower and safer. */
 const STATIC_AOA = (2 * Math.PI) / 180;
+/* how far off the static CP estimate may be, as one standard deviation in body lengths: the RMS error of the center of
+   pressure against the Arcas measurements above (2.3% of body length). The margin's likely range is ± this. */
+const CP_UNC = 0.023;
 /**
  * Adds the body's small-angle lift (see above) to a normal-force slope and where it acts.
  * @param {object} A aerodynamic model
@@ -1195,5 +1198,8 @@ function stability(D, m) {
     marginL5: (cpAtAoA(A, 5) - cgL) / d,
     marginL10: (cpAtAoA(A, 10) - cgL) / d,
     pctL: ((cp - cgL) / A.L) * 100,
+    unc: (CP_UNC * A.L) / d,
+    d,
+    L: A.L,
   };
 }

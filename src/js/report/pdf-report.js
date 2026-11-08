@@ -751,7 +751,7 @@ function buildReportPdf() {
     col(C.muted);
     const nt = doc.splitTextToSize(
       pdfSafe(
-        `Varied (1σ): wind speed ${Math.round((RL.mcWind || 0) * 100)}%, direction ${RL.mcDir || 0}°, impulse ${+((RL.mcImp || 0) * 100).toFixed(1)}%, weight ${+((RL.mcMass || 0) * 100).toFixed(1)}%, drag ${Math.round((RL.mcCd || 0) * 100)}%, rail angle ${RL.mcAngle || 0}°, thrust misalignment ${RL.mcMis || 0}°, ejection delay ${Math.round((RL.mcDelay || 0) * 100)}%, parachute drag ${Math.round((RL.mcChute || 0) * 100)}%${RL.mcThermal ? `, drafts ${fmt(RL.mcThermal, "wind", 1)} ${uname("wind")}` : ""}. Ellipses hold about 68% and 95% of landings.`,
+        `Varied (1σ): wind speed ${Math.round((RL.mcWind || 0) * 100)}%, direction ${RL.mcDir || 0}°, impulse ${+((RL.mcImp || 0) * 100).toFixed(1)}%, weight ${+((RL.mcMass || 0) * 100).toFixed(1)}%, balance ${+((RL.mcBal || 0) * 100).toFixed(1)}% of length, drag ${Math.round((RL.mcCd || 0) * 100)}%, rail angle ${RL.mcAngle || 0}°, thrust misalignment ${RL.mcMis || 0}°, ejection delay ${Math.round((RL.mcDelay || 0) * 100)}%, parachute drag ${Math.round((RL.mcChute || 0) * 100)}%${RL.mcThermal ? `, drafts ${fmt(RL.mcThermal, "wind", 1)} ${uname("wind")}` : ""}. Ellipses hold about 68% and 95% of landings.`,
       ),
       half,
     );

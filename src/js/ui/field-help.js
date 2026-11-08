@@ -87,6 +87,8 @@ const FIELD_INFO = {
   mcImp:
     "Spread of the motor’s total impulse, as one standard deviation. Certified motors typically vary 2–5% from their rated impulse.",
   mcMass: "Spread of the rocket’s weight, as one standard deviation, for uncertainty in what you weighed or estimated.",
+  mcBal:
+    "Spread of the distance between the CG and the CP, as a share of the rocket’s length (one standard deviation). The default 2.3% is how far the app’s CP estimate was off on average against NASA wind-tunnel measurements of the Arcas sounding rocket; raise it if your CG is an estimate rather than measured. Each flight moves the CG by a random amount, so marginal rockets tumble in some of them.",
   mcCd: "Spread of the drag, as one standard deviation, for uncertainty in the drag estimate and surface finish.",
   mcAngle: "Spread of the rail angle, as one standard deviation in degrees, for how accurately the rail is set.",
   mcDelay:

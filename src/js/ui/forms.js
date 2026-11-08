@@ -18,6 +18,7 @@ const FIELDS = {
     ["mcDir", "Wind direction", "deg", "L", 0],
     ["mcImp", "Motor impulse", "pct", "L", 1],
     ["mcMass", "Rocket weight", "pct", "L", 1],
+    ["mcBal", "Balance (CG against CP), share of length", "pct", "L", 1],
     ["mcCd", "Drag", "pct", "L", 0],
     ["mcAngle", "Rail angle", "deg", "L", 1],
     ["mcMis", "Thrust misalignment", "deg", "L", 2],

@@ -143,7 +143,8 @@ function rsoChecks(st, S, m, D, LL) {
     return c;
   }
   // stability
-  const ml = S.marginL;
+  const ml = S.marginL,
+    nw = typeof nosePlan === "function" ? nosePlan(st, S) : null;
   add(
     ml > 4 ? "warn" : ml >= 1.5 ? "good" : ml >= 1 ? "warn" : "bad",
     st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
@@ -153,8 +154,11 @@ function rsoChecks(st, S, m, D, LL) {
       : ml >= 1.5
         ? "At least 1 caliber is the usual minimum; this has margin."
         : ml >= 1
-          ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight."
-          : "Below 1 caliber. Add nose weight or larger fins before flying.",
+          ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight." +
+            (S.unc && ml - S.unc < 1
+              ? ` The CP estimate is good to about ±${S.unc.toFixed(1)} cal on this rocket, so it could be below 1.`
+              : "")
+          : `Below 1 caliber. Add ${nw && nw.cal > 0 ? noseWeightText(nw.cal) + " at mid-nose" : "nose weight"} or larger fins before flying.`,
   );
   // margin as a share of the rocket's length: one caliber is little on a long, thin rocket
   if (S.pctL != null && ml >= 1)
@@ -164,7 +168,7 @@ function rsoChecks(st, S, m, D, LL) {
       `${S.pctL.toFixed(0)}%`,
       S.pctL >= 10
         ? "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
-        : `${ml.toFixed(2)} cal is only ${S.pctL.toFixed(0)}% of this rocket's length. Long, thin rockets lose margin quickly when they tilt; 10–15% of the length is a common guide for them. Consider nose weight.`,
+        : `${ml.toFixed(2)} cal is only ${S.pctL.toFixed(0)}% of this rocket's length. Long, thin rockets lose margin quickly when they tilt; 10–15% of the length is a common guide for them. ${nw && nw.pct > 0 ? `Reaching 10% takes ${noseWeightText(nw.pct)} at mid-nose.` : "Consider nose weight."}`,
     );
   // leaving the rail in this wind
   if (st.railMargin != null && !st.tumble)
@@ -177,7 +181,8 @@ function rsoChecks(st, S, m, D, LL) {
           ? " The simulated flight recovers as it speeds up and the angle shrinks, but a gust or a slower start could tip it over. A longer rail, a faster motor, nose weight or less wind helps."
           : st.railMargin < 1
             ? " A longer rail, a faster motor, nose weight or less wind raises it."
-            : ""),
+            : "") +
+        (st.railMargin < 1 && nw && nw.rail > 0 ? ` 1 cal here takes ${noseWeightText(nw.rail)} at mid-nose.` : ""),
     );
   // dynamic stability: how well it damps its wobble
   {
@@ -476,6 +481,21 @@ function rsoChecks(st, S, m, D, LL) {
             : "Under 5 miles (8 km): keep the rocket in sight; high-power flights would need at least 5 miles."
           : `At least 5 miles (8 km).${hp.hpr ? " Meets the high-power minimum." : ""}`,
       );
+  }
+  // the dispersion flights, with the balance varied: how often it tumbles
+  {
+    const mc = lastMC && lastSim && lastMC.when === lastSim.when ? lastMC : null;
+    if (mc && mc.n > 0 && !st.error) {
+      const f = mc.tumbles / mc.n;
+      add(
+        f === 0 ? "good" : f < 0.02 ? "warn" : "bad",
+        "Chance of tumbling",
+        `${+(100 * f).toFixed(1)}% (${mc.tumbles} of ${mc.n})`,
+        f === 0
+          ? `None of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance varied.`
+          : `${mc.tumbles} of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance (CG against CP) varied. Add nose weight or larger fins, or wait for less wind.`,
+      );
+    }
   }
   {
     const cz = LL.ceiling || 0;
@@ -886,7 +906,12 @@ function resultFlags(st, S, m, D) {
   if (st.tumble)
     flags.push([
       "bad",
-      `The rocket is unstable and tumbles end over end ${st.tumble.t - (st.offRailT || 0) < 0.6 ? "right after leaving the rail" : `at ${fmt(st.tumble.alt, "alt")} ${uname("alt")}`}${st.tumble.powered ? ", with the motor still burning" : ""}. It won't reach a useful altitude and may come in fast or sideways. Add nose weight or bigger fins.`,
+      `The rocket is unstable and tumbles end over end ${st.tumble.t - (st.offRailT || 0) < 0.6 ? "right after leaving the rail" : `at ${fmt(st.tumble.alt, "alt")} ${uname("alt")}`}${st.tumble.powered ? ", with the motor still burning" : ""}. It won't reach a useful altitude and may come in fast or sideways. ${(() => {
+        const nw = typeof nosePlan === "function" ? nosePlan(st, S) : null;
+        return nw && nw.cal > 0 && isFinite(nw.cal)
+          ? `Add ${noseWeightText(nw.cal)} at mid-nose for 1 caliber, or bigger fins.`
+          : "Add nose weight or bigger fins.";
+      })()}`,
     ]);
   else {
     const orv = st.offRail || 0;

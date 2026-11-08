@@ -457,6 +457,34 @@ function chargeEvents(st, D, outs) {
  * @param {object} S
  * @returns {Array[]}
  */
+/**
+ * The nose weight plan for this flight (noseWeightPlan), worked out once per run.
+ * @param {object} st flight summary
+ * @param {object} S stability at liftoff
+ * @returns {object|null}
+ */
+function nosePlan(st, S) {
+  if (st._nw !== undefined) return st._nw;
+  const RS = lastSim || {};
+  let p = null;
+  try {
+    p = RS.D && !st.error ? noseWeightPlan(RS.D, S, st, RS.L, RS.m, RS.mb) : null;
+  } catch (e) {
+    p = null;
+  }
+  Object.defineProperty(st, "_nw", { value: p, enumerable: false, writable: true });
+  return p;
+}
+/**
+ * A nose weight in words: "45 g of nose weight", or that nose weight alone can't do it.
+ * @param {number} w kg
+ * @returns {string}
+ */
+function noseWeightText(w) {
+  return isFinite(w)
+    ? `${fmt(w, "smass")} ${uname("smass")} of nose weight`
+    : "more than nose weight alone can give (larger fins or a longer body)";
+}
 function resultGroups(st, S) {
   const RS = lastSim || {},
     altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),
@@ -503,8 +531,26 @@ function resultGroups(st, S) {
     [
       st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
       S.marginL.toFixed(2),
-      S.pctL != null ? `cal · ${S.pctL.toFixed(0)}% of length` : "cal",
+      (S.pctL != null ? `cal · ${S.pctL.toFixed(0)}% of length` : "cal") +
+        (S.unc ? ` · likely ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}` : ""),
     ],
+    // nose weight to reach 1 caliber, 10% of the length and 1 caliber leaving the rail in this wind
+    ...(() => {
+      const p = nosePlan(st, S);
+      if (!p || !(p.need > 0)) return [];
+      const why = [p.cal > 0 && "1 cal", p.pct > 0 && "10% of length", p.rail > 0 && "1 cal leaving the rail"]
+        .filter(Boolean)
+        .join(", ");
+      return [
+        [
+          "Nose weight to add",
+          isFinite(p.need) ? fmt(p.need, "smass") : "—",
+          isFinite(p.need)
+            ? `${uname("smass")} at mid-nose · for ${why}${p.apoCost != null ? ` · apogee ${p.apoCost >= 0 ? "−" : "+"}${fmt(Math.abs(p.apoCost), "alt")} ${uname("alt")}${p.apoCost < 0 ? " (flies straighter)" : ""}` : ""}`
+            : "nose weight alone can't reach it: larger fins",
+        ],
+      ];
+    })(),
     // leaving the rail in this wind: tilted to the airflow by the crosswind, so body lift has moved the CP forward
     ...(st.railMargin != null && !st.error
       ? [
@@ -516,7 +562,7 @@ function resultGroups(st, S) {
         ]
       : []),
     // how well it damps its wobble (about 0.05–0.3 is the usual guide)
-    ...(st.dampMax || st.dampRail
+    ...((st.dampMax || st.dampRail) && !st.tumble
       ? [
           [
             "Damping ratio",

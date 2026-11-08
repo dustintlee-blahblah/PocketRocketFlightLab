@@ -77,6 +77,14 @@ async function runMC() {
   msg.textContent = `Flying ${N} dispersion flights…`;
   const pts = [];
   const t0 = performance.now();
+  // the whole rocket's length, and how far the airframe's CG must move to move the liftoff CG by one unit
+  const balLen = SD.length + (SD.twoStage ? SD.bLength || 0 : 0) + (isThree(SD) && SD.s1 ? SD.s1.bLength || 0 : 0),
+    balLift =
+      SD.dryMass +
+      m.totalMass +
+      (SD.twoStage && mb ? (SD.bDryMass || 0) + mb.totalMass : 0) +
+      (isThree(SD) && SD.s1 && lastSim.m1 ? (SD.s1.bDryMass || 0) + lastSim.m1.totalMass : 0),
+    balK = SD.dryMass > 0 ? balLift / SD.dryMass : 1;
   try {
     for (let i = 0; i < N; i++) {
       if (mcStop || !lastSim || lastSim.when !== w) break;
@@ -94,8 +102,11 @@ async function runMC() {
         turb: SL.turb,
         thermalW: (L.mcThermal || 0) * R.n(),
       };
+      // balance: the CG against the CP, off by a share of the length (moving the airframe's CG so the whole rocket's moves by it)
+      const balShift = (L.mcBal || 0) * balLen * R.n() * balK;
       const Di = {
         ...SD,
+        cgEmpty: SD.cgEmpty + balShift,
         dryMass: SD.dryMass * Math.max(0.5, 1 + (L.mcMass || 0) * R.n()),
         dragScale: (SD.dragScale > 0 ? SD.dragScale : 1) * Math.max(0.5, 1 + (L.mcCd || 0) * R.n()),
       };
@@ -120,6 +131,7 @@ async function runMC() {
         apo: st.maxAlt,
         landed: st.landed,
         tumble: !!st.tumble,
+        minMargin: st.tumble ? -Infinity : st.minMargin ? st.minMargin.cal : null,
       });
       if (i % 3 === 2 || i === N - 1) {
         msg.textContent = `Flying ${i + 1} of ${N}…`;
@@ -206,6 +218,14 @@ async function runMC() {
     far,
     pts,
     tumbles: pts.filter((p) => p.tumble).length,
+    // the lowest stability in flight, at the worst 5% of flights
+    minMargin5: (() => {
+      const v = pts
+        .map((p) => p.minMargin)
+        .filter((x) => x != null)
+        .sort((a, b) => a - b);
+      return v.length ? v[Math.floor(0.05 * (v.length - 1))] : null;
+    })(),
     when: w,
     secs: (performance.now() - t0) / 1000,
   };
@@ -293,9 +313,16 @@ function renderMC() {
       `${uname("alt")}, long axis ${compass(mcBearing(M.ang))}–${compass(mcBearing(M.ang) + 180)}`,
     ) +
     tile("Farthest landing", fmt(M.far, "alt"), `${uname("alt")} · ${bigDist(M.far, 0)}`) +
-    (M.tumbles ? tile("Flights that tumbled", String(M.tumbles), `of ${M.n}`) : "");
+    tile("Chance of tumbling", `${+((100 * M.tumbles) / M.n).toFixed(1)}`, `% · ${M.tumbles} of ${M.n} flights`) +
+    (M.minMargin5 != null
+      ? tile(
+          "Lowest stability, worst 5%",
+          isFinite(M.minMargin5) ? M.minMargin5.toFixed(2) : "Tumbles",
+          isFinite(M.minMargin5) ? "cal" : "",
+        )
+      : "");
   document.getElementById("mcnote").textContent =
-    `The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, ${Math.round(M.in68 * 100)}% and ${Math.round(M.in95 * 100)}% of the ${M.n} landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±${Math.round((L.mcWind || 0) * 100)}%, wind direction ±${L.mcDir || 0}°, impulse ±${+((L.mcImp || 0) * 100).toFixed(1)}%, weight ±${+((L.mcMass || 0) * 100).toFixed(1)}%, drag ±${Math.round((L.mcCd || 0) * 100)}%, rail angle ±${L.mcAngle || 0}°, thrust misalignment ${L.mcMis || 0}° (1σ).`;
+    `The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, ${Math.round(M.in68 * 100)}% and ${Math.round(M.in95 * 100)}% of the ${M.n} landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±${Math.round((L.mcWind || 0) * 100)}%, wind direction ±${L.mcDir || 0}°, impulse ±${+((L.mcImp || 0) * 100).toFixed(1)}%, weight ±${+((L.mcMass || 0) * 100).toFixed(1)}%, balance ±${+((L.mcBal || 0) * 100).toFixed(1)}% of length, drag ±${Math.round((L.mcCd || 0) * 100)}%, rail angle ±${L.mcAngle || 0}°, thrust misalignment ${L.mcMis || 0}° (1σ).`;
   drawMC();
 }
 /**

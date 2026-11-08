@@ -138,6 +138,7 @@ function defaultLaunch() {
     mcDir: 15,
     mcImp: 0.03,
     mcMass: 0.02,
+    mcBal: 0.023,
     mcCd: 0.05,
     mcAngle: 1,
     mcMis: 0.2,
