@@ -155,6 +155,7 @@ function stackStability(D, mS, mB, m1) {
     marginB: (cp - cgB) / d,
     marginL5: (cpAtAoA(A, 5) - cgL) / d,
     marginL10: (cpAtAoA(A, 10) - cgL) / d,
+    pctL: ((cp - cgL) / A.L) * 100,
     d,
   };
 }
@@ -1126,6 +1127,26 @@ function simulate(D, L, m, mb, opts = {}) {
         s[8] = rz;
         s[9] = s[11] = 0;
         s[10] = TIPOFF;
+        // stability as it leaves the rail in this wind: the crosswind sets its angle of attack, and body lift moves the
+        // CP forward with that angle; and how well it damps its wobble there
+        {
+          const W = windVec(z, t),
+            ux = vExit * rx - W[0],
+            uy = vExit * ry - W[1],
+            uz = vExit * rz,
+            va = Math.hypot(ux, uy, uz);
+          if (va > 0.5) {
+            const deg = (Math.acos(Math.max(-1, Math.min(1, (rx * ux + ry * uy + rz * uz) / va))) * 180) / Math.PI,
+              GG = Gat(t),
+              Mn = va / atm.a,
+              J0 = inertia(t),
+              cpA = cpAtAoA(GG, Math.min(deg, 17), Mn);
+            st.railAoA = deg;
+            st.railMargin = (cpA - J0.cg) / (2 * GG.R);
+            st.railPct = ((cpA - J0.cg) / GG.L) * 100;
+            st.dampRail = pitchDamping(cnaPartsM(GG, Mn), J0, atm.rho, va, GG.Aref);
+          }
+        }
         // on a leaning rail the front guide leaves first and the rocket pivots nose-down about the aft guide until it clears
         const lean = Math.sqrt(Math.max(1 - rz * rz, 0));
         if (lean > 0.005 && sp > 1) {
@@ -1321,6 +1342,7 @@ function simulate(D, L, m, mb, opts = {}) {
         if (Mn >= (st.mMaxMach || 0)) {
           st.mMaxMach = Mn;
           st.marginAtMaxMach = mg;
+          st.dampMax = pitchDamping(C, J, atm.rho, vrr, GG.Aref);
         }
         for (const f of GG.fins) {
           const fl = flutterSpeed(f, atm);

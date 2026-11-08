@@ -156,6 +156,44 @@ function rsoChecks(st, S, m, D, LL) {
           ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight."
           : "Below 1 caliber. Add nose weight or larger fins before flying.",
   );
+  // margin as a share of the rocket's length: one caliber is little on a long, thin rocket
+  if (S.pctL != null && ml >= 1)
+    add(
+      S.pctL >= 10 ? "good" : "warn",
+      "Stability as a share of length",
+      `${S.pctL.toFixed(0)}%`,
+      S.pctL >= 10
+        ? "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
+        : `${ml.toFixed(2)} cal is only ${S.pctL.toFixed(0)}% of this rocket's length. Long, thin rockets lose margin quickly when they tilt; 10–15% of the length is a common guide for them. Consider nose weight.`,
+    );
+  // leaving the rail in this wind
+  if (st.railMargin != null && !st.tumble)
+    add(
+      st.railMargin >= 1 ? "good" : "warn",
+      "Stability leaving the rail",
+      `${st.railMargin.toFixed(2)} cal at ${st.railAoA.toFixed(0)}°`,
+      `In this wind the airflow meets the rocket at ${st.railAoA.toFixed(0)}° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving ${st.railMargin.toFixed(2)} cal.` +
+        (st.railMargin < 0
+          ? " The simulated flight recovers as it speeds up and the angle shrinks, but a gust or a slower start could tip it over. A longer rail, a faster motor, nose weight or less wind helps."
+          : st.railMargin < 1
+            ? " A longer rail, a faster motor, nose weight or less wind raises it."
+            : ""),
+    );
+  // dynamic stability: how well it damps its wobble
+  {
+    const dm = st.dampMax || st.dampRail;
+    if (dm && !st.tumble)
+      add(
+        dm.zeta < 0.05 ? "warn" : dm.zeta > 0.3 ? "warn" : "good",
+        "Damping ratio",
+        dm.zeta.toFixed(2),
+        dm.zeta < 0.05
+          ? "Lightly damped: after a gust it keeps oscillating for a while. A longer rocket or fins farther aft damp it more."
+          : dm.zeta > 0.3
+            ? "Heavily damped: it turns back slowly after a gust. Usually fine; very high values come with weak correction."
+            : "Within the usual 0.05–0.3: gusts die out in a few swings.",
+      );
+  }
   if (st.minMargin && st.minMargin.cal < ml - 0.05)
     add(
       st.minMargin.cal >= 1 ? "good" : st.minMargin.cal >= 0 ? "warn" : "bad",
@@ -999,6 +1037,19 @@ function resultFlags(st, S, m, D) {
         "warn",
         `Goes above about 85 km (279,000 ft). The air there is so thin it no longer behaves as a continuous gas, so drag and stability numbers above that height don’t mean much; drag is negligible there anyway.`,
       ]);
+    // leaving the rail in this wind, with body lift moving the CP forward at that angle
+    if (st.railMargin != null && !st.tumble && S.marginL >= 1) {
+      if (st.railMargin < 0)
+        flags.push([
+          "warn",
+          `Unstable for a moment leaving the rail in this wind: at ${st.railAoA.toFixed(0)}° to the airflow the margin is ${st.railMargin.toFixed(2)} cal. The simulated flight recovers as it speeds up, but a gust or a slower start could tip it over. A longer rail, a faster motor, nose weight or less wind helps.`,
+        ]);
+      else if (st.railMargin < 1)
+        flags.push([
+          "warn",
+          `Stability leaving the rail drops to ${st.railMargin.toFixed(2)} cal at ${st.railAoA.toFixed(0)}° to the airflow in this wind.`,
+        ]);
+    }
     // stability on the way up, with the CP moving as the fins lose lift at high Mach
     if (st.minMargin && !st.tumble && S.marginL >= 1) {
       const mm = st.minMargin,

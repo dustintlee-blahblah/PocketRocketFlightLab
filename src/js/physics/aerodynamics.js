@@ -1119,14 +1119,38 @@ const CROSS_K = 1.1;
  * ahead of the Barrowman CP, so the CP moves forward as the rocket tilts. Below the fins' stall (about 18°).
  * @param {object} A aerodynamic model
  * @param {number} deg angle of attack, degrees
+ * @param {number} [M] Mach number
  * @returns {number} m from the nose tip
  */
-function cpAtAoA(A, deg) {
-  const C = cnaParts(A, 0),
+function cpAtAoA(A, deg, M = 0) {
+  const C = cnaPartsM(A, M),
     a = (deg * Math.PI) / 180,
     lin = C.cn * Math.sin(a) * Math.cos(a),
     x = ((CROSS_K * A.sideArea) / A.Aref) * Math.sin(a) ** 2;
   return lin + x > 0 ? (lin * C.cp + x * A.xPlan) / (lin + x) : C.cp;
+}
+/**
+ * How well the rocket damps its own wobble: the damping ratio of its pitch oscillation and the oscillation's frequency
+ * (Barrowman; Mandell, Caporaso & Bengen, Topics in Advanced Model Rocketry). The corrective moment coefficient is
+ * C1 = ½ρV²·A·CNα·(Xcp − Xcg); the damping moment coefficient C2 = ½ρV·A·Σ CNα,i·(Xi − Xcg)² from the airflow, plus
+ * ṁ·(Xnozzle − Xcg)² from the exhaust while the motor burns. Damping ratio ζ = C2 ÷ (2·√(C1·I)). The airflow part
+ * doesn't change with speed (V cancels); the exhaust part adds most at low speed. About 0.05–0.3 is the usual guide:
+ * below that the rocket keeps oscillating after a gust, above it it's slow to turn back.
+ * @param {{cn:number, cp:number, parts:object[]}} C normal-force slopes and where they act (cnaParts)
+ * @param {{cg:number, I:number, mdot?:number, xN?:number}} J CG (m from the nose tip), pitch inertia (kg·m²),
+ *   propellant burn rate (kg/s) and nozzle position (m)
+ * @param {number} rho air density, kg/m³
+ * @param {number} v airspeed, m/s
+ * @param {number} Aref reference area, m²
+ * @returns {{zeta:number, hz:number}|null} null when the rocket isn't statically stable
+ */
+function pitchDamping(C, J, rho, v, Aref) {
+  const C1 = 0.5 * rho * v * v * Aref * C.cn * (C.cp - J.cg);
+  if (!(C1 > 0) || !(J.I > 0)) return null;
+  const C2 =
+    0.5 * rho * v * Aref * C.parts.reduce((a, p) => a + p.cn * (p.x - J.cg) ** 2, 0) +
+    (J.mdot || 0) * ((J.xN ?? J.cg) - J.cg) ** 2;
+  return { zeta: C2 / (2 * Math.sqrt(C1 * J.I)), hz: Math.sqrt(C1 / J.I) / (2 * Math.PI) };
 }
 /**
  * Static stability with a motor: the center of pressure, the CG at liftoff and at burnout, and the margins.
@@ -1151,5 +1175,6 @@ function stability(D, m) {
     marginB: (cp - cgB) / d,
     marginL5: (cpAtAoA(A, 5) - cgL) / d,
     marginL10: (cpAtAoA(A, 10) - cgL) / d,
+    pctL: ((cp - cgL) / A.L) * 100,
   };
 }
