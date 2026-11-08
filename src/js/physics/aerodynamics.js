@@ -1110,8 +1110,9 @@ function cpOf(A) {
   }
   return CN > 0 ? CNx / CN : A.L / 2;
 }
-/** body crossflow: η·Cdc for a circular cylinder (Allen–Perkins), the normal force a body makes across the flow */
-const CROSS_K = 0.65 * 1.2;
+/** body lift across the flow: CN = K·(planform area / reference area)·sin²α, with Galejs's K = 1.1 (as OpenRocket
+    uses; the Allen–Perkins cylinder value η·Cdc ≈ 0.78 moves the CP forward less as the rocket tilts) */
+const CROSS_K = 1.1;
 /**
  * The center of pressure at an angle of attack, as the flight works it out: Barrowman's normal force (sin α·cos α)
  * plus the body's crossflow lift (sin²α), which acts at the middle of the body's side outline. On a long rocket that's

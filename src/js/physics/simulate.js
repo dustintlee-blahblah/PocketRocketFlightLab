@@ -471,7 +471,7 @@ function simulate(D, L, m, mb, opts = {}) {
         ? CdAdrogue * fill(openD, t) + 0.5 * Gs.Aref
         : Gs.tumbleCdA) + xcda(t);
   let phase = "rail";
-  /* pitch motion after rail exit: Barrowman normal force acting at the CP, Allen–Perkins body crossflow at larger angles,
+  /* pitch motion after rail exit: Barrowman normal force acting at the CP, body lift across the flow (Galejs) at larger angles,
      aerodynamic damping and jet damping (Mandell, Caporaso & Bengen, Topics in Advanced Model Rocketry, 1973).
      Moment of inertia: each airframe as a uniform rod, each motor as a uniform rod at its own position. */
   const GUIDES = railGuides(staged ? fullStack(D) : D); // where the rail guides are (on the whole stack), for the friction on the rail
