@@ -41,12 +41,13 @@ module.exports = [
     },
   },
   {
-    files: ["build.js", "tests/**/*.js", "tools/**/*.js", "eslint.config.js"],
+    files: ["build.js", "tests/**/*.js", "tools/**/*.js", "validation/**/*.js", "eslint.config.js"],
     languageOptions: { ecmaVersion: 2022, sourceType: "commonjs", globals: { ...globals.node } },
   },
   {
-    // the page-side code in the test runs in the browser, against the app's globals
-    files: ["tests/**/*.js"],
+    // the page-side code in the tests, validation scripts and screenshot tool runs in the browser, against the app's
+    // names (exposed as globals)
+    files: ["tests/**/*.js", "validation/**/*.js", "tools/screenshots.js"],
     rules: { "no-undef": "off" },
   },
 ];

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Lists exports of the app's modules that nothing uses: no module imports them, and the tests don't call them (the
-// tests reach the app's names through window.__pr; see src/js/main.js). ESLint checks names within a module; this
+// tests, validation scripts and tools reach the app's names through window.__pr; see src/js/main.js). ESLint checks names within a module; this
 // checks across them.
 // usage: node tools/unused-exports.js   (exits 1 if any are found)
 "use strict";
@@ -39,10 +39,13 @@ for (const f of files) {
   }
 }
 // what the tests use from the page
-const tests = fs
-  .readdirSync(path.join(root, "tests"))
-  .filter((f) => f.endsWith(".js"))
-  .map((f) => fs.readFileSync(path.join(root, "tests", f), "utf8"))
+const tests = ["tests", "validation", "tools"]
+  .flatMap((d) =>
+    fs
+      .readdirSync(path.join(root, d))
+      .filter((f) => f.endsWith(".js"))
+      .map((f) => fs.readFileSync(path.join(root, d, f), "utf8")),
+  )
   .join("\n");
 const used = (n) =>
   imported.has(n) ||

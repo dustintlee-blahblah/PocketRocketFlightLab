@@ -124,17 +124,26 @@ function cmpFly(m) {
     rso: st.error ? 3 : bad.length ? 2 : warn.length ? 1 : 0,
   };
 }
+/** The most motors one comparison flies. */
+const CMP_MAX = 200;
+/**
+ * The motors a comparison flies: the filtered list, less motors too big for the mount, up to CMP_MAX.
+ * @returns {object[]}
+ */
+function cmpItems() {
+  return filterMotors(F.dia, F.sys, F.q)
+    .filter((m) => {
+      const f = motorFit(m, tgtD(), tgtB());
+      return !f || f.status !== "big";
+    })
+    .slice(0, CMP_MAX);
+}
 /**
  * Runs the comparison for every motor in the filtered list that fits, a few at a time so the page stays responsive.
  */
 async function cmpRun() {
   if (CMP.running) return;
-  const items = filterMotors(F.dia, F.sys, F.q)
-    .filter((m) => {
-      const f = motorFit(m, tgtD(), tgtB());
-      return !f || f.status !== "big";
-    })
-    .slice(0, 200);
+  const items = cmpItems();
   const msg = document.getElementById("cmpmsg");
   if (!items.length) {
     msg.textContent = "No motors in the list below. Change the filters, then try again.";
@@ -190,9 +199,10 @@ export function cmpRender() {
   if (!w) return;
   const two = !!D.twoStage,
     lab = two ? (TGT_NAME[motorTarget] || "Sustainer").toLowerCase() + " " : "";
-  const n = filterMotors(F.dia, F.sys, F.q).length;
+  // the button counts the motors that will fly (those that fit the mount, up to CMP_MAX)
+  const n = cmpItems().length;
   document.getElementById("cmpgo").textContent =
-    `Compare ${n} motor${n === 1 ? "" : "s"}${two ? " for the " + lab.trim() : ""}`;
+    `Compare ${n === CMP_MAX ? "the first " : ""}${n} motor${n === 1 ? "" : "s"}${two ? " for the " + lab.trim() : ""}`;
   document.getElementById("cmpgo").disabled = CMP.running || !n;
   const valid = CMP.rows && CMP.rows.length && (CMP.running || CMP.key === cmpKey());
   // a note only when the table shown is out of date

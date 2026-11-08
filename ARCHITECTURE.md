@@ -149,4 +149,5 @@ with the fonts and PDF library switched to bundled copies.
   delays, and records everything the app computes. `npm test` compares the built-in examples with
   `tests/golden-snapshot.json`. A change that shouldn't alter results must pass unchanged.
 - `tests/drag-benchmarks.js` compares the drag model with published wind-tunnel and free-flight measurements.
+- `validation/` checks the app against OpenRocket and NASA's Arcas wind-tunnel data; VALIDATION.md has the results.
 - Both run on every push and pull request (`.github/workflows/check.yml`), with lint, formatting and an Android build.

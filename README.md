@@ -7,6 +7,16 @@ checklist and a PDF flight report.
 
 By Dustin Lee. Free software under the [GNU General Public License v3.0 or later](LICENSE).
 
+<p align="center">
+  <img src="docs/images/rocket-builder.png" width="19%" alt="The Rocket tab: a side view of the LOC IV X2 with its CG and CP, its size and weights, and the design tree">
+  <img src="docs/images/results.png" width="19%" alt="The Results tab: predicted apogee of 762 ft on an H148, with speed, acceleration, ascent and stability figures">
+  <img src="docs/images/flight-chart.png" width="19%" alt="The flight profile chart: altitude against time, with burnout, apogee and main parachute marked">
+  <img src="docs/images/checklist.png" width="19%" alt="The RSO checklist: stability, rail exit speed, thrust-to-weight and recovery checks, each with its value">
+  <img src="docs/images/compare-motors.png" width="19%" alt="Compare motors: a LOC Goblin flown on 200 motors, with apogee, rail exit speed and thrust-to-weight for each">
+</p>
+
+The screenshots are taken from the built app by `node tools/screenshots.js`.
+
 ## What it does
 
 - 6-DOF flight simulation (position, pitch, yaw and roll) with Barrowman stability, a full drag
@@ -17,6 +27,9 @@ By Dustin Lee. Free software under the [GNU General Public License v3.0 or later
 - Flight log with altimeter imports (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile
   Works, Apogee) and drag calibration to real flights
 - Weather forecast for the launch site, including winds aloft to about 100,000 ft
+
+How accurate is it? [VALIDATION.md](VALIDATION.md) compares it with OpenRocket and with NASA and NACA wind-tunnel
+data, with the scripts to rerun every check.
 
 ## Download
 
@@ -47,6 +60,7 @@ tests/golden-snapshot.json          the recorded results of the built-in example
 tests/drag-benchmarks.js            the drag model against published NACA measurements
 tests/smoke.js                      clicks through the tabs and controls; fails on any page error
 tools/set-build.js                  sets the build number everywhere it appears
+tools/screenshots.js                takes the screenshots in docs/images from the built app
 tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
 tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
 tools/unused-exports.js             lint: module exports nothing uses
@@ -54,6 +68,8 @@ tools/check-module-tops.js          lint: modules only define things when they l
 tools/relink.js, tools/move-code.js rewrite imports from what each module uses; move code between modules
 .github/workflows/                  Check (every push and pull request) and Release (a new build number on main)
 CHANGELOG.md                        what changed in each build; a release's description comes from its section
+VALIDATION.md, validation/          how accurate the app is, and the scripts that check it
+docs/images/                        the README's screenshots
 LICENSE                             GNU GPL v3
 THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library and data
 CONTRIBUTING.md, ARCHITECTURE.md    how to contribute; how the app works

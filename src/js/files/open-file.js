@@ -65,7 +65,7 @@ function launchSame(a, b) {
  * @returns {{i:number, name:string, motors:string, apogee:number|null, wind:number|null, outdated:boolean,
  *   cfg:string|null, at:string}[]}
  */
-function designRuns(xml, saved) {
+export function designRuns(xml, saved) {
   let doc;
   try {
     doc = new DOMParser().parseFromString(xml, "application/xml");
