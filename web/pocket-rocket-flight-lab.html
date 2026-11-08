@@ -3127,7 +3127,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">275</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">276</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3560,6 +3560,8 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
         <li>Allen, H. J. and Perkins, E. W., NACA Report 1048, 1951: body crossflow force at angle of attack and crossflow drag for tumbling descent.</li>
         <li>Mandell, G. K., Caporaso, G. J. and Bengen, W. P., <i>Topics in Advanced Model Rocketry</i>, 1973: pitch motion, aerodynamic damping and jet damping.</li>
         <li>Barrowman, J. S., <i>The Practical Calculation of the Aerodynamic Characteristics of Slender Finned Vehicles</i>, 1967: center of pressure.</li>
+        <li>Galejs, R., <i>Wind instability: what Barrowman left out</i>, 1999: body lift at angle of attack.</li>
+        <li>NASA TN D-4013 and TN D-4014, 1967: measured center of pressure of the Arcas sounding rocket, Mach 0.6–4.6.</li>
         <li>Crowell, G. A., <i>The Descriptive Geometry of Nose Cones</i>, 1996: nose-cone shapes.</li>
         <li>Sutherland's law for air viscosity; U.S. Standard Atmosphere, 1976.</li>
       </ul>
@@ -3635,7 +3637,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "275";
+const APP_BUILD = "276";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -4146,6 +4148,7 @@ function defaultLaunch() {
     mcDir: 15,
     mcImp: 0.03,
     mcMass: 0.02,
+    mcBal: 0.023,
     mcCd: 0.05,
     mcAngle: 1,
     mcMis: 0.2,
@@ -4528,6 +4531,7 @@ const FIELDS = {
     ["mcDir", "Wind direction", "deg", "L", 0],
     ["mcImp", "Motor impulse", "pct", "L", 1],
     ["mcMass", "Rocket weight", "pct", "L", 1],
+    ["mcBal", "Balance (CG against CP), share of length", "pct", "L", 1],
     ["mcCd", "Drag", "pct", "L", 0],
     ["mcAngle", "Rail angle", "deg", "L", 1],
     ["mcMis", "Thrust misalignment", "deg", "L", 2],
@@ -4837,6 +4841,8 @@ const FIELD_INFO = {
   mcImp:
     "Spread of the motor’s total impulse, as one standard deviation. Certified motors typically vary 2–5% from their rated impulse.",
   mcMass: "Spread of the rocket’s weight, as one standard deviation, for uncertainty in what you weighed or estimated.",
+  mcBal:
+    "Spread of the distance between the CG and the CP, as a share of the rocket’s length (one standard deviation). The default 2.3% is how far the app’s CP estimate was off on average against NASA wind-tunnel measurements of the Arcas sounding rocket; raise it if your CG is an estimate rather than measured. Each flight moves the CG by a random amount, so marginal rockets tumble in some of them.",
   mcCd: "Spread of the drag, as one standard deviation, for uncertainty in the drag estimate and surface finish.",
   mcAngle: "Spread of the rail angle, as one standard deviation in degrees, for how accurately the rail is set.",
   mcDelay:
@@ -7325,8 +7331,30 @@ function rollParts(A, M = 0) {
   }
   return { force, damp };
 }
+/* the static center of pressure, as a wind tunnel measures it: from the slope of the normal force and pitching moment over
+   small angles (±2°), not at exactly 0°. Over that range the body's lift across the flow, K·(planform/reference area)·
+   sin α·|sin α|, adds a slope of K·(planform/reference area)·¾·2° acting at the middle of the side outline. Barrowman
+   leaves it out. Against the Arcas sounding rocket's measured center of pressure (NASA TN D-4013, Mach 0.6–0.9, two body
+   lengths, and TN D-4014, Mach 1.5–4.6), including it brings the error from 3.0% to 2.3% of body length overall (below
+   Mach 1, where Barrowman sits aft of the measurements, from 3.6% to 2.5%; above, from 1.5% to 1.8%). It matters most on
+   long, thin rockets, and moves their CP forward: the margins it gives are a little lower and safer. */
+const STATIC_AOA = (2 * Math.PI) / 180;
+/* how far off the static CP estimate may be, as one standard deviation in body lengths: the RMS error of the center of
+   pressure against the Arcas measurements above (2.3% of body length). The margin's uncertainty margin is ± this. */
+const CP_UNC = 0.023;
 /**
- * Subsonic (low-speed) center of pressure by Barrowman's method.
+ * Adds the body's small-angle lift (see above) to a normal-force slope and where it acts.
+ * @param {object} A aerodynamic model
+ * @param {number} cn normal-force slope without it (per radian)
+ * @param {number} cp where that acts, m from the nose tip
+ * @returns {number} the center of pressure with it, m from the nose tip
+ */
+function cpWithBodyLift(A, cn, cp) {
+  const add = ((CROSS_K * (A.sideArea || 0)) / A.Aref) * 0.75 * STATIC_AOA;
+  return cn + add > 0 && A.xPlan != null ? (cn * cp + add * A.xPlan) / (cn + add) : cp;
+}
+/**
+ * Static center of pressure at low speed: Barrowman's method and the body's small-angle lift.
  * @param {object} A aerodynamic model
  * @returns {number} m from the nose tip
  */
@@ -7352,7 +7380,7 @@ function cpOf(A) {
     CN += cnf;
     CNx += cnf * xf;
   }
-  return CN > 0 ? CNx / CN : A.L / 2;
+  return CN > 0 ? cpWithBodyLift(A, CN, CNx / CN) : A.L / 2;
 }
 /** body lift across the flow: CN = K·(planform area / reference area)·sin²α, with Galejs's K = 1.1 (as OpenRocket
     uses; the Allen–Perkins cylinder value η·Cdc ≈ 0.78 moves the CP forward less as the rocket tilts) */
@@ -7363,14 +7391,38 @@ const CROSS_K = 1.1;
  * ahead of the Barrowman CP, so the CP moves forward as the rocket tilts. Below the fins' stall (about 18°).
  * @param {object} A aerodynamic model
  * @param {number} deg angle of attack, degrees
+ * @param {number} [M] Mach number
  * @returns {number} m from the nose tip
  */
-function cpAtAoA(A, deg) {
-  const C = cnaParts(A, 0),
+function cpAtAoA(A, deg, M = 0) {
+  const C = cnaPartsM(A, M),
     a = (deg * Math.PI) / 180,
     lin = C.cn * Math.sin(a) * Math.cos(a),
     x = ((CROSS_K * A.sideArea) / A.Aref) * Math.sin(a) ** 2;
   return lin + x > 0 ? (lin * C.cp + x * A.xPlan) / (lin + x) : C.cp;
+}
+/**
+ * How well the rocket damps its own wobble: the damping ratio of its pitch oscillation and the oscillation's frequency
+ * (Barrowman; Mandell, Caporaso & Bengen, Topics in Advanced Model Rocketry). The corrective moment coefficient is
+ * C1 = ½ρV²·A·CNα·(Xcp − Xcg); the damping moment coefficient C2 = ½ρV·A·Σ CNα,i·(Xi − Xcg)² from the airflow, plus
+ * ṁ·(Xnozzle − Xcg)² from the exhaust while the motor burns. Damping ratio ζ = C2 ÷ (2·√(C1·I)). The airflow part
+ * doesn't change with speed (V cancels); the exhaust part adds most at low speed. About 0.05–0.3 is the usual guide:
+ * below that the rocket keeps oscillating after a gust, above it it's slow to turn back.
+ * @param {{cn:number, cp:number, parts:object[]}} C normal-force slopes and where they act (cnaParts)
+ * @param {{cg:number, I:number, mdot?:number, xN?:number}} J CG (m from the nose tip), pitch inertia (kg·m²),
+ *   propellant burn rate (kg/s) and nozzle position (m)
+ * @param {number} rho air density, kg/m³
+ * @param {number} v airspeed, m/s
+ * @param {number} Aref reference area, m²
+ * @returns {{zeta:number, hz:number}|null} null when the rocket isn't statically stable
+ */
+function pitchDamping(C, J, rho, v, Aref) {
+  const C1 = 0.5 * rho * v * v * Aref * C.cn * (C.cp - J.cg);
+  if (!(C1 > 0) || !(J.I > 0)) return null;
+  const C2 =
+    0.5 * rho * v * Aref * C.parts.reduce((a, p) => a + p.cn * (p.x - J.cg) ** 2, 0) +
+    (J.mdot || 0) * ((J.xN ?? J.cg) - J.cg) ** 2;
+  return { zeta: C2 / (2 * Math.sqrt(C1 * J.I)), hz: Math.sqrt(C1 / J.I) / (2 * Math.PI) };
 }
 /**
  * Static stability with a motor: the center of pressure, the CG at liftoff and at burnout, and the margins.
@@ -7395,6 +7447,10 @@ function stability(D, m) {
     marginB: (cp - cgB) / d,
     marginL5: (cpAtAoA(A, 5) - cgL) / d,
     marginL10: (cpAtAoA(A, 10) - cgL) / d,
+    pctL: ((cp - cgL) / A.L) * 100,
+    unc: (CP_UNC * A.L) / d,
+    d,
+    L: A.L,
   };
 }
 /**
@@ -7554,6 +7610,9 @@ function stackStability(D, mS, mB, m1) {
     marginB: (cp - cgB) / d,
     marginL5: (cpAtAoA(A, 5) - cgL) / d,
     marginL10: (cpAtAoA(A, 10) - cgL) / d,
+    pctL: ((cp - cgL) / A.L) * 100,
+    unc: (CP_UNC * A.L) / d,
+    L: A.L,
     d,
   };
 }
@@ -8525,6 +8584,26 @@ function simulate(D, L, m, mb, opts = {}) {
         s[8] = rz;
         s[9] = s[11] = 0;
         s[10] = TIPOFF;
+        // stability as it leaves the rail in this wind: the crosswind sets its angle of attack, and body lift moves the
+        // CP forward with that angle; and how well it damps its wobble there
+        {
+          const W = windVec(z, t),
+            ux = vExit * rx - W[0],
+            uy = vExit * ry - W[1],
+            uz = vExit * rz,
+            va = Math.hypot(ux, uy, uz);
+          if (va > 0.5) {
+            const deg = (Math.acos(Math.max(-1, Math.min(1, (rx * ux + ry * uy + rz * uz) / va))) * 180) / Math.PI,
+              GG = Gat(t),
+              Mn = va / atm.a,
+              J0 = inertia(t),
+              cpA = cpAtAoA(GG, Math.min(deg, 17), Mn);
+            st.railAoA = deg;
+            st.railMargin = (cpA - J0.cg) / (2 * GG.R);
+            st.railPct = ((cpA - J0.cg) / GG.L) * 100;
+            st.dampRail = pitchDamping(cnaPartsM(GG, Mn), J0, atm.rho, va, GG.Aref);
+          }
+        }
         // on a leaning rail the front guide leaves first and the rocket pivots nose-down about the aft guide until it clears
         const lean = Math.sqrt(Math.max(1 - rz * rz, 0));
         if (lean > 0.005 && sp > 1) {
@@ -8715,11 +8794,12 @@ function simulate(D, L, m, mb, opts = {}) {
           Mn = vrr / atm.a,
           C = cnaPartsM(GG, Mn),
           J = inertia(t),
-          mg = (C.cp - J.cg) / (2 * GG.R);
+          mg = (cpWithBodyLift(GG, C.cn, C.cp) - J.cg) / (2 * GG.R);
         if (!st.minMargin || mg < st.minMargin.cal) st.minMargin = { cal: mg, M: Mn, t, alt: z };
         if (Mn >= (st.mMaxMach || 0)) {
           st.mMaxMach = Mn;
           st.marginAtMaxMach = mg;
+          st.dampMax = pitchDamping(C, J, atm.rho, vrr, GG.Aref);
         }
         for (const f of GG.fins) {
           const fl = flutterSpeed(f, atm);
@@ -9145,6 +9225,53 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
  */
 function airInertia(I0, m0, m, len) {
   return I0 > 0 ? I0 * (m0 > 0 ? m / m0 : 1) : (m * len * len) / 12;
+}
+
+/**
+ * Nose weight: how much to add at the middle of the nose cone to reach each stability target, and what it costs in
+ * apogee. Adding a weight m at x moves the CG to (M·cg + m·x)/(M + m), so reaching a CG of cg′ takes
+ * m = M·(cg − cg′)/(cg′ − x). Targets: 1 caliber at liftoff, 10% of the length, and 1 caliber leaving the rail in this
+ * wind (the CP at that angle of attack).
+ * @param {object} D design
+ * @param {object} S stability at liftoff (stability or stackStability)
+ * @param {object} st the flight's summary (liftoff weight, rail exit angle)
+ * @param {object} Lx launch conditions
+ * @param {object} m motor; mb booster motor (or null)
+ * @returns {{x:number, cal:number, pct:number, rail:(number|null), need:number, apoCost:(number|null)}|null}
+ *   weights in kg (Infinity if no nose weight can reach it), x in m from the nose tip
+ */
+function noseWeightPlan(D, S, st, Lx, m, mb) {
+  if (!S || !st || !(st.liftMass > 0)) return null;
+  const segs = bodySegments(D),
+    nose = segs[0] && segs[0].kind === "nose" ? segs[0] : null,
+    x = nose ? nose.len / 2 : 0.05 * S.L,
+    M = st.liftMass,
+    cg = S.cgL;
+  const forCg = (cgT) => (cg <= cgT ? 0 : cgT <= x ? Infinity : (M * (cg - cgT)) / (cgT - x));
+  const out = { x, cal: forCg(S.cp - S.d), pct: forCg(S.cp - 0.1 * S.L), rail: null, need: 0, apoCost: null };
+  if (st.railAoA != null && st.offRail > 0) {
+    try {
+      const A = aero(D.twoStage ? fullStack(D) : D),
+        a = atmosphere(Lx, 0);
+      out.rail = forCg(cpAtAoA(A, Math.min(st.railAoA, 17), st.offRail / a.a) - S.d);
+    } catch (e) {
+      out.rail = null;
+    }
+  }
+  out.need = Math.max(out.cal, out.pct, out.rail || 0);
+  if (out.need > 0 && isFinite(out.need))
+    try {
+      const D2 = {
+        ...D,
+        dryMass: D.dryMass + out.need,
+        cgEmpty: (D.dryMass * D.cgEmpty + out.need * x) / (D.dryMass + out.need),
+      };
+      const r = simulate(D2, Lx, m, mb, { noRef: true });
+      if (!r.st.error) out.apoCost = st.maxAlt - r.st.maxAlt;
+    } catch (e) {
+      out.apoCost = null;
+    }
+  return out;
 }
 /**
  * OpenRocket .ork import: unpacking the file (zip or gzip) and reading its rocket into this app's design.
@@ -13582,6 +13709,34 @@ function chargeEvents(st, D, outs) {
  * @param {object} S
  * @returns {Array[]}
  */
+/**
+ * The nose weight plan for this flight (noseWeightPlan), worked out once per run.
+ * @param {object} st flight summary
+ * @param {object} S stability at liftoff
+ * @returns {object|null}
+ */
+function nosePlan(st, S) {
+  if (st._nw !== undefined) return st._nw;
+  const RS = lastSim || {};
+  let p = null;
+  try {
+    p = RS.D && !st.error ? noseWeightPlan(RS.D, S, st, RS.L, RS.m, RS.mb) : null;
+  } catch (e) {
+    p = null;
+  }
+  Object.defineProperty(st, "_nw", { value: p, enumerable: false, writable: true });
+  return p;
+}
+/**
+ * A nose weight in words: "45 g of nose weight", or that nose weight alone can't do it.
+ * @param {number} w kg
+ * @returns {string}
+ */
+function noseWeightText(w) {
+  return isFinite(w)
+    ? `${fmt(w, "smass")} ${uname("smass")} of nose weight`
+    : "more than nose weight alone can give (larger fins or a longer body)";
+}
 function resultGroups(st, S) {
   const RS = lastSim || {},
     altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),
@@ -13625,7 +13780,49 @@ function resultGroups(st, S) {
     ],
   ];
   const stability = [
-    [st.staged ? "Stack stability at liftoff" : "Stability at liftoff", S.marginL.toFixed(2), "cal"],
+    [
+      st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
+      S.marginL.toFixed(2),
+      (S.pctL != null ? `cal · ${S.pctL.toFixed(0)}% of length` : "cal") +
+        (S.unc ? ` · uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}` : ""),
+    ],
+    // nose weight to reach 1 caliber, 10% of the length and 1 caliber leaving the rail in this wind
+    ...(() => {
+      const p = nosePlan(st, S);
+      if (!p || !(p.need > 0)) return [];
+      const why = [p.cal > 0 && "1 cal", p.pct > 0 && "10% of length", p.rail > 0 && "1 cal leaving the rail"]
+        .filter(Boolean)
+        .join(", ");
+      return [
+        [
+          "Nose weight to add",
+          isFinite(p.need) ? fmt(p.need, "smass") : "—",
+          isFinite(p.need)
+            ? `${uname("smass")} at mid-nose · for ${why}${p.apoCost != null ? ` · apogee ${p.apoCost >= 0 ? "−" : "+"}${fmt(Math.abs(p.apoCost), "alt")} ${uname("alt")}${p.apoCost < 0 ? " (flies straighter)" : ""}` : ""}`
+            : "nose weight alone can't reach it: larger fins",
+        ],
+      ];
+    })(),
+    // leaving the rail in this wind: tilted to the airflow by the crosswind, so body lift has moved the CP forward
+    ...(st.railMargin != null && !st.error
+      ? [
+          [
+            "Stability leaving the rail",
+            st.railMargin.toFixed(2),
+            `cal · at ${st.railAoA.toFixed(0)}° in this wind · ${st.railPct.toFixed(0)}% of length`,
+          ],
+        ]
+      : []),
+    // how well it damps its wobble (about 0.05–0.3 is the usual guide)
+    ...((st.dampMax || st.dampRail) && !st.tumble
+      ? [
+          [
+            "Damping ratio",
+            (st.dampMax || st.dampRail).zeta.toFixed(2),
+            `${st.dampMax ? `at max speed, ${st.dampMax.hz.toFixed(1)} Hz` : "leaving the rail"}${st.dampMax && st.dampRail ? ` · ${st.dampRail.zeta.toFixed(2)} leaving the rail` : ""}`,
+          ],
+        ]
+      : []),
     // the CP moves with Mach number and the CG with burning propellant: the lowest margin on the way up
     ...(st.minMargin
       ? [
@@ -13876,7 +14073,8 @@ function rsoChecks(st, S, m, D, LL) {
     return c;
   }
   // stability
-  const ml = S.marginL;
+  const ml = S.marginL,
+    nw = typeof nosePlan === "function" ? nosePlan(st, S) : null;
   add(
     ml > 4 ? "warn" : ml >= 1.5 ? "good" : ml >= 1 ? "warn" : "bad",
     st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
@@ -13886,9 +14084,51 @@ function rsoChecks(st, S, m, D, LL) {
       : ml >= 1.5
         ? "At least 1 caliber is the usual minimum; this has margin."
         : ml >= 1
-          ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight."
-          : "Below 1 caliber. Add nose weight or larger fins before flying.",
+          ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight." +
+            (S.unc && ml - S.unc < 1
+              ? ` The CP estimate is good to about ±${S.unc.toFixed(1)} cal on this rocket, so it could be below 1.`
+              : "")
+          : `Below 1 caliber. Add ${nw && nw.cal > 0 ? noseWeightText(nw.cal) + " at mid-nose" : "nose weight"} or larger fins before flying.`,
   );
+  // margin as a share of the rocket's length: one caliber is little on a long, thin rocket
+  if (S.pctL != null && ml >= 1)
+    add(
+      S.pctL >= 10 ? "good" : "warn",
+      "Stability as a share of length",
+      `${S.pctL.toFixed(0)}%`,
+      S.pctL >= 10
+        ? "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
+        : `${ml.toFixed(2)} cal is only ${S.pctL.toFixed(0)}% of this rocket's length. Long, thin rockets lose margin quickly when they tilt; 10–15% of the length is a common guide for them. ${nw && nw.pct > 0 ? `Reaching 10% takes ${noseWeightText(nw.pct)} at mid-nose.` : "Consider nose weight."}`,
+    );
+  // leaving the rail in this wind
+  if (st.railMargin != null && !st.tumble)
+    add(
+      st.railMargin >= 1 ? "good" : "warn",
+      "Stability leaving the rail",
+      `${st.railMargin.toFixed(2)} cal at ${st.railAoA.toFixed(0)}°`,
+      `In this wind the airflow meets the rocket at ${st.railAoA.toFixed(0)}° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving ${st.railMargin.toFixed(2)} cal.` +
+        (st.railMargin < 0
+          ? " The simulated flight recovers as it speeds up and the angle shrinks, but a gust or a slower start could tip it over. A longer rail, a faster motor, nose weight or less wind helps."
+          : st.railMargin < 1
+            ? " A longer rail, a faster motor, nose weight or less wind raises it."
+            : "") +
+        (st.railMargin < 1 && nw && nw.rail > 0 ? ` 1 cal here takes ${noseWeightText(nw.rail)} at mid-nose.` : ""),
+    );
+  // dynamic stability: how well it damps its wobble
+  {
+    const dm = st.dampMax || st.dampRail;
+    if (dm && !st.tumble)
+      add(
+        dm.zeta < 0.05 ? "warn" : dm.zeta > 0.3 ? "warn" : "good",
+        "Damping ratio",
+        dm.zeta.toFixed(2),
+        dm.zeta < 0.05
+          ? "Lightly damped: after a gust it keeps oscillating for a while. A longer rocket or fins farther aft damp it more."
+          : dm.zeta > 0.3
+            ? "Heavily damped: it turns back slowly after a gust. Usually fine; very high values come with weak correction."
+            : "Within the usual 0.05–0.3: gusts die out in a few swings.",
+      );
+  }
   if (st.minMargin && st.minMargin.cal < ml - 0.05)
     add(
       st.minMargin.cal >= 1 ? "good" : st.minMargin.cal >= 0 ? "warn" : "bad",
@@ -14171,6 +14411,21 @@ function rsoChecks(st, S, m, D, LL) {
             : "Under 5 miles (8 km): keep the rocket in sight; high-power flights would need at least 5 miles."
           : `At least 5 miles (8 km).${hp.hpr ? " Meets the high-power minimum." : ""}`,
       );
+  }
+  // the dispersion flights, with the balance varied: how often it tumbles
+  {
+    const mc = lastMC && lastSim && lastMC.when === lastSim.when ? lastMC : null;
+    if (mc && mc.n > 0 && !st.error) {
+      const f = mc.tumbles / mc.n;
+      add(
+        f === 0 ? "good" : f < 0.02 ? "warn" : "bad",
+        "Chance of tumbling",
+        `${+(100 * f).toFixed(1)}% (${mc.tumbles} of ${mc.n})`,
+        f === 0
+          ? `None of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance varied.`
+          : `${mc.tumbles} of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance (CG against CP) varied. Add nose weight or larger fins, or wait for less wind.`,
+      );
+    }
   }
   {
     const cz = LL.ceiling || 0;
@@ -14581,7 +14836,12 @@ function resultFlags(st, S, m, D) {
   if (st.tumble)
     flags.push([
       "bad",
-      `The rocket is unstable and tumbles end over end ${st.tumble.t - (st.offRailT || 0) < 0.6 ? "right after leaving the rail" : `at ${fmt(st.tumble.alt, "alt")} ${uname("alt")}`}${st.tumble.powered ? ", with the motor still burning" : ""}. It won't reach a useful altitude and may come in fast or sideways. Add nose weight or bigger fins.`,
+      `The rocket is unstable and tumbles end over end ${st.tumble.t - (st.offRailT || 0) < 0.6 ? "right after leaving the rail" : `at ${fmt(st.tumble.alt, "alt")} ${uname("alt")}`}${st.tumble.powered ? ", with the motor still burning" : ""}. It won't reach a useful altitude and may come in fast or sideways. ${(() => {
+        const nw = typeof nosePlan === "function" ? nosePlan(st, S) : null;
+        return nw && nw.cal > 0 && isFinite(nw.cal)
+          ? `Add ${noseWeightText(nw.cal)} at mid-nose for 1 caliber, or bigger fins.`
+          : "Add nose weight or bigger fins.";
+      })()}`,
     ]);
   else {
     const orv = st.offRail || 0;
@@ -14732,6 +14992,19 @@ function resultFlags(st, S, m, D) {
         "warn",
         `Goes above about 85 km (279,000 ft). The air there is so thin it no longer behaves as a continuous gas, so drag and stability numbers above that height don’t mean much; drag is negligible there anyway.`,
       ]);
+    // leaving the rail in this wind, with body lift moving the CP forward at that angle
+    if (st.railMargin != null && !st.tumble && S.marginL >= 1) {
+      if (st.railMargin < 0)
+        flags.push([
+          "warn",
+          `Unstable for a moment leaving the rail in this wind: at ${st.railAoA.toFixed(0)}° to the airflow the margin is ${st.railMargin.toFixed(2)} cal. The simulated flight recovers as it speeds up, but a gust or a slower start could tip it over. A longer rail, a faster motor, nose weight or less wind helps.`,
+        ]);
+      else if (st.railMargin < 1)
+        flags.push([
+          "warn",
+          `Stability leaving the rail drops to ${st.railMargin.toFixed(2)} cal at ${st.railAoA.toFixed(0)}° to the airflow in this wind.`,
+        ]);
+    }
     // stability on the way up, with the CP moving as the fins lose lift at high Mach
     if (st.minMargin && !st.tumble && S.marginL >= 1) {
       const mm = st.minMargin,
@@ -24230,7 +24503,7 @@ function bldDraw() {
       `<span>Length <b>${fmt(lay.length, "len", 1)} ${uname("len")}</b></span><span>Diameter <b>${fmt(2 * lay.maxR, "len")} ${uname("len")}</b></span>` +
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
       `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
-      `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff, <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
+      `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
       `<span class="${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
   } catch (e) {
     st.innerHTML = `<span class="bad">${esc(e.message || String(e))}</span>`;
@@ -26748,7 +27021,7 @@ function buildReportPdf() {
     col(C.muted);
     const nt = doc.splitTextToSize(
       pdfSafe(
-        `Varied (1σ): wind speed ${Math.round((RL.mcWind || 0) * 100)}%, direction ${RL.mcDir || 0}°, impulse ${+((RL.mcImp || 0) * 100).toFixed(1)}%, weight ${+((RL.mcMass || 0) * 100).toFixed(1)}%, drag ${Math.round((RL.mcCd || 0) * 100)}%, rail angle ${RL.mcAngle || 0}°, thrust misalignment ${RL.mcMis || 0}°, ejection delay ${Math.round((RL.mcDelay || 0) * 100)}%, parachute drag ${Math.round((RL.mcChute || 0) * 100)}%${RL.mcThermal ? `, drafts ${fmt(RL.mcThermal, "wind", 1)} ${uname("wind")}` : ""}. Ellipses hold about 68% and 95% of landings.`,
+        `Varied (1σ): wind speed ${Math.round((RL.mcWind || 0) * 100)}%, direction ${RL.mcDir || 0}°, impulse ${+((RL.mcImp || 0) * 100).toFixed(1)}%, weight ${+((RL.mcMass || 0) * 100).toFixed(1)}%, balance ${+((RL.mcBal || 0) * 100).toFixed(1)}% of length, drag ${Math.round((RL.mcCd || 0) * 100)}%, rail angle ${RL.mcAngle || 0}°, thrust misalignment ${RL.mcMis || 0}°, ejection delay ${Math.round((RL.mcDelay || 0) * 100)}%, parachute drag ${Math.round((RL.mcChute || 0) * 100)}%${RL.mcThermal ? `, drafts ${fmt(RL.mcThermal, "wind", 1)} ${uname("wind")}` : ""}. Ellipses hold about 68% and 95% of landings.`,
       ),
       half,
     );
@@ -27622,6 +27895,14 @@ async function runMC() {
   msg.textContent = `Flying ${N} dispersion flights…`;
   const pts = [];
   const t0 = performance.now();
+  // the whole rocket's length, and how far the airframe's CG must move to move the liftoff CG by one unit
+  const balLen = SD.length + (SD.twoStage ? SD.bLength || 0 : 0) + (isThree(SD) && SD.s1 ? SD.s1.bLength || 0 : 0),
+    balLift =
+      SD.dryMass +
+      m.totalMass +
+      (SD.twoStage && mb ? (SD.bDryMass || 0) + mb.totalMass : 0) +
+      (isThree(SD) && SD.s1 && lastSim.m1 ? (SD.s1.bDryMass || 0) + lastSim.m1.totalMass : 0),
+    balK = SD.dryMass > 0 ? balLift / SD.dryMass : 1;
   try {
     for (let i = 0; i < N; i++) {
       if (mcStop || !lastSim || lastSim.when !== w) break;
@@ -27639,8 +27920,11 @@ async function runMC() {
         turb: SL.turb,
         thermalW: (L.mcThermal || 0) * R.n(),
       };
+      // balance: the CG against the CP, off by a share of the length (moving the airframe's CG so the whole rocket's moves by it)
+      const balShift = (L.mcBal || 0) * balLen * R.n() * balK;
       const Di = {
         ...SD,
+        cgEmpty: SD.cgEmpty + balShift,
         dryMass: SD.dryMass * Math.max(0.5, 1 + (L.mcMass || 0) * R.n()),
         dragScale: (SD.dragScale > 0 ? SD.dragScale : 1) * Math.max(0.5, 1 + (L.mcCd || 0) * R.n()),
       };
@@ -27665,6 +27949,7 @@ async function runMC() {
         apo: st.maxAlt,
         landed: st.landed,
         tumble: !!st.tumble,
+        minMargin: st.tumble ? -Infinity : st.minMargin ? st.minMargin.cal : null,
       });
       if (i % 3 === 2 || i === N - 1) {
         msg.textContent = `Flying ${i + 1} of ${N}…`;
@@ -27751,6 +28036,14 @@ async function runMC() {
     far,
     pts,
     tumbles: pts.filter((p) => p.tumble).length,
+    // the lowest stability in flight, at the worst 5% of flights
+    minMargin5: (() => {
+      const v = pts
+        .map((p) => p.minMargin)
+        .filter((x) => x != null)
+        .sort((a, b) => a - b);
+      return v.length ? v[Math.floor(0.05 * (v.length - 1))] : null;
+    })(),
     when: w,
     secs: (performance.now() - t0) / 1000,
   };
@@ -27838,9 +28131,16 @@ function renderMC() {
       `${uname("alt")}, long axis ${compass(mcBearing(M.ang))}–${compass(mcBearing(M.ang) + 180)}`,
     ) +
     tile("Farthest landing", fmt(M.far, "alt"), `${uname("alt")} · ${bigDist(M.far, 0)}`) +
-    (M.tumbles ? tile("Flights that tumbled", String(M.tumbles), `of ${M.n}`) : "");
+    tile("Chance of tumbling", `${+((100 * M.tumbles) / M.n).toFixed(1)}`, `% · ${M.tumbles} of ${M.n} flights`) +
+    (M.minMargin5 != null
+      ? tile(
+          "Lowest stability, worst 5%",
+          isFinite(M.minMargin5) ? M.minMargin5.toFixed(2) : "Tumbles",
+          isFinite(M.minMargin5) ? "cal" : "",
+        )
+      : "");
   document.getElementById("mcnote").textContent =
-    `The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, ${Math.round(M.in68 * 100)}% and ${Math.round(M.in95 * 100)}% of the ${M.n} landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±${Math.round((L.mcWind || 0) * 100)}%, wind direction ±${L.mcDir || 0}°, impulse ±${+((L.mcImp || 0) * 100).toFixed(1)}%, weight ±${+((L.mcMass || 0) * 100).toFixed(1)}%, drag ±${Math.round((L.mcCd || 0) * 100)}%, rail angle ±${L.mcAngle || 0}°, thrust misalignment ${L.mcMis || 0}° (1σ).`;
+    `The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, ${Math.round(M.in68 * 100)}% and ${Math.round(M.in95 * 100)}% of the ${M.n} landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±${Math.round((L.mcWind || 0) * 100)}%, wind direction ±${L.mcDir || 0}°, impulse ±${+((L.mcImp || 0) * 100).toFixed(1)}%, weight ±${+((L.mcMass || 0) * 100).toFixed(1)}%, balance ±${+((L.mcBal || 0) * 100).toFixed(1)}% of length, drag ±${Math.round((L.mcCd || 0) * 100)}%, rail angle ±${L.mcAngle || 0}°, thrust misalignment ${L.mcMis || 0}° (1σ).`;
   drawMC();
 }
 /**
