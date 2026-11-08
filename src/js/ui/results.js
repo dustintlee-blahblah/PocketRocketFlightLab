@@ -532,7 +532,7 @@ function resultGroups(st, S) {
       st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
       S.marginL.toFixed(2),
       (S.pctL != null ? `cal · ${S.pctL.toFixed(0)}% of length` : "cal") +
-        (S.unc ? ` · likely ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}` : ""),
+        (S.unc ? ` · uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}` : ""),
     ],
     // nose weight to reach 1 caliber, 10% of the length and 1 caliber leaving the rail in this wind
     ...(() => {

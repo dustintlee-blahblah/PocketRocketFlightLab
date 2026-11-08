@@ -1090,7 +1090,7 @@ function rollParts(A, M = 0) {
    long, thin rockets, and moves their CP forward: the margins it gives are a little lower and safer. */
 const STATIC_AOA = (2 * Math.PI) / 180;
 /* how far off the static CP estimate may be, as one standard deviation in body lengths: the RMS error of the center of
-   pressure against the Arcas measurements above (2.3% of body length). The margin's likely range is ± this. */
+   pressure against the Arcas measurements above (2.3% of body length). The margin's uncertainty margin is ± this. */
 const CP_UNC = 0.023;
 /**
  * Adds the body's small-angle lift (see above) to a normal-force slope and where it acts.
