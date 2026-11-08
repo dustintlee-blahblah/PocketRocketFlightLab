@@ -1,6 +1,9 @@
 /**
  * Field help: the small "i" button beside each input, and the text it shows.
  */
+import { units } from "../design/defaults.js";
+import { uname } from "./units.js";
+import { BLD } from "../builder/builder-ui.js";
 /* ---------- field help: a small "i" button beside each input opens a box explaining how to fill it in ---------- */
 /**
  * The HTML of an "i" button that opens a help box (empty if there is no help text).
@@ -8,7 +11,7 @@
  * @param {string} txt help text
  * @returns {string} HTML
  */
-function infoBtn(title, txt) {
+export function infoBtn(title, txt) {
   if (!txt) return "";
   const q = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]),
     t = String(title).replace(/<[^>]*>/g, "");
@@ -105,7 +108,7 @@ const FIELD_INFO = {
  * @param {string} k field key
  * @returns {string}
  */
-function fieldInfo(k) {
+export function fieldInfo(k) {
   const v = FIELD_INFO[k];
   return typeof v === "function" ? v() : v || "";
 }
@@ -114,7 +117,7 @@ function fieldInfo(k) {
  * @param {object} F builder field: key and part p
  * @returns {string}
  */
-function bldInfo(F) {
+export function bldInfo(F) {
   const k = F.key,
     t = F.p ? F.p.type : null,
     two = typeof BLD !== "undefined" && BLD && BLD.stages.length > 1;
@@ -242,38 +245,43 @@ function bldInfo(F) {
     return "This stage’s weight ready to fly but without its motor, if you’ve weighed it. It replaces the total its parts add up to.\n\n0 uses the parts.";
   return T[k] || "";
 }
-document.addEventListener(
-  "click",
-  (e) => {
-    const b = e.target.closest(".ib");
-    if (!b) return;
-    e.preventDefault();
-    e.stopPropagation();
-    document.getElementById("infottl").textContent = b.dataset.title || "";
-    document.getElementById("infotxt").textContent = b.dataset.info || "";
-    const m = document.getElementById("infobox");
-    m.hidden = false;
-    document.getElementById("infook").focus();
-  },
-  true,
-);
 /**
  * Shows a message in the pop-up info box (the one the "i" buttons open).
  * @param {string} title
  * @param {string} text
  */
-function showInfo(title, text) {
+export function showInfo(title, text) {
   document.getElementById("infottl").textContent = title || "";
   document.getElementById("infotxt").textContent = text || "";
   document.getElementById("infobox").hidden = false;
   document.getElementById("infook").focus();
 }
-(function () {
-  const m = () => document.getElementById("infobox");
-  document.addEventListener("click", (e) => {
-    if (e.target.id === "infook" || e.target === m()) m().hidden = true;
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && m() && !m().hidden) m().hidden = true;
-  });
-})();
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.addEventListener(
+    "click",
+    (e) => {
+      const b = e.target.closest(".ib");
+      if (!b) return;
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById("infottl").textContent = b.dataset.title || "";
+      document.getElementById("infotxt").textContent = b.dataset.info || "";
+      const m = document.getElementById("infobox");
+      m.hidden = false;
+      document.getElementById("infook").focus();
+    },
+    true,
+  );
+  (function () {
+    const m = () => document.getElementById("infobox");
+    document.addEventListener("click", (e) => {
+      if (e.target.id === "infook" || e.target === m()) m().hidden = true;
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && m() && !m().hidden) m().hidden = true;
+    });
+  })();
+}

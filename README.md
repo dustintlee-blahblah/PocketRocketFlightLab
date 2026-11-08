@@ -45,10 +45,11 @@ android/                            Android app: a WebView around the same page,
 tests/golden.js                     regression test: proves a change leaves every result the same
 tests/golden-snapshot.json          the recorded results of the built-in examples that `npm test` checks
 tests/drag-benchmarks.js            the drag model against published NACA measurements
+tests/smoke.js                      clicks through the tabs and controls; fails on any page error
 tools/set-build.js                  sets the build number everywhere it appears
 tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
 tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
-tools/unused-globals.js             lint: top-level names nothing uses
+tools/unused-exports.js             lint: module exports nothing uses
 .github/workflows/                  Check (every push and pull request) and Release (on a version tag)
 CHANGELOG.md                        what changed in each build; a release's description comes from its section
 LICENSE                             GNU GPL v3
@@ -57,7 +58,7 @@ CONTRIBUTING.md, ARCHITECTURE.md    how to contribute; how the app works
 SECURITY.md, CODE_OF_CONDUCT.md     reporting security problems; how we treat each other
 ```
 
-`src/` holds the page (`index.html`, with `@@include` lines where the other files go), its styles
+`src/` holds the page (`index.html`, with the lines where the stylesheet and the bundled scripts go), its styles
 (`styles.css`), the JavaScript in `src/js/`, and data (the motor catalog and the example rockets) in
 `src/data/`:
 
@@ -78,7 +79,8 @@ src/js/report/      the PDF flight report
 src/js/weather/     winds aloft and the weather forecast
 ```
 
-The files are plain scripts that share one global scope, in the order `src/index.html` lists them.
+The files are ES modules; `src/js/main.js` is the entry point, which build.js bundles into the page with esbuild.
+[ARCHITECTURE.md](ARCHITECTURE.md) explains how they fit together.
 
 ## Working on the code
 
@@ -93,14 +95,15 @@ npm ci                              # Prettier, ESLint, Playwright and the Babel
 npx playwright install chromium     # the browser the tests run the app in
 node build.js                       # src/ -> web/pocket-rocket-flight-lab.html
 npm run format                      # Prettier (print width 120)
-npm run lint                        # ESLint, then tools/unused-globals.js (top-level names nothing uses)
+npm run lint                        # ESLint, then tools/unused-exports.js (exports nothing uses)
 npm test                            # build, then the regression test against tests/golden-snapshot.json
+npm run test:smoke                  # build, then the UI smoke test
 ```
 
 Edit the files in `src/`, then build. `web/` is build output and isn't in git.
 
 Every push and pull request runs the same checks on GitHub (`.github/workflows/check.yml`): formatting, lint, the
-regression test, the drag benchmarks, and an Android build.
+regression test, the UI smoke test, the drag benchmarks, and an Android build.
 
 ### Drag benchmarks
 

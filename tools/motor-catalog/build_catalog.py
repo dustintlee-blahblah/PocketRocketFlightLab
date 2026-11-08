@@ -172,8 +172,8 @@ def build(db):
 
 
 def read_catalog(path):
-    line = next(l for l in open(path).read().split("\n") if l.startswith("const MOTOR_DB="))
-    return json.loads(line[len("const MOTOR_DB=") :].rstrip(";"))
+    line = next(l for l in open(path).read().split("\n") if l.removeprefix("export ").startswith("const MOTOR_DB="))
+    return json.loads(line.split("const MOTOR_DB=", 1)[1].rstrip(";"))
 
 
 def main():
@@ -198,7 +198,7 @@ def main():
               f"{other} with other fields changed, {len(new.keys() - old.keys())} new ids, "
               f"{len(old.keys() - new.keys())} ids gone")
         return
-    js = "const MOTOR_DB=" + json.dumps(rows, separators=(",", ":")) + ";\n"
+    js = "export const MOTOR_DB=" + json.dumps(rows, separators=(",", ":")) + ";\n"
     open(a.out, "w").write(HEADER % ("openrocket/motor-database " + rev) + js)
     print(f"wrote {len(rows)} motors to {os.path.relpath(a.out)}")
 

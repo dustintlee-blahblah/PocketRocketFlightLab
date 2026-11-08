@@ -7,6 +7,8 @@
  * center of pressure; rollParts() the fin-cant roll forcing and roll damping; stability() the static margin.
  * Sources for each term are given where it is computed.
  */
+import { FIN_SWEEP_N, finBlunt, finSweepRatio, finTransonicCd, finWaveK } from "../core/units-and-fin-edges.js";
+import { noseR, noseSpec } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
    Skin friction: Prandtl–Schlichting turbulent flat-plate law, boundary layer turbulent from the tip (Schlichting, Boundary-Layer Theory),
      fully rough plate law (White, Viscous Fluid Flow) blended in by roughness Reynolds number between Nikuradse's smooth (k+≈5)
@@ -50,7 +52,7 @@ const baseCp = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M); // Fleeman base-
 /**
  * Smoothstep: 0 below 0, 1 above 1, an S-curve between. Used to blend models across a range.
  */
-const smooth01 = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+export const smooth01 = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 /**
  * Transonic blend weight: 0 below Mach 0.8, rising smoothly to 1 at Mach 1.
  */
@@ -379,7 +381,7 @@ const RAIL_PRESETS = {
  * @param {number} x distance from the section's front, m
  * @returns {number} radius, m
  */
-function segR(sg, x) {
+export function segR(sg, x) {
   // radius of a body section at distance x from its front
   if (sg.kind === "tube" || Math.abs(sg.r2 - sg.r1) < 1e-9) return sg.r1;
   if (sg.r1 < sg.r2) return sg.r1 + noseR(sg.shape, sg.param, x, sg.r2 - sg.r1, sg.len);
@@ -391,7 +393,7 @@ function segR(sg, x) {
  * @param {object} D design
  * @returns {object[]} sections {kind, x, len, r1, r2, shape, param}
  */
-function bodySegments(D) {
+export function bodySegments(D) {
   if (D.segments && D.segments.length) return D.segments;
   const R = D.diameter / 2,
     L = D.length,
@@ -410,7 +412,7 @@ function bodySegments(D) {
  * @param {number} x m from the nose tip
  * @returns {number} m
  */
-function radiusAt(A, x) {
+export function radiusAt(A, x) {
   for (const sg of A.segs) {
     if (x >= sg.x - 1e-9 && x <= sg.x + sg.len + 1e-9) return segR(sg, Math.min(Math.max(x - sg.x, 0), sg.len));
   }
@@ -422,7 +424,7 @@ function radiusAt(A, x) {
  * @param {object} D design
  * @returns {object[]}
  */
-function finSetsOf(D) {
+export function finSetsOf(D) {
   if (D.finSets) return D.finSets;
   return [
     {
@@ -452,7 +454,7 @@ function finSetsOf(D) {
  * @param {string} rs surface finish
  * @returns {object[]}
  */
-function xfinSets(list, rs) {
+export function xfinSets(list, rs) {
   return (list || []).map((f) => ({
     n: f.n,
     mat: f.mat,
@@ -478,7 +480,7 @@ function xfinSets(list, rs) {
  *
  * a fin's outline for drawing: the shape from the design file when there is one, otherwise the trapezoid
  */
-function finOutline(f) {
+export function finOutline(f) {
   return f.pts && f.pts.length > 2
     ? f.pts
     : [
@@ -499,7 +501,7 @@ function finOutline(f) {
  * fin properties from its outline, by thin spanwise strips: exact for any shape (a trapezoid gives Barrowman's closed forms).
  * Sweep angles are strip averages of the local mid-chord and leading-edge slopes (Barrowman 1967, applied strip by strip to any outline).
  */
-function finGeom(f) {
+export function finGeom(f) {
   const ol = finOutline(f),
     span = Math.max(...ol.map((p) => p[1])),
     N = 240;
@@ -582,7 +584,7 @@ const aeroCache = new Map();
  *   sideArea and xPlan (planform area and its centroid), tumbleCdA, ffBody (body form factor), and the drag settings
  *   (override, scale, otherCd, blMode)
  */
-function aero(D) {
+export function aero(D) {
   const key = JSON.stringify([
     D.blMode,
     D.finCant,
@@ -805,7 +807,7 @@ function kinVisc(atm) {
  * @param {number} [nozzleArea=0] nozzle exit area while a motor burns, m² (its exhaust fills that much of the base)
  * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref
  */
-function cdParts(A, v, atm, nozzleArea = 0) {
+export function cdParts(A, v, atm, nozzleArea = 0) {
   // a fixed Cd for the whole rocket (from the design file): used as it is, scaled by any calibration to a real flight
   if (A.override > 0) return { cd: A.override * (A.scale || 1), friction: 0, pressure: 0, base: 0, override: true };
   v = Math.max(v, 0.01);
@@ -939,7 +941,7 @@ const finSupK = (f) => (f.edge === "square" ? FIN_SUP_K_BLUNT : FIN_SUP_K_SHARP)
  * @param {number} M Mach number
  * @returns {{k:number, dx:number}} slope ratio, and CP shift aft (m)
  */
-function finLiftRatio(f, M) {
+export function finLiftRatio(f, M) {
   // fin normal-force slope at Mach M over its incompressible value, and the fin CP shift aft (m)
   const X = f.cnX,
     base = 1 + Math.sqrt(1 + X * X),
@@ -987,7 +989,7 @@ function stripLiftRatio(M) {
  *
  * the normal-force parts at a given Mach number, cached in steps of 0.01 Mach
  */
-function cnaPartsM(A, M) {
+export function cnaPartsM(A, M) {
   A._cnM = A._cnM || new Map();
   const key = Math.round(Math.max(M, 0) * 100);
   if (A._cnM.has(key)) return A._cnM.get(key);
@@ -1002,7 +1004,7 @@ function cnaPartsM(A, M) {
  * @param {number} M Mach number
  * @returns {object} see rollParts
  */
-function rollPartsM(A, M) {
+export function rollPartsM(A, M) {
   A._rpM = A._rpM || new Map();
   const key = Math.round(Math.max(M, 0) * 100);
   if (A._rpM.has(key)) return A._rpM.get(key);
@@ -1091,7 +1093,7 @@ function rollParts(A, M = 0) {
 const STATIC_AOA = (2 * Math.PI) / 180;
 /* how far off the static CP estimate may be, as one standard deviation in body lengths: the RMS error of the center of
    pressure against the Arcas measurements above (2.3% of body length). The margin's uncertainty margin is ± this. */
-const CP_UNC = 0.023;
+export const CP_UNC = 0.023;
 /**
  * Adds the body's small-angle lift (see above) to a normal-force slope and where it acts.
  * @param {object} A aerodynamic model
@@ -1099,7 +1101,7 @@ const CP_UNC = 0.023;
  * @param {number} cp where that acts, m from the nose tip
  * @returns {number} the center of pressure with it, m from the nose tip
  */
-function cpWithBodyLift(A, cn, cp) {
+export function cpWithBodyLift(A, cn, cp) {
   const add = ((CROSS_K * (A.sideArea || 0)) / A.Aref) * 0.75 * STATIC_AOA;
   return cn + add > 0 && A.xPlan != null ? (cn * cp + add * A.xPlan) / (cn + add) : cp;
 }
@@ -1108,7 +1110,7 @@ function cpWithBodyLift(A, cn, cp) {
  * @param {object} A aerodynamic model
  * @returns {number} m from the nose tip
  */
-function cpOf(A) {
+export function cpOf(A) {
   const d = 2 * A.R;
   let CN = 0,
     CNx = 0;
@@ -1134,7 +1136,7 @@ function cpOf(A) {
 }
 /** body lift across the flow: CN = K·(planform area / reference area)·sin²α, with Galejs's K = 1.1 (as OpenRocket
     uses; the Allen–Perkins cylinder value η·Cdc ≈ 0.78 moves the CP forward less as the rocket tilts) */
-const CROSS_K = 1.1;
+export const CROSS_K = 1.1;
 /**
  * The center of pressure at an angle of attack, as the flight works it out: Barrowman's normal force (sin α·cos α)
  * plus the body's crossflow lift (sin²α), which acts at the middle of the body's side outline. On a long rocket that's
@@ -1144,7 +1146,7 @@ const CROSS_K = 1.1;
  * @param {number} [M] Mach number
  * @returns {number} m from the nose tip
  */
-function cpAtAoA(A, deg, M = 0) {
+export function cpAtAoA(A, deg, M = 0) {
   const C = cnaPartsM(A, M),
     a = (deg * Math.PI) / 180,
     lin = C.cn * Math.sin(a) * Math.cos(a),
@@ -1166,7 +1168,7 @@ function cpAtAoA(A, deg, M = 0) {
  * @param {number} Aref reference area, m²
  * @returns {{zeta:number, hz:number}|null} null when the rocket isn't statically stable
  */
-function pitchDamping(C, J, rho, v, Aref) {
+export function pitchDamping(C, J, rho, v, Aref) {
   const C1 = 0.5 * rho * v * v * Aref * C.cn * (C.cp - J.cg);
   if (!(C1 > 0) || !(J.I > 0)) return null;
   const C2 =
@@ -1181,7 +1183,7 @@ function pitchDamping(C, J, rho, v, Aref) {
  * @returns {{cp:number, cgL:number, cgB:number, marginL:number, marginB:number}} positions in m from the nose tip;
  *   margins in calibers (body diameters)
  */
-function stability(D, m) {
+export function stability(D, m) {
   const A = aero(D),
     d = 2 * A.R,
     cp = cpOf(A);

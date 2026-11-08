@@ -8,6 +8,27 @@
  * stage dropping off and flown down on its own by flyBooster), clusters and airstarts, wind with height and gusts,
  * the earth's rotation, motor charges and every deployment setting. Units are SI throughout (m, s, kg, N, rad).
  */
+import { WIND_ALPHA } from "../design/defaults.js";
+import { findMotor, flightFirst } from "../motors/clusters.js";
+import { atmosphere } from "./atmosphere.js";
+import {
+  aero,
+  bodySegments,
+  cdParts,
+  cnaPartsM,
+  CP_UNC,
+  cpAtAoA,
+  cpOf,
+  cpWithBodyLift,
+  CROSS_K,
+  finLiftRatio,
+  finSetsOf,
+  pitchDamping,
+  radiusAt,
+  rollPartsM,
+  smooth01,
+  xfinSets,
+} from "./aerodynamics.js";
 /* ---------- two-stage geometry ---------- */
 /**
  * Body sections of the booster (a plain tube when the design has no section list).
@@ -51,7 +72,7 @@ function boosterFinSets(D) {
  * @param {object} D two-stage design
  * @returns {object} a design-like object for aero()
  */
-function stackDesign(D) {
+export function stackDesign(D) {
   const Ls = D.length;
   const segs = [...bodySegments(D).map((s) => ({ ...s })), ...boosterSegments(D).map((s) => ({ ...s, x: s.x + Ls }))];
   const fs = [...finSetsOf(D), ...boosterFinSets(D).map((f) => ({ ...f, xLead: f.xLead + Ls }))];
@@ -72,20 +93,20 @@ function stackDesign(D) {
  *
  * three stages: the first (bottom) stage under the booster-and-sustainer stack; D.s1 holds its parts in the booster's field names
  */
-const isThree = (D) => !!(D && D.twoStage && D.threeStage && D.s1 && D.s1.bLength > 0);
+export const isThree = (D) => !!(D && D.twoStage && D.threeStage && D.s1 && D.s1.bLength > 0);
 /**
  * All three stages joined into one airframe (first stage under the two-stage stack).
  * @param {object} D three-stage design
  * @returns {object} a design-like object for aero()
  */
-function stackDesign3(D) {
+export function stackDesign3(D) {
   const S2 = stackDesign(D);
   return stackDesign({ ...S2, ...D.s1, railPreset: D.railPreset });
 }
 /**
  * The whole stack of a two- or three-stage design, as one airframe.
  */
-const fullStack = (D) => (isThree(D) ? stackDesign3(D) : stackDesign(D));
+export const fullStack = (D) => (isThree(D) ? stackDesign3(D) : stackDesign(D));
 /**
  * The booster on its own, as a design-like object for aero(), for its flight after separation.
  * @param {object} D two-stage design
@@ -116,7 +137,7 @@ function boosterDesign(D) {
  * @returns {{cp:number, cgL:number, cgB:number, marginL:number, marginB:number, d:number}} positions in m from the
  *   nose tip, margins in calibers of d (the largest body diameter)
  */
-function stackStability(D, mS, mB, m1) {
+export function stackStability(D, mS, mB, m1) {
   // a three-stage rocket at liftoff: all three stages, the first stage's motor the one burning
   const three = isThree(D);
   if (three && !m1) m1 = flightFirst(D);
@@ -305,7 +326,7 @@ var TIPOFF = 0.1,
  *   aoa, va, ax, az, roll, and the dropped stages' paths); st: its events and summary (apogee, speeds, Mach, off-rail
  *   speed, stability through the flight, burnout, deployment and landing times, drift, charge times, warnings)
  */
-function simulate(D, L, m, mb, opts = {}) {
+export function simulate(D, L, m, mb, opts = {}) {
   const g = 9.80665,
     staged = !!(D.twoStage && mb && D.bLength > 0);
   /* motor grain temperature: a warmer grain burns faster at higher pressure. Thrust scales by k = e^(0.002·ΔT) and the
@@ -1768,7 +1789,7 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
  * @param {number} len airframe length, m
  * @returns {number} kg·m²
  */
-function airInertia(I0, m0, m, len) {
+export function airInertia(I0, m0, m, len) {
   return I0 > 0 ? I0 * (m0 > 0 ? m / m0 : 1) : (m * len * len) / 12;
 }
 
@@ -1785,7 +1806,7 @@ function airInertia(I0, m0, m, len) {
  * @returns {{x:number, cal:number, pct:number, rail:(number|null), need:number, apoCost:(number|null)}|null}
  *   weights in kg (Infinity if no nose weight can reach it), x in m from the nose tip
  */
-function noseWeightPlan(D, S, st, Lx, m, mb) {
+export function noseWeightPlan(D, S, st, Lx, m, mb) {
   if (!S || !st || !(st.liftMass > 0)) return null;
   const segs = bodySegments(D),
     nose = segs[0] && segs[0].kind === "nose" ? segs[0] : null,

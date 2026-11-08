@@ -6,6 +6,10 @@
  * configuration used is the one chosen on the Motor tab (ORK_CFG), else the one the file's simulation flew, else
  * the default.
  */
+import { FIN_EDGES } from "../core/units-and-fin-edges.js";
+import { D, L } from "../design/defaults.js";
+import { noseR } from "../physics/geometry.js";
+import { ORK_CFG, ORK_SIM } from "./save.js";
 /* ---------- .ork import ---------- */
 /**
  * Decompresses bytes with the browser's DecompressionStream.
@@ -13,7 +17,7 @@
  * @param {string} format "gzip", "deflate" or "deflate-raw"
  * @returns {Promise<Uint8Array>}
  */
-async function inflate(bytes, format) {
+export async function inflate(bytes, format) {
   if (typeof DecompressionStream === "undefined")
     throw new Error("This browser cannot decompress .ork files. Update Chrome on your phone and try again.");
   const ds = new DecompressionStream(format);
@@ -27,7 +31,7 @@ async function inflate(bytes, format) {
  *
  * every file in a .zip archive: its name, and a function that unpacks it
  */
-async function unzipEntries(buf) {
+export async function unzipEntries(buf) {
   const u8 = new Uint8Array(buf),
     dv = new DataView(buf);
   let eocd = -1;
@@ -68,7 +72,7 @@ async function unzipEntries(buf) {
  * @param {ArrayBuffer} buf
  * @returns {Promise<string>}
  */
-async function unzipOrk(buf) {
+export async function unzipOrk(buf) {
   const u8 = new Uint8Array(buf);
   if (u8[0] === 0x1f && u8[1] === 0x8b) return new TextDecoder().decode(await inflate(u8, "gzip"));
   if (u8[0] !== 0x50 || u8[1] !== 0x4b) return new TextDecoder().decode(u8);
@@ -167,7 +171,7 @@ function orkShell(rAt, len, t, solid) {
  *   motors, and where the parts are in the file (for saving changes back into it)
  * @throws {Error} if the file isn't a readable rocket design
  */
-function parseOrk(xml) {
+export function parseOrk(xml) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("The design file could not be read as XML.");
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];

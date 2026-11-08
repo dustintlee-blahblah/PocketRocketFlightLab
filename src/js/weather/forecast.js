@@ -1,6 +1,25 @@
 /**
  * The weather forecast for the site (see the note below), the site's coordinates, and directions to it.
  */
+import { store } from "../core/storage.js";
+import { jclone } from "../core/helpers.js";
+import { D, L, units } from "../design/defaults.js";
+import { fmt, toDisp, uname } from "../ui/units.js";
+import { renderForms } from "../ui/forms.js";
+import { showInfo } from "../ui/field-help.js";
+import { changed, renderDragTable } from "../ui/state.js";
+import { parseOrk } from "../files/openrocket-import.js";
+import { parseRkt } from "../files/rocksim-import.js";
+import { bldDefault } from "../builder/model.js";
+import { bldFromOrk } from "../builder/ork-read.js";
+import { compass } from "../ui/results.js";
+import { drawProfile, renderSeries } from "../ui/charts.js";
+import { siteCur, siteRender } from "../ui/launch-sites.js";
+import { setUnits } from "../ui/events.js";
+import { BLD, BLD_ROOT, bldDerive, bldRender, bldSave, setBLD, setBldSel } from "../builder/builder-ui.js";
+import { setSource, SOURCE } from "../files/save.js";
+import { CLEAN, markClean } from "../files/unsaved-changes.js";
+import { renderAloft, setAloftOpen } from "./winds-aloft.js";
 /* ---------- the weather forecast for the site: winds from the ground to about 100,000 ft ----------
    NOAA's GFS model through Open-Meteo: wind speed, direction and geopotential height (above sea level) on 44 pressure
    levels from 1000 hPa up to 10 hPa (about 31 km), plus the 10 m wind and 2 m temperature. Levels below the field are
@@ -10,7 +29,7 @@
 /**
  * The day's weather keys (see the note above).
  */
-const WX_KEYS = [
+export const WX_KEYS = [
   "tempAloft",
   "tempC",
   "dewC",
@@ -32,39 +51,6 @@ const WX_KEYS = [
   "aloftSrc",
   "wxSet",
 ];
-for (const id of ["g-ambient", "aloftpanel"]) {
-  const el = document.getElementById(id);
-  if (el) {
-    /**
-     * Marks the day's weather as set.
-     */
-    const set = () => {
-      if (!L.wxSet) {
-        L.wxSet = true;
-        store.set("rfs-launch", L);
-      }
-    };
-    /**
-     * An edit in the weather fields sets the day's weather (typed cloud bands replace the forecast's levels).
-     */
-    const edit = (e) => {
-      const t = e.target;
-      if (t && t.matches("input,select") && !t.closest("#wxbox")) {
-        set();
-        if (/^f-cloud(Low|Mid|High)$/.test(t.id) && L.cloudProf) {
-          L.cloudProf = null;
-          store.set("rfs-launch", L);
-        }
-      }
-    };
-    el.addEventListener("input", edit);
-    el.addEventListener("change", edit);
-    el.addEventListener("click", (e) => {
-      const t = e.target;
-      if (t && t.closest("#aloftadd,#aloftclear,.arow .x")) set();
-    });
-  }
-}
 /**
  * The GFS pressure levels asked for, hPa.
  */
@@ -84,7 +70,7 @@ let prFetchN = 0;
  *
  * a web request: through the Android app when it's there (so it isn't held to the page's own network rules), else fetch()
  */
-function prFetchText(url) {
+export function prFetchText(url) {
   const A = window.PocketRocketApp;
   if (A && typeof A.fetchText === "function")
     return new Promise((res, rej) => {
@@ -111,25 +97,6 @@ function prFetchText(url) {
     }),
   );
 }
-window.prFetchDone = (id, ok, b64) => {
-  const p = PR_FETCH[id];
-  if (!p) return;
-  delete PR_FETCH[id];
-  let t = "";
-  try {
-    t = new TextDecoder().decode(Uint8Array.from(atob(b64 || ""), (c) => c.charCodeAt(0)));
-  } catch (e) {
-    t = "";
-  }
-  if (ok) p.res(t);
-  else {
-    let why = t;
-    try {
-      why = JSON.parse(t).reason || t;
-    } catch (e) {}
-    p.rej(new Error(why || "The request failed."));
-  }
-};
 /**
  * Two-digit number.
  */
@@ -231,22 +198,6 @@ function siteCoordSet() {
   wxSiteNote();
   return true;
 }
-{
-  const el = document.getElementById("sitecoord");
-  el.addEventListener("change", siteCoordSet);
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      siteCoordSet();
-      el.blur();
-    }
-  });
-  el.addEventListener("paste", () =>
-    setTimeout(() => {
-      if (parseLatLon(el.value)) siteCoordSet();
-    }, 0),
-  );
-}
 /**
  * Opens directions to the site (see the note above).
  *
@@ -288,11 +239,10 @@ function siteDirections() {
     a.remove();
   }
 }
-document.getElementById("sitedir").onclick = siteDirections;
 /**
  * Writes the forecast box's note about the site's location.
  */
-function wxSiteNote() {
+export function wxSiteNote() {
   siteCoordRender();
   const el = document.getElementById("wxsite");
   if (!el) return;
@@ -563,7 +513,7 @@ async function wxFetch() {
       minute: "2-digit",
     });
     L.wxSet = true;
-    aloftOpen = false;
+    setAloftOpen(false);
     // no levels from this source, date or place: the winds-aloft table is cleared, and the wind above the ground comes
     // from the ground wind and the wind profile
     const noAloft = !W.rows.length;
@@ -691,67 +641,127 @@ async function wxFetch() {
     btn.disabled = false;
   }
 }
-document.getElementById("wxgo").onclick = wxFetch;
-document.getElementById("aloftclear").onclick = () => {
-  L.aloft = [];
-  L.aloftSrc = "";
-  L.tempAloft = null;
-  changed();
-  renderAloft();
-  document.getElementById("aloftmsg").textContent = "";
-};
-
-// the parts list behind the Rocket tab: kept between visits; rebuilt from the open file when an older version saved none
-(function initBuilder() {
-  try {
-    BLD = JSON.parse(localStorage.getItem("rfs-builder") || "null");
-  } catch (e) {
-    BLD = null;
-  }
-  if (!(BLD && BLD.stages && BLD.stages.length && BLD.settings)) {
-    BLD = null;
-    if (SOURCE && SOURCE.text) {
-      try {
-        const isR = SOURCE.format === "rkt",
-          r = isR ? parseRkt(SOURCE.text) : parseOrk(SOURCE.text);
-        BLD = bldFromOrk(isR ? r.orkXml : SOURCE.text, { ...r, rkt: isR });
-        BLD.name = D.name || BLD.name;
-      } catch (e) {
-        BLD = null;
-      }
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  for (const id of ["g-ambient", "aloftpanel"]) {
+    const el = document.getElementById(id);
+    if (el) {
+      /**
+       * Marks the day's weather as set.
+       */
+      const set = () => {
+        if (!L.wxSet) {
+          L.wxSet = true;
+          store.set("rfs-launch", L);
+        }
+      };
+      /**
+       * An edit in the weather fields sets the day's weather (typed cloud bands replace the forecast's levels).
+       */
+      const edit = (e) => {
+        const t = e.target;
+        if (t && t.matches("input,select") && !t.closest("#wxbox")) {
+          set();
+          if (/^f-cloud(Low|Mid|High)$/.test(t.id) && L.cloudProf) {
+            L.cloudProf = null;
+            store.set("rfs-launch", L);
+          }
+        }
+      };
+      el.addEventListener("input", edit);
+      el.addEventListener("change", edit);
+      el.addEventListener("click", (e) => {
+        const t = e.target;
+        if (t && t.closest("#aloftadd,#aloftclear,.arow .x")) set();
+      });
     }
-    if (!BLD) BLD = bldDefault();
-    bldSave();
   }
-  if (SOURCE && SOURCE.base && !SOURCE.base.M) setSource({ ...SOURCE, base: { ...SOURCE.base, M: jclone(BLD) } });
-  bldSel = BLD_ROOT;
-  try {
-    bldDerive();
-  } catch (e) {}
-  if (!(CLEAN || "").startsWith("b2:")) markClean();
-  bldRender();
-})();
-setTimeout(renderDragTable, 0);
-renderForms();
-renderSeries();
-setUnits(units);
-document.getElementById("runbar").classList.add("stale");
-document.querySelector("#runstat b").textContent = "Not run yet";
-document.getElementById("runtime").textContent = "Set up your rocket, then tap Launch";
-requestAnimationFrame(() => {
-  drawProfile();
-  renderDragTable();
-});
-if (typeof module !== "undefined")
-  module.exports = {
-    simulate,
-    stability,
-    parseOrk,
-    parseEng,
-    BUILTIN,
-    defaultDesign,
-    defaultLaunch,
-    cdAt,
-    atmosphere,
-    motorStats,
+  window.prFetchDone = (id, ok, b64) => {
+    const p = PR_FETCH[id];
+    if (!p) return;
+    delete PR_FETCH[id];
+    let t = "";
+    try {
+      t = new TextDecoder().decode(Uint8Array.from(atob(b64 || ""), (c) => c.charCodeAt(0)));
+    } catch (e) {
+      t = "";
+    }
+    if (ok) p.res(t);
+    else {
+      let why = t;
+      try {
+        why = JSON.parse(t).reason || t;
+      } catch (e) {}
+      p.rej(new Error(why || "The request failed."));
+    }
   };
+  {
+    const el = document.getElementById("sitecoord");
+    el.addEventListener("change", siteCoordSet);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        siteCoordSet();
+        el.blur();
+      }
+    });
+    el.addEventListener("paste", () =>
+      setTimeout(() => {
+        if (parseLatLon(el.value)) siteCoordSet();
+      }, 0),
+    );
+  }
+  document.getElementById("sitedir").onclick = siteDirections;
+  document.getElementById("wxgo").onclick = wxFetch;
+  document.getElementById("aloftclear").onclick = () => {
+    L.aloft = [];
+    L.aloftSrc = "";
+    L.tempAloft = null;
+    changed();
+    renderAloft();
+    document.getElementById("aloftmsg").textContent = "";
+  };
+  // the parts list behind the Rocket tab: kept between visits; rebuilt from the open file when an older version saved none
+  (function initBuilder() {
+    try {
+      setBLD(JSON.parse(localStorage.getItem("rfs-builder") || "null"));
+    } catch (e) {
+      setBLD(null);
+    }
+    if (!(BLD && BLD.stages && BLD.stages.length && BLD.settings)) {
+      setBLD(null);
+      if (SOURCE && SOURCE.text) {
+        try {
+          const isR = SOURCE.format === "rkt",
+            r = isR ? parseRkt(SOURCE.text) : parseOrk(SOURCE.text);
+          setBLD(bldFromOrk(isR ? r.orkXml : SOURCE.text, { ...r, rkt: isR }));
+          BLD.name = D.name || BLD.name;
+        } catch (e) {
+          setBLD(null);
+        }
+      }
+      if (!BLD) setBLD(bldDefault());
+      bldSave();
+    }
+    if (SOURCE && SOURCE.base && !SOURCE.base.M) setSource({ ...SOURCE, base: { ...SOURCE.base, M: jclone(BLD) } });
+    setBldSel(BLD_ROOT);
+    try {
+      bldDerive();
+    } catch (e) {}
+    if (!(CLEAN || "").startsWith("b2:")) markClean();
+    bldRender();
+  })();
+  setTimeout(renderDragTable, 0);
+  renderForms();
+  renderSeries();
+  setUnits(units);
+  document.getElementById("runbar").classList.add("stale");
+  document.querySelector("#runstat b").textContent = "Not run yet";
+  document.getElementById("runtime").textContent = "Set up your rocket, then tap Launch";
+  requestAnimationFrame(() => {
+    drawProfile();
+    renderDragTable();
+  });
+}

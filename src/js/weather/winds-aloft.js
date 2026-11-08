@@ -1,6 +1,11 @@
 /**
  * Winds aloft: a table of heights, speeds and directions typed in by hand (or filled from the forecast).
  */
+import { esc } from "../core/helpers.js";
+import { L } from "../design/defaults.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { changed } from "../ui/state.js";
+import { wxSiteNote } from "./forecast.js";
 /* ---------- winds aloft: a table of heights, speeds and directions, typed in by hand ---------- */
 /**
  * The winds-aloft table is unfolded.
@@ -9,7 +14,7 @@ var aloftOpen = false;
 /**
  * Draws the winds-aloft rows and the temperature-aloft note.
  */
-function renderAloft() {
+export function renderAloft() {
   const box = document.getElementById("aloftlist");
   if (!box) return;
   {
@@ -83,16 +88,29 @@ function renderAloft() {
     };
   });
 }
-document.getElementById("aloftadd").onclick = () => {
-  L.aloft = L.aloft || [];
-  const last = L.aloft[L.aloft.length - 1];
-  L.aloft.push(
-    last
-      ? { alt: last.alt + 1000, speed: last.speed, dir: last.dir }
-      : { alt: 1000, speed: Math.max(L.wind * 1.5, 5), dir: L.windDir ?? 270 },
-  );
-  L.aloftSrc = "";
-  aloftOpen = true;
-  changed();
-  renderAloft();
-};
+
+/**
+ * Sets aloftOpen (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setAloftOpen(v) {
+  return (aloftOpen = v);
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("aloftadd").onclick = () => {
+    L.aloft = L.aloft || [];
+    const last = L.aloft[L.aloft.length - 1];
+    L.aloft.push(
+      last
+        ? { alt: last.alt + 1000, speed: last.speed, dir: last.dir }
+        : { alt: 1000, speed: Math.max(L.wind * 1.5, 5), dir: L.windDir ?? 270 },
+    );
+    L.aloftSrc = "";
+    aloftOpen = true;
+    changed();
+    renderAloft();
+  };
+}

@@ -1,6 +1,6 @@
-// ESLint setup. The app's files are joined into one <script> by build.js, so they share one global scope: names
-// defined in one file are used in others, which is why no-undef is off and no-unused-vars only checks names inside
-// functions. Top-level names nothing uses are found by tools/unused-globals.js (npm run lint:globals).
+// ESLint setup. The app's files are ES modules (bundled into the page by build.js), so ESLint checks every name: an
+// undefined one is an error, as is an unused import or top-level name. Exports nothing imports are found by
+// tools/unused-exports.js.
 "use strict";
 const js = require("@eslint/js");
 const globals = require("globals");
@@ -9,13 +9,33 @@ module.exports = [
   js.configs.recommended,
   {
     files: ["src/js/**/*.js"],
-    languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: { ...globals.browser, jspdf: "readonly" } },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        // the PDF library, loaded by its own <script>
+        jspdf: "readonly",
+        // functions the app puts on window for the Android app to call, and calls itself
+        prToast: "readonly",
+        prKeyboard: "readonly",
+        prSavedAs: "readonly",
+        prFetchDone: "readonly",
+        prIncoming: "readonly",
+        prBack: "readonly",
+        prLastSimNote: "readonly",
+        prSettingsOpen: "readonly",
+        prSettingsClose: "readonly",
+        prOpenProfile: "readonly",
+        // the Android app's bridge (window.Android), absent in a browser
+        Android: "readonly",
+      },
+    },
     rules: {
-      "no-undef": "off",
       // array destructuring keeps unused positions named (the state vector [x, z, vx, vz, y, vy, ...] reads better whole)
       "no-unused-vars": [
         "error",
-        { vars: "local", args: "none", caughtErrors: "none", destructuredArrayIgnorePattern: "." },
+        { vars: "all", args: "none", caughtErrors: "none", destructuredArrayIgnorePattern: "." },
       ],
       "no-empty": ["error", { allowEmptyCatch: true }],
     },

@@ -9,7 +9,7 @@
  * @param {object} D design
  * @returns {{shape:string, param:number}}
  */
-function noseSpec(D) {
+export function noseSpec(D) {
   let s = String(D.noseShape || "ogive:1");
   const legacy = { ogive: "ogive:1", conical: "conical:0", parabolic: "parabolic:1", elliptical: "ellipsoid:0" };
   if (legacy[s]) s = legacy[s];
@@ -26,7 +26,7 @@ function noseSpec(D) {
  * @param {number} L length, m
  * @returns {number} radius at x, m
  */
-function noseR(shape, param, x, R, L) {
+export function noseR(shape, param, x, R, L) {
   // radius at distance x from the tip
   x = Math.min(Math.max(x, 0), L);
   switch (shape) {

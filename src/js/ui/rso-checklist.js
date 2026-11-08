@@ -2,6 +2,21 @@
  * The RSO checklist (the go/no-go items a range safety officer asks about), the results flags, the wind table and the
  * chart series.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import { motorStats } from "../motors/motor-files.js";
+import { curBoost, curMotor, L, mstats, PROFILE } from "../design/defaults.js";
+import { fmt, uname } from "./units.js";
+import { renderDragTable } from "./state.js";
+import { aero } from "../physics/aerodynamics.js";
+import { fullStack } from "../physics/simulate.js";
+import { bigDist, compass, driftDir, ejLiveFlag, lastSim, nosePlan, noseWeightText } from "./results.js";
+import { coneWindNote } from "./charts.js";
+import { motorFit } from "./motor-tab.js";
+import { siteRender } from "./launch-sites.js";
+import { BLD } from "../builder/builder-ui.js";
+import { RANGE_KEYS } from "../files/save.js";
+import { apoRange, lastMC, mcFar95 } from "../physics/monte-carlo.js";
 /* ---------- RSO checklist: the go/no-go items a range safety officer asks about, from the last run ---------- */
 /* high power under FAA Part 101 / NAR and Tripoli: any motor over 160 N·s (H and up), more than 320 N·s in all, more than
    125 g of propellant, or a liftoff weight over 1,500 g */
@@ -134,7 +149,7 @@ function padGuideCheck(rt) {
  * @param {object} LL launch conditions
  * @returns {{s:string, label:string, val:string, why:string}[]} s is "good", "warn" or "bad"
  */
-function rsoChecks(st, S, m, D, LL) {
+export function rsoChecks(st, S, m, D, LL) {
   const c = [],
     sp = (v) => `${fmt(v, "speed")} ${uname("speed")}`,
     add = (s, label, val, why) => c.push({ s, label, val, why });
@@ -636,7 +651,7 @@ function rsoChecks(st, S, m, D, LL) {
 /**
  * The biggest motor class each certification level allows, and the levels' names.
  */
-const CERT_NAME = { none: "No certification", L1: "Level 1", L2: "Level 2", L3: "Level 3" };
+export const CERT_NAME = { none: "No certification", L1: "Level 1", L2: "Level 2", L3: "Level 3" };
 /**
  * Whether the flyer's certification covers the motors (or, for an attempt, whether they suit it).
  * @param {object} st
@@ -744,7 +759,7 @@ function certCheck(st, m, mb, cert, attempt) {
  * @param {number} I N·s
  * @returns {string}
  */
-function impulseLetter(I) {
+export function impulseLetter(I) {
   const c = "ABCDEFGHIJKLMNOP";
   let lim = 2.5;
   for (let i = 0; i < c.length; i++) {
@@ -768,40 +783,18 @@ function rsoSetOpen(o) {
   if (l) l.hidden = !o;
   if (m) m.textContent = o ? "Hide checks" : "Show checks";
 }
-document.getElementById("rsotog").onclick = () => rsoSetOpen(!rsoOpen);
-// the dispersion figures start folded up as well
-document.getElementById("mctog").onclick = () => {
-  const t = document.getElementById("mctog"),
-    o = t.getAttribute("aria-expanded") !== "true";
-  t.setAttribute("aria-expanded", String(o));
-  document.getElementById("mcbody").hidden = !o;
-  t.textContent = o ? "Hide results" : "Show results";
-};
 /**
  * Shows the motor temperature beside its folded title.
  *
  * motor temperature (Motor tab) starts folded up; its value shows beside the title
  */
-function mtSummary() {
+export function mtSummary() {
   const e = document.getElementById("mtsum");
   if (e) {
     const v = L.motorDT || 0;
     e.textContent = Math.abs(v) < 1e-9 ? "" : `${v > 0 ? "+" : "−"}${fmt(Math.abs(v), "dtemp")} ${uname("dtemp")}`;
   }
 }
-// panels that start folded: a Show/Hide button with data-fold naming the part it opens
-document.querySelectorAll("[data-fold]").forEach(
-  (b) =>
-    (b.onclick = () => {
-      const o = b.getAttribute("aria-expanded") !== "true",
-        body = document.getElementById(b.dataset.fold);
-      b.setAttribute("aria-expanded", String(o));
-      if (body) body.hidden = !o;
-      b.textContent = o ? "Hide" : "Show";
-      if (o && b.dataset.fold === "dragbody" && typeof renderDragTable === "function") renderDragTable();
-      if (typeof imperfSum === "function") imperfSum();
-    }),
-);
 /**
  * Names the imperfections that are switched on in their folded header.
  *
@@ -819,30 +812,10 @@ function imperfSum() {
   ].filter(Boolean);
   e.textContent = open || !on.length ? "" : on.join(", ");
 }
-document.getElementById("imperfpanel").addEventListener("input", () => setTimeout(imperfSum, 0));
-document.getElementById("imperfpanel").addEventListener("change", () => setTimeout(imperfSum, 0));
-imperfSum();
-document.getElementById("mttog").onclick = () => {
-  const t = document.getElementById("mttog"),
-    o = t.getAttribute("aria-expanded") !== "true";
-  t.setAttribute("aria-expanded", String(o));
-  document.getElementById("mtbody").hidden = !o;
-  t.textContent = o ? "Hide" : "Show";
-};
-document.getElementById("motortemppanel").addEventListener("input", () => setTimeout(mtSummary, 0));
-mtSummary();
-// the drift table starts folded up too
-document.getElementById("windtog").onclick = () => {
-  const t = document.getElementById("windtog"),
-    o = t.getAttribute("aria-expanded") !== "true";
-  t.setAttribute("aria-expanded", String(o));
-  document.getElementById("windbody").hidden = !o;
-  document.getElementById("windmore").textContent = o ? "Hide table" : "Show table";
-};
 /**
  * Draws the RSO checklist from the last run.
  */
-function renderRSO() {
+export function renderRSO() {
   const P = document.getElementById("rsopanel");
   if (!P) return;
   if (!lastSim) {
@@ -900,7 +873,7 @@ function renderRSO() {
  * @param {object} D design
  * @returns {Array[]} [status, text]
  */
-function resultFlags(st, S, m, D) {
+export function resultFlags(st, S, m, D) {
   const flags = [];
   if (st.error) flags.push(["bad", st.error]);
   if (st.tumble)
@@ -1172,7 +1145,7 @@ function resultFlags(st, S, m, D) {
  * The wind table rows from the last run.
  * @returns {object[]}
  */
-function windRows() {
+export function windRows() {
   const { windTable, L: RL } = lastSim;
   return windTable.map((r) => ({
     wind: `${fmt(r.w, "wind", 0)} ${uname("wind")}`,
@@ -1207,7 +1180,7 @@ function windExplain() {
 /**
  * Draws the wind table.
  */
-function renderWindTable() {
+export function renderWindTable() {
   const el = document.getElementById("windtable");
   if (!el || !lastSim) return;
   const rows = windRows();
@@ -1217,7 +1190,7 @@ function renderWindTable() {
 /**
  * The chart series: [label, dimension].
  */
-const SERIES = {
+export const SERIES = {
   alt: ["Altitude", "alt"],
   vel: ["Velocity", "speed"],
   acc: ["Acceleration", "acc"],
@@ -1228,3 +1201,50 @@ const SERIES = {
   cone: ["Cone", "alt"],
   land: ["Landing", "alt"],
 };
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("rsotog").onclick = () => rsoSetOpen(!rsoOpen);
+  // the dispersion figures start folded up as well
+  document.getElementById("mctog").onclick = () => {
+    const t = document.getElementById("mctog"),
+      o = t.getAttribute("aria-expanded") !== "true";
+    t.setAttribute("aria-expanded", String(o));
+    document.getElementById("mcbody").hidden = !o;
+    t.textContent = o ? "Hide results" : "Show results";
+  };
+  // panels that start folded: a Show/Hide button with data-fold naming the part it opens
+  document.querySelectorAll("[data-fold]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const o = b.getAttribute("aria-expanded") !== "true",
+          body = document.getElementById(b.dataset.fold);
+        b.setAttribute("aria-expanded", String(o));
+        if (body) body.hidden = !o;
+        b.textContent = o ? "Hide" : "Show";
+        if (o && b.dataset.fold === "dragbody" && typeof renderDragTable === "function") renderDragTable();
+        if (typeof imperfSum === "function") imperfSum();
+      }),
+  );
+  document.getElementById("imperfpanel").addEventListener("input", () => setTimeout(imperfSum, 0));
+  document.getElementById("imperfpanel").addEventListener("change", () => setTimeout(imperfSum, 0));
+  imperfSum();
+  document.getElementById("mttog").onclick = () => {
+    const t = document.getElementById("mttog"),
+      o = t.getAttribute("aria-expanded") !== "true";
+    t.setAttribute("aria-expanded", String(o));
+    document.getElementById("mtbody").hidden = !o;
+    t.textContent = o ? "Hide" : "Show";
+  };
+  document.getElementById("motortemppanel").addEventListener("input", () => setTimeout(mtSummary, 0));
+  mtSummary();
+  // the drift table starts folded up too
+  document.getElementById("windtog").onclick = () => {
+    const t = document.getElementById("windtog"),
+      o = t.getAttribute("aria-expanded") !== "true";
+    t.setAttribute("aria-expanded", String(o));
+    document.getElementById("windbody").hidden = !o;
+    document.getElementById("windmore").textContent = o ? "Hide table" : "Show table";
+  };
+}

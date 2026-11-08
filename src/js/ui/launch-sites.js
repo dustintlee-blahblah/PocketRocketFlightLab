@@ -2,6 +2,13 @@
  * Saved launch sites: each one keeps a field's own settings (location, elevation, rail, waiver, cone...), not the day's
  * weather. The chosen site stays in force when another rocket is opened.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import { L } from "../design/defaults.js";
+import { fmt, uname } from "./units.js";
+import { renderForms } from "./forms.js";
+import { changed } from "./state.js";
+import { prFetchText } from "../weather/forecast.js";
 /* ---------- launch sites and field-day mode ---------- */
 /**
  * The saved-sites manager's state: open, the site being renamed, the site waiting for delete confirmation.
@@ -36,7 +43,7 @@ const sitesGet = () => {
   const v = store.get("rfs-sites", []);
   return Array.isArray(v) ? v : [];
 };
-let siteCur = store.get("rfs-site", "");
+export let siteCur;
 /* well-known launch fields, added once to the saved sites (names you already use, and fields within about a mile of a
    site you've saved, are skipped; a field you delete doesn't come back). Coordinates and elevations are from each club's
    own site page where it gives them; elev null: looked up from map data the first time the site is chosen. */
@@ -58,27 +65,9 @@ const SITE_PRESETS = [
   ["Tripoli Minnesota field, MN", 45.546058, -92.92464, null],
 ];
 /**
- * Adds the preset fields to the saved sites once.
- */
-(function sitePresetsAdd() {
-  if (store.get("rfs-site-presets", 0) >= 1) return;
-  const S = (() => {
-      const v = store.get("rfs-sites", []);
-      return Array.isArray(v) ? v : [];
-    })(),
-    near = (a, b) => a.lat != null && a.lon != null && Math.abs(a.lat - b[1]) < 0.015 && Math.abs(a.lon - b[2]) < 0.02;
-  for (const P of SITE_PRESETS) {
-    if (S.some((x) => x.name.toLowerCase() === P[0].toLowerCase() || near(x.v || {}, P))) continue;
-    S.push({ name: P[0], v: { elev: P[3], lat: P[1], lon: P[2] }, preset: true });
-  }
-  S.sort((a, b) => a.name.localeCompare(b.name));
-  store.set("rfs-sites", S);
-  store.set("rfs-site-presets", 1);
-})();
-/**
  * Draws the site picker and its buttons.
  */
-function siteRender() {
+export function siteRender() {
   const sel = document.getElementById("sitesel");
   if (!sel) return;
   const S = sitesGet();
@@ -164,7 +153,7 @@ function siteBtnUpdate() {
  * @param {object} l launch settings (lat, lon, elev)
  * @returns {string} the site's name, or "" if none matches
  */
-function siteFind(name, l) {
+export function siteFind(name, l) {
   const S = sitesGet();
   if (name && S.some((x) => x.name === name)) return name;
   if (!(isFinite(l.lat) && isFinite(l.lon))) return "";
@@ -182,7 +171,7 @@ function siteFind(name, l) {
  * Puts the chosen site's settings back into L (after a design file brought its own).
  * @returns {string|null} the site's name
  */
-function siteKeep() {
+export function siteKeep() {
   const x = siteCur && sitesGet().find((s) => s.name === siteCur);
   if (!x) return null;
   for (const k of SITE_KEYS) if (x.v[k] != null) L[k] = x.v[k];
@@ -276,27 +265,6 @@ function siteSave() {
   siteRender();
   delete m.dataset.keep;
 }
-document.getElementById("sitesel").onchange = (e) => {
-  if (e.target.value) siteApply(e.target.value);
-  else {
-    siteCur = "";
-    store.set("rfs-site", "");
-    siteRender();
-  }
-};
-document.getElementById("sitesave").onclick = siteSave;
-document.getElementById("sitename").addEventListener("input", siteBtnUpdate);
-try {
-  siteRender();
-} catch (e) {
-  siteBtnUpdate();
-}
-document.getElementById("sitename").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    siteSave();
-  }
-});
 /* managing saved sites: rename or delete each one. Deleting takes two steps (Delete, then confirm), so it can't happen by a stray tap */
 /**
  * Opens or closes the saved-sites manager.
@@ -430,4 +398,58 @@ function siteMgrRender() {
       });
   });
 }
-document.getElementById("sitemanage").onclick = () => siteMgrToggle(!SITEMGR.open);
+
+/**
+ * Sets siteCur (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setSiteCur(v) {
+  return (siteCur = v);
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  siteCur = store.get("rfs-site", "");
+  /**
+   * Adds the preset fields to the saved sites once.
+   */
+  (function sitePresetsAdd() {
+    if (store.get("rfs-site-presets", 0) >= 1) return;
+    const S = (() => {
+        const v = store.get("rfs-sites", []);
+        return Array.isArray(v) ? v : [];
+      })(),
+      near = (a, b) =>
+        a.lat != null && a.lon != null && Math.abs(a.lat - b[1]) < 0.015 && Math.abs(a.lon - b[2]) < 0.02;
+    for (const P of SITE_PRESETS) {
+      if (S.some((x) => x.name.toLowerCase() === P[0].toLowerCase() || near(x.v || {}, P))) continue;
+      S.push({ name: P[0], v: { elev: P[3], lat: P[1], lon: P[2] }, preset: true });
+    }
+    S.sort((a, b) => a.name.localeCompare(b.name));
+    store.set("rfs-sites", S);
+    store.set("rfs-site-presets", 1);
+  })();
+  document.getElementById("sitesel").onchange = (e) => {
+    if (e.target.value) siteApply(e.target.value);
+    else {
+      siteCur = "";
+      store.set("rfs-site", "");
+      siteRender();
+    }
+  };
+  document.getElementById("sitesave").onclick = siteSave;
+  document.getElementById("sitename").addEventListener("input", siteBtnUpdate);
+  try {
+    siteRender();
+  } catch (e) {
+    siteBtnUpdate();
+  }
+  document.getElementById("sitename").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      siteSave();
+    }
+  });
+  document.getElementById("sitemanage").onclick = () => siteMgrToggle(!SITEMGR.open);
+}

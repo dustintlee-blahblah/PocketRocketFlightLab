@@ -2,6 +2,8 @@
  * Motor clusters and airstarts: the motors of one stage combined into a single motor object whose thrust curve is the
  * sum of theirs, each shifted by its own ignition delay.
  */
+import { OLD_MOTOR_IDS } from "../../data/old-motor-ids.js";
+import { allMotors, curBoost, curFirst, curMotor, D } from "../design/defaults.js";
 /* ---------- motor clusters: the motors in a stage add their thrust; an extra motor can light a set time after the
    main one (an airstart), so its thrust curve starts that much later ---------- */
 /**
@@ -13,7 +15,7 @@ const clusterCache = new Map();
  * @param {string} id
  * @returns {object|null}
  */
-function findMotor(id) {
+export function findMotor(id) {
   id = OLD_MOTOR_IDS[id] || id;
   return allMotors().find((m) => m.id === id) || null;
 }
@@ -25,7 +27,7 @@ function findMotor(id) {
  * @param {number} [mainD=0] the main motor's own ignition delay, s
  * @returns {object} a motor object; a cluster also has members, count, cluster: true and airstart
  */
-function clusterOf(main, extras, mainD = 0) {
+export function clusterOf(main, extras, mainD = 0) {
   // extras: [{id, n, d}] in addition to the main motor; d: seconds after the first motor lights
   const extraList = (extras || [])
     .map((e) => ({ m: findMotor(e.id), n: Math.max(1, Math.round(e.n || 1)), d: Math.max(0, +e.d || 0) }))
@@ -105,14 +107,14 @@ function flightOf(main, extras, mainD, mainOff) {
  * The sustainer's (or a single stage's) motors as flown.
  * @returns {object} motor object
  */
-function flightMotor() {
+export function flightMotor() {
   return flightOf(curMotor(), D.extraMotors, D.mainDelay, D.mainOff);
 }
 /**
  * The booster's motors as flown.
  * @returns {object} motor object
  */
-function flightBoost() {
+export function flightBoost() {
   return flightOf(curBoost(), D.bExtraMotors, D.bMainDelay, D.bMainOff);
 }
 /**
@@ -120,6 +122,6 @@ function flightBoost() {
  * @param {object} [Dx=D] design
  * @returns {object} motor object
  */
-function flightFirst(Dx = D) {
+export function flightFirst(Dx = D) {
   return flightOf(curFirst(), Dx && Dx.s1ExtraMotors, Dx && Dx.s1MainDelay, Dx && Dx.s1MainOff);
 }

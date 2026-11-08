@@ -6,12 +6,13 @@
  * @param {*} s
  * @returns {string}
  */
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+export const esc = (s) =>
+  String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 /**
  * Base64 text to bytes.
  */
-const b64ToU8 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+export const b64ToU8 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 /**
  * A deep copy of plain JSON data.
  */
-const jclone = (o) => JSON.parse(JSON.stringify(o));
+export const jclone = (o) => JSON.parse(JSON.stringify(o));

@@ -2,18 +2,12 @@
  * Zip files: writing them (compressed for a saved .ork, as OpenRocket writes it; stored for the web download wrapper),
  * and keeping an .ork file's other entries (decal images) when it is saved.
  */
+import { inflate } from "./openrocket-import.js";
+import { bufToB64 } from "../report/pdf-report.js";
 /**
  * The CRC-32 lookup table.
  */
-const CRC_T = (() => {
-  const t = new Uint32Array(256);
-  for (let k = 0; k < 256; k++) {
-    let c = k;
-    for (let j = 0; j < 8; j++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[k] = c >>> 0;
-  }
-  return t;
-})();
+let CRC_T;
 /**
  * CRC-32 of bytes.
  * @param {Uint8Array} u
@@ -93,7 +87,7 @@ function zipBuild(files) {
  * @param {{name:string, data:Uint8Array}[]} files
  * @returns {Uint8Array}
  */
-function zipStore(files) {
+export function zipStore(files) {
   return zipBuild(files.map((f) => ({ name: f.name, data: f.data })));
 }
 /**
@@ -101,7 +95,7 @@ function zipStore(files) {
  * @param {{name:string, data:Uint8Array}[]} files
  * @returns {Promise<Uint8Array>}
  */
-async function zipDeflate(files) {
+export async function zipDeflate(files) {
   const out = [];
   for (const f of files) {
     let z = null;
@@ -122,7 +116,7 @@ async function zipDeflate(files) {
 /**
  * True inside the Android app (which saves files through its own bridge).
  */
-const isAndroidApp = () => !!(window.PocketRocketApp && window.PocketRocketApp.saveFile);
+export const isAndroidApp = () => !!(window.PocketRocketApp && window.PocketRocketApp.saveFile);
 /**
  * The other files inside an .ork zip (decal images), as base64, so a save keeps them.
  * @param {ArrayBuffer} buf
@@ -130,7 +124,7 @@ const isAndroidApp = () => !!(window.PocketRocketApp && window.PocketRocketApp.s
  *
  * the other files inside an OpenRocket .ork zip (decal images), kept so a save doesn't lose them
  */
-async function zipOthers(buf) {
+export async function zipOthers(buf) {
   const u8 = new Uint8Array(buf);
   if (u8[0] !== 0x50 || u8[1] !== 0x4b) return [];
   const dv = new DataView(buf);
@@ -171,4 +165,18 @@ async function zipOthers(buf) {
     } catch (err) {}
   }
   return out;
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  CRC_T = (() => {
+    const t = new Uint32Array(256);
+    for (let k = 0; k < 256; k++) {
+      let c = k;
+      for (let j = 0; j < 8; j++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[k] = c >>> 0;
+    }
+    return t;
+  })();
 }

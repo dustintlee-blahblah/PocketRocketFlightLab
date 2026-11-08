@@ -8,7 +8,7 @@
 /**
  * Bulk materials: [name, density kg/m³].
  */
-const BLD_BULK = [
+export const BLD_BULK = [
   ["Cardboard", 680],
   ["Kraft phenolic", 950],
   ["Blue Tube", 1300],
@@ -27,7 +27,7 @@ const BLD_BULK = [
 /**
  * Surface materials (parachute cloth, streamers): [name, kg/m²].
  */
-const BLD_SURF = [
+export const BLD_SURF = [
   ["Ripstop nylon", 0.067],
   ["Mylar", 0.021],
   ["Polyethylene (thin)", 0.01],
@@ -35,7 +35,7 @@ const BLD_SURF = [
 /**
  * Line materials (shock cords): [name, kg/m].
  */
-const BLD_LINE = [
+export const BLD_LINE = [
   ["Kevlar 1/4 in", 0.0105],
   ["Tubular nylon 1/2 in", 0.013],
   ["Tubular nylon 1 in", 0.03],
@@ -44,11 +44,11 @@ const BLD_LINE = [
 /**
  * The part types that make up the outside of the body.
  */
-const BLD_BODY = ["nose", "tube", "transition"];
+export const BLD_BODY = ["nose", "tube", "transition"];
 /**
  * Default names of the part types.
  */
-const BLD_NAMES = {
+export const BLD_NAMES = {
   nose: "Nose cone",
   tube: "Body tube",
   transition: "Transition",
@@ -69,7 +69,7 @@ const BLD_NAMES = {
 /**
  * Surface finishes offered: [OpenRocket name, label].
  */
-const BLD_FINISH = [
+export const BLD_FINISH = [
   ["mirror", "Mirror (0 µm)"],
   ["finishpolished", "Finish-polished (0.5 µm)"],
   ["polished", "Polished (2 µm)"],
@@ -85,7 +85,7 @@ const BLD_FINISH = [
  *
  * OpenRocket requires every part id to be a UUID
  */
-const bldId = () =>
+export const bldId = () =>
   globalThis.crypto && crypto.randomUUID
     ? crypto.randomUUID()
     : "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
@@ -97,7 +97,7 @@ const bldId = () =>
  *
  * a new part with sensible sizes for the body it goes on (R = body radius)
  */
-function bldNew(type, R = 0.0333) {
+export function bldNew(type, R = 0.0333) {
   const id = bldId(),
     name = BLD_NAMES[type];
   switch (type) {
@@ -267,13 +267,13 @@ function bldNew(type, R = 0.0333) {
  * @param {string} k the field (known, knownCg, cdo, cdOverride, dryInertia, bDryInertia, s1DryInertia)
  * @returns {boolean}
  */
-function bldOvOn(O, k) {
+export function bldOvOn(O, k) {
   if (!O || O[k + "On"] === false) return false;
   const v = O[k];
   return k === "knownCg" || k === "cdo" ? v != null && isFinite(v) : +v > 0;
 }
 /** rocket-wide settings the .ork itself can't hold, kept with the app's settings in the file */
-const BLD_APP_SETTINGS = [
+export const BLD_APP_SETTINGS = [
   "otherCd",
   "blMode",
   "dryInertia",
@@ -283,7 +283,7 @@ const BLD_APP_SETTINGS = [
   "s1DryInertia",
   "s1DryInertiaOn",
 ];
-function bldSettings() {
+export function bldSettings() {
   return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
 }
 /**
@@ -292,7 +292,7 @@ function bldSettings() {
  *
  * a complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one chute
  */
-function bldDefault() {
+export function bldDefault() {
   const R = 0.0333,
     nose = bldNew("nose", R),
     tube = bldNew("tube", R);
@@ -314,7 +314,8 @@ function bldDefault() {
 /**
  * The outside radius of a body part (the smaller end of a transition).
  */
-const bldBodyR = (p) => (p.type === "tube" ? p.od / 2 : p.type === "nose" ? p.dia / 2 : Math.min(p.dia1, p.dia2) / 2);
+export const bldBodyR = (p) =>
+  p.type === "tube" ? p.od / 2 : p.type === "nose" ? p.dia / 2 : Math.min(p.dia1, p.dia2) / 2;
 /**
  * Where everything sits, front to back: each body part with its stage, position and radius.
  * @param {object} model builder model
@@ -322,7 +323,7 @@ const bldBodyR = (p) => (p.type === "tube" ? p.od / 2 : p.type === "nose" ? p.di
  *
  * where everything sits, front to back
  */
-function bldLayout(model) {
+export function bldLayout(model) {
   const out = [];
   let x = 0;
   model.stages.forEach((st, si) => {
@@ -365,7 +366,7 @@ function bldLayout(model) {
  * @param {object} k part
  * @returns {number} m
  */
-function bldLen(k) {
+export function bldLen(k) {
   switch (k.type) {
     case "fins":
       return k.shape === "freeform" ? bldPts(k).root : k.root;
@@ -388,7 +389,7 @@ function bldLen(k) {
  *
  * free-form fin outline from "x,y" lines (metres); the root runs along y = 0
  */
-function bldPts(k) {
+export function bldPts(k) {
   const pts = String(k.pts || "")
     .split(/[\n;]+/)
     .map((l) =>
@@ -410,13 +411,13 @@ function bldPts(k) {
  *
  * the motor mount's inside size, rounded to the motor size it takes
  */
-function bldMountMM(k) {
+export function bldMountMM(k) {
   return Math.round((k.od - 2 * k.wall) * 1000);
 }
 /**
  * Rail button sizes by rail: outside diameter, height and weight.
  */
-const BLD_BUTTONS = {
+export const BLD_BUTTONS = {
   1010: { od: 0.0102, id: 0.0064, h: 0.0097, fl: 0.0021, bs: 0.0021, label: "1010 (small)" },
   1515: { od: 0.0157, id: 0.0081, h: 0.0127, fl: 0.0025, bs: 0.0025, label: "1515 (large)" },
 };
@@ -427,7 +428,7 @@ const BLD_BUTTONS = {
  *
  * the motor tube's outside radius in a body part: the ring's hole size
  */
-function bldMountR(b) {
+export function bldMountR(b) {
   const m = (b.p.kids || []).find((k) => k.type === "mount" || k.type === "inner");
   return m ? m.od / 2 : Math.max(b.ri * 0.5, 0.005);
 }
@@ -438,6 +439,6 @@ function bldMountR(b) {
  *
  * every motor mount in a stage (inner tubes with a motor, or a body tube flown as its own mount)
  */
-function bldMounts(st) {
+export function bldMounts(st) {
   return st.parts.flatMap((p) => [...(p.mm ? [p.mm] : []), ...(p.kids || []).filter((k) => k.type === "mount")]);
 }

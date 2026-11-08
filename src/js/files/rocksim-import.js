@@ -3,6 +3,12 @@
  * meters and kilograms) and read by parseOrk, then RockSim's own simulation settings (motors per stage, ejection
  * delays, launch conditions) are applied on top.
  */
+import { brandOfMfr } from "../motors/catalog-lookup.js";
+import { allMotors, D } from "../design/defaults.js";
+import { rktEj } from "../recovery/ejection-charge.js";
+import { parseOrk } from "./openrocket-import.js";
+import { rktIndex, rktPartId } from "../builder/ork-merge.js";
+import { ORK_SIM } from "./save.js";
 /* ---------- RockSim .rkt import: converted to the .ork file layout, then read by the .ork importer ---------- */
 /**
  * Reads a RockSim design.
@@ -10,7 +16,7 @@
  * @returns {object} the same shape as parseOrk's result
  * @throws {Error} if the file isn't a readable RockSim design
  */
-function parseRkt(xml) {
+export function parseRkt(xml) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("The RockSim file could not be read as XML.");
   const design = doc.getElementsByTagName("RocketDesign")[0];
@@ -489,7 +495,7 @@ function parseRkt(xml) {
  * @param {{designation:string, mfr:string, dia:number}} mo
  * @returns {object|null}
  */
-function matchMotor(mo) {
+export function matchMotor(mo) {
   if (!mo || !mo.designation) return null;
   const norm = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   const d = norm(mo.designation),

@@ -3,11 +3,26 @@
  * report (jsPDF): the design, motors, conditions, results, RSO checklist, every graph and the flyer's profile.
  * Coordinates in the PDF are points (1/72 in) from the top left.
  */
+import { APP_BUILD } from "../core/start.js";
+import { SYS_LABEL } from "../motors/catalog.js";
+import { mstats, NOSE_PRESETS, PROFILE } from "../design/defaults.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { noseSpec } from "../physics/geometry.js";
+import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
+import { airInertia, fullStack, isThree } from "../physics/simulate.js";
+import { bldLayout } from "../builder/model.js";
+import { compass, driftDir, lastSim, resultTiles } from "../ui/results.js";
+import { CERT_NAME, resultFlags, windRows } from "../ui/rso-checklist.js";
+import { chartEvents, niceTicks } from "../ui/charts.js";
+import { BLD } from "../builder/builder-ui.js";
+import { SOURCE } from "../files/save.js";
+import { supNote } from "../ui/donate.js";
+import { apoRange, apoRound, lastMC, MC_K68, MC_K95, mcBearing } from "../physics/monte-carlo.js";
 /* ---------- PDF flight report ---------- */
 /**
  * How files are saved here: an object with save({filename, data}) that resolves with {status}.
  */
-let downloadsNS = null;
+export let downloadsNS = null;
 /**
  * Saving through an ordinary browser download.
  * @returns {{browser:boolean, save:function}}
@@ -49,32 +64,12 @@ function browserDownloads() {
  * @param {ArrayBuffer|Uint8Array} buf
  * @returns {string}
  */
-function bufToB64(buf) {
+export function bufToB64(buf) {
   const u = new Uint8Array(buf);
   let s = "";
   for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
   return btoa(s);
 }
-(async () => {
-  try {
-    if (window.PocketRocketApp && window.PocketRocketApp.saveFile) {
-      downloadsNS = {
-        save: async ({ filename, data }) => {
-          window.PocketRocketApp.saveFile(filename, bufToB64(data));
-          return { status: "delivered" };
-        },
-      };
-    } else if (window.claude && window.claude.use) {
-      downloadsNS = await window.claude.use("downloads");
-    }
-  } catch (e) {
-    downloadsNS = null;
-  }
-  // opened straight in a browser (from a file or a web site): an ordinary download
-  if (!downloadsNS) downloadsNS = browserDownloads();
-  const b = document.getElementById("exportwrap");
-  if (b) b.hidden = !downloadsNS || !lastSim;
-})();
 /**
  * Text with the characters the PDF's built-in fonts lack replaced (≥, ≤, arrows, subscripts...).
  * @param {string} s
@@ -1328,4 +1323,29 @@ async function exportPdf() {
     btn.textContent = "Export PDF report";
   }
 }
-document.getElementById("exportbtn").onclick = exportPdf;
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  (async () => {
+    try {
+      if (window.PocketRocketApp && window.PocketRocketApp.saveFile) {
+        downloadsNS = {
+          save: async ({ filename, data }) => {
+            window.PocketRocketApp.saveFile(filename, bufToB64(data));
+            return { status: "delivered" };
+          },
+        };
+      } else if (window.claude && window.claude.use) {
+        downloadsNS = await window.claude.use("downloads");
+      }
+    } catch (e) {
+      downloadsNS = null;
+    }
+    // opened straight in a browser (from a file or a web site): an ordinary download
+    if (!downloadsNS) downloadsNS = browserDownloads();
+    const b = document.getElementById("exportwrap");
+    if (b) b.hidden = !downloadsNS || !lastSim;
+  })();
+  document.getElementById("exportbtn").onclick = exportPdf;
+}

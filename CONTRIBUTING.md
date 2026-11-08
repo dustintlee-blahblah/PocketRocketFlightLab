@@ -46,9 +46,11 @@ npm test
      they're the intended ones, then run `npm run test:record` and commit the new `tests/golden-snapshot.json` with
      the change. Say in the pull request what changed, by how much, and why it's better, with evidence where you can
      (OpenRocket, a NASA/NACA report, flight data).
+   - `npm run test:smoke`: clicks through the tabs and controls and fails on any page error.
    - `npm run test:drag` if you touched the drag model.
-4. **Mind the shared scope.** The source files share one global scope (see ARCHITECTURE.md), so check a new top-level
-   name isn't already used: `grep -rn "yourName" src/js`.
+4. **Modules.** Import what you use and export only what other modules need. Keep a module's top level to
+   definitions; anything it does when the app opens goes in its `start()` (see ARCHITECTURE.md). To change a shared
+   variable from another module, use the setter its module exports.
 5. **Units.** Keep values in SI inside the design, conditions and physics; convert only for display.
 6. **Update the docs** you affected: the field help text (`src/js/ui/field-help.js`), the README, ARCHITECTURE.md.
 

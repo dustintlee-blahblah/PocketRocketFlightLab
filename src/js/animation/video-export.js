@@ -1,6 +1,12 @@
 /**
  * Saving the animation as a video (see the note below).
  */
+import { lastSim } from "../ui/results.js";
+import { ANIM, animPlay } from "./animation.js";
+import { animDraw } from "./scenery.js";
+import { SOURCE } from "../files/save.js";
+import { isAndroidApp } from "../files/zip.js";
+import { bufToB64, downloadsNS } from "../report/pdf-report.js";
 /* ---------- video export: the animation rendered frame by frame, H.264 in an .mp4 ----------
    Frames are drawn off screen at 720×1280 and encoded with the browser's own H.264 encoder (WebCodecs);
    the .mp4 container is written here (a plain, "fast start" file: ftyp, moov, mdat). */
@@ -157,7 +163,7 @@ function mp4Mux({ width, height, fps, samples, avcC }) {
 /**
  * Video export state: busy, and whether the user cancelled.
  */
-const VID = { busy: false, cancel: false };
+export const VID = { busy: false, cancel: false };
 /**
  * Renders the whole flight frame by frame, encodes it and saves the .mp4.
  */
@@ -306,11 +312,16 @@ async function animExportVideo() {
     }
   }
 }
-document.getElementById("animvideo").onclick = () => {
-  document.getElementById("animvidcancel").textContent = "Cancel";
-  animExportVideo();
-};
-document.getElementById("animvidcancel").onclick = () => {
-  if (VID.busy) VID.cancel = true;
-  else document.getElementById("animvidbox").hidden = true;
-};
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("animvideo").onclick = () => {
+    document.getElementById("animvidcancel").textContent = "Cancel";
+    animExportVideo();
+  };
+  document.getElementById("animvidcancel").onclick = () => {
+    if (VID.busy) VID.cancel = true;
+    else document.getElementById("animvidbox").hidden = true;
+  };
+}

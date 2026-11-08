@@ -1,6 +1,36 @@
 /**
  * The Motor tab: the motor list with its filters, the selected motors, and the motor tube size checks.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import { SYS_LABEL } from "../motors/catalog.js";
+import { BRAND_SYS, BUILTIN_BRANDS, DEFAULT_MOTOR, SYS_ORDER } from "../motors/catalog-lookup.js";
+import { motorStats } from "../motors/motor-files.js";
+import {
+  allMotors,
+  boostId,
+  curBoost,
+  curFirst,
+  curMotor,
+  D,
+  firstId,
+  motorId,
+  motorTarget,
+  mstats,
+  setBoostId,
+  setFirstId,
+  setMotorId,
+  setMotorTarget,
+  setUSER_MOTORS,
+  USER_MOTORS,
+} from "../design/defaults.js";
+import { findMotor, flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
+import { fmt, uname } from "./units.js";
+import { markStale } from "./state.js";
+import { isThree } from "../physics/simulate.js";
+import { css, drawProfile, setupCanvas } from "./charts.js";
+import { cfgRender, drawMtarget, mdMotor, mdRender, mdSnap, mdTarget } from "./motor-delay.js";
+import { CMP, cmpRender, renderCluster } from "./compare-motors.js";
 /**
  * Draws a motor's thrust curve, small.
  * @param {HTMLCanvasElement} cv
@@ -25,7 +55,7 @@ function drawSpark(cv, m) {
 /**
  * The motor list's filters: brand, diameter (mm), system, search text and sparky ("all", "only" or "none").
  */
-let F = Object.assign({ brand: "all", dia: null, sys: "all", q: "", sparky: "all" }, store.get("rfs-filter", {}));
+export let F;
 let shown = 40;
 /**
  * A motor's one-line summary: diameter, impulse, average thrust, burn time, delays...
@@ -57,7 +87,7 @@ function motorMeta(m, s) {
  *
  * sparky: "all", "only" (sparky motors only) or "none" (no sparky motors), from ThrustCurve's sparky flag
  */
-function filterMotors(dia, sys, q, brand = F.brand, sparky = F.sparky) {
+export function filterMotors(dia, sys, q, brand = F.brand, sparky = F.sparky) {
   const qq = q.trim().toLowerCase().replace(/\s+/g, " ");
   return allMotors().filter(
     (m) =>
@@ -179,10 +209,10 @@ function renderFilters() {
 /**
  * Keeps the filters on the device.
  */
-function saveFilter() {
+export function saveFilter() {
   store.set("rfs-filter", F);
 }
-let pickSlot = -1; // -1: choosing the main motor; otherwise the index of the extra motor being chosen
+export let pickSlot = -1; // -1: choosing the main motor; otherwise the index of the extra motor being chosen
 /* ---------- motor tube size ---------- */
 const MOTOR_SIZES = [13, 18, 24, 29, 38, 54, 75, 98, 132, 152, 161]; // standard motor diameters, mm, up to the largest motors in the list
 /**
@@ -223,7 +253,7 @@ function mountSize(Dx, booster) {
  * a stand-in when a file's motor isn't in the list and the motor already selected doesn't fit the mount:
  * a motor of the mount's size, in the file motor's impulse class if there is one (else a middling one)
  */
-function fitStandIn(Dx, booster, want) {
+export function fitStandIn(Dx, booster, want) {
   const cur = findMotor(booster ? boostId : motorId),
     f = motorFit(cur, Dx, booster);
   if (!f || f.status === "ok") return null;
@@ -252,7 +282,7 @@ function fitStandIn(Dx, booster, want) {
  * @param {boolean} booster
  * @returns {{mount:number, motor:number, src:string, status:string}|null} status "ok", "big" or "small"
  */
-function motorFit(m, Dx, booster) {
+export function motorFit(m, Dx, booster) {
   const ms = mountSize(Dx, booster);
   if (!ms || !m) return null;
   const md = Math.round(m.dia * 1000),
@@ -268,7 +298,7 @@ function motorFit(m, Dx, booster) {
  *
  * a chosen mount bigger than the body it sits in
  */
-function mountTooBig(Dx, booster) {
+export function mountTooBig(Dx, booster) {
   const ms = mountSize(Dx, booster);
   if (!ms || ms.src !== "chosen") return null;
   const body = (booster ? Dx.bDiameter : Dx.diameter) * 1000;
@@ -278,7 +308,7 @@ function mountTooBig(Dx, booster) {
 /**
  * Writes the motor mount size note under Design notes (and warns when the mount is bigger than the body).
  */
-function renderMountNote() {
+export function renderMountNote() {
   const el = document.getElementById("mountsizenote");
   if (!el) return;
   const ms = mountSize(D, false),
@@ -295,22 +325,26 @@ function renderMountNote() {
 }
 // show motors that fit the mount first on the Motor tab
 // the first stage of a three-stage rocket, seen through the booster's field names (for its motor mount)
-const s1View = (Dx) => ({ ...Dx, ...Dx.s1, bMountSel: Dx.s1 && Dx.s1.mountSel != null ? Dx.s1.mountSel : "file" });
+export const s1View = (Dx) => ({
+  ...Dx,
+  ...Dx.s1,
+  bMountSel: Dx.s1 && Dx.s1.mountSel != null ? Dx.s1.mountSel : "file",
+});
 /**
  * Which stage the Motor tab is choosing for: tgtFirst (a three-stage rocket's first stage), tgtB (a booster
  * mount), tgtD (the design, or the first stage's view of it).
  */
-const tgtFirst = () => isThree(D) && motorTarget === "first",
+export const tgtFirst = () => isThree(D) && motorTarget === "first",
   tgtB = () => tgtFirst() || (!!D.twoStage && motorTarget === "booster"),
   tgtD = () => (tgtFirst() ? s1View(D) : D);
 /**
  * Names of the Motor tab's targets.
  */
-const TGT_NAME = { first: "First stage", booster: "Booster", sustainer: "Sustainer" };
+export const TGT_NAME = { first: "First stage", booster: "Booster", sustainer: "Sustainer" };
 /**
  * Sets the diameter filter to the mount size of the stage being chosen for.
  */
-function mountFilter() {
+export function mountFilter() {
   const ms = mountSize(tgtD(), tgtB());
   if (!ms) return;
   F.dia = allMotors().some((m) => Math.round(m.dia * 1000) === ms.cls) ? ms.cls : null;
@@ -320,11 +354,11 @@ function mountFilter() {
 /**
  * Draws the Motor tab: the stage picker, the selected motors, the extra motors and the motor list.
  */
-function renderMotors() {
+export function renderMotors() {
   const two = !!D.twoStage,
     three = isThree(D);
-  if (!two) motorTarget = "sustainer";
-  if (!three && motorTarget === "first") motorTarget = "booster";
+  if (!two) setMotorTarget("sustainer");
+  if (!three && motorTarget === "first") setMotorTarget("booster");
   const xkey = tgtFirst() ? "s1ExtraMotors" : two && motorTarget === "booster" ? "bExtraMotors" : "extraMotors",
     xlist = D[xkey] || (D[xkey] = []);
   if (pickSlot >= xlist.length) pickSlot = -1;
@@ -346,7 +380,7 @@ function renderMotors() {
     document.querySelectorAll("#mtarget button").forEach(
       (b) =>
         (b.onclick = () => {
-          motorTarget = b.dataset.t;
+          setMotorTarget(b.dataset.t);
           pickSlot = -1;
           mountFilter();
           renderMotors();
@@ -404,13 +438,13 @@ function renderMotors() {
         xlist[pickSlot].id = m.id;
         store.set("rfs-design", D);
       } else if (tgtFirst()) {
-        firstId = m.id;
+        setFirstId(m.id);
         store.set("rfs-b1motor", firstId);
       } else if (two && motorTarget === "booster") {
-        boostId = m.id;
+        setBoostId(m.id);
         store.set("rfs-bmotor", boostId);
       } else {
-        motorId = m.id;
+        setMotorId(m.id);
         store.set("rfs-motor", motorId);
       }
       if (old) mdSnap(tg0, old, m);
@@ -437,9 +471,9 @@ function renderMotors() {
   list.querySelectorAll(".del").forEach(
     (b) =>
       (b.onclick = () => {
-        USER_MOTORS = USER_MOTORS.filter((m) => m.id !== b.dataset.id);
+        setUSER_MOTORS(USER_MOTORS.filter((m) => m.id !== b.dataset.id));
         store.set("rfs-motors", USER_MOTORS);
-        if (motorId === b.dataset.id) motorId = DEFAULT_MOTOR;
+        if (motorId === b.dataset.id) setMotorId(DEFAULT_MOTOR);
         store.set("rfs-motor", motorId);
         renderMotors();
         markStale();
@@ -454,7 +488,28 @@ function renderMotors() {
   }
   cmpRender();
 }
-document.getElementById("moremotors").onclick = () => {
-  shown += 40;
-  renderMotors();
-};
+
+/**
+ * Sets pickSlot (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setPickSlot(v) {
+  return (pickSlot = v);
+}
+/**
+ * Sets shown (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setShown(v) {
+  return (shown = v);
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  F = Object.assign({ brand: "all", dia: null, sys: "all", q: "", sparky: "all" }, store.get("rfs-filter", {}));
+  document.getElementById("moremotors").onclick = () => {
+    shown += 40;
+    renderMotors();
+  };
+}

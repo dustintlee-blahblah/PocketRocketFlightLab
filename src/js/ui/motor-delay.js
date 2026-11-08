@@ -2,6 +2,19 @@
  * The Motor tab's motor configuration picker (for OpenRocket files with several) and Motor Delay, the one ejection
  * delay setting for each stage (see the note below), with the side view that shows which stage is being chosen for.
  */
+import { esc } from "../core/helpers.js";
+import { allMotors, curBoost, curFirst, curMotor, D, motorTarget, setMotorTarget } from "../design/defaults.js";
+import { findMotor } from "../motors/clusters.js";
+import { changed } from "./state.js";
+import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
+import { fullStack, isThree } from "../physics/simulate.js";
+import { bldMounts } from "../builder/model.js";
+import { lastSim } from "./results.js";
+import { setupCanvas } from "./charts.js";
+import { mountFilter, renderMotors, setPickSlot, TGT_NAME, tgtFirst } from "./motor-tab.js";
+import { loadDesignXml } from "../files/open-file.js";
+import { BLD, bldChanged } from "../builder/builder-ui.js";
+import { SOURCE } from "../files/save.js";
 /* ---------- motor configurations of an OpenRocket file (Motor tab) ---------- */
 /**
  * The motor configurations in an OpenRocket file, with a label from their motors and delays.
@@ -39,7 +52,7 @@ function orkConfigs(xml) {
 /**
  * Shows the configuration picker when the open .ork file has two or more configurations.
  */
-function cfgRender() {
+export function cfgRender() {
   const pn = document.getElementById("cfgpanel");
   if (!pn) return;
   const list = SOURCE && SOURCE.format === "ork" && SOURCE.text ? orkConfigs(SOURCE.text) : [];
@@ -56,15 +69,6 @@ function cfgRender() {
   document.getElementById("cfgnote").textContent =
     `${list.length} configurations in ${SOURCE.name || "the file"}. Choosing another reopens the rocket from the file with it; changes you haven't saved are replaced.`;
 }
-document.getElementById("cfgsel").addEventListener("change", async (e) => {
-  const id = e.target.value;
-  if (!SOURCE || !SOURCE.text) return;
-  const ok = await loadDesignXml(SOURCE.text, SOURCE.name, null, { cfg: id });
-  if (ok !== false) {
-    prToast("Motor configuration changed.");
-    cfgRender();
-  }
-});
 /* ---------- Motor Delay (Motor tab): the one ejection delay setting ----------
    It lives on the primary motor mount of the stage being chosen (the same mount bldSyncMotors puts the Motor tab's motor
    in), so it's saved with the design and read from OpenRocket and RockSim files; null is a plugged motor. */
@@ -72,7 +76,7 @@ document.getElementById("cfgsel").addEventListener("change", async (e) => {
  * The stage Motor Delay is set for: the Motor tab's target.
  * @returns {string} "sustainer", "booster" or "first"
  */
-function mdTarget() {
+export function mdTarget() {
   return tgtFirst() ? "first" : D.twoStage && motorTarget === "booster" ? "booster" : "sustainer";
 }
 /**
@@ -99,7 +103,7 @@ function mdHost(tg) {
  * @param {string} tg
  * @returns {object}
  */
-function mdMotor(tg) {
+export function mdMotor(tg) {
   return tg === "first" ? curFirst() : tg === "booster" ? curBoost() : curMotor();
 }
 /**
@@ -119,7 +123,7 @@ function mdGet(tg) {
  * @param {string} tg
  * @param {number|null} v
  */
-function mdSet(tg, v) {
+export function mdSet(tg, v) {
   v = v == null || !isFinite(v) ? null : Math.max(0, Math.round(v * 10) / 10);
   const h = mdHost(tg);
   if (h) {
@@ -144,7 +148,7 @@ function mdSet(tg, v) {
  * motors use it to separate stages or light the next motor), kept apart from plugged (no charge), as OpenRocket does;
  * catalog placeholders of 60 s or more are left out
  */
-function mdStock(m) {
+export function mdStock(m) {
   const p = String((m && m.delays) || "")
     .split(/[-,\s]+/)
     .filter(Boolean);
@@ -161,7 +165,7 @@ function mdStock(m) {
  *
  * a new motor: a stock delay of the old motor moves to the nearest one the new motor offers; plugged and custom times stay
  */
-function mdSnap(tg, oldM, newM) {
+export function mdSnap(tg, oldM, newM) {
   if (!oldM || !newM || oldM.id === newM.id) return;
   const v = mdGet(tg);
   if (v == null) return;
@@ -175,7 +179,7 @@ function mdSnap(tg, oldM, newM) {
 /**
  * Draws Motor Delay: the stock delays, plugged and custom, with the best delay from the last run.
  */
-function mdRender() {
+export function mdRender() {
   const sel = document.getElementById("mdsel");
   if (!sel) return;
   const tg = mdTarget(),
@@ -282,30 +286,6 @@ function mdRenderExtra(tg) {
     };
   });
 }
-{
-  const sel = document.getElementById("mdsel"),
-    ci = document.getElementById("mdcust"),
-    cf = document.getElementById("mdcustf");
-  sel.addEventListener("change", () => {
-    const tg = mdTarget();
-    if (sel.value === "C") {
-      sel.dataset.custom = "1";
-      cf.hidden = false;
-      const v = mdGet(tg);
-      ci.value = v == null ? "" : v;
-      ci.focus();
-      return;
-    }
-    sel.dataset.custom = "";
-    mdSet(tg, sel.value === "P" ? null : parseFloat(sel.value));
-  });
-  ci.addEventListener("change", () => {
-    const x = parseFloat(ci.value);
-    if (!isFinite(x) || x < 0) return;
-    sel.dataset.custom = "1";
-    mdSet(mdTarget(), x);
-  });
-}
 /**
  * Where each stage sits along the stack, for the side view.
  * @returns {Array[]} [target, from, to] in m from the nose tip
@@ -325,7 +305,7 @@ function mtargetRanges() {
 /**
  * Draws the Motor tab's side view of the stages, with the one being chosen for shaded.
  */
-function drawMtarget() {
+export function drawMtarget() {
   const cv = document.getElementById("mtargetcv");
   if (!cv || !D.twoStage || !cv.getBoundingClientRect().width) return;
   const { c, W, H } = setupCanvas(cv);
@@ -405,10 +385,48 @@ function drawMtarget() {
       x = (ev.clientX - r.left - ox) / sc,
       hit = mtargetRanges().find(([, a, b]) => x >= a && x < b);
     if (hit && hit[0] !== motorTarget) {
-      motorTarget = hit[0];
-      pickSlot = -1;
+      setMotorTarget(hit[0]);
+      setPickSlot(-1);
       mountFilter();
       renderMotors();
     }
   };
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("cfgsel").addEventListener("change", async (e) => {
+    const id = e.target.value;
+    if (!SOURCE || !SOURCE.text) return;
+    const ok = await loadDesignXml(SOURCE.text, SOURCE.name, null, { cfg: id });
+    if (ok !== false) {
+      prToast("Motor configuration changed.");
+      cfgRender();
+    }
+  });
+  {
+    const sel = document.getElementById("mdsel"),
+      ci = document.getElementById("mdcust"),
+      cf = document.getElementById("mdcustf");
+    sel.addEventListener("change", () => {
+      const tg = mdTarget();
+      if (sel.value === "C") {
+        sel.dataset.custom = "1";
+        cf.hidden = false;
+        const v = mdGet(tg);
+        ci.value = v == null ? "" : v;
+        ci.focus();
+        return;
+      }
+      sel.dataset.custom = "";
+      mdSet(tg, sel.value === "P" ? null : parseFloat(sel.value));
+    });
+    ci.addEventListener("change", () => {
+      const x = parseFloat(ci.value);
+      if (!isFinite(x) || x < 0) return;
+      sel.dataset.custom = "1";
+      mdSet(mdTarget(), x);
+    });
+  }
 }

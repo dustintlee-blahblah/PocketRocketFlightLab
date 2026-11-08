@@ -2,6 +2,13 @@
  * Ejection charges: black powder sizing for each recovery compartment of the design (from the builder's parts), and the
  * RockSim ejection-delay reader. The charge settings are saved with the design, inside its .ork file.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import { IN } from "../core/units-and-fin-edges.js";
+import { curMotor, D, units } from "../design/defaults.js";
+import { fmt, uname } from "../ui/units.js";
+import { BLD_NAMES, bldLayout } from "../builder/model.js";
+import { BLD, bldSave } from "../builder/builder-ui.js";
 /* ---------- ejection charge: black powder for a recovery compartment ----------
    Ideal gas: m = P·V / (R·T), with R = 22.16 ft·lbf/(lbm·°R) = 265.9 in·lbf/(lbm·°R) and T = 3307 °R for black powder's
    combustion gas (the figures most rocketry ejection calculators use; 15 psi in a 1 in² × 1 in volume ≈ 0.0061 g).
@@ -18,12 +25,12 @@ const BP_PIN = { "2-56": 35, "4-40": 50 }; // approximate shear strength of one 
  * are saved inside its .ork file. Settings from before this lived on the device; the open design takes them over once.
  * RockSim's EjectionDelay field: 0 or more is the delay in seconds (0 fires at burnout); negative (-1 plugged, -2) is no charge
  */
-const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
+export const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
 /**
  * Names of this app's extra files stored inside an .ork: ejection charges, fin edge types, and everything else the
  * .ork itself can't hold (STATE_ORK; build 256 kept only the launch settings, in LAUNCH_ORK).
  */
-const BP_ORK = "pocketrocket/ejection-charges.json",
+export const BP_ORK = "pocketrocket/ejection-charges.json",
   FIN_ORK = "pocketrocket/fin-edges.json",
   LAUNCH_ORK = "pocketrocket/launch.json",
   STATE_ORK = "pocketrocket/state.json";
@@ -379,7 +386,7 @@ function bpCompartments() {
 /**
  * Draws the Ejection Charges panel (after the one-time black powder warning is acknowledged).
  */
-function bpRender() {
+export function bpRender() {
   const out = document.getElementById("bpout");
   if (!out) return;
   // nothing is sized until the black powder warning has been acknowledged once
@@ -524,19 +531,6 @@ function bpCompSet(v, c) {
     all[c.key] || {},
   );
 }
-// the charge for each compartment of the design
-{
-  const c = document.getElementById("bpackchk"),
-    b = document.getElementById("bpackok");
-  c.addEventListener("change", () => {
-    b.disabled = !c.checked;
-  });
-  b.addEventListener("click", () => {
-    if (!c.checked) return;
-    store.set("rfs-bp-ack", { when: new Date().toISOString() });
-    bpRender();
-  });
-}
 /**
  * Writes the charge table for each compartment, with the substitute powders' loads.
  * @param {object[]} comps from bpCompartments
@@ -650,42 +644,60 @@ function bpRenderComps(comps, v, out) {
   document.getElementById("bpnote").textContent =
     `These settings are saved with the design, in its .ork file. A backup charge is usually 25–50% larger. Ground test every charge before flying.`;
 }
-{
-  const set = (k, f) => {
-    const v = BP.get();
-    if (!(v.d > 0)) v.d = Math.max(((typeof D !== "undefined" && D.diameter) || 0.054) - 2 * 0.0016, 0.005);
-    v[k] = f;
-    BP.set(v);
-    bpRender();
-  };
-  const num = (id, k, fromU) =>
-    document.getElementById(id).addEventListener("input", (e) => {
-      const x = parseFloat(e.target.value);
-      if (isFinite(x) && x > 0) set(k, fromU(x));
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  // the charge for each compartment of the design
+  {
+    const c = document.getElementById("bpackchk"),
+      b = document.getElementById("bpackok");
+    c.addEventListener("change", () => {
+      b.disabled = !c.checked;
     });
-  const L_ = (x) => (units === "imp" ? x * IN : x / 1000),
-    P_ = (x) => (units === "imp" ? x * 6894.757 : x * 1000);
-  document.getElementById("bp-d").addEventListener("input", (e) => {
-    const x = parseFloat(e.target.value);
-    if (isFinite(x) && x > 0) {
+    b.addEventListener("click", () => {
+      if (!c.checked) return;
+      store.set("rfs-bp-ack", { when: new Date().toISOString() });
+      bpRender();
+    });
+  }
+  {
+    const set = (k, f) => {
+      const v = BP.get();
+      if (!(v.d > 0)) v.d = Math.max(((typeof D !== "undefined" && D.diameter) || 0.054) - 2 * 0.0016, 0.005);
+      v[k] = f;
+      BP.set(v);
+      bpRender();
+    };
+    const num = (id, k, fromU) =>
+      document.getElementById(id).addEventListener("input", (e) => {
+        const x = parseFloat(e.target.value);
+        if (isFinite(x) && x > 0) set(k, fromU(x));
+      });
+    const L_ = (x) => (units === "imp" ? x * IN : x / 1000),
+      P_ = (x) => (units === "imp" ? x * 6894.757 : x * 1000);
+    document.getElementById("bp-d").addEventListener("input", (e) => {
+      const x = parseFloat(e.target.value);
+      if (isFinite(x) && x > 0) {
+        const w = BP.get();
+        const a = bpAftTube();
+        w.d = L_(x);
+        w.dManual = true;
+        w.dKey = a ? a.key : null;
+        BP.set(w);
+        bpRender();
+      }
+    });
+    num("bp-l", "l", L_);
+    num("bp-p", "p", P_);
+    document.getElementById("bp-n").addEventListener("change", (e) => set("n", +e.target.value));
+    document.getElementById("bpmode").addEventListener("click", () => {
       const w = BP.get();
-      const a = bpAftTube();
-      w.d = L_(x);
-      w.dManual = true;
-      w.dKey = a ? a.key : null;
+      w.manual = !w.manual;
       BP.set(w);
       bpRender();
-    }
-  });
-  num("bp-l", "l", L_);
-  num("bp-p", "p", P_);
-  document.getElementById("bp-n").addEventListener("change", (e) => set("n", +e.target.value));
-  document.getElementById("bpmode").addEventListener("click", () => {
-    const w = BP.get();
-    w.manual = !w.manual;
-    BP.set(w);
+    });
+    document.getElementById("bp-pin").addEventListener("change", (e) => set("pin", e.target.value));
     bpRender();
-  });
-  document.getElementById("bp-pin").addEventListener("change", (e) => set("pin", e.target.value));
-  bpRender();
+  }
 }

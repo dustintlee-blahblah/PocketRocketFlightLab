@@ -1,6 +1,20 @@
 /**
  * Writing the builder's design as an OpenRocket .ork document.
  */
+import { allMotors } from "../design/defaults.js";
+import { findMotor } from "../motors/clusters.js";
+import {
+  BLD_BULK,
+  BLD_BUTTONS,
+  BLD_LINE,
+  BLD_SURF,
+  bldId,
+  bldLayout,
+  bldMountR,
+  bldOvOn,
+  bldPts,
+  bldSettings,
+} from "./model.js";
 /* ---------- the .ork file ---------- */
 /**
  * The motor type OpenRocket uses to find a motor along with its name: single-use, reload or hybrid.
@@ -22,7 +36,7 @@ function orkMotorType(km) {
  * @param {object} [opts] options (configuration id, ...)
  * @returns {string} XML
  */
-function bldToOrk(model, L, opts = {}) {
+export function bldToOrk(model, L, opts = {}) {
   /**
    * A number as text, rounded to 10 significant digits.
    */

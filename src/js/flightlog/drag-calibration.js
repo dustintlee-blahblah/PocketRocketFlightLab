@@ -1,34 +1,40 @@
 /**
  * Drag calibration (see the note below).
  */
+import { store } from "../core/storage.js";
+import { D } from "../design/defaults.js";
+import { simulate } from "../physics/simulate.js";
+import { lastSim } from "../ui/results.js";
+import { flKey } from "./flight-log.js";
+import { SOURCE } from "../files/save.js";
 /* ---------- drag calibration ----------
    One drag multiplier for this rocket, fitted to the logged flights marked "Use for calibration" (see the Flight Log),
    kept on this device with the design's flight log. */
 /**
  * The storage key of the calibrations, by design.
  */
-var CAL_STORE = "rfs-cal";
+export var CAL_STORE = "rfs-cal";
 /**
  * The key a calibration was kept under before the flight log (file and rocket names).
  * @returns {string}
  *
  * before the flight log, a calibration was kept under the file and rocket names
  */
-function calKeyOld() {
+export function calKeyOld() {
   return `${(SOURCE && SOURCE.name) || ""}|${D.name || ""}`;
 }
 /**
  * The open design's calibration key (the same as its flight log's).
  * @returns {string}
  */
-function calKey() {
+export function calKey() {
   return flKey();
 }
 /**
  * The open design's calibration (moved from its old key if needed), or null.
  * @returns {{k:number}|null} k: the drag multiplier
  */
-function calGet() {
+export function calGet() {
   const m = store.get(CAL_STORE, {}),
     k = calKey();
   if (m[k]) return m[k];
@@ -45,7 +51,7 @@ function calGet() {
  * Saves (or with null, removes) the open design's calibration.
  * @param {object|null} v
  */
-function calSet(v) {
+export function calSet(v) {
   const m = store.get(CAL_STORE, {}),
     k = calKey();
   if (v) m[k] = v;
@@ -55,7 +61,7 @@ function calSet(v) {
 /**
  * Sets the design's drag multiplier from its calibration (1 without one).
  */
-function applyCal() {
+export function applyCal() {
   const c = calGet();
   D.dragScale = c && c.k > 0 ? c.k : 1;
 }
@@ -67,7 +73,7 @@ function applyCal() {
  *
  * the drag multiplier that makes a run reach the measured apogee (apogee falls as drag rises, so bisect)
  */
-function solveDragScale(target, ctx) {
+export function solveDragScale(target, ctx) {
   const { D: SD, L: SL, m, mb } = ctx || lastSim,
     apo = (k) => simulate({ ...SD, dragScale: k }, SL, m, mb, { noRef: true }).st.maxAlt;
   let lo = 0.5,

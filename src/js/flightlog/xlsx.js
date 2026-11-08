@@ -3,13 +3,46 @@
  * go straight into the log), the column-check box, log backups (JSON and CSV), the all-rockets flight list, and the
  * measured curves drawn over the chart.
  */
+import { esc } from "../core/helpers.js";
+import { D } from "../design/defaults.js";
+import { findMotor } from "../motors/clusters.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { inflate } from "../files/openrocket-import.js";
+import { lastSim, runAll } from "../ui/results.js";
+import { css, niceTicks, setupCanvas } from "../ui/charts.js";
+import { ALT_PRESS, altCompute, altParse } from "./altimeter-files.js";
+import {
+  altMode,
+  altP,
+  flAll,
+  flAltBox,
+  flAltis,
+  flCls,
+  flDate,
+  flDiff,
+  flEdit,
+  flLandTxt,
+  flList,
+  flMotorInfo,
+  flOpen,
+  flPct,
+  flPredBox,
+  flRealLand,
+  flSaveAll,
+  flShow,
+  renderFlightLog,
+  setAltMode,
+  setAltP,
+  setFlNow,
+} from "./flight-log.js";
+import { downloadsNS } from "../report/pdf-report.js";
 /* ---------- Excel (.xlsx) altimeter files: each worksheet becomes CSV text for the altimeter reader ---------- */
 /**
  * The entries of a zip archive (from its central directory).
  * @param {ArrayBuffer} buf
  * @returns {{name:string, off:number, csize:number, method:number}[]}
  */
-function zipEntries(buf) {
+export function zipEntries(buf) {
   const u8 = new Uint8Array(buf),
     dv = new DataView(buf);
   let eocd = -1;
@@ -41,7 +74,7 @@ function zipEntries(buf) {
  * @param {object} e entry
  * @returns {Promise<Uint8Array>}
  */
-async function zipData(buf, e) {
+export async function zipData(buf, e) {
   const u8 = new Uint8Array(buf),
     dv = new DataView(buf),
     lnl = dv.getUint16(e.off + 26, true),
@@ -157,8 +190,8 @@ async function xlsxSheets(buf) {
  * @param {File} file
  * @param {string} mode "new" (a new flight) or "form" (the flight in the form)
  */
-async function altOpenFile(file, mode) {
-  altMode = mode;
+export async function altOpenFile(file, mode) {
+  setAltMode(mode);
   try {
     const buf = await file.arrayBuffer(),
       u8 = new Uint8Array(buf);
@@ -204,7 +237,7 @@ async function altOpenFile(file, mode) {
       prToast(P.error);
       return;
     }
-    altP = P;
+    setAltP(P);
     altShow();
   } catch (e) {
     prToast("Couldn't read that file.");
@@ -214,11 +247,11 @@ async function altOpenFile(file, mode) {
 /**
  * A file shared to the app, waiting until the app is ready (disclaimer agreed, a design open).
  */
-var prPendingAlt = null;
+export var prPendingAlt = null;
 /**
  * Opens a file shared to the app from another app in the flight log.
  */
-function prIncomingGo() {
+export function prIncomingGo() {
   if (!prPendingAlt) return;
   const lg = document.getElementById("legal");
   if (lg && !lg.hidden) {
@@ -242,24 +275,6 @@ function prIncomingGo() {
   const fm = document.getElementById("flmodal");
   altOpenFile(f, fm && !fm.hidden && flEdit ? "form" : "new");
 }
-window.prIncoming = function () {
-  const A = window.PocketRocketApp;
-  if (!A || !A.takeIncoming) return;
-  const s = A.takeIncoming();
-  if (!s) return;
-  const k = s.indexOf("\n"),
-    name = s.slice(0, k),
-    b = atob(s.slice(k + 1)),
-    u = new Uint8Array(b.length);
-  for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
-  if (/\.(ork|rkt)$/i.test(name)) {
-    prToast("To open a design, use Open .ork / .rkt on the Rocket tab.");
-    return;
-  }
-  prPendingAlt = new File([u], name);
-  prIncomingGo();
-};
-setTimeout(() => window.prIncoming(), 600);
 
 /**
  * Draws the column check: the columns found and their units, for the user to confirm.
@@ -304,7 +319,7 @@ function altShow() {
       sh.onchange = () => {
         const np = P.sheets[+sh.value].P;
         if (np && !np.error) {
-          altP = np;
+          setAltP(np);
           altShow();
         }
       };
@@ -418,69 +433,6 @@ function altPreview() {
   document.getElementById("altleg").innerHTML =
     `<span style="--c:${css("--ink")}">Altimeter</span>${sim ? `<span style="--c:${css("--accent")}">This run's prediction</span>` : ""}`;
 }
-document.getElementById("altcancel").onclick = () => {
-  document.getElementById("altmodal").hidden = true;
-  altP = null;
-};
-document.getElementById("altok").onclick = () => {
-  if (!altR || altR.error) return;
-  const r = altR;
-  const a = {
-    brand: altP.brand.id === "other" ? "Altimeter" : altP.brand.name,
-    file: altP.fname,
-    samples: r.samples,
-    apo: r.apo,
-    vmax: r.vmax > 0 ? r.vmax : null,
-    vDer: r.vDer,
-    tApo: r.tApo,
-    tLand: r.tLand,
-    rateHigh: r.rateHigh,
-    rateLow: r.rateLow,
-    curve: r.curve,
-    ev: r.ev,
-    land: r.land,
-    map: {
-      ...altP.map,
-      cols: altP.map.t >= 0 ? [altP.cols[altP.map.t], altP.cols[altP.map.alt]] : [altP.cols[altP.map.alt]],
-    },
-  };
-  document.getElementById("altmodal").hidden = true;
-  // a date in the file name (2026-05-14, 20260514) is a good guess for the flight's date
-  const dm = altP.fname.match(/(20\d\d)[-_.]?([01]\d)[-_.]?([0-3]\d)/);
-  if (!(altMode === "form" && flEdit)) {
-    flOpen(null);
-    if (dm) document.getElementById("fl-date").value = `${dm[1]}-${dm[2]}-${dm[3]}`;
-  }
-  const first = !(flEdit.altis && flEdit.altis.length);
-  flEdit.altis = [...(flEdit.altis || []), a];
-  /**
-   * Fills a form field from the file's figures.
-   */
-  const set = (id, v, dim) => {
-    const e = document.getElementById(id);
-    if (e && v != null && isFinite(v) && (first || !e.value)) e.value = +toDisp(v, dim).toFixed(0);
-  };
-  set("fl-apo", r.apo, "alt");
-  if (r.vmax > 0 && !r.vDer) set("fl-vmax", r.vmax, "speed");
-  else if (r.vmax > 0) set("fl-vmax", r.vmax, "speed");
-  if (r.land) {
-    set("fl-ldist", r.land.dist, "alt");
-    const lb = document.getElementById("fl-lbrg");
-    if (lb && (first || !lb.value)) lb.value = Math.round(r.land.brg);
-  }
-  flAltBox();
-  flPredBox();
-  altP = null;
-};
-document.getElementById("fladd").onclick = () => flOpen(null);
-{
-  const inp = document.getElementById("flaltfile");
-  inp.onchange = () => {
-    const f = inp.files && inp.files[0];
-    inp.value = "";
-    if (f) altOpenFile(f, "new");
-  };
-}
 /* backups: the whole log as JSON (to bring back), or a CSV of the flights (for a spreadsheet) */
 /**
  * Saves a text file (downloads, Android app or browser).
@@ -510,28 +462,6 @@ async function flDownload(name, text) {
     prToast("Couldn't save the file.");
   }
 }
-document.getElementById("flexp").onclick = () => {
-  const all = flAll(),
-    n = Object.values(all).reduce((a, e) => a + (e.flights || []).length, 0);
-  if (!n) {
-    prToast("No flights logged yet.");
-    return;
-  }
-  flDownload(
-    `flight-log-${new Date().toISOString().slice(0, 10)}.json`,
-    JSON.stringify(
-      {
-        app: "Pocket Rocket Flight Lab",
-        kind: "flight-log",
-        version: 2,
-        exported: new Date().toISOString(),
-        designs: all,
-      },
-      null,
-      1,
-    ),
-  );
-};
 /**
  * The flights as CSV, one row each.
  * @param {Array[]} entries [rocket name, flight]
@@ -617,58 +547,6 @@ function flCsv(entries) {
   });
   return rows.map((r) => r.map(q).join(",")).join("\r\n");
 }
-document.getElementById("flcsv").onclick = () => {
-  const list = flList();
-  if (!list.length) {
-    prToast("No flights logged for this rocket yet.");
-    return;
-  }
-  flDownload(
-    `${(D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-")} flights.csv`,
-    flCsv(
-      list
-        .slice()
-        .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-        .map((f) => [D.name || "", f]),
-    ),
-  );
-};
-{
-  const inp = document.getElementById("flimp");
-  inp.onchange = async () => {
-    const f = inp.files && inp.files[0];
-    inp.value = "";
-    if (!f) return;
-    let j;
-    try {
-      j = JSON.parse(await f.text());
-    } catch (e) {
-      prToast("That isn't a flight log backup (a .json file exported from here).");
-      return;
-    }
-    if (!j || j.kind !== "flight-log" || !j.designs) {
-      prToast("That isn't a flight log backup (a .json file exported from here).");
-      return;
-    }
-    const all = flAll();
-    let add = 0;
-    for (const [k, e] of Object.entries(j.designs)) {
-      if (!e || !Array.isArray(e.flights)) continue;
-      const cur = all[k] || { name: e.name, file: e.file, flights: [] };
-      for (const fl of e.flights) {
-        if (fl && fl.id && !cur.flights.some((x) => x.id === fl.id)) {
-          cur.flights.push(fl);
-          add++;
-        }
-      }
-      all[k] = cur;
-    }
-    if (!flSaveAll(all)) return;
-    flNow = {};
-    renderFlightLog();
-    prToast(add ? `Added ${add} flight${add > 1 ? "s" : ""} from the backup` : "Those flights are already here");
-  };
-}
 /* every rocket's flights in one list, with totals by motor class */
 /**
  * A logged flight's motor class.
@@ -748,18 +626,6 @@ function flAllOpen() {
   }
   document.getElementById("flallmodal").hidden = false;
 }
-document.getElementById("flallbtn").onclick = flAllOpen;
-document.getElementById("flallclose").onclick = () => {
-  document.getElementById("flallmodal").hidden = true;
-};
-document.getElementById("flallcsv").onclick = () => {
-  const E = flAllEntries();
-  if (!E.length) {
-    prToast("No flights logged yet.");
-    return;
-  }
-  flDownload(`all flights ${new Date().toISOString().slice(0, 10)}.csv`, flCsv(E.slice().reverse()));
-};
 /**
  * The measured curves to draw over the chart (altitude or vertical velocity), one per altimeter.
  * @param {string} ser series
@@ -767,7 +633,7 @@ document.getElementById("flallcsv").onclick = () => {
  *
  * the measured curves over the chart's simulation (altitude or vertical velocity), one per altimeter
  */
-function flOverlay(ser) {
+export function flOverlay(ser) {
   if (!flShow || (ser !== "alt" && ser !== "vel")) return null;
   const f = flList().find((x) => x.id === flShow);
   if (!f) return null;
@@ -803,4 +669,176 @@ function flOverlay(ser) {
           : [],
     };
   });
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  window.prIncoming = function () {
+    const A = window.PocketRocketApp;
+    if (!A || !A.takeIncoming) return;
+    const s = A.takeIncoming();
+    if (!s) return;
+    const k = s.indexOf("\n"),
+      name = s.slice(0, k),
+      b = atob(s.slice(k + 1)),
+      u = new Uint8Array(b.length);
+    for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    if (/\.(ork|rkt)$/i.test(name)) {
+      prToast("To open a design, use Open .ork / .rkt on the Rocket tab.");
+      return;
+    }
+    prPendingAlt = new File([u], name);
+    prIncomingGo();
+  };
+  setTimeout(() => window.prIncoming(), 600);
+  document.getElementById("altcancel").onclick = () => {
+    document.getElementById("altmodal").hidden = true;
+    setAltP(null);
+  };
+  document.getElementById("altok").onclick = () => {
+    if (!altR || altR.error) return;
+    const r = altR;
+    const a = {
+      brand: altP.brand.id === "other" ? "Altimeter" : altP.brand.name,
+      file: altP.fname,
+      samples: r.samples,
+      apo: r.apo,
+      vmax: r.vmax > 0 ? r.vmax : null,
+      vDer: r.vDer,
+      tApo: r.tApo,
+      tLand: r.tLand,
+      rateHigh: r.rateHigh,
+      rateLow: r.rateLow,
+      curve: r.curve,
+      ev: r.ev,
+      land: r.land,
+      map: {
+        ...altP.map,
+        cols: altP.map.t >= 0 ? [altP.cols[altP.map.t], altP.cols[altP.map.alt]] : [altP.cols[altP.map.alt]],
+      },
+    };
+    document.getElementById("altmodal").hidden = true;
+    // a date in the file name (2026-05-14, 20260514) is a good guess for the flight's date
+    const dm = altP.fname.match(/(20\d\d)[-_.]?([01]\d)[-_.]?([0-3]\d)/);
+    if (!(altMode === "form" && flEdit)) {
+      flOpen(null);
+      if (dm) document.getElementById("fl-date").value = `${dm[1]}-${dm[2]}-${dm[3]}`;
+    }
+    const first = !(flEdit.altis && flEdit.altis.length);
+    flEdit.altis = [...(flEdit.altis || []), a];
+    /**
+     * Fills a form field from the file's figures.
+     */
+    const set = (id, v, dim) => {
+      const e = document.getElementById(id);
+      if (e && v != null && isFinite(v) && (first || !e.value)) e.value = +toDisp(v, dim).toFixed(0);
+    };
+    set("fl-apo", r.apo, "alt");
+    if (r.vmax > 0 && !r.vDer) set("fl-vmax", r.vmax, "speed");
+    else if (r.vmax > 0) set("fl-vmax", r.vmax, "speed");
+    if (r.land) {
+      set("fl-ldist", r.land.dist, "alt");
+      const lb = document.getElementById("fl-lbrg");
+      if (lb && (first || !lb.value)) lb.value = Math.round(r.land.brg);
+    }
+    flAltBox();
+    flPredBox();
+    setAltP(null);
+  };
+  document.getElementById("fladd").onclick = () => flOpen(null);
+  {
+    const inp = document.getElementById("flaltfile");
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      inp.value = "";
+      if (f) altOpenFile(f, "new");
+    };
+  }
+  document.getElementById("flexp").onclick = () => {
+    const all = flAll(),
+      n = Object.values(all).reduce((a, e) => a + (e.flights || []).length, 0);
+    if (!n) {
+      prToast("No flights logged yet.");
+      return;
+    }
+    flDownload(
+      `flight-log-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(
+        {
+          app: "Pocket Rocket Flight Lab",
+          kind: "flight-log",
+          version: 2,
+          exported: new Date().toISOString(),
+          designs: all,
+        },
+        null,
+        1,
+      ),
+    );
+  };
+  document.getElementById("flcsv").onclick = () => {
+    const list = flList();
+    if (!list.length) {
+      prToast("No flights logged for this rocket yet.");
+      return;
+    }
+    flDownload(
+      `${(D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-")} flights.csv`,
+      flCsv(
+        list
+          .slice()
+          .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+          .map((f) => [D.name || "", f]),
+      ),
+    );
+  };
+  {
+    const inp = document.getElementById("flimp");
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0];
+      inp.value = "";
+      if (!f) return;
+      let j;
+      try {
+        j = JSON.parse(await f.text());
+      } catch (e) {
+        prToast("That isn't a flight log backup (a .json file exported from here).");
+        return;
+      }
+      if (!j || j.kind !== "flight-log" || !j.designs) {
+        prToast("That isn't a flight log backup (a .json file exported from here).");
+        return;
+      }
+      const all = flAll();
+      let add = 0;
+      for (const [k, e] of Object.entries(j.designs)) {
+        if (!e || !Array.isArray(e.flights)) continue;
+        const cur = all[k] || { name: e.name, file: e.file, flights: [] };
+        for (const fl of e.flights) {
+          if (fl && fl.id && !cur.flights.some((x) => x.id === fl.id)) {
+            cur.flights.push(fl);
+            add++;
+          }
+        }
+        all[k] = cur;
+      }
+      if (!flSaveAll(all)) return;
+      setFlNow({});
+      renderFlightLog();
+      prToast(add ? `Added ${add} flight${add > 1 ? "s" : ""} from the backup` : "Those flights are already here");
+    };
+  }
+  document.getElementById("flallbtn").onclick = flAllOpen;
+  document.getElementById("flallclose").onclick = () => {
+    document.getElementById("flallmodal").hidden = true;
+  };
+  document.getElementById("flallcsv").onclick = () => {
+    const E = flAllEntries();
+    if (!E.length) {
+      prToast("No flights logged yet.");
+      return;
+    }
+    flDownload(`all flights ${new Date().toISOString().slice(0, 10)}.csv`, flCsv(E.slice().reverse()));
+  };
 }

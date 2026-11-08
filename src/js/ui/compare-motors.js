@@ -2,12 +2,51 @@
  * Compare motors: the rocket flown on every motor in the filtered list for the stage being chosen, as a sortable
  * table with each motor's apogee, speeds, stability and RSO result. Also the Motor tab's cluster panel.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import {
+  boostId,
+  curMotor,
+  D,
+  firstId,
+  L,
+  motorId,
+  motorTarget,
+  mstats,
+  setBoostId,
+  setFirstId,
+  setMotorId,
+  setMotorTarget,
+  units,
+} from "../design/defaults.js";
+import { clusterOf, findMotor, flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
+import { fmt, uname } from "./units.js";
+import { changed, markStale } from "./state.js";
+import { stability } from "../physics/aerodynamics.js";
+import { isThree, simulate, stackStability } from "../physics/simulate.js";
+import { lastSim, setLastSim } from "./results.js";
+import { rsoChecks } from "./rso-checklist.js";
+import { drawProfile } from "./charts.js";
+import {
+  F,
+  filterMotors,
+  motorFit,
+  pickSlot,
+  renderMotors,
+  saveFilter,
+  setPickSlot,
+  setShown,
+  TGT_NAME,
+  tgtB,
+  tgtD,
+  tgtFirst,
+} from "./motor-tab.js";
 /* ---------- compare motors: the rocket flown on every motor in the filtered list, for the stage being chosen ---------- */
 /**
  * Comparison state: rows, the inputs they were run for (key), sort column and direction, running, stop
  * requested, the row opened, and the target stage.
  */
-const CMP = { rows: null, key: null, sort: "I", dir: 1, running: false, stop: false, open: null, tgt: null };
+export const CMP = { rows: null, key: null, sort: "I", dir: 1, running: false, stop: false, open: null, tgt: null };
 /**
  * A key of everything the comparison depends on (design, conditions, target, filters), to tell when it's stale.
  * @returns {string}
@@ -54,12 +93,12 @@ function cmpFly(m) {
   let checks = [];
   const keep = lastSim;
   try {
-    lastSim = { mb, when: -1 };
+    setLastSim({ mb, when: -1 });
     checks = rsoChecks(st, S, ms, Dx, L);
   } catch (e) {
     checks = [];
   } finally {
-    lastSim = keep;
+    setLastSim(keep);
   }
   const bad = checks.filter((c) => c.s === "bad"),
     warn = checks.filter((c) => c.s === "warn"),
@@ -144,7 +183,7 @@ async function cmpRun() {
 /**
  * Draws the comparison table.
  */
-function cmpRender() {
+export function cmpRender() {
   const w = document.getElementById("cmpwrap"),
     note = document.getElementById("cmpnote");
   if (!w) return;
@@ -233,61 +272,23 @@ function cmpRender() {
         e.stopPropagation();
         const id = b.dataset.use;
         if (CMP.tgt === "first" && isThree(D)) {
-          firstId = id;
+          setFirstId(id);
           store.set("rfs-b1motor", firstId);
         } else if (CMP.tgt === "booster" && D.twoStage) {
-          boostId = id;
+          setBoostId(id);
           store.set("rfs-bmotor", boostId);
         } else {
-          motorId = id;
+          setMotorId(id);
           store.set("rfs-motor", motorId);
         }
-        pickSlot = -1;
-        motorTarget = CMP.tgt || motorTarget;
+        setPickSlot(-1);
+        setMotorTarget(CMP.tgt || motorTarget);
         CMP.key = cmpKey();
         renderMotors();
         markStale();
         drawProfile();
       }),
   );
-}
-document.getElementById("cmpgo").onclick = cmpRun;
-/* the message under the Rocket tab's buttons (what was opened, motors, import notes) starts folded to one line;
-   errors stay open. Every way of writing it is caught here, including notes added to it afterwards. */
-{
-  const box = document.getElementById("orkreport");
-  /**
-   * Folds or unfolds the message under the Rocket tab's buttons (see the note above).
-   */
-  const fold = () => {
-    for (const r of box.querySelectorAll(".report:not(.err)")) {
-      let body = r.querySelector(":scope>.rpbody");
-      if (!body) {
-        const b = r.querySelector(":scope>b"),
-          title = b ? b.textContent.trim() : r.textContent.trim().split(/(?<=\.)\s/)[0] || "Details";
-        const head = document.createElement("div");
-        head.className = "rphead";
-        head.innerHTML = `<span class="rpt"></span><button type="button" class="rsomore foldbtn" aria-expanded="false">Details</button>`;
-        head.querySelector(".rpt").textContent = title;
-        body = document.createElement("div");
-        body.className = "rpbody";
-        body.hidden = true;
-        while (r.firstChild) body.appendChild(r.firstChild);
-        r.appendChild(head);
-        r.appendChild(body);
-        const btn = head.querySelector("button");
-        btn.onclick = () => {
-          const o = btn.getAttribute("aria-expanded") !== "true";
-          btn.setAttribute("aria-expanded", String(o));
-          body.hidden = !o;
-          btn.textContent = o ? "Hide" : "Details";
-        };
-      } else
-        for (const n of [...r.childNodes])
-          if (!(n.classList && (n.classList.contains("rphead") || n.classList.contains("rpbody")))) body.appendChild(n);
-    }
-  };
-  new MutationObserver(fold).observe(box, { childList: true, subtree: true });
 }
 /**
  * Opens or folds the comparison section (remembered).
@@ -312,19 +313,13 @@ function cmpSum() {
   const open = document.getElementById("cmptog").getAttribute("aria-expanded") === "true";
   el.textContent = !open && CMP.running ? "running…" : "";
 }
-document.getElementById("cmptog").onclick = () =>
-  cmpFold(document.getElementById("cmptog").getAttribute("aria-expanded") !== "true");
-cmpFold(!!store.get("rfs-cmpopen", false));
-document.getElementById("cmpstop").onclick = () => {
-  CMP.stop = true;
-};
 /**
  * Draws the Motor tab's cluster panel: the main motor and each extra motor with its count and delay.
  * @param {boolean} two the stage being chosen for is part of a staged rocket
  * @param {object[]} xlist the stage's extra motors
  * @param {object} mainM the main motor
  */
-function renderCluster(two, xlist, mainM) {
+export function renderCluster(two, xlist, mainM) {
   const sel = document.getElementById("selmotor"),
     box = document.getElementById("cluster");
   sel.classList.toggle("on", xlist.length > 0 && pickSlot < 0);
@@ -337,7 +332,7 @@ function renderCluster(two, xlist, mainM) {
     b.setAttribute("aria-pressed", pickSlot < 0);
     b.textContent = pickSlot < 0 ? "Choose below" : "Change";
     b.onclick = () => {
-      pickSlot = -1;
+      setPickSlot(-1);
       renderMotors();
     };
     sel.firstElementChild.appendChild(b);
@@ -381,12 +376,12 @@ function renderCluster(two, xlist, mainM) {
     ch.setAttribute("aria-pressed", pickSlot === i);
     ch.textContent = pickSlot === i ? "Choose below" : "Change";
     ch.onclick = () => {
-      pickSlot = i;
+      setPickSlot(i);
       renderMotors();
     };
     row.querySelector('[data-a="remove"]').onclick = () => {
       xlist.splice(i, 1);
-      pickSlot = -1;
+      setPickSlot(-1);
       changed();
       renderMotors();
     };
@@ -406,19 +401,69 @@ function renderCluster(two, xlist, mainM) {
   add.textContent = `+ Add a motor${two ? " to the " + (TGT_NAME[motorTarget] || "Sustainer").toLowerCase() : ""}`;
   add.onclick = () => {
     xlist.push({ id: null, n: 1 });
-    pickSlot = xlist.length - 1;
+    setPickSlot(xlist.length - 1);
     changed();
     renderMotors();
   };
 }
 let fsT = null;
-document.getElementById("fsearch").addEventListener("input", (e) => {
-  clearTimeout(fsT);
-  fsT = setTimeout(() => {
-    F.q = e.target.value;
-    shown = 40;
-    saveFilter();
-    renderMotors();
-  }, 150);
-});
-if (F.dia == null && !store.get("rfs-filter", null)) F.dia = Math.round(curMotor().dia * 1000);
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("cmpgo").onclick = cmpRun;
+  /* the message under the Rocket tab's buttons (what was opened, motors, import notes) starts folded to one line;
+     errors stay open. Every way of writing it is caught here, including notes added to it afterwards. */
+  {
+    const box = document.getElementById("orkreport");
+    /**
+     * Folds or unfolds the message under the Rocket tab's buttons (see the note above).
+     */
+    const fold = () => {
+      for (const r of box.querySelectorAll(".report:not(.err)")) {
+        let body = r.querySelector(":scope>.rpbody");
+        if (!body) {
+          const b = r.querySelector(":scope>b"),
+            title = b ? b.textContent.trim() : r.textContent.trim().split(/(?<=\.)\s/)[0] || "Details";
+          const head = document.createElement("div");
+          head.className = "rphead";
+          head.innerHTML = `<span class="rpt"></span><button type="button" class="rsomore foldbtn" aria-expanded="false">Details</button>`;
+          head.querySelector(".rpt").textContent = title;
+          body = document.createElement("div");
+          body.className = "rpbody";
+          body.hidden = true;
+          while (r.firstChild) body.appendChild(r.firstChild);
+          r.appendChild(head);
+          r.appendChild(body);
+          const btn = head.querySelector("button");
+          btn.onclick = () => {
+            const o = btn.getAttribute("aria-expanded") !== "true";
+            btn.setAttribute("aria-expanded", String(o));
+            body.hidden = !o;
+            btn.textContent = o ? "Hide" : "Details";
+          };
+        } else
+          for (const n of [...r.childNodes])
+            if (!(n.classList && (n.classList.contains("rphead") || n.classList.contains("rpbody"))))
+              body.appendChild(n);
+      }
+    };
+    new MutationObserver(fold).observe(box, { childList: true, subtree: true });
+  }
+  document.getElementById("cmptog").onclick = () =>
+    cmpFold(document.getElementById("cmptog").getAttribute("aria-expanded") !== "true");
+  cmpFold(!!store.get("rfs-cmpopen", false));
+  document.getElementById("cmpstop").onclick = () => {
+    CMP.stop = true;
+  };
+  document.getElementById("fsearch").addEventListener("input", (e) => {
+    clearTimeout(fsT);
+    fsT = setTimeout(() => {
+      F.q = e.target.value;
+      setShown(40);
+      saveFilter();
+      renderMotors();
+    }, 150);
+  });
+  if (F.dia == null && !store.get("rfs-filter", null)) F.dia = Math.round(curMotor().dia * 1000);
+}

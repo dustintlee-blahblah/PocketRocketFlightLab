@@ -6,15 +6,25 @@ covers how to send a change.
 
 ## The shape of the app
 
-The app is one HTML page. `build.js` takes `src/index.html` and replaces each `@@include <file>` line with that file's
-text, giving `web/pocket-rocket-flight-lab.html`: the page, its CSS and about sixty JavaScript files in one document.
-The same page is the web version and, wrapped in an Android WebView, the Android app.
+The app is one HTML page. `build.js` takes `src/index.html`, puts the stylesheet in place of its `@@include` line, and
+bundles `src/js/main.js` and every module it imports (with esbuild) in place of its `@@bundle` line, giving
+`web/pocket-rocket-flight-lab.html`: the page, its CSS and its JavaScript in one document. The same page is the web
+version and, wrapped in an Android WebView, the Android app.
 
-- **Plain scripts, one global scope.** The JavaScript files aren't modules: they run in the order `src/index.html`
-  lists them and share top-level names. A file can use anything defined by a file listed before it, and functions
-  (which are hoisted) from anywhere. Check a new top-level name isn't used elsewhere: a second `let` or `const` of the
-  same name stops the page loading, and a second `function` silently replaces the first. `npm run lint` catches
-  top-level names nothing uses. Moving to ES modules is planned.
+- **ES modules.** Each file in `src/js/` and `src/data/` is a module: it imports what it uses from other modules by name
+  and exports what they need. ESLint checks every name (`no-undef`, unused imports), and `tools/unused-exports.js`
+  finds exports nothing uses.
+- **Loading a module only defines things.** A module's top level holds functions, classes and constants that need
+  nothing from outside it. What it does when the app opens (wiring up buttons, reading saved settings, the first
+  drawing) is in its exported `start()`. `src/js/main.js` imports every module, then calls the `start()`s in a fixed
+  order, the order the start-up depends on. Keep it that way: a top-level statement that calls into another module
+  could run before that module is ready.
+- **Shared state.** A few variables are shared across modules: the design `D`, the conditions `L`, the builder's
+  `BLD`, the last run `lastSim`, the chosen motors and so on. Other modules read them through their imports (always
+  the current value) and change them with the setter their module exports (`setD(...)`, `setLastSim(...)`), since an
+  imported name can't be assigned. Objects like `D` and `L` are also changed in place.
+- **`window.__pr`** is a live view of every module's exports, for the tests and the browser console. The tests open
+  the page with `window.PR_EXPOSE` set, which also makes each of them a global.
 - **No framework.** The UI is HTML in `src/index.html`, updated with plain DOM calls; drawings are `<canvas>`.
 - **Offline first.** Everything works without a network except the weather forecast (Open-Meteo) and, in the web
   version, the fonts and the PDF library from a CDN. The Android build bundles those (see `android/app/build.gradle`).

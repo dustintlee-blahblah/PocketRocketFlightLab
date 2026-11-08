@@ -39,6 +39,9 @@ jobs:
       - name: Regression test (built-in examples against tests/golden-snapshot.json)
         run: npm test
 
+      - name: UI smoke test (tabs, controls, builder; fails on any page error)
+        run: node tests/smoke.js
+
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag
 

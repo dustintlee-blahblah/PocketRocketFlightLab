@@ -2,6 +2,65 @@
  * The Rocket tab's parts builder: the parts tree, the editor for the selected part, the side view of the rocket,
  * undo and redo, the New design button, and turning the parts into the flight design (see the note below).
  */
+import { store } from "../core/storage.js";
+import { esc, jclone } from "../core/helpers.js";
+import { FIN_EDGES } from "../core/units-and-fin-edges.js";
+import { motorStats } from "../motors/motor-files.js";
+import {
+  allMotors,
+  boostId,
+  D,
+  firstId,
+  L,
+  motorId,
+  setBoostId,
+  setD,
+  setFirstId,
+  setMotorId,
+  setMotorTarget,
+  units,
+} from "../design/defaults.js";
+import { findMotor, flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
+import { DIMS, fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { bldInfo, infoBtn } from "../ui/field-help.js";
+import { bpRender } from "../recovery/ejection-charge.js";
+import { changed } from "../ui/state.js";
+import { atmosphere } from "../physics/atmosphere.js";
+import { noseR } from "../physics/geometry.js";
+import { aero, cdParts, stability } from "../physics/aerodynamics.js";
+import { airInertia, isThree, stackStability } from "../physics/simulate.js";
+import { parseOrk } from "../files/openrocket-import.js";
+import { matchMotor } from "../files/rocksim-import.js";
+import {
+  BLD_BODY,
+  BLD_BULK,
+  BLD_BUTTONS,
+  BLD_FINISH,
+  BLD_LINE,
+  BLD_NAMES,
+  BLD_SURF,
+  bldBodyR,
+  bldDefault,
+  bldId,
+  bldLayout,
+  bldLen,
+  bldMountMM,
+  bldMountR,
+  bldMounts,
+  bldNew,
+  bldOvOn,
+  bldPts,
+  bldSettings,
+} from "./model.js";
+import { bldToOrk } from "./ork-export.js";
+import { drawFinsInto, setupCanvas } from "../ui/charts.js";
+import { mountFilter, renderMotors } from "../ui/motor-tab.js";
+import { mdStock } from "../ui/motor-delay.js";
+import { showTab } from "../ui/events.js";
+import { applyCal } from "../flightlog/drag-calibration.js";
+import { setSource } from "../files/save.js";
+import { confirmUnsaved } from "../files/recent.js";
+import { markClean, renderTitle, setActive } from "../files/unsaved-changes.js";
 /* ---------- Rocket tab: the parts builder ----------
    The parts list (BLD) is the design. The flight code's summary (D) is worked out from it every time it
    changes, by writing the parts as an OpenRocket file and reading that back. */
@@ -9,9 +68,9 @@
  * BLD: the builder model (the design's parts); bldSel: the selected part's id; bldT: the debounce timer for typing;
  * bldHits: clickable areas of the side view; bldNewSure: when New design was last tapped.
  */
-var BLD = null,
-  bldSel = null,
-  bldT = null,
+export var BLD = null,
+  bldSel = null;
+var bldT = null,
   bldHits = [];
 /**
  * Nose and transition shapes offered: [shape, label].
@@ -50,7 +109,7 @@ const BLD_DEPLOY = [
   ["altitude", "At an altitude (main)"],
   ["launch", "On a timer after liftoff"],
 ];
-const BLD_ROOT = "__rocket";
+export const BLD_ROOT = "__rocket";
 /**
  * The fields a part shows in the editor: [key, label, kind, dimension or options].
  * @param {object} p part
@@ -387,7 +446,7 @@ function bldFind(id) {
 /**
  * Keeps the builder model on the device.
  */
-function bldSave() {
+export function bldSave() {
   try {
     localStorage.setItem("rfs-builder", JSON.stringify(BLD));
   } catch (e) {}
@@ -397,7 +456,7 @@ function bldSave() {
  *
  * the primary motor mount of each stage holds the motor chosen on the Motor tab
  */
-function bldSyncMotors() {
+export function bldSyncMotors() {
   if (!BLD) return;
   /**
    * Sets a stage's primary mount's motor, unless it's held by a choice already made there.
@@ -530,7 +589,7 @@ function bldCalcPartMass(id) {
  * OpenRocket does).
  * @returns {object[]} {id, k, v, all, calc}
  */
-function bldOffList() {
+export function bldOffList() {
   const out = [];
   const add = (id, O, k) => {
     if (O && O[k + "On"] === false && O[k] != null && isFinite(O[k]))
@@ -549,7 +608,7 @@ function bldOffList() {
  * Puts back overrides that were switched off when the file was saved (unless the file now has that override on).
  * @param {object[]} list from bldOffList
  */
-function bldOffApply(list) {
+export function bldOffApply(list) {
   if (!BLD || !Array.isArray(list)) return;
   for (const e of list) {
     if (!e || typeof e.k !== "string" || !isFinite(e.v)) continue;
@@ -571,7 +630,7 @@ function bldOffApply(list) {
  *
  * the flight code's summary, worked out from the parts
  */
-function bldDerive() {
+export function bldDerive() {
   bldSyncMotors();
   const prev = D,
     r = parseOrk(bldToOrk(BLD, L)),
@@ -641,7 +700,7 @@ function bldDerive() {
   }
   if (nd.s1 && prev && prev.s1 && prev.s1.mountSel != null) nd.s1.mountSel = prev.s1.mountSel;
   if (nd.s1 && bldOvOn(S, "s1DryInertia")) nd.s1.bDryInertia = S.s1DryInertia;
-  D = nd;
+  setD(nd);
   applyCal();
   return r;
 }
@@ -740,19 +799,11 @@ function bldUndoUI() {
   u.disabled = !(BLD && BLD_UNDO.ref === BLD && BLD_UNDO.past.length);
   r.disabled = !(BLD && BLD_UNDO.ref === BLD && BLD_UNDO.future.length);
 }
-document.addEventListener("keydown", (e) => {
-  if (!(e.ctrlKey || e.metaKey) || (e.key.toLowerCase() !== "z" && e.key.toLowerCase() !== "y")) return;
-  const tg = e.target && e.target.tagName;
-  if (tg === "INPUT" || tg === "TEXTAREA" || tg === "SELECT") return;
-  if (document.getElementById("v-rocket").hidden || !BLD) return;
-  e.preventDefault();
-  bldUndoStep(e.key.toLowerCase() === "y" || e.shiftKey ? 1 : -1);
-});
 /**
  * After a builder edit: saves, records history, and (for a complete change) rebuilds the design and redraws.
  * @param {boolean} full
  */
-function bldChanged(full) {
+export function bldChanged(full) {
   bldSave();
   bldHistNote(full);
   if (full) {
@@ -824,7 +875,7 @@ function bldDrawFinEdit() {
 /**
  * Redraws the whole builder: tree, add buttons, editor, side view and undo state.
  */
-function bldRender() {
+export function bldRender() {
   try {
     bpRender();
   } catch (e) {}
@@ -915,7 +966,7 @@ const bldTgt = (si) => (!(si > 0) ? "sustainer" : BLD && BLD.stages.length === 3
 function bldMountFilterFor(p) {
   const f = p && bldFind(p.id);
   if (!f) return;
-  motorTarget = bldTgt(f.si);
+  setMotorTarget(bldTgt(f.si));
   if (typeof mountFilter === "function") mountFilter();
   if (typeof renderMotors === "function") renderMotors();
 }
@@ -985,11 +1036,11 @@ function bldRenderAdd() {
           bldSel = t.id;
           if (third) {
             if (!findMotor(firstId) || Math.abs(findMotor(firstId).dia - findMotor(boostId)?.dia) > 0.002) {
-              firstId = boostId;
+              setFirstId(boostId);
               store.set("rfs-b1motor", firstId);
             }
           } else if (!findMotor(boostId) || Math.abs(findMotor(boostId).dia - findMotor(motorId)?.dia) > 0.002) {
-            boostId = motorId;
+            setBoostId(motorId);
             store.set("rfs-bmotor", boostId);
           }
         } else {
@@ -1136,7 +1187,7 @@ function bldRenderEdit() {
   el.querySelector("[data-gomotor]")?.addEventListener("click", (e) => {
     e.preventDefault();
     if (typeof mountFilter === "function") {
-      motorTarget = bldTgt(f.si);
+      setMotorTarget(bldTgt(f.si));
       mountFilter();
     }
     if (typeof renderMotors === "function") renderMotors();
@@ -1420,17 +1471,17 @@ function bldWire(el, p, mode, si) {
         if (m && isPrimary) {
           const tg = bldTgt(BLD.stages.indexOf(st));
           if (tg === "sustainer") {
-            motorId = m.id;
+            setMotorId(m.id);
             store.set("rfs-motor", motorId);
           } else if (tg === "first") {
-            firstId = m.id;
+            setFirstId(m.id);
             store.set("rfs-b1motor", firstId);
           } else {
-            boostId = m.id;
+            setBoostId(m.id);
             store.set("rfs-bmotor", boostId);
           }
           if (typeof mountFilter === "function") {
-            motorTarget = tg;
+            setMotorTarget(tg);
             mountFilter();
           }
           if (typeof renderMotors === "function") renderMotors();
@@ -1518,7 +1569,7 @@ function bldWire(el, p, mode, si) {
 /**
  * Draws the side view of the rocket with its parts, CG and CP, and records the clickable areas.
  */
-function bldDraw() {
+export function bldDraw() {
   const cv = document.getElementById("bldcv");
   if (!cv || !BLD || !cv.getBoundingClientRect().width) return;
   const { c, W, H } = setupCanvas(cv),
@@ -1961,14 +2012,14 @@ function bldPick(ev) {
  *
  * a new design from scratch: a basic flyable rocket to change
  */
-function bldNewDesign() {
+export function bldNewDesign() {
   BLD = bldDefault();
   bldSel = BLD.stages[0].parts[0].id;
   const fit = allMotors()
     .filter((m) => Math.abs(m.dia - 0.029) < 0.0008)
     .sort((a, b) => Math.abs(motorStats(a).I - 120) - Math.abs(motorStats(b).I - 120))[0];
   if (fit) {
-    motorId = fit.id;
+    setMotorId(fit.id);
     store.set("rfs-motor", motorId);
   }
   setSource(null);
@@ -1986,12 +2037,11 @@ function bldNewDesign() {
   bldRender();
   changed();
   if (typeof renderMotors === "function") {
-    motorTarget = "sustainer";
+    setMotorTarget("sustainer");
     mountFilter();
     renderMotors();
   }
 }
-document.getElementById("bldcv").addEventListener("click", bldPick);
 /** Shows or hides the full stats under the side view. */
 function bldStatsToggle() {
   bldStatsOpen = !bldStatsOpen;
@@ -1999,28 +2049,57 @@ function bldStatsToggle() {
   st.classList.toggle("open", bldStatsOpen);
   st.setAttribute("aria-expanded", String(bldStatsOpen));
 }
-document.getElementById("bldstats").addEventListener("click", bldStatsToggle);
-document.getElementById("bldstats").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") {
+
+/**
+ * Sets BLD (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setBLD(v) {
+  return (BLD = v);
+}
+/**
+ * Sets bldSel (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setBldSel(v) {
+  return (bldSel = v);
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.addEventListener("keydown", (e) => {
+    if (!(e.ctrlKey || e.metaKey) || (e.key.toLowerCase() !== "z" && e.key.toLowerCase() !== "y")) return;
+    const tg = e.target && e.target.tagName;
+    if (tg === "INPUT" || tg === "TEXTAREA" || tg === "SELECT") return;
+    if (document.getElementById("v-rocket").hidden || !BLD) return;
     e.preventDefault();
-    bldStatsToggle();
-  }
-});
-window.addEventListener("resize", () => {
-  if (BLD) {
-    bldDraw();
-    bldDrawFinEdit();
-  }
-});
-// the Rocket tab's New design, Undo and Redo buttons
-document.getElementById("handdesign").onclick = bldNewDesign;
-document.getElementById("bldundo").onclick = () => bldUndoStep(-1);
-document.getElementById("bldredo").onclick = () => bldUndoStep(1);
-document.getElementById("newdesign").onclick = () => {
-  // starting over closes the open design: offer to save its changes first
-  confirmUnsaved(() => {
-    document.getElementById("savemsg").innerHTML = "";
-    bldNewDesign();
-    window.scrollTo({ top: 0 });
-  }, "starting a new design");
-};
+    bldUndoStep(e.key.toLowerCase() === "y" || e.shiftKey ? 1 : -1);
+  });
+  document.getElementById("bldcv").addEventListener("click", bldPick);
+  document.getElementById("bldstats").addEventListener("click", bldStatsToggle);
+  document.getElementById("bldstats").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      bldStatsToggle();
+    }
+  });
+  window.addEventListener("resize", () => {
+    if (BLD) {
+      bldDraw();
+      bldDrawFinEdit();
+    }
+  });
+  // the Rocket tab's New design, Undo and Redo buttons
+  document.getElementById("handdesign").onclick = bldNewDesign;
+  document.getElementById("bldundo").onclick = () => bldUndoStep(-1);
+  document.getElementById("bldredo").onclick = () => bldUndoStep(1);
+  document.getElementById("newdesign").onclick = () => {
+    // starting over closes the open design: offer to save its changes first
+    confirmUnsaved(() => {
+      document.getElementById("savemsg").innerHTML = "";
+      bldNewDesign();
+      window.scrollTo({ top: 0 });
+    }, "starting a new design");
+  };
+}

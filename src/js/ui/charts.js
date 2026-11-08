@@ -2,12 +2,23 @@
  * Drawing: the canvas helpers, the flight chart and its series buttons, the weathercocking cone view, fins drawn to
  * scale, and the rocket's side view.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import { FIN_EDGES, IN } from "../core/units-and-fin-edges.js";
+import { series, setSeries, units } from "../design/defaults.js";
+import { fmt, fromDisp, toDisp, uname } from "./units.js";
+import { finGeom } from "../physics/aerodynamics.js";
+import { lastSim } from "./results.js";
+import { SERIES } from "./rso-checklist.js";
+import { flOverlay } from "../flightlog/xlsx.js";
+import { bldDraw } from "../builder/builder-ui.js";
+import { drawMCInto } from "../physics/monte-carlo.js";
 /**
  * Sizes a canvas for its displayed size and the screen's pixel ratio.
  * @param {HTMLCanvasElement} cv
  * @returns {{c:CanvasRenderingContext2D, W:number, H:number}} the context (scaled to CSS pixels) and size
  */
-function setupCanvas(cv) {
+export function setupCanvas(cv) {
   const r = cv.getBoundingClientRect(),
     dpr = window.devicePixelRatio || 1;
   cv.width = Math.max(1, r.width * dpr);
@@ -21,7 +32,7 @@ function setupCanvas(cv) {
  * @param {string} v property name, e.g. "--accent"
  * @returns {string}
  */
-function css(v) {
+export function css(v) {
   return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 }
 /**
@@ -31,7 +42,7 @@ function css(v) {
  * @param {number} [n=5] about how many ticks
  * @returns {number[]} tick values covering min to max
  */
-function niceTicks(min, max, n = 5) {
+export function niceTicks(min, max, n = 5) {
   const span = max - min || 1;
   const step0 = span / n;
   const mag = Math.pow(10, Math.floor(Math.log10(step0)));
@@ -45,14 +56,14 @@ function niceTicks(min, max, n = 5) {
 /**
  * Draws the chart's series buttons.
  */
-function renderSeries() {
+export function renderSeries() {
   document.getElementById("series").innerHTML = Object.entries(SERIES)
     .map(([k, [n]]) => `<button data-s="${k}" aria-pressed="${k === series}">${n}</button>`)
     .join("");
   document.querySelectorAll("#series button").forEach(
     (b) =>
       (b.onclick = () => {
-        series = b.dataset.s;
+        setSeries(b.dataset.s);
         CHART_CUR.t = null;
         store.set("rfs-series", series);
         renderSeries();
@@ -145,7 +156,7 @@ function drawChartCursor(c, g) {
  * @param {object} st flight summary
  * @returns {Array[]} [time, label]
  */
-function chartEvents(st) {
+export function chartEvents(st) {
   const main = [st.tMain && st.tMain !== st.tApo && st.tMain !== st.tDeploy ? st.tMain : null, "Main"];
   const dep = [
     st.tDeploy != null && st.tApo != null && Math.abs(st.tDeploy - st.tApo) > 0.3 ? st.tDeploy : null,
@@ -172,7 +183,7 @@ function chartEvents(st) {
 /**
  * Draws the flight chart for the chosen series (or the cone or landing views).
  */
-function drawChart() {
+export function drawChart() {
   if (!lastSim) return;
   const cv = document.getElementById("chart");
   cv.classList.toggle("tall", series === "land");
@@ -487,56 +498,12 @@ function drawChart() {
       .map((e) => `<span style="--c:var(--muted)">${e[1]} ${e[0].toFixed(1)} s</span>`)
       .join("");
 }
-// touch (or click, or drag) the flight chart to read its values at a time; touch the line again to clear it
-{
-  const cv = document.getElementById("chart");
-  let down = null;
-  const tAt = (e) => {
-    const g = CHART_CUR.geo,
-      r = cv.getBoundingClientRect();
-    if (!g) return null;
-    const t = ((e.clientX - r.left - g.padL) / (g.W - g.padL - g.padR)) * g.x1;
-    return Math.min(Math.max(t, 0), g.x1);
-  };
-  const isTime = () => lastSim && series !== "cone" && series !== "land";
-  cv.addEventListener("pointerdown", (e) => {
-    if (!isTime() || !CHART_CUR.geo) return;
-    const t = tAt(e),
-      g = CHART_CUR.geo,
-      px = (dt) => (Math.abs(dt) / g.x1) * (g.W - g.padL - g.padR);
-    down = { x: e.clientX, y: e.clientY, clear: CHART_CUR.t != null && px(t - CHART_CUR.t) < 10, moved: false };
-    if (!down.clear) {
-      CHART_CUR.t = t;
-      drawChart();
-    }
-    try {
-      cv.setPointerCapture(e.pointerId);
-    } catch (err) {}
-  });
-  cv.addEventListener("pointermove", (e) => {
-    if (!down) return;
-    if (Math.abs(e.clientX - down.x) > 4) down.moved = true;
-    if (down.moved) {
-      CHART_CUR.t = tAt(e);
-      drawChart();
-    }
-  });
-  const up = () => {
-    if (down && down.clear && !down.moved) {
-      CHART_CUR.t = null;
-      drawChart();
-    }
-    down = null;
-  };
-  cv.addEventListener("pointerup", up);
-  cv.addEventListener("pointercancel", () => (down = null));
-}
 /**
  * Writes the highest wind (from the wind sweep) that keeps the airframe inside the safety cone while the motor burns.
  *
  * the highest wind (from the wind sweep) that keeps the airframe inside the cone while the motor burns
  */
-function coneWindNote() {
+export function coneWindNote() {
   const RL = lastSim.L,
     cone = RL.cone ?? 20,
     rows = lastSim.windTable.filter((r) => !r.error && r.powerTilt != null);
@@ -705,7 +672,7 @@ function drawConeChart(c, W, H) {
  * @param {string} noteId note element id
  * @param {object} FS fin set: n, a (root), b (tip), s (span), sw (sweep), t, aft, edge, pts...
  */
-function drawFinsInto(cvId, noteId, FS) {
+export function drawFinsInto(cvId, noteId, FS) {
   const cv = document.getElementById(cvId);
   if (!cv || !cv.getBoundingClientRect().width) return;
   const { c, W, H } = setupCanvas(cv);
@@ -875,6 +842,55 @@ function drawFinsInto(cvId, noteId, FS) {
 /**
  * Draws the rocket's side view (the builder's side view and stability readout).
  */
-function drawProfile() {
+export function drawProfile() {
   if (typeof bldDraw === "function") bldDraw();
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  // touch (or click, or drag) the flight chart to read its values at a time; touch the line again to clear it
+  {
+    const cv = document.getElementById("chart");
+    let down = null;
+    const tAt = (e) => {
+      const g = CHART_CUR.geo,
+        r = cv.getBoundingClientRect();
+      if (!g) return null;
+      const t = ((e.clientX - r.left - g.padL) / (g.W - g.padL - g.padR)) * g.x1;
+      return Math.min(Math.max(t, 0), g.x1);
+    };
+    const isTime = () => lastSim && series !== "cone" && series !== "land";
+    cv.addEventListener("pointerdown", (e) => {
+      if (!isTime() || !CHART_CUR.geo) return;
+      const t = tAt(e),
+        g = CHART_CUR.geo,
+        px = (dt) => (Math.abs(dt) / g.x1) * (g.W - g.padL - g.padR);
+      down = { x: e.clientX, y: e.clientY, clear: CHART_CUR.t != null && px(t - CHART_CUR.t) < 10, moved: false };
+      if (!down.clear) {
+        CHART_CUR.t = t;
+        drawChart();
+      }
+      try {
+        cv.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!down) return;
+      if (Math.abs(e.clientX - down.x) > 4) down.moved = true;
+      if (down.moved) {
+        CHART_CUR.t = tAt(e);
+        drawChart();
+      }
+    });
+    const up = () => {
+      if (down && down.clear && !down.moved) {
+        CHART_CUR.t = null;
+        drawChart();
+      }
+      down = null;
+    };
+    cv.addEventListener("pointerup", up);
+    cv.addEventListener("pointercancel", () => (down = null));
+  }
 }

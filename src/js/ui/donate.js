@@ -1,6 +1,9 @@
 /**
  * Donations (see the note below) and opening outside links.
  */
+import { store } from "../core/storage.js";
+import { PROFILE } from "../design/defaults.js";
+import { lastSim } from "./results.js";
 /* ---------- donations (Venmo) ----------
    A "Support the app" card in Settings is always there. Once, after someone has got real use from the app (their 10th
    launch, or their first saved flight report), a single line shows above the flight report; closing it or tapping
@@ -32,15 +35,11 @@ function openLink(url) {
  *
  * the flight report shows the flier's profile; say so when this copy of the app has none
  */
-function profNoteRender() {
+export function profNoteRender() {
   const n = document.getElementById("exportprof");
   if (!n) return;
   n.hidden = !!(PROFILE.name || PROFILE.club || PROFILE.nar || PROFILE.tra || PROFILE.cert);
 }
-document.getElementById("exportprofbtn").addEventListener("click", (e) => {
-  e.stopPropagation();
-  if (window.prOpenProfile) window.prOpenProfile();
-});
 /**
  * Hides the support line for good.
  */
@@ -52,7 +51,7 @@ function supDone() {
 /**
  * Shows the support line once the app has had real use (see the note above).
  */
-function supRender() {
+export function supRender() {
   const l = document.getElementById("supline");
   if (!l) return;
   const v = store.get("rfs-support", {});
@@ -62,7 +61,7 @@ function supRender() {
  * Counts a launch or notes a saved report, for the support line.
  * @param {string} k "run", or another milestone
  */
-function supNote(k) {
+export function supNote(k) {
   const v = store.get("rfs-support", {});
   if (v.done) return;
   if (k === "run") v.runs = (v.runs || 0) + 1;
@@ -70,19 +69,28 @@ function supNote(k) {
   store.set("rfs-support", v);
   supRender();
 }
-document.querySelectorAll("[data-venmo],[data-paypal]").forEach((b) =>
-  b.addEventListener("click", () => {
-    openLink(b.hasAttribute("data-paypal") ? PAYPAL_URL : VENMO_URL);
-    if (b.closest("#supline")) supDone();
-  }),
-);
-document.getElementById("supx").onclick = supDone;
-{
-  const b = document.getElementById("s-supbtn"),
-    p = document.getElementById("s-sup");
-  b.onclick = () => {
-    const o = p.hidden;
-    p.hidden = !o;
-    b.setAttribute("aria-expanded", String(o));
-  };
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("exportprofbtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (window.prOpenProfile) window.prOpenProfile();
+  });
+  document.querySelectorAll("[data-venmo],[data-paypal]").forEach((b) =>
+    b.addEventListener("click", () => {
+      openLink(b.hasAttribute("data-paypal") ? PAYPAL_URL : VENMO_URL);
+      if (b.closest("#supline")) supDone();
+    }),
+  );
+  document.getElementById("supx").onclick = supDone;
+  {
+    const b = document.getElementById("s-supbtn"),
+      p = document.getElementById("s-sup");
+    b.onclick = () => {
+      const o = p.hidden;
+      p.hidden = !o;
+      b.setAttribute("aria-expanded", String(o));
+    };
+  }
 }

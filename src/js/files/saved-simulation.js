@@ -1,6 +1,26 @@
 /**
  * A run written into the design file as a saved simulation (see the note below).
  */
+import { store } from "../core/storage.js";
+import { b64ToU8, esc, jclone } from "../core/helpers.js";
+import { boostId, D, firstId, L, motorId } from "../design/defaults.js";
+import { findMotor, flightBoost, flightMotor } from "../motors/clusters.js";
+import { BP_ORK, FIN_ORK, LAUNCH_ORK, STATE_ORK } from "../recovery/ejection-charge.js";
+import { isThree, simulate } from "../physics/simulate.js";
+import { BLD_APP_SETTINGS } from "../builder/model.js";
+import { bldToOrk } from "../builder/ork-export.js";
+import { bldProblems } from "../builder/ork-read.js";
+import { bldMergeOrk, rktPartId } from "../builder/ork-merge.js";
+import { siteCur } from "../ui/launch-sites.js";
+import { CAL_STORE, calGet, calKey } from "../flightlog/drag-calibration.js";
+import { flAll, flId, flKey, flList, flMotorName, flSaveAll, setFlNow } from "../flightlog/flight-log.js";
+import { zipData, zipEntries } from "../flightlog/xlsx.js";
+import { BLD, bldOffList, bldSel, bldSyncMotors, setBldSel } from "../builder/builder-ui.js";
+import { ORK_CFG, setSource, SOURCE } from "./save.js";
+import { recentPut, recentSaved, renderRecent } from "./recent.js";
+import { isAndroidApp, zipDeflate, zipStore } from "./zip.js";
+import { askName, askOverwrite, markClean, renderSavePanel } from "./unsaved-changes.js";
+import { bufToB64, downloadsNS } from "../report/pdf-report.js";
 /* ---------- a run written into the design file as a saved simulation ----------
    OpenRocket: a new <simulation> with its results summary, events and time history (OpenRocket opens it as a finished simulation).
    (A design opened from a RockSim file is saved as an .ork first; RockSim files are only read.) Runs saved from here are named "Pocket Rocket: …", so the app
@@ -16,7 +36,7 @@ let SIM_LAST_NAME = "";
  * @param {string} s
  * @returns {string}
  */
-function prHash(s) {
+export function prHash(s) {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16) + ":" + s.length;
@@ -71,7 +91,7 @@ function prStateNow(text, runs = {}) {
  * @param {object[]|null} extras SOURCE.extras
  * @returns {Promise<object|null>}
  */
-async function prStateRead(buf, extras) {
+export async function prStateRead(buf, extras) {
   const get = async (nm) => {
     try {
       if (buf) {
@@ -355,7 +375,7 @@ function prCarryLog(oldFl, oldCal, move) {
       all[nf] = cur;
       if (move) delete all[oldFl];
       flSaveAll(all);
-      flNow = {};
+      setFlNow({});
     }
   }
   if (nc !== oldCal) {
@@ -374,7 +394,7 @@ function prCarryLog(oldFl, oldCal, move) {
  * @param {{name:string, copyName:string}} [opts] the name for a first save, or for a copy
  * @returns {Promise<boolean>} true if saved
  */
-async function saveDesignFile(asNew, opts = {}) {
+export async function saveDesignFile(asNew, opts = {}) {
   // the first Save changes of a new design, or of a design opened from a RockSim file: it becomes an .ork file
   // (under the name just given, or the .rkt file's name), and later saves go into it. A RockSim file is only ever read.
   const fromRkt = !asNew && !!SOURCE && SOURCE.format === "rkt" && !opts.copyName;
@@ -405,7 +425,7 @@ async function saveDesignFile(asNew, opts = {}) {
       const fix = (o) => {
         const m = /^rkt:(\d+)$/.exec(o.id || "");
         if (m) {
-          if (bldSel === o.id) bldSel = rktPartId(+m[1]);
+          if (bldSel === o.id) setBldSel(rktPartId(+m[1]));
           o.id = rktPartId(+m[1]);
         }
       };
@@ -647,29 +667,34 @@ async function saveDesignFile(asNew, opts = {}) {
   renderSavePanel();
   return ok;
 }
-// Save this run: the last run written into the design file as a saved simulation
-document.getElementById("simsave").onclick = async () => {
-  if (!SOURCE) {
-    prToast("Save the design to a file first (Rocket tab), then runs can be saved into it.");
-    return;
-  }
-  // an .ork file in the Android app is written over in place: ask first, or save a copy with the run in it
-  if (SOURCE.format === "ork" && isAndroidApp()) {
-    const a = await askOverwrite(SOURCE.name);
-    if (!a) return;
-    if (a === "copy") {
-      askName("copy", { addSim: true });
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  // Save this run: the last run written into the design file as a saved simulation
+  document.getElementById("simsave").onclick = async () => {
+    if (!SOURCE) {
+      prToast("Save the design to a file first (Rocket tab), then runs can be saved into it.");
       return;
     }
-  }
-  const b = document.getElementById("simsave");
-  b.disabled = true;
-  try {
-    const ok = await saveDesignFile(false, { addSim: true });
-    const t = (document.getElementById("savemsg").textContent || "").trim();
-    const sn = (window.prLastSimNote || "").trim();
-    prToast(ok && /added/.test(sn) ? `Saved this run into ${SOURCE.name}.` : ok && sn ? sn : t || "Not saved.");
-  } finally {
-    b.disabled = !SOURCE;
-  }
-};
+    // an .ork file in the Android app is written over in place: ask first, or save a copy with the run in it
+    if (SOURCE.format === "ork" && isAndroidApp()) {
+      const a = await askOverwrite(SOURCE.name);
+      if (!a) return;
+      if (a === "copy") {
+        askName("copy", { addSim: true });
+        return;
+      }
+    }
+    const b = document.getElementById("simsave");
+    b.disabled = true;
+    try {
+      const ok = await saveDesignFile(false, { addSim: true });
+      const t = (document.getElementById("savemsg").textContent || "").trim();
+      const sn = (window.prLastSimNote || "").trim();
+      prToast(ok && /added/.test(sn) ? `Saved this run into ${SOURCE.name}.` : ok && sn ? sn : t || "Not saved.");
+    } finally {
+      b.disabled = !SOURCE;
+    }
+  };
+}

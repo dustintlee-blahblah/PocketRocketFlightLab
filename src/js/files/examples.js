@@ -1,6 +1,14 @@
 /**
  * The example rockets: the lists, and opening one as its own copy.
  */
+import { b64ToU8, esc } from "../core/helpers.js";
+import { D } from "../design/defaults.js";
+import { renderForms } from "../ui/forms.js";
+import { inflate, unzipOrk } from "./openrocket-import.js";
+import { openDesignAsk } from "./open-file.js";
+import { BLD, bldRender, bldSave } from "../builder/builder-ui.js";
+import { confirmUnsaved, renderRecent } from "./recent.js";
+import { EXAMPLES } from "../../data/examples.js";
 /**
  * Draws the example rockets lists.
  */
@@ -20,7 +28,7 @@ function renderExamples() {
  *
  * an example opens like a file: its own copy, so nothing you change touches the example (Save changes saves a new .ork)
  */
-async function openExample(i) {
+export async function openExample(i) {
   const e = EXAMPLES[i],
     rep = document.getElementById("orkreport");
   if (!e) return;
@@ -54,14 +62,19 @@ async function openExample(i) {
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
   }
 }
-{
-  const click = (ev) => {
-    const o = ev.target.closest("[data-ex]");
-    if (!o) return;
-    const i = +o.dataset.ex;
-    confirmUnsaved(() => openExample(i), "opening an example");
-  };
-  document.getElementById("exlist").addEventListener("click", click);
-  document.getElementById("exlist2").addEventListener("click", click);
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  {
+    const click = (ev) => {
+      const o = ev.target.closest("[data-ex]");
+      if (!o) return;
+      const i = +o.dataset.ex;
+      confirmUnsaved(() => openExample(i), "opening an example");
+    };
+    document.getElementById("exlist").addEventListener("click", click);
+    document.getElementById("exlist2").addEventListener("click", click);
+  }
+  renderExamples();
 }
-renderExamples();

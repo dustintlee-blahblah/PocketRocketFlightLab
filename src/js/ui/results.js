@@ -2,15 +2,31 @@
  * Results: running the flight (with the wind table and Monte Carlo inputs), and the Results tab's tiles, staging
  * timeline and ejection charge list.
  */
+import { esc } from "../core/helpers.js";
+import { D, L, units } from "../design/defaults.js";
+import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
+import { fmt, fromDisp, uname } from "./units.js";
+import { stability } from "../physics/aerodynamics.js";
+import { isThree, noseWeightPlan, simulate, stackStability } from "../physics/simulate.js";
+import { renderRSO, renderWindTable, resultFlags } from "./rso-checklist.js";
+import { animAt } from "../animation/animation.js";
+import { drawChart, drawProfile } from "./charts.js";
+import { TGT_NAME } from "./motor-tab.js";
+import { renderFlightLog } from "../flightlog/flight-log.js";
+import { SOURCE } from "../files/save.js";
+import { renderTitle } from "../files/unsaved-changes.js";
+import { downloadsNS } from "../report/pdf-report.js";
+import { profNoteRender, supRender } from "./donate.js";
+import { mcAuto, renderMC } from "../physics/monte-carlo.js";
 /* ---------- rendering ---------- */
 /**
  * The last run: {st, out, S, m, mb, D, L, windTable, ...}, or null when results are out of date.
  */
-let lastSim = null;
+export let lastSim = null;
 /**
  * Runs the flight for the current design, motors and conditions, plus the wind table, and shows the results.
  */
-function runAll() {
+export function runAll() {
   const m = flightMotor(),
     mb = D.twoStage ? flightBoost() : null,
     S = stability(D, m),
@@ -49,7 +65,7 @@ function runAll() {
 /**
  * Draws the Results tab from lastSim (or its empty state).
  */
-function renderResults() {
+export function renderResults() {
   document.getElementById("flightempty").hidden = !!lastSim;
   document.getElementById("chartpanel").hidden = !lastSim;
   document.getElementById("animpanel").hidden = !lastSim;
@@ -141,7 +157,7 @@ function renderResults() {
  * @param {number} [y=0] m
  * @returns {string}
  */
-function bigDist(x, y = 0) {
+export function bigDist(x, y = 0) {
   const v = Math.hypot(x, y || 0);
   return units === "imp" ? `${(v / 1609.344).toFixed(2)} mi` : `${(v / 1000).toFixed(2)} km`;
 }
@@ -150,7 +166,7 @@ function bigDist(x, y = 0) {
  * @param {number} b degrees
  * @returns {string}
  */
-function compass(b) {
+export function compass(b) {
   return ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][
     Math.round((((b % 360) + 360) % 360) / 22.5) % 16
   ];
@@ -161,7 +177,7 @@ function compass(b) {
  * @param {number} [y=0] crossrange, m
  * @returns {string}
  */
-function driftDir(x, y = 0) {
+export function driftDir(x, y = 0) {
   // landing direction relative to the wind, with its compass bearing from the pad
   if (Math.hypot(x, y || 0) < 0.5) return "";
   const rel = (Math.atan2(-(y || 0), x) * 180) / Math.PI,
@@ -380,7 +396,7 @@ function firstTiles(st) {
  * @param {string} [stage] the stage's name
  * @returns {Array} a result flag
  */
-function ejLiveFlag(st, stage) {
+export function ejLiveFlag(st, stage) {
   const e = st.ejLive,
     what =
       (stage ? stage + "’s " : "") + (e.packed === "main" ? "main" : e.packed === "drogue" ? "drogue" : "parachute"),
@@ -407,7 +423,7 @@ function ejLiveFlag(st, stage) {
  * @param {object} outs the flight's time histories
  * @returns {object[]}
  */
-function chargeEvents(st, D, outs) {
+export function chargeEvents(st, D, outs) {
   const out = [],
     tDep = st.tDeploy,
     noDrogue = !st.single && !(D.drogueDia > 0),
@@ -463,7 +479,7 @@ function chargeEvents(st, D, outs) {
  * @param {object} S stability at liftoff
  * @returns {object|null}
  */
-function nosePlan(st, S) {
+export function nosePlan(st, S) {
   if (st._nw !== undefined) return st._nw;
   const RS = lastSim || {};
   let p = null;
@@ -480,7 +496,7 @@ function nosePlan(st, S) {
  * @param {number} w kg
  * @returns {string}
  */
-function noseWeightText(w) {
+export function noseWeightText(w) {
   return isFinite(w)
     ? `${fmt(w, "smass")} ${uname("smass")} of nose weight`
     : "more than nose weight alone can give (larger fins or a longer body)";
@@ -673,6 +689,14 @@ function resultGroups(st, S) {
  * @param {object} S
  * @returns {Array[]}
  */
-function resultTiles(st, S) {
+export function resultTiles(st, S) {
   return resultGroups(st, S).flatMap(([, t]) => t);
+}
+
+/**
+ * Sets lastSim (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setLastSim(v) {
+  return (lastSim = v);
 }

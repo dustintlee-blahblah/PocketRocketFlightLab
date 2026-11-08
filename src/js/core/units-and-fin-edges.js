@@ -1,7 +1,8 @@
 /**
  * Unit constants (inch, foot, pound in SI) and the fin edge types with their drag helpers.
  */
-const IN = 0.0254,
+import { smooth01 } from "../physics/aerodynamics.js";
+export const IN = 0.0254,
   FT = 0.3048,
   LB = 0.45359237;
 /* fin edge (cross-section) types. Square and rounded edges are blunt; the rest have sharp edges. Supersonic wave drag of a
@@ -34,7 +35,7 @@ const IN = 0.0254,
  * @param {number} [cosL=1] cosine of the leading-edge sweep angle
  * @returns {number} drag coefficient on fin planform area (0 below Mach 0.85)
  */
-function finTransonicCd(M, tc, cosL = 1) {
+export function finTransonicCd(M, tc, cosL = 1) {
   const r = finSweepRatio(cosL);
   M *= r;
   if (M <= 0.85 || !(tc > 0)) return 0;
@@ -46,12 +47,12 @@ function finTransonicCd(M, tc, cosL = 1) {
  * FIN_SWEEP_N: the power of the sweep ratio that weakens the fins' transonic drag rise (see the notes above).
  * finSweepRatio: cos Λ / cos 30°, at most 1.
  */
-var FIN_SWEEP_N = 5;
-const finSweepRatio = (cosL) => Math.min(1, Math.max(cosL, 0) / 0.866);
+export var FIN_SWEEP_N = 5;
+export const finSweepRatio = (cosL) => Math.min(1, Math.max(cosL, 0) / 0.866);
 /**
  * Fin edge profiles offered in the forms: [value, label].
  */
-const FIN_EDGES = [
+export const FIN_EDGES = [
   ["square", "Square"],
   ["rounded", "Rounded"],
   ["airfoil", "Airfoil (streamlined)"],
@@ -63,10 +64,10 @@ const FIN_EDGES = [
  * @param {string} e edge type
  * @returns {number}
  */
-const finWaveK = (e) => (e === "doublewedge" ? 4 : e === "beveled" ? 10 : 16 / 3);
+export const finWaveK = (e) => (e === "doublewedge" ? 4 : e === "beveled" ? 10 : 16 / 3);
 /**
  * True for the blunt edge types (square, rounded), which use the blunt-edge drag model.
  * @param {string} e edge type
  * @returns {boolean}
  */
-const finBlunt = (e) => e === "square" || e === "rounded";
+export const finBlunt = (e) => e === "square" || e === "rounded";

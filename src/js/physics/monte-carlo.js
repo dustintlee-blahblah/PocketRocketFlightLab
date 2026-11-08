@@ -2,6 +2,13 @@
  * Landing dispersion (Monte Carlo): many flights with their inputs varied, their apogees and landing points, the
  * likely apogee range shown on the Results tab, and the landing-ellipse drawing.
  */
+import { L, series, units } from "../design/defaults.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { readFields } from "../ui/state.js";
+import { isThree, simulate } from "./simulate.js";
+import { bigDist, compass, lastSim } from "../ui/results.js";
+import { renderRSO } from "../ui/rso-checklist.js";
+import { css, drawChart, niceTicks } from "../ui/charts.js";
 /* ---------- landing dispersion (Monte Carlo) ----------
    Each flight draws its inputs from normal distributions (seeded, so a run repeats): surface and aloft wind speed (scaled
    together) and direction (shifted together), motor impulse, rocket weight, drag, rail angle, and a thrust misalignment
@@ -12,8 +19,8 @@
  * the run of the simulation it was flown for (when). mcBusy/mcStop/mcAgain: a run in progress, a request to stop it,
  * and a request to start again once it stops.
  */
-let lastMC = null,
-  mcBusy = false,
+export let lastMC = null;
+let mcBusy = false,
   mcStop = false,
   mcAgain = false;
 /**
@@ -21,7 +28,7 @@ let lastMC = null,
  *
  * after each run of the simulation, the dispersion flies in the background (a newer run replaces one still going)
  */
-function mcAuto() {
+export function mcAuto() {
   if (!lastSim) return;
   if (mcBusy) {
     mcStop = true;
@@ -60,7 +67,7 @@ function mcRng(seed) {
  * drag, rail angle, thrust misalignment, roll, delay and chute drag drawn at random; then the apogee statistics and
  * the 68% and 95% landing ellipses. Yields to the page between flights so it stays responsive and can be cancelled.
  */
-async function runMC() {
+export async function runMC() {
   if (mcBusy || !lastSim) return;
   readFields();
   const { D: SD, L: SL, m, mb } = lastSim,
@@ -238,7 +245,7 @@ async function runMC() {
  * @param {number} angE rad
  * @returns {number} degrees
  */
-function mcBearing(angE) {
+export function mcBearing(angE) {
   // the compass bearing of an axis given as an angle from east (counterclockwise)
   return (((90 - (angE * 180) / Math.PI) % 180) + 180) % 180;
 }
@@ -253,7 +260,7 @@ function mcBearing(angE) {
  * @param {object} D design
  * @returns {object|null} lo and hi (m), the percentages and what went into them; null without a valid flight
  */
-function apoRange(st, D) {
+export function apoRange(st, D) {
   if (!st || st.error || !(st.maxAlt > 0)) return null;
   const cal = D.dragScale > 0 && Math.abs(D.dragScale - 1) > 1e-6,
     est = D.massKnown === false,
@@ -279,7 +286,7 @@ function apoRange(st, D) {
  *
  * a range end, rounded in the units shown: to 10 above 1,000, otherwise to 1
  */
-function apoRound(v) {
+export function apoRound(v) {
   const d = toDisp(v, "alt"),
     q = Math.abs(d) >= 1000 ? 10 : 1;
   return (Math.round(d / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -287,7 +294,7 @@ function apoRound(v) {
 /**
  * Show the dispersion run's results (statistics and the landing map) on the Results tab.
  */
-function renderMC() {
+export function renderMC() {
   const out = document.getElementById("mcout");
   if (!out) return;
   if (!lastMC || !lastSim || lastMC.when !== lastSim.when) {
@@ -328,7 +335,7 @@ function renderMC() {
 /**
  * Draw the landing map on the Results tab's canvas.
  */
-function drawMC() {
+export function drawMC() {
   if (typeof series !== "undefined" && series === "land") drawChart();
 }
 /**
@@ -341,7 +348,7 @@ function drawMC() {
  *
  * the landing bullseye, drawn as the chart's Landing view: every dispersion landing seen from above, north up, with the 68% and 95% ellipses
  */
-function drawMCInto(cv, c, W, H) {
+export function drawMCInto(cv, c, W, H) {
   c.clearRect(0, 0, W, H);
   const leg = document.getElementById("chartlegend");
   const M = lastMC && lastSim && lastMC.when === lastSim.when ? lastMC : null;
@@ -423,16 +430,13 @@ function drawMCInto(cv, c, W, H) {
   c.arc(W / 2, H / 2, 3.5, 0, 7);
   c.fill();
 }
-document.getElementById("mccancel").onclick = () => {
-  mcStop = true;
-};
 
 /* landing ellipses: for landing points spread in two directions, an ellipse k standard deviations out holds 1 − e^(−k²/2) of them,
    so the 68% and 95% ellipses are 1.51 and 2.45 standard deviations out (not 1 and 2, which hold only 39% and 86%) */
 /**
  * How many standard deviations out the 68% and 95% landing ellipses are, for points spread in two directions.
  */
-const MC_K68 = Math.sqrt(-2 * Math.log(1 - 0.68)),
+export const MC_K68 = Math.sqrt(-2 * Math.log(1 - 0.68)),
   MC_K95 = Math.sqrt(-2 * Math.log(1 - 0.95));
 /**
  * The farthest point of the 95% landing ellipse from the pad.
@@ -441,7 +445,7 @@ const MC_K68 = Math.sqrt(-2 * Math.log(1 - 0.68)),
  *
  * farthest point of the 95% landing ellipse from the pad
  */
-function mcFar95(M) {
+export function mcFar95(M) {
   let f = 0;
   for (let i = 0; i < 72; i++) {
     const th = (i / 72) * 2 * Math.PI,
@@ -456,4 +460,12 @@ function mcFar95(M) {
     );
   }
   return f;
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("mccancel").onclick = () => {
+    mcStop = true;
+  };
 }

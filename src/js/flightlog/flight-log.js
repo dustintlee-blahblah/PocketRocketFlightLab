@@ -2,21 +2,35 @@
  * The Flight Log (see the note below): logging real flights, comparing them with the prediction, and fitting the drag
  * calibration to them.
  */
+import { store } from "../core/storage.js";
+import { esc } from "../core/helpers.js";
+import { motorStats } from "../motors/motor-files.js";
+import { D, series, setSeries } from "../design/defaults.js";
+import { findMotor, flightFirst } from "../motors/clusters.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { isThree, simulate } from "../physics/simulate.js";
+import { lastSim, runAll } from "../ui/results.js";
+import { impulseLetter } from "../ui/rso-checklist.js";
+import { drawChart, renderSeries } from "../ui/charts.js";
+import { applyCal, calGet, calKeyOld, calSet, solveDragScale } from "./drag-calibration.js";
+import { altOpenFile, prIncomingGo, prPendingAlt } from "./xlsx.js";
+import { SOURCE } from "../files/save.js";
+import { lastMC, MC_K68, MC_K95 } from "../physics/monte-carlo.js";
 /* ---------- Flight Log: each design's real flights, kept on this device ----------
    A design is known by the id inside its file (RockSim GUID or OpenRocket rocket id), or else by its file and rocket name. */
 /**
  * FL_STORE: the storage key; flShow: the flight whose details are open; flEdit: the flight in the form; flNow:
  * per-design caches.
  */
+export var flShow = null,
+  flEdit = null;
 var FL_STORE = "rfs-flightlog",
-  flShow = null,
-  flEdit = null,
   flNow = {};
 /**
  * The open design's log key: the id inside its file, or else its file and rocket names.
  * @returns {string}
  */
-function flKey() {
+export function flKey() {
   const s = (SOURCE && SOURCE.text) || "";
   let id = null;
   if (s) {
@@ -34,14 +48,14 @@ function flKey() {
  * Every design's log entry, by key.
  * @returns {object}
  */
-function flAll() {
+export function flAll() {
   return store.get(FL_STORE, {});
 }
 /**
  * The open design's flights.
  * @returns {object[]}
  */
-function flList() {
+export function flList() {
   const e = flAll()[flKey()];
   return e && e.flights ? e.flights : [];
 }
@@ -50,7 +64,7 @@ function flList() {
  * @param {object} all
  * @returns {boolean} saved
  */
-function flSaveAll(all) {
+export function flSaveAll(all) {
   try {
     localStorage.setItem(FL_STORE, JSON.stringify(all));
     return true;
@@ -65,7 +79,7 @@ const FL_DELETED = "rfs-fl-deleted";
  * The ids of flights you deleted.
  * @returns {Set<string>}
  */
-function flDeleted() {
+export function flDeleted() {
   try {
     const a = JSON.parse(localStorage.getItem(FL_DELETED) || "[]");
     return new Set(Array.isArray(a) ? a : []);
@@ -89,7 +103,7 @@ function flMarkDeleted(id) {
  * @param {object[]} list
  * @returns {boolean}
  */
-function flPut(list) {
+export function flPut(list) {
   const all = flAll(),
     k = flKey();
   if (list.length) all[k] = { name: D.name || "", file: (SOURCE && SOURCE.name) || "", flights: list };
@@ -100,7 +114,7 @@ function flPut(list) {
  * A new flight id.
  * @returns {string}
  */
-function flId() {
+export function flId() {
   return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 /**
@@ -109,7 +123,7 @@ function flId() {
  * @param {object} [mb]
  * @returns {string}
  */
-function flMotorName(m, mb) {
+export function flMotorName(m, mb) {
   return mb ? `${mb.cn || mb.name} → ${m.cn || m.name}` : m.cn || m.name;
 }
 /**
@@ -118,7 +132,7 @@ function flMotorName(m, mb) {
  * @param {number} pred predicted
  * @returns {number|null}
  */
-function flDiff(a, pred) {
+export function flDiff(a, pred) {
   return a > 0 && pred > 0 ? ((a - pred) / pred) * 100 : null;
 }
 /**
@@ -126,7 +140,7 @@ function flDiff(a, pred) {
  * @param {number} d %
  * @returns {string}
  */
-function flCls(d) {
+export function flCls(d) {
   const a = Math.abs(d);
   return a < 5 ? "good" : a < 10 ? "warn" : "bad";
 }
@@ -135,7 +149,7 @@ function flCls(d) {
  * @param {number|null} d
  * @returns {string}
  */
-function flPct(d) {
+export function flPct(d) {
   return d == null ? "" : `${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}%`;
 }
 /**
@@ -143,7 +157,7 @@ function flPct(d) {
  * @param {string} s
  * @returns {string}
  */
-function flDate(s) {
+export function flDate(s) {
   if (!s) return "";
   const d = new Date(s + "T12:00:00");
   return isNaN(d) ? s : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -182,7 +196,7 @@ function flParseDir(s) {
  *
  * the altimeter files kept with a flight (older entries kept just one)
  */
-function flAltis(f) {
+export function flAltis(f) {
   if (f.altis) return f.altis;
   if (f.alti)
     return [
@@ -207,7 +221,7 @@ function flAltis(f) {
  *
  * the motors flown: total impulse and class, the way the certification check counts them
  */
-function flMotorInfo(m, mb) {
+export function flMotorInfo(m, mb) {
   if (!m) return null;
   const expand = (x) => (!x ? [] : x.cluster && x.members ? x.members.flatMap((e) => Array(e.n).fill(e.m)) : [x]),
     ms = [...expand(m), ...expand(mb)];
@@ -306,7 +320,7 @@ function flSimLand(st, windDir) {
  * @param {object} f
  * @returns {{e:number, n:number}|null}
  */
-function flRealLand(f) {
+export function flRealLand(f) {
   if (!(f.landDist >= 0) || f.landBrg == null) return null;
   const b = (f.landBrg * Math.PI) / 180;
   return { e: f.landDist * Math.sin(b), n: f.landDist * Math.cos(b) };
@@ -316,7 +330,7 @@ function flRealLand(f) {
  * @param {{e:number, n:number}} p
  * @returns {string}
  */
-function flLandTxt(p) {
+export function flLandTxt(p) {
   const d = Math.hypot(p.e, p.n);
   return `${fmt(d, "alt")} ${uname("alt")}${d > 0.5 ? " " + flCompass((Math.atan2(p.e, p.n) * 180) / Math.PI) : ""}`;
 }
@@ -385,7 +399,7 @@ function flEventTxt(f, a) {
 /**
  * Draws the Flight Log: each flight against its prediction, the calibration line and the buttons.
  */
-function renderFlightLog() {
+export function renderFlightLog() {
   const pn = document.getElementById("flpanel");
   if (!pn) return;
   if (prPendingAlt && lastSim) setTimeout(prIncomingGo, 50);
@@ -476,7 +490,7 @@ function flAct(id, what, btn) {
   if (what === "show") {
     flShow = flShow === id ? null : id;
     if (flShow && series !== "alt" && series !== "vel") {
-      series = "alt";
+      setSeries("alt");
       renderSeries();
     }
     renderFlightLog();
@@ -728,7 +742,7 @@ function flField(id, lab, dim, val, dec, ph) {
  * Opens the flight form, for a new flight or to edit one.
  * @param {object} [f]
  */
-function flOpen(f) {
+export function flOpen(f) {
   if (!lastSim) return;
   const today = new Date(),
     iso = new Date(today.getTime() - today.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
@@ -787,7 +801,7 @@ function flOpen(f) {
 /**
  * Draws the altimeter files attached in the form.
  */
-function flAltBox() {
+export function flAltBox() {
   const b = document.getElementById("fl-altbox");
   if (!b) return;
   const A = flEdit.altis || [];
@@ -844,7 +858,7 @@ function flRead() {
 /**
  * Writes the prediction for the flight in the form.
  */
-function flPredBox() {
+export function flPredBox() {
   const p = document.getElementById("flpred");
   if (!p || !flEdit) return;
   if (flEdit.pred > 0 && flEdit.made) {
@@ -857,59 +871,6 @@ function flPredBox() {
     ? `This design predicts ${fmt(r.maxAlt, "alt")} ${uname("alt")} for this weight and these conditions. That's saved with the flight.`
     : `This device doesn't have that motor, so the current run's prediction (${fmt(lastSim.st.maxAlt, "alt")} ${uname("alt")}) is saved with the flight.`;
 }
-document.getElementById("flcancel").onclick = () => {
-  document.getElementById("flmodal").hidden = true;
-  flEdit = null;
-};
-document.getElementById("flsave").onclick = () => {
-  const v = flRead(),
-    r = document.getElementById("flres");
-  if (!(v.apo > 0) && !(flEdit.altis && flEdit.altis.length)) {
-    r.textContent = "Enter the real apogee, or import the altimeter's file.";
-    r.className = "bad";
-    r.hidden = false;
-    return;
-  }
-  if (!(v.apo > 0)) v.apo = flEdit.altis[0].apo;
-  const f = { ...flEdit, ...v };
-  delete f.alti;
-  delete f.curve;
-  delete f.tApo;
-  delete f.tLand;
-  delete f.rateHigh;
-  delete f.rateLow;
-  const wasNew = !f.made;
-  if (!f.made) {
-    const st = flPredict(f);
-    f.pred = st ? st.maxAlt : lastSim.st.maxAlt;
-    f.predV = st ? st.maxV : lastSim.st.maxV;
-    f.dragScale = lastSim.D.dragScale || 1;
-    f.made = Date.now();
-    f.id = flId();
-  }
-  {
-    const m = f.motorId && findMotor(f.motorId),
-      mb = f.boostId && findMotor(f.boostId),
-      mi = m ? flMotorInfo(m, lastSim.D.twoStage ? mb : null) : null;
-    if (mi) {
-      f.impulse = mi.I;
-      f.cls = mi.cls;
-    }
-  }
-  const list = flList().filter((x) => x.id !== f.id);
-  list.push(f);
-  if (!flPut(list)) return;
-  delete flNow[f.id];
-  document.getElementById("flmodal").hidden = true;
-  flEdit = null;
-  renderFlightLog();
-  drawChart();
-  const d = flDiff(f.apo, f.pred);
-  prToast(d != null ? `Flight logged: ${flPct(d)} from the prediction` : "Flight logged");
-  // a ticked flight that changed: the calibration follows it; a new flight: offer to calibrate to it
-  if (!wasNew && f.cal) flFit();
-  else if (wasNew && f.apo > 0 && flCtx(f)) flAskCal(f.id);
-};
 /**
  * After logging a flight, asks whether to use it for the calibration.
  * @param {string} id
@@ -932,5 +893,85 @@ function flAskCal(id) {
 /**
  * The altimeter file being imported, and whether it's for a new flight or the one in the form.
  */
-let altP = null,
+export let altP = null,
   altMode = "new";
+
+/**
+ * Sets flNow (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setFlNow(v) {
+  return (flNow = v);
+}
+/**
+ * Sets altMode (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setAltMode(v) {
+  return (altMode = v);
+}
+/**
+ * Sets altP (for other modules: an imported binding can't be assigned).
+ * @param {*} v
+ */
+export function setAltP(v) {
+  return (altP = v);
+}
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("flcancel").onclick = () => {
+    document.getElementById("flmodal").hidden = true;
+    flEdit = null;
+  };
+  document.getElementById("flsave").onclick = () => {
+    const v = flRead(),
+      r = document.getElementById("flres");
+    if (!(v.apo > 0) && !(flEdit.altis && flEdit.altis.length)) {
+      r.textContent = "Enter the real apogee, or import the altimeter's file.";
+      r.className = "bad";
+      r.hidden = false;
+      return;
+    }
+    if (!(v.apo > 0)) v.apo = flEdit.altis[0].apo;
+    const f = { ...flEdit, ...v };
+    delete f.alti;
+    delete f.curve;
+    delete f.tApo;
+    delete f.tLand;
+    delete f.rateHigh;
+    delete f.rateLow;
+    const wasNew = !f.made;
+    if (!f.made) {
+      const st = flPredict(f);
+      f.pred = st ? st.maxAlt : lastSim.st.maxAlt;
+      f.predV = st ? st.maxV : lastSim.st.maxV;
+      f.dragScale = lastSim.D.dragScale || 1;
+      f.made = Date.now();
+      f.id = flId();
+    }
+    {
+      const m = f.motorId && findMotor(f.motorId),
+        mb = f.boostId && findMotor(f.boostId),
+        mi = m ? flMotorInfo(m, lastSim.D.twoStage ? mb : null) : null;
+      if (mi) {
+        f.impulse = mi.I;
+        f.cls = mi.cls;
+      }
+    }
+    const list = flList().filter((x) => x.id !== f.id);
+    list.push(f);
+    if (!flPut(list)) return;
+    delete flNow[f.id];
+    document.getElementById("flmodal").hidden = true;
+    flEdit = null;
+    renderFlightLog();
+    drawChart();
+    const d = flDiff(f.apo, f.pred);
+    prToast(d != null ? `Flight logged: ${flPct(d)} from the prediction` : "Flight logged");
+    // a ticked flight that changed: the calibration follows it; a new flight: offer to calibrate to it
+    if (!wasNew && f.cal) flFit();
+    else if (wasNew && f.apo > 0 && flCtx(f)) flAskCal(f.id);
+  };
+}

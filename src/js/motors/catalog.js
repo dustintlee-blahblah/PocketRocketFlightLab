@@ -4,7 +4,7 @@
 /**
  * Display names of the motor systems (reload families, single-use, hybrids...), keyed by the catalog's sy code.
  */
-const SYS_LABEL = {
+export const SYS_LABEL = {
   RMS: "RMS reload",
   DMS: "DMS",
   SU: "Single-use",

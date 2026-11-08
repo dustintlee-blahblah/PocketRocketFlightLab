@@ -3,6 +3,14 @@
  * one, and the Android app's report of where a new design was saved. Also the prompt to save unsaved changes before
  * the open design is closed (confirmUnsaved), which opening a recent file, an example or a new design goes through.
  */
+import { b64ToU8, esc } from "../core/helpers.js";
+import { D } from "../design/defaults.js";
+import { unzipOrk } from "./openrocket-import.js";
+import { openDesignAsk } from "./open-file.js";
+import { setSource, SOURCE } from "./save.js";
+import { EXAMPLES } from "../../data/examples.js";
+import { saveDesignFile } from "./saved-simulation.js";
+import { isDirty } from "./unsaved-changes.js";
 /* ---------- recently opened files: kept on this device so they can be opened again with one tap ---------- */
 const RECENT_MAX = 10;
 let recentDb = null;
@@ -84,7 +92,7 @@ async function recentDel(id) {
  * Stores a recent file entry and drops the oldest past the list's limit.
  * @param {object} e entry {id, name, uri, rocket, when, data}
  */
-async function recentPut(e) {
+export async function recentPut(e) {
   try {
     await recentReq("readwrite", (st) => st.put(e));
     const all = await recentList();
@@ -110,7 +118,7 @@ const recentAppUri = () => {
  *
  * a file just opened from the picker; the same file (by its place on the phone, or by name in the browser) moves to the top
  */
-async function recentAdd(buf, name) {
+export async function recentAdd(buf, name) {
   const uri = recentAppUri(),
     id = uri || "name:" + name;
   const e = { id, name, uri, rocket: D.name || "", when: Date.now(), data: buf.slice(0) };
@@ -125,7 +133,7 @@ async function recentAdd(buf, name) {
  *
  * after Save changes: the entry follows the file that was written
  */
-async function recentSaved(bytes, fname) {
+export async function recentSaved(bytes, fname) {
   const old = SOURCE && SOURCE.recentId ? await recentGet(SOURCE.recentId) : null,
     uri = recentAppUri();
   const id = uri || "name:" + fname;
@@ -166,7 +174,7 @@ function recentWhen(t) {
 /**
  * Draws the recent files lists.
  */
-async function renderRecent() {
+export async function renderRecent() {
   const list = await recentList(),
     cur = SOURCE && SOURCE.recentId;
   const html = (items) =>
@@ -249,76 +257,81 @@ async function openRecent(id) {
  * @param {function} act
  * @param {string} [what] what the action does, for the prompt
  */
-let confirmUnsaved = (act) => act();
-{
-  const box = document.getElementById("recentconfirm"),
-    txt = document.getElementById("recenttxt"),
-    bs = document.getElementById("recentsave"),
-    dc = document.getElementById("recentdiscard");
-  let pending = null;
-  // before the open design is closed (another file, a new design): offer to save its changes first
-  confirmUnsaved = (act, what) => {
-    if (document.documentElement.classList.contains("nodesign") || !isDirty()) {
-      act();
-      return;
-    }
-    pending = act;
-    txt.textContent = `You have unsaved changes to ${SOURCE ? SOURCE.name : D.name || "this design"}. Save them before ${what || "opening another file"}?`;
-    bs.textContent = SOURCE ? "Save changes" : "Save as .ork file";
-    bs.hidden = false;
-    dc.textContent = "Discard changes";
-    box.hidden = false;
-    bs.focus();
-  };
-  const click = (ev) => {
-    const d = ev.target.closest("[data-del]"),
-      o = ev.target.closest("[data-id]");
-    if (d) {
-      recentDel(d.dataset.del).then(renderRecent);
-      return;
-    }
-    if (!o) return;
-    const id = o.dataset.id;
-    confirmUnsaved(() => openRecent(id));
-  };
-  bs.onclick = async () => {
-    const ok = await saveDesignFile(!SOURCE);
-    if (ok) {
+export let confirmUnsaved = (act) => act();
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  {
+    const box = document.getElementById("recentconfirm"),
+      txt = document.getElementById("recenttxt"),
+      bs = document.getElementById("recentsave"),
+      dc = document.getElementById("recentdiscard");
+    let pending = null;
+    // before the open design is closed (another file, a new design): offer to save its changes first
+    confirmUnsaved = (act, what) => {
+      if (document.documentElement.classList.contains("nodesign") || !isDirty()) {
+        act();
+        return;
+      }
+      pending = act;
+      txt.textContent = `You have unsaved changes to ${SOURCE ? SOURCE.name : D.name || "this design"}. Save them before ${what || "opening another file"}?`;
+      bs.textContent = SOURCE ? "Save changes" : "Save as .ork file";
+      bs.hidden = false;
+      dc.textContent = "Discard changes";
+      box.hidden = false;
+      bs.focus();
+    };
+    const click = (ev) => {
+      const d = ev.target.closest("[data-del]"),
+        o = ev.target.closest("[data-id]");
+      if (d) {
+        recentDel(d.dataset.del).then(renderRecent);
+        return;
+      }
+      if (!o) return;
+      const id = o.dataset.id;
+      confirmUnsaved(() => openRecent(id));
+    };
+    bs.onclick = async () => {
+      const ok = await saveDesignFile(!SOURCE);
+      if (ok) {
+        box.hidden = true;
+        const a = pending;
+        pending = null;
+        if (a) a();
+      } else txt.textContent = "The changes weren’t saved. Save again, discard them, or cancel.";
+    };
+    dc.onclick = () => {
       box.hidden = true;
       const a = pending;
       pending = null;
       if (a) a();
-    } else txt.textContent = "The changes weren’t saved. Save again, discard them, or cancel.";
+    };
+    document.getElementById("recentcancel").onclick = () => {
+      box.hidden = true;
+    };
+    document.getElementById("recentlist").addEventListener("click", click);
+    document.getElementById("recentlist2").addEventListener("click", click);
+    document.getElementById("recentbtn").onclick = () => {
+      const d = document.getElementById("recentdrop");
+      d.hidden = !d.hidden;
+      document.getElementById("recentbtn").setAttribute("aria-expanded", String(!d.hidden));
+    };
+  }
+  // the Android app reports the place on the phone a new design was saved to
+  window.prSavedAs = async (uri) => {
+    if (!uri || !SOURCE) return;
+    const old = SOURCE.recentId ? await recentGet(SOURCE.recentId) : null;
+    if (old && old.id !== uri) await recentDel(old.id);
+    await recentPut({
+      ...(old || { name: SOURCE.name, rocket: D.name || "", data: null }),
+      id: uri,
+      uri,
+      when: Date.now(),
+    });
+    setSource({ ...SOURCE, recentId: uri });
+    renderRecent();
   };
-  dc.onclick = () => {
-    box.hidden = true;
-    const a = pending;
-    pending = null;
-    if (a) a();
-  };
-  document.getElementById("recentcancel").onclick = () => {
-    box.hidden = true;
-  };
-  document.getElementById("recentlist").addEventListener("click", click);
-  document.getElementById("recentlist2").addEventListener("click", click);
-  document.getElementById("recentbtn").onclick = () => {
-    const d = document.getElementById("recentdrop");
-    d.hidden = !d.hidden;
-    document.getElementById("recentbtn").setAttribute("aria-expanded", String(!d.hidden));
-  };
+  setTimeout(renderRecent, 0);
 }
-// the Android app reports the place on the phone a new design was saved to
-window.prSavedAs = async (uri) => {
-  if (!uri || !SOURCE) return;
-  const old = SOURCE.recentId ? await recentGet(SOURCE.recentId) : null;
-  if (old && old.id !== uri) await recentDel(old.id);
-  await recentPut({
-    ...(old || { name: SOURCE.name, rocket: D.name || "", data: null }),
-    id: uri,
-    uri,
-    when: Date.now(),
-  });
-  setSource({ ...SOURCE, recentId: uri });
-  renderRecent();
-};
-setTimeout(renderRecent, 0);

@@ -4,39 +4,21 @@
  * A motor object: {id, name, cn (common name), brand, mfr, dia (m), len (m), delays ("6,8,10" or "P"), case, prop,
  * sys, sparky, totalMass (kg), propMass (kg), t (s), F (N), builtin}.
  */
+import { MOTOR_DB } from "../../data/motor-catalog.js";
+import { motorStats } from "./motor-files.js";
 /**
  * The order motor systems are listed in.
  */
-const SYS_ORDER = ["RMS", "DMS", "SU", "Hybrid", "Kosdon", "ProX", "ProXL", "Loki", "Legacy"];
+export const SYS_ORDER = ["RMS", "DMS", "SU", "Hybrid", "Kosdon", "ProX", "ProXL", "Loki", "Legacy"];
 /**
  * For each catalog brand, the motor systems it has, in SYS_ORDER.
  */
-const BRAND_SYS = {};
-for (const r of MOTOR_DB) (BRAND_SYS[r.b] = BRAND_SYS[r.b] || new Set()).add(r.sy);
-for (const b in BRAND_SYS) BRAND_SYS[b] = SYS_ORDER.filter((y) => BRAND_SYS[b].has(y));
-const BUILTIN_BRANDS = Object.keys(BRAND_SYS);
+export const BRAND_SYS = {};
+export const BUILTIN_BRANDS = Object.keys(BRAND_SYS);
 /**
  * The catalog (MOTOR_DB's compact rows) unpacked into motor objects, with sizes in meters and masses in kg.
  */
-const BUILTIN = MOTOR_DB.map((r) => ({
-  id: r.id,
-  name: r.n,
-  cn: r.cn,
-  brand: r.b,
-  mfr: r.mf,
-  dia: r.d / 1000,
-  len: r.l / 1000,
-  delays: r.dl,
-  case: r.cs,
-  prop: r.pr,
-  sys: r.sy,
-  sparky: !!r.sp,
-  totalMass: r.tw / 1000,
-  propMass: r.pw / 1000,
-  t: r.t,
-  F: r.f,
-  builtin: true,
-}));
+export let BUILTIN;
 // an uploaded motor is filed under its manufacturer, and under the same motor system as the matching catalog motor
 const MFR_ALIAS = [
   [/^(at|aerotech|aerotech\/rcs|rcs|isp|aerot)/, "AeroTech"],
@@ -61,7 +43,7 @@ const MFR_ALIAS = [
  * @param {string} mfr manufacturer text (e.g. "AT", "Cesaroni")
  * @returns {string} a catalog brand name, or the text tidied up
  */
-function brandOfMfr(mfr) {
+export function brandOfMfr(mfr) {
   const t = (mfr || "").trim(),
     l = t.toLowerCase();
   if (!t) return "Unknown maker";
@@ -76,7 +58,7 @@ function brandOfMfr(mfr) {
  *
  * the same motor: same name, same maker, same diameter and the same total impulse (within 1%); other fields don't matter
  */
-function dupMotor(m, pool) {
+export function dupMotor(m, pool) {
   const norm = (x) => (x || "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
     nm = norm(m.name),
     d = Math.round(m.dia * 1000),
@@ -98,7 +80,7 @@ function dupMotor(m, pool) {
  * @param {object} m uploaded motor
  * @returns {object} the same motor
  */
-function classifyUser(m) {
+export function classifyUser(m) {
   if (m.delays)
     m.delays =
       String(m.delays)
@@ -124,4 +106,31 @@ function classifyUser(m) {
 /**
  * The motor a fresh install starts with (AeroTech H148R).
  */
-const DEFAULT_MOTOR = (BUILTIN.find((m) => m.name === "H148R") || BUILTIN[0]).id;
+export let DEFAULT_MOTOR;
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  for (const r of MOTOR_DB) (BRAND_SYS[r.b] = BRAND_SYS[r.b] || new Set()).add(r.sy);
+  for (const b in BRAND_SYS) BRAND_SYS[b] = SYS_ORDER.filter((y) => BRAND_SYS[b].has(y));
+  BUILTIN = MOTOR_DB.map((r) => ({
+    id: r.id,
+    name: r.n,
+    cn: r.cn,
+    brand: r.b,
+    mfr: r.mf,
+    dia: r.d / 1000,
+    len: r.l / 1000,
+    delays: r.dl,
+    case: r.cs,
+    prop: r.pr,
+    sys: r.sy,
+    sparky: !!r.sp,
+    totalMass: r.tw / 1000,
+    propMass: r.pw / 1000,
+    t: r.t,
+    F: r.f,
+    builtin: true,
+  }));
+  DEFAULT_MOTOR = (BUILTIN.find((m) => m.name === "H148R") || BUILTIN[0]).id;
+}

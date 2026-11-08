@@ -52,7 +52,7 @@ function altSplit(l, d) {
  * @param {string} fname
  * @returns {object} {brand, cols, data, raw, rate, preUnit, hasHeader, fname, map}, or {error}
  */
-function altParse(text, fname) {
+export function altParse(text, fname) {
   text = String(text || "").replace(/^\uFEFF/, "");
   const lines = text.split(/\r\n|\n|\r/);
   // eslint-disable-next-line no-control-regex -- a binary file has control characters
@@ -120,7 +120,7 @@ function altParse(text, fname) {
 /**
  * Pressure units: [name, Pa].
  */
-const ALT_PRESS = [
+export const ALT_PRESS = [
   ["atm", 101325],
   ["hPa", 100],
   ["kPa", 1000],
@@ -263,7 +263,7 @@ function altMed3(a) {
  * @param {object} map column choices and units
  * @returns {object} {apo, vmax, vDer, tApo, tLand, rateHigh, rateLow, samples, rate, curve, ev, land, warn}, or {error}
  */
-function altCompute(P, map) {
+export function altCompute(P, map) {
   if (!P || !map || map.alt < 0) return { error: "Choose the altitude column." };
   const FTm = 0.3048,
     aK = map.aUnit === "ft" ? FTm : 1,

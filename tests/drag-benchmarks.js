@@ -113,6 +113,7 @@ const RM10_PTS = [
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.route(/^https?:/, (r) => r.abort());
+  await page.addInitScript(() => (window.PR_EXPOSE = true)); // the app's names as globals
   await page.goto("file://" + html);
   await page.waitForFunction(() => typeof cdParts === "function");
   const res = await page.evaluate(

@@ -2,18 +2,61 @@
  * Opening files: a design (.ork or .rkt) from the file picker, loadDesignXml (which every way of opening a design goes
  * through), uploaded motor files (.eng, .rse, or a .zip of them), and Reset Changes.
  */
-document.getElementById("orkfile").addEventListener("change", async (e) => {
-  const f = e.target.files[0];
-  if (!f) return;
-  try {
-    const buf = await f.arrayBuffer();
-    const xml = await unzipOrk(buf);
-    if (await openDesignAsk(xml, f.name, buf)) await recentAdd(buf, f.name);
-  } catch (err) {
-    document.getElementById("orkreport").innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
-  }
-  e.target.value = "";
-});
+import { store } from "../core/storage.js";
+import { b64ToU8, esc, jclone } from "../core/helpers.js";
+import { FIN_EDGES } from "../core/units-and-fin-edges.js";
+import { classifyUser, dupMotor } from "../motors/catalog-lookup.js";
+import { parseEng, parseRse } from "../motors/motor-files.js";
+import {
+  allMotors,
+  boostId,
+  D,
+  defaultDesign,
+  defaultLaunch,
+  firstId,
+  L,
+  motorId,
+  setBoostId,
+  setD,
+  setFirstId,
+  setL,
+  setMotorId,
+  setMotorTarget,
+  setUSER_MOTORS,
+  USER_MOTORS,
+} from "../design/defaults.js";
+import { clusterOf, findMotor } from "../motors/clusters.js";
+import { fmt, uname } from "../ui/units.js";
+import { renderForms } from "../ui/forms.js";
+import { BP_ORK, FIN_ORK } from "../recovery/ejection-charge.js";
+import { changed, markStale } from "../ui/state.js";
+import { isThree } from "../physics/simulate.js";
+import { parseOrk, unzipEntries, unzipOrk } from "./openrocket-import.js";
+import { matchMotor, parseRkt } from "./rocksim-import.js";
+import { BLD_APP_SETTINGS, bldDefault, bldMounts, bldSettings } from "../builder/model.js";
+import { bldFromOrk } from "../builder/ork-read.js";
+import { fitStandIn, mountFilter, renderMotors, s1View } from "../ui/motor-tab.js";
+import { setSiteCur, siteCur, siteFind, siteKeep, siteRender } from "../ui/launch-sites.js";
+import { applyCal, calGet, calSet } from "../flightlog/drag-calibration.js";
+import { flDeleted, flList, flPut, setFlNow } from "../flightlog/flight-log.js";
+import { zipData, zipEntries } from "../flightlog/xlsx.js";
+import {
+  BLD,
+  BLD_ROOT,
+  bldDerive,
+  bldOffApply,
+  bldOffList,
+  bldRender,
+  bldSave,
+  setBLD,
+  setBldSel,
+} from "../builder/builder-ui.js";
+import { RANGE_KEYS, setORK_CFG, setORK_SIM, setSource, SOURCE } from "./save.js";
+import { recentAdd, renderRecent } from "./recent.js";
+import { zipOthers } from "./zip.js";
+import { prHash, prStateRead } from "./saved-simulation.js";
+import { isDirty, markClean, setActive } from "./unsaved-changes.js";
+import { WX_KEYS } from "../weather/forecast.js";
 /**
  * True if two values are the same (numbers to a few parts in a million).
  */
@@ -156,7 +199,7 @@ function askOpenRun(name, runs, hasSaved) {
  * @param {object} [opts] more options for loadDesignXml
  * @returns {Promise<boolean>} true if opened
  */
-async function openDesignAsk(xml, name, buf, opts = {}) {
+export async function openDesignAsk(xml, name, buf, opts = {}) {
   const rkt = /<RockSimDocument/i.test(xml.slice(0, 4000)),
     saved = !rkt && buf ? await prStateRead(buf, null) : null,
     runs = designRuns(xml, saved);
@@ -216,13 +259,13 @@ function askAddMotors(names) {
  *
  * open a design from .ork / .rkt text: from a file, or from the rocket builder
  */
-async function loadDesignXml(xml, fileName, buf, opts = {}) {
+export async function loadDesignXml(xml, fileName, buf, opts = {}) {
   const rep = document.getElementById("orkreport");
-  ORK_CFG = opts.cfg || null; // a motor configuration chosen on the Motor tab, when reopening for it
+  setORK_CFG(opts.cfg || null); // a motor configuration chosen on the Motor tab, when reopening for it
   // a stored run chosen when opening (openDesignAsk): its configuration, conditions and results
   const pk = opts.pick || null;
-  ORK_SIM = pk && pk.kind === "run" ? pk.i : null;
-  if (pk && pk.kind === "run" && pk.cfg) ORK_CFG = pk.cfg;
+  setORK_SIM(pk && pk.kind === "run" ? pk.i : null);
+  if (pk && pk.kind === "run" && pk.cfg) setORK_CFG(pk.cfg);
   const Lnow = jclone(L);
   try {
     // what the app saved in the file besides the design (prStateNow), read first: its motor configuration and uploaded
@@ -247,14 +290,14 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       }
       // the motor configuration and motors chosen here are used only if no other program has changed the file since
       const same = saved.text && saved.text === prHash(xml);
-      if (same && typeof saved.cfg === "string" && saved.cfg && !(pk && pk.kind === "run")) ORK_CFG = saved.cfg;
+      if (same && typeof saved.cfg === "string" && saved.cfg && !(pk && pk.kind === "run")) setORK_CFG(saved.cfg);
       if (!same && saved.text && (saved.cfg || saved.motorId))
         savedNotes.push(
           "The file was changed in another program after it was last saved here, so it opens with its own motor configuration and motors, not the ones chosen here.",
         );
     }
     const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
-    D = r.design;
+    setD(r.design);
     // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
     // the chosen run's conditions, as read (r.launch becomes L below)
     const runL = jclone(r.launch);
@@ -264,24 +307,24 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       [...RANGE_KEYS, "elev", "lat", "lon", ...(keptWx ? WX_KEYS : [])].forEach((k) => {
         if (L && L[k] !== undefined) keep[k] = jclone(L[k]);
       });
-      L = Object.assign(r.launch, keep);
+      setL(Object.assign(r.launch, keep));
     }
     let keptSite = siteKeep(); // your range settings stay when you open another rocket
     let savedCalUse = false;
-    if (pk && pk.kind === "design") L = Object.assign(defaultLaunch(), Lnow);
+    if (pk && pk.kind === "design") setL(Object.assign(defaultLaunch(), Lnow));
     else if (pk && (pk.kind === "saved" || pk.kind === "run")) {
       // the settings saved with the file, or the chosen run's: this app's runs keep all of them, others their
       // OpenRocket or RockSim conditions (over the settings you have)
       const sr = pk.kind === "run" && saved && saved.runs && saved.runs[pk.name];
       const src = pk.kind === "saved" ? saved : sr && sr.launch ? sr : null;
       if (src && src.launch) {
-        L = Object.assign(defaultLaunch(), jclone(src.launch));
+        setL(Object.assign(defaultLaunch(), jclone(src.launch)));
         if (typeof src.when === "string" && src.when) document.getElementById("wxwhen").value = src.when;
-      } else L = Object.assign(defaultLaunch(), Lnow, runL);
+      } else setL(Object.assign(defaultLaunch(), Lnow, runL));
       savedCalUse = pk.kind === "saved";
       keptSite = null;
       // the launch site it was saved with, if it's one of yours (by name, else by where it is)
-      siteCur = siteFind((src && src.site) || "", L);
+      setSiteCur(siteFind((src && src.site) || "", L));
       store.set("rfs-site", siteCur);
       siteRender();
       if (!siteCur && src && src.site)
@@ -307,7 +350,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         : "";
     };
     if (mm) {
-      motorId = mm.id;
+      setMotorId(mm.id);
       store.set("rfs-motor", motorId);
     }
     let xnote = addExtras(r.motorExtras, "extraMotors", D.twoStage ? "The sustainer" : "The rocket");
@@ -326,7 +369,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       // the motor left over from before may not fit this rocket: choose one that does, close to the file's impulse class
       const alt = fitStandIn(D, false, r.motor);
       if (alt) {
-        motorId = alt.id;
+        setMotorId(alt.id);
         store.set("rfs-motor", motorId);
         mnote += ` Until then the ${alt.cn || alt.name} (${Math.round(alt.dia * 1000)} mm, fits the motor mount) is selected.`;
       }
@@ -337,7 +380,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       const bm = matchMotor(r.boosterMotor);
       const bx = addExtras(r.boosterExtras, "bExtraMotors", "The booster");
       if (bm) {
-        boostId = bm.id;
+        setBoostId(bm.id);
         store.set("rfs-bmotor", boostId);
         const c = clusterOf(bm, D.bExtraMotors);
         mnote += ` Booster motor set to ${c.cn || c.name}.` + bx;
@@ -345,7 +388,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         mnote += ` The booster uses ${r.boosterMotor.mfr} ${r.boosterMotor.designation}, which isn’t in your motor list. Upload its .eng file on the Motor tab.`;
         const alt = fitStandIn(D, true, r.boosterMotor);
         if (alt) {
-          boostId = alt.id;
+          setBoostId(alt.id);
           store.set("rfs-bmotor", boostId);
           mnote += ` Until then the ${alt.cn || alt.name} (${Math.round(alt.dia * 1000)} mm, fits the booster’s motor mount) is selected.`;
         }
@@ -355,7 +398,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       const fm = matchMotor(r.firstMotor);
       const fx = addExtras(r.firstExtras, "s1ExtraMotors", "The first stage");
       if (fm) {
-        firstId = fm.id;
+        setFirstId(fm.id);
         store.set("rfs-b1motor", firstId);
         const c = clusterOf(fm, D.s1ExtraMotors);
         mnote += ` First-stage motor set to ${c.cn || c.name}.` + fx;
@@ -363,7 +406,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         mnote += ` The first stage uses ${r.firstMotor.mfr} ${r.firstMotor.designation}, which isn’t in your motor list. Upload its .eng file on the Motor tab.`;
         const alt = fitStandIn(s1View(D), true, r.firstMotor, firstId);
         if (alt) {
-          firstId = alt.id;
+          setFirstId(alt.id);
           store.set("rfs-b1motor", firstId);
           mnote += ` Until then the ${alt.cn || alt.name} (${Math.round(alt.dia * 1000)} mm, fits the first stage’s motor mount) is selected.`;
         }
@@ -393,9 +436,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
           opts.cfg != null && BLD && BLD.settings
             ? Object.fromEntries(BLD_APP_SETTINGS.map((k) => [k, BLD.settings[k]]))
             : null;
-      if (isR) ORK_SIM = null; // RockSim files are read as one converted OpenRocket design with the chosen run
-      BLD = bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR });
-      ORK_SIM = null;
+      if (isR) setORK_SIM(null); // RockSim files are read as one converted OpenRocket design with the chosen run
+      setBLD(bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR }));
+      setORK_SIM(null);
       // your design notes, kept per motor configuration
       const notes = prevNotes || (saved && saved.notes && typeof saved.notes === "object" ? saved.notes : null);
       if (notes) BLD.notes = jclone(notes);
@@ -458,7 +501,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       if (isR) {
         const pm = bldMounts(BLD.stages[0])[0];
         if (pm && pm.motor && pm.motor.id && pm.motor.id !== motorId && findMotor(pm.motor.id)) {
-          motorId = pm.motor.id;
+          setMotorId(pm.motor.id);
           store.set("rfs-motor", motorId);
         }
       }
@@ -466,9 +509,9 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
       // as the file hasn't been changed since by another program
       if (saved && saved.text && saved.text === prHash(xml)) {
         const ok = (id) => typeof id === "string" && !!findMotor(id);
-        if (ok(saved.motorId)) store.set("rfs-motor", (motorId = saved.motorId));
-        if (D.twoStage && ok(saved.boostId)) store.set("rfs-bmotor", (boostId = saved.boostId));
-        if (isThree(D) && ok(saved.firstId)) store.set("rfs-b1motor", (firstId = saved.firstId));
+        if (ok(saved.motorId)) store.set("rfs-motor", setMotorId(saved.motorId));
+        if (D.twoStage && ok(saved.boostId)) store.set("rfs-bmotor", setBoostId(saved.boostId));
+        if (isThree(D) && ok(saved.firstId)) store.set("rfs-b1motor", setFirstId(saved.firstId));
       }
       // a motor the file names but your list doesn't have stays in the file until you choose another one
       BLD.hold = [
@@ -476,7 +519,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
         D.twoStage && r.boosterMotor && r.boosterMotor.designation && !matchMotor(r.boosterMotor) ? boostId : null,
         isThree(D) && r.firstMotor && r.firstMotor.designation && !matchMotor(r.firstMotor) ? firstId : null,
       ];
-      bldSel = BLD_ROOT;
+      setBldSel(BLD_ROOT);
       bldSave();
       try {
         bldDerive();
@@ -501,7 +544,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
           const cur = flList(),
             add = fl.filter((f) => !cur.some((x) => x.id === f.id) && !gone.has(f.id));
           if (add.length && flPut([...cur, ...add])) {
-            flNow = {};
+            setFlNow({});
             savedNotes.push(
               `Added ${add.length} logged flight${add.length > 1 ? "s" : ""} from the file to the flight log.`,
             );
@@ -527,7 +570,7 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
           "beforeend",
           `<div class="note" style="margin-top:6px">Drag is calibrated to your flight of this rocket (×${D.dragScale.toFixed(2)}). See Results to change it.</div>`,
         );
-    motorTarget = "sustainer";
+    setMotorTarget("sustainer");
     mountFilter();
     renderMotors();
     setActive(true);
@@ -552,110 +595,128 @@ async function loadDesignXml(xml, fileName, buf, opts = {}) {
     renderRecent();
     return true;
   } catch (err) {
-    ORK_SIM = null;
+    setORK_SIM(null);
     rep.innerHTML = `<div class="report err">${esc(err.message || String(err))}</div>`;
     return false;
   }
 }
-document.getElementById("engfile").addEventListener("change", async (e) => {
-  const rep = document.getElementById("engreport");
-  const added = [],
-    bad = [],
-    dup = [];
-  // a .zip is opened and every .eng / .rse file inside it (in any folder) is read, as if each had been picked
-  const files = [];
-  for (const f of e.target.files) {
-    const buf = await f.arrayBuffer(),
-      u8 = new Uint8Array(buf);
-    if (/\.zip$/i.test(f.name) || (u8[0] === 0x50 && u8[1] === 0x4b)) {
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("orkfile").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const buf = await f.arrayBuffer();
+      const xml = await unzipOrk(buf);
+      if (await openDesignAsk(xml, f.name, buf)) await recentAdd(buf, f.name);
+    } catch (err) {
+      document.getElementById("orkreport").innerHTML =
+        `<div class="report err">${esc(err.message || String(err))}</div>`;
+    }
+    e.target.value = "";
+  });
+  document.getElementById("engfile").addEventListener("change", async (e) => {
+    const rep = document.getElementById("engreport");
+    const added = [],
+      bad = [],
+      dup = [];
+    // a .zip is opened and every .eng / .rse file inside it (in any folder) is read, as if each had been picked
+    const files = [];
+    for (const f of e.target.files) {
+      const buf = await f.arrayBuffer(),
+        u8 = new Uint8Array(buf);
+      if (/\.zip$/i.test(f.name) || (u8[0] === 0x50 && u8[1] === 0x4b)) {
+        try {
+          const ents = (await unzipEntries(buf)).filter(
+            (x) => !/(^|\/)(__MACOSX\/|\.)/.test(x.name) && /\.(eng|rse)$/i.test(x.name),
+          );
+          if (!ents.length) bad.push(`${f.name} (no .eng or .rse files inside)`);
+          for (const x of ents)
+            files.push({ name: x.name.split("/").pop(), text: async () => new TextDecoder().decode(await x.data()) });
+        } catch (err) {
+          bad.push(f.name);
+        }
+      } else files.push({ name: f.name, text: async () => new TextDecoder().decode(u8) });
+    }
+    for (const f of files) {
       try {
-        const ents = (await unzipEntries(buf)).filter(
-          (x) => !/(^|\/)(__MACOSX\/|\.)/.test(x.name) && /\.(eng|rse)$/i.test(x.name),
-        );
-        if (!ents.length) bad.push(`${f.name} (no .eng or .rse files inside)`);
-        for (const x of ents)
-          files.push({ name: x.name.split("/").pop(), text: async () => new TextDecoder().decode(await x.data()) });
+        const txt = await f.text();
+        const ms = /\.rse$/i.test(f.name) || txt.trim().startsWith("<") ? parseRse(txt) : parseEng(txt);
+        if (!ms.length) {
+          bad.push(f.name);
+          continue;
+        }
+        ms.forEach((m) => {
+          classifyUser(m);
+          if (!isFinite(m.totalMass) || !isFinite(m.propMass)) throw new Error("missing weights");
+          if (dupMotor(m, allMotors())) {
+            dup.push(m.name);
+            return;
+          }
+          setUSER_MOTORS(USER_MOTORS.filter((x) => x.id !== m.id));
+          USER_MOTORS.push(m);
+          added.push(m.name);
+        });
       } catch (err) {
         bad.push(f.name);
       }
-    } else files.push({ name: f.name, text: async () => new TextDecoder().decode(u8) });
-  }
-  for (const f of files) {
-    try {
-      const txt = await f.text();
-      const ms = /\.rse$/i.test(f.name) || txt.trim().startsWith("<") ? parseRse(txt) : parseEng(txt);
-      if (!ms.length) {
-        bad.push(f.name);
-        continue;
-      }
-      ms.forEach((m) => {
-        classifyUser(m);
-        if (!isFinite(m.totalMass) || !isFinite(m.propMass)) throw new Error("missing weights");
-        if (dupMotor(m, allMotors())) {
-          dup.push(m.name);
-          return;
-        }
-        USER_MOTORS = USER_MOTORS.filter((x) => x.id !== m.id);
-        USER_MOTORS.push(m);
-        added.push(m.name);
-      });
-    } catch (err) {
-      bad.push(f.name);
     }
-  }
-  store.set("rfs-motors", USER_MOTORS);
-  if (added.length) {
-    motorId = USER_MOTORS.find((m) => m.name === added[added.length - 1]).id;
+    store.set("rfs-motors", USER_MOTORS);
+    if (added.length) {
+      setMotorId(USER_MOTORS.find((m) => m.name === added[added.length - 1]).id);
+      store.set("rfs-motor", motorId);
+    }
+    rep.innerHTML = `<div class="report${bad.length && !added.length ? " err" : ""}">${added.length ? `Added ${added.length > 8 ? `${added.length} motors (${added.slice(0, 6).map(esc).join(", ")} and ${added.length - 6} more)` : added.map(esc).join(", ")} to your user-uploaded motors${added.length === 1 ? " and selected it" : ""}.` : ""} ${dup.length ? `Skipped ${dup.length} duplicate${dup.length > 1 ? "s" : ""} (same name, impulse, diameter and maker as a motor already in the list): ${dup.length > 8 ? `${dup.slice(0, 6).map(esc).join(", ")} and ${dup.length - 6} more` : dup.map(esc).join(", ")}.` : ""} ${bad.length ? `Couldn’t read ${bad.map(esc).join(", ")}. Check that it is a RASP .eng or RockSim .rse file.` : ""}</div>`;
+    renderMotors();
+    if (added.length) markStale();
+    e.target.value = "";
+  });
+  document.getElementById("resetbtn").onclick = () => {
+    // reset goes back to the open file as it was opened (or last saved), or a new design to the basic rocket it started from
+    if (!isDirty()) {
+      prToast("No changes to reset.");
+      return;
+    }
+    document.getElementById("resettxt").textContent =
+      SOURCE && SOURCE.base
+        ? `Reset ${(SOURCE.resetTo || SOURCE.base).D.name || "the design"} to how it was when you ${SOURCE.resetTo ? "last saved" : "opened"} ${SOURCE.name}? Your edits will be lost.`
+        : "Start this new design over from the basic rocket? Your edits to it will be lost.";
+    document.getElementById("openconfirm").hidden = true;
+    document.getElementById("resetconfirm").hidden = false;
+    document.getElementById("resetyes").focus();
+  };
+  document.getElementById("resetno").onclick = () => {
+    document.getElementById("resetconfirm").hidden = true;
+  };
+  document.getElementById("resetyes").onclick = () => {
+    document.getElementById("savemsg").innerHTML = "";
+    if (SOURCE && SOURCE.base) {
+      const B = SOURCE.resetTo || SOURCE.base;
+      setD(Object.assign(defaultDesign(), jclone(B.D)));
+      setL(Object.assign(defaultLaunch(), jclone(B.L)));
+      siteKeep();
+      setMotorId(B.motorId || motorId);
+      if (B.boostId) setBoostId(B.boostId);
+      if (B.firstId) setFirstId(B.firstId);
+      if (B.M) setBLD(jclone(B.M));
+    } else {
+      setBLD(bldDefault());
+    }
     store.set("rfs-motor", motorId);
-  }
-  rep.innerHTML = `<div class="report${bad.length && !added.length ? " err" : ""}">${added.length ? `Added ${added.length > 8 ? `${added.length} motors (${added.slice(0, 6).map(esc).join(", ")} and ${added.length - 6} more)` : added.map(esc).join(", ")} to your user-uploaded motors${added.length === 1 ? " and selected it" : ""}.` : ""} ${dup.length ? `Skipped ${dup.length} duplicate${dup.length > 1 ? "s" : ""} (same name, impulse, diameter and maker as a motor already in the list): ${dup.length > 8 ? `${dup.slice(0, 6).map(esc).join(", ")} and ${dup.length - 6} more` : dup.map(esc).join(", ")}.` : ""} ${bad.length ? `Couldn’t read ${bad.map(esc).join(", ")}. Check that it is a RASP .eng or RockSim .rse file.` : ""}</div>`;
-  renderMotors();
-  if (added.length) markStale();
-  e.target.value = "";
-});
-document.getElementById("resetbtn").onclick = () => {
-  // reset goes back to the open file as it was opened (or last saved), or a new design to the basic rocket it started from
-  if (!isDirty()) {
-    prToast("No changes to reset.");
-    return;
-  }
-  document.getElementById("resettxt").textContent =
-    SOURCE && SOURCE.base
-      ? `Reset ${(SOURCE.resetTo || SOURCE.base).D.name || "the design"} to how it was when you ${SOURCE.resetTo ? "last saved" : "opened"} ${SOURCE.name}? Your edits will be lost.`
-      : "Start this new design over from the basic rocket? Your edits to it will be lost.";
-  document.getElementById("openconfirm").hidden = true;
-  document.getElementById("resetconfirm").hidden = false;
-  document.getElementById("resetyes").focus();
-};
-document.getElementById("resetno").onclick = () => {
-  document.getElementById("resetconfirm").hidden = true;
-};
-document.getElementById("resetyes").onclick = () => {
-  document.getElementById("savemsg").innerHTML = "";
-  if (SOURCE && SOURCE.base) {
-    const B = SOURCE.resetTo || SOURCE.base;
-    D = Object.assign(defaultDesign(), jclone(B.D));
-    L = Object.assign(defaultLaunch(), jclone(B.L));
-    siteKeep();
-    motorId = B.motorId || motorId;
-    if (B.boostId) boostId = B.boostId;
-    if (B.firstId) firstId = B.firstId;
-    if (B.M) BLD = jclone(B.M);
-  } else {
-    BLD = bldDefault();
-  }
-  store.set("rfs-motor", motorId);
-  if (boostId) store.set("rfs-bmotor", boostId);
-  bldSel = BLD_ROOT;
-  bldSave();
-  try {
-    bldDerive();
-  } catch (e) {}
-  applyCal();
-  document.getElementById("resetconfirm").hidden = true;
-  renderForms();
-  changed();
-  markClean();
-  bldRender();
-  if (typeof renderMotors === "function") renderMotors();
-};
+    if (boostId) store.set("rfs-bmotor", boostId);
+    setBldSel(BLD_ROOT);
+    bldSave();
+    try {
+      bldDerive();
+    } catch (e) {}
+    applyCal();
+    document.getElementById("resetconfirm").hidden = true;
+    renderForms();
+    changed();
+    markClean();
+    bldRender();
+    if (typeof renderMotors === "function") renderMotors();
+  };
+}

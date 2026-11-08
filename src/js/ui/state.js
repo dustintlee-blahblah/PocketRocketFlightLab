@@ -2,15 +2,29 @@
  * Run state: saving the design after a change, the notes that follow it (recovery, inertia, drag table), marking the
  * results out of date, and the Launch button (checks, then a run).
  */
-/**
- * True when the design or conditions changed after the last run.
- */
-let stale = false;
+import { store } from "../core/storage.js";
+import { FT } from "../core/units-and-fin-edges.js";
+import { curBoost, curFirst, curMotor, D, L } from "../design/defaults.js";
+import { flightMotor } from "../motors/clusters.js";
+import { fmt, fromDisp, uname } from "./units.js";
+import { FIELDS } from "./forms.js";
+import { atmosphere } from "../physics/atmosphere.js";
+import { aero, cdParts } from "../physics/aerodynamics.js";
+import { airInertia, isThree, stackDesign } from "../physics/simulate.js";
+import { lastSim, renderResults, runAll, setLastSim } from "./results.js";
+import { drawProfile } from "./charts.js";
+import { motorFit, mountTooBig, s1View } from "./motor-tab.js";
+import { siteRender } from "./launch-sites.js";
+import { showTab } from "./events.js";
+import { showFitWarn, showMountWarn, showRailWarn } from "./launch-warnings.js";
+import { BLD, bldSave } from "../builder/builder-ui.js";
+import { renderSavePanel, renderTitle } from "../files/unsaved-changes.js";
+import { supNote } from "./donate.js";
 /**
  * Called after any edit: saves the design and launch conditions, marks the results out of date and refreshes the
  * notes and panels that depend on them.
  */
-function changed() {
+export function changed() {
   store.set("rfs-design", D);
   store.set("rfs-launch", L);
   markStale();
@@ -24,7 +38,7 @@ function changed() {
 /**
  * Writes the note that says when the first parachute opens, from the deployment setting and the motor delay.
  */
-function renderRecNote() {
+export function renderRecNote() {
   const noteEl = document.getElementById("recnote");
   if (noteEl) {
     const first = D.recovery === "single" ? "The parachute" : "The drogue",
@@ -69,25 +83,10 @@ function renderDesignNotes() {
   if (!ta || document.activeElement === ta) return;
   ta.value = (BLD && BLD.notes && BLD.notes[designNotesKey()]) || "";
 }
-{
-  const ta = document.getElementById("dnotes");
-  if (ta)
-    ta.addEventListener("input", () => {
-      if (!BLD) return;
-      const k = designNotesKey(),
-        n = { ...(BLD.notes || {}) };
-      if (ta.value.trim()) n[k] = ta.value;
-      else delete n[k];
-      BLD.notes = Object.keys(n).length ? n : undefined;
-      if (!BLD.notes) delete BLD.notes;
-      bldSave();
-      renderSavePanel();
-    });
-}
 /**
  * Writes the note under the inertia field: the value used and where it comes from.
  */
-function renderInertiaNote() {
+export function renderInertiaNote() {
   renderDesignNotes();
   const el = document.getElementById("inote");
   if (!el) return;
@@ -104,7 +103,7 @@ function renderInertiaNote() {
 /**
  * Fills the drag breakdown table (Cd and its friction, pressure and base parts at several Mach numbers).
  */
-function renderDragTable() {
+export function renderDragTable() {
   const el = document.getElementById("dragtable");
   if (!el) return;
   const A = aero(D),
@@ -152,13 +151,12 @@ function staleReason() {
 /**
  * Clears the results and shows that they are out of date, and why.
  */
-function markStale() {
-  stale = true;
+export function markStale() {
   renderTitle();
   document.getElementById("runbar").classList.add("stale");
   const had = !!lastSim || everRun;
   if (lastSim || !staleWhy) staleWhy = staleReason();
-  lastSim = null;
+  setLastSim(null);
   renderResults();
   {
     const em = document.getElementById("exportmsg");
@@ -178,7 +176,6 @@ function markStale() {
  * Shows the results as up to date, with the motor and the time of the run.
  */
 function markFresh() {
-  stale = false;
   everRun = true;
   staleWhy = "";
   document.getElementById("runbar").classList.remove("stale");
@@ -196,7 +193,7 @@ function markFresh() {
 /**
  * Copies the launch-condition fields into L (a field left as shown keeps its exact value), then saves.
  */
-function readFields() {
+export function readFields() {
   for (const list of Object.values(FIELDS))
     for (const [k, , dim] of list) {
       const O = L,
@@ -219,7 +216,7 @@ function readFields() {
  * The Launch button: reads the fields, checks the rail length, that every stage has a motor that lights and that
  * each motor fits its mount, then runs the simulation and shows the results.
  */
-function runNow() {
+export function runNow() {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   if (document.documentElement.classList.contains("nodesign")) {
     showTab("rocket");
@@ -278,6 +275,26 @@ function runNow() {
   if (document.getElementById("v-results").hidden) showTab("results");
   window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
-// the Launch buttons (the launch bar, and the one on the empty Results tab)
-document.getElementById("runbtn").onclick = runNow;
-document.getElementById("emptylaunch").onclick = runNow;
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  {
+    const ta = document.getElementById("dnotes");
+    if (ta)
+      ta.addEventListener("input", () => {
+        if (!BLD) return;
+        const k = designNotesKey(),
+          n = { ...(BLD.notes || {}) };
+        if (ta.value.trim()) n[k] = ta.value;
+        else delete n[k];
+        BLD.notes = Object.keys(n).length ? n : undefined;
+        if (!BLD.notes) delete BLD.notes;
+        bldSave();
+        renderSavePanel();
+      });
+  }
+  // the Launch buttons (the launch bar, and the one on the empty Results tab)
+  document.getElementById("runbtn").onclick = runNow;
+  document.getElementById("emptylaunch").onclick = runNow;
+}

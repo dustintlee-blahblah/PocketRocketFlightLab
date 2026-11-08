@@ -1,6 +1,22 @@
 /**
  * Reading a design file into builder parts (see the note below).
  */
+import { rktEj } from "../recovery/ejection-charge.js";
+import { matchMotor } from "../files/rocksim-import.js";
+import {
+  BLD_BULK,
+  BLD_BUTTONS,
+  BLD_LINE,
+  BLD_NAMES,
+  BLD_SURF,
+  bldBodyR,
+  bldId,
+  bldMounts,
+  bldNew,
+  bldPts,
+  bldSettings,
+} from "./model.js";
+import { ORK_CFG, ORK_SIM } from "../files/save.js";
 /* ---------- reading a design file into builder parts ----------
    .rkt files arrive already converted to .ork text. Parts the builder can't edit (pods, tube fins,
    engine blocks...) are kept exactly as written, so they still fly and still save. */
@@ -11,7 +27,7 @@
  * @returns {object} builder model
  * @throws {Error} if there is no rocket in the file
  */
-function bldFromOrk(xml, info) {
+export function bldFromOrk(xml, info) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];
   if (!rocket) throw new Error("No rocket was found in this file.");
@@ -717,7 +733,7 @@ function bldFromOrk(xml, info) {
  *
  * checks that would make the file wrong or unflyable
  */
-function bldProblems(model) {
+export function bldProblems(model) {
   const out = [];
   model.stages.forEach((st, si) => {
     const tag = model.stages.length > 1 ? `${st.name}: ` : "";

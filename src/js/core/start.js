@@ -1,6 +1,11 @@
 /**
  * App start: strict mode and the build number, which tools/set-build.js writes here and into the splash screen.
  */
-"use strict";
-const APP_BUILD = "278";
-document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
+export const APP_BUILD = "278";
+// set by the build script, with the splash screen's build number
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD));
+}

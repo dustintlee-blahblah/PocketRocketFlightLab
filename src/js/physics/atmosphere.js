@@ -105,7 +105,7 @@ function atmProfile(L, fieldElev, fieldT, fieldP) {
  * @returns {{rho:number, a:number, mu:number, T:number, p:number}} density (kg/m³), speed of sound (m/s), dynamic
  *   viscosity (Pa·s), temperature (K), pressure (Pa)
  */
-function atmosphere(L, h) {
+export function atmosphere(L, h) {
   // h = AGL meters
   const fieldElev = L.elev || 0,
     fieldT = L.tempC + 273.15,

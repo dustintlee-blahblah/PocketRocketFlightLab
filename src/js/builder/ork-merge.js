@@ -291,7 +291,7 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
  * @param {string} [baseXml] the design as opened, as .ork
  * @returns {string} XML
  */
-function bldMergeOrk(origXml, newXml, cfg, baseXml) {
+export function bldMergeOrk(origXml, newXml, cfg, baseXml) {
   const P = new DOMParser(),
     od = P.parseFromString(origXml, "application/xml"),
     nd = P.parseFromString(newXml, "application/xml");
@@ -420,7 +420,7 @@ function bldMergeOrk(origXml, newXml, cfg, baseXml) {
  * RockSim parts, numbered in file order; the importer gives each builder part the same number, so a save can find it again
  * a RockSim part's id in the converted design: a fixed UUID from its place in the file (OpenRocket needs UUIDs, and the same file always gets the same ids)
  */
-function rktPartId(i) {
+export function rktPartId(i) {
   return "00000000-0000-4000-8000-" + (0x52000000000 + (i | 0)).toString(16).padStart(12, "0");
 }
 /**
@@ -428,7 +428,7 @@ function rktPartId(i) {
  * @param {Element} design
  * @returns {Map<Element, number>}
  */
-function rktIndex(design) {
+export function rktIndex(design) {
   const m = new Map();
   let i = 0;
   for (const e of design.getElementsByTagName("*")) if ([...e.children].some((c) => c.tagName === "Xb")) m.set(e, i++);

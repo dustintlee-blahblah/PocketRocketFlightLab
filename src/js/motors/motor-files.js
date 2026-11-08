@@ -7,7 +7,7 @@
  * @param {string} text file contents
  * @returns {object[]} motor objects (curves with fewer than two points are dropped)
  */
-function parseEng(text) {
+export function parseEng(text) {
   const out = [];
   let cur = null;
   for (let raw of text.split(/\r?\n/)) {
@@ -44,7 +44,7 @@ function parseEng(text) {
  * @param {string} text file contents
  * @returns {object[]} motor objects
  */
-function parseRse(text) {
+export function parseRse(text) {
   const doc = new DOMParser().parseFromString(text, "application/xml");
   return [...doc.getElementsByTagName("engine")]
     .map((e) => {
@@ -86,7 +86,7 @@ function fixCurve(m) {
  * @param {object} m motor
  * @returns {{I:number, Fmax:number, tb:number, avg:number, cls:string}} N·s, N, s, N and the class letter
  */
-function motorStats(m) {
+export function motorStats(m) {
   let I = 0,
     Fmax = 0;
   for (let i = 1; i < m.t.length; i++) {

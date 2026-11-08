@@ -51,7 +51,7 @@ for (const d of fixtureDirs)
 
 /* ---- runs inside the page ---- */
 // a deterministic page: seeded random numbers, a fixed clock and ids, so two runs give identical output
-const INIT = `(()=>{let s=123456789;Math.random=()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};
+const INIT = `(()=>{window.PR_EXPOSE=true;let s=123456789;Math.random=()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};
   const T0=Date.UTC(2026,10,1,18,0,0);const RD=Date;let tick=0;
   class FD extends RD{constructor(...a){if(a.length)super(...a);else super(T0+(tick++));}static now(){return T0+(tick++);}}
   window.Date=FD;let n=0;if(window.crypto)try{crypto.randomUUID=()=>"00000000-0000-4000-8000-"+String(++n).padStart(12,"0");}catch(e){}

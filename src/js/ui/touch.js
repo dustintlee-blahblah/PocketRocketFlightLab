@@ -1,63 +1,68 @@
 /**
- * Touch screens: a field being typed in hides the launch bar until the keyboard closes.
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
  */
-// on touch screens, a field being typed in hides the launch bar until the keyboard closes
-{
+export function start() {
   /**
-   * True on a touch screen.
+   * Touch screens: a field being typed in hides the launch bar until the keyboard closes.
    */
-  const touch = () => window.matchMedia && matchMedia("(pointer:coarse)").matches;
-  /**
-   * True for a field that brings up the keyboard.
-   */
-  const typed = (el) =>
-    el &&
-    (el.tagName === "TEXTAREA" ||
-      (el.tagName === "INPUT" &&
-        !["checkbox", "radio", "button", "submit", "range", "file", "color"].includes(el.type)));
-  document.addEventListener("focusin", (e) => {
-    if (touch() && typed(e.target)) document.documentElement.classList.add("typing");
-  });
-  document.addEventListener("focusout", () =>
-    setTimeout(() => {
-      if (!typed(document.activeElement)) document.documentElement.classList.remove("typing");
-    }, 0),
-  );
-  /**
-   * The keyboard was put away while the field still has focus: finish the edit and bring the launch bar back.
-   *
-   * the keyboard was put away while the field still has focus: finish the edit and bring the launch bar back
-   */
-  const closed = () => {
-    document.documentElement.classList.remove("typing");
-    const a = document.activeElement;
-    if (typed(a)) a.blur();
-  };
-  // the Android app reports the keyboard itself
-  // leaving the app hides the keyboard without telling the page: forget the typing state, so the launch bar and swipes come back
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) closed();
-  });
-  window.prKeyboard = (open) => {
-    if (!open) closed();
-    else if (touch() && typed(document.activeElement)) document.documentElement.classList.add("typing");
-  };
-  // in a phone browser, the visible area grows back to full height when the keyboard closes
-  const vv = window.visualViewport;
-  if (vv && !window.PocketRocketApp) {
-    let full = vv.height,
-      was = false;
-    vv.addEventListener("resize", () => {
-      full = Math.max(full, vv.height);
-      const open = vv.height < full * 0.85;
-      if (was && !open && document.documentElement.classList.contains("typing")) closed();
-      was = open;
+  // on touch screens, a field being typed in hides the launch bar until the keyboard closes
+  {
+    /**
+     * True on a touch screen.
+     */
+    const touch = () => window.matchMedia && matchMedia("(pointer:coarse)").matches;
+    /**
+     * True for a field that brings up the keyboard.
+     */
+    const typed = (el) =>
+      el &&
+      (el.tagName === "TEXTAREA" ||
+        (el.tagName === "INPUT" &&
+          !["checkbox", "radio", "button", "submit", "range", "file", "color"].includes(el.type)));
+    document.addEventListener("focusin", (e) => {
+      if (touch() && typed(e.target)) document.documentElement.classList.add("typing");
     });
-    window.addEventListener("orientationchange", () => {
-      full = 0;
+    document.addEventListener("focusout", () =>
       setTimeout(() => {
-        full = vv.height;
-      }, 400);
+        if (!typed(document.activeElement)) document.documentElement.classList.remove("typing");
+      }, 0),
+    );
+    /**
+     * The keyboard was put away while the field still has focus: finish the edit and bring the launch bar back.
+     *
+     * the keyboard was put away while the field still has focus: finish the edit and bring the launch bar back
+     */
+    const closed = () => {
+      document.documentElement.classList.remove("typing");
+      const a = document.activeElement;
+      if (typed(a)) a.blur();
+    };
+    // the Android app reports the keyboard itself
+    // leaving the app hides the keyboard without telling the page: forget the typing state, so the launch bar and swipes come back
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) closed();
     });
+    window.prKeyboard = (open) => {
+      if (!open) closed();
+      else if (touch() && typed(document.activeElement)) document.documentElement.classList.add("typing");
+    };
+    // in a phone browser, the visible area grows back to full height when the keyboard closes
+    const vv = window.visualViewport;
+    if (vv && !window.PocketRocketApp) {
+      let full = vv.height,
+        was = false;
+      vv.addEventListener("resize", () => {
+        full = Math.max(full, vv.height);
+        const open = vv.height < full * 0.85;
+        if (was && !open && document.documentElement.classList.contains("typing")) closed();
+        was = open;
+      });
+      window.addEventListener("orientationchange", () => {
+        full = 0;
+        setTimeout(() => {
+          full = vv.height;
+        }, 400);
+      });
+    }
   }
 }

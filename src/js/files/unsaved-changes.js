@@ -2,6 +2,13 @@
  * Unsaved changes and the Save buttons: what counts as a change, the title asterisk, the prompt to save before the
  * file picker opens, the Save changes and Save a copy buttons, and naming a file on its first save.
  */
+import { DEFAULT_MOTOR } from "../motors/catalog-lookup.js";
+import { boostId, D, defaultDesign, defaultLaunch, L, motorId } from "../design/defaults.js";
+import { drawProfile } from "../ui/charts.js";
+import { BLD, bldRender } from "../builder/builder-ui.js";
+import { SAVE_IGNORE, SAVE_NOT, SOURCE } from "./save.js";
+import { isAndroidApp } from "./zip.js";
+import { saveDesignFile } from "./saved-simulation.js";
 /* ---------- unsaved changes: asked about before another file is opened ---------- */
 /**
  * A snapshot of what the design file can hold (app-only settings don't count as changes).
@@ -18,14 +25,11 @@ function designSnap(d, l, m, b) {
       .map((k) => [k, o[k]]);
   return "b2:" + JSON.stringify([BLD, pick(l), m, BLD && BLD.stages.length > 1 ? b : null]);
 }
-var CLEAN = null;
-try {
-  CLEAN = localStorage.getItem("rfs-clean2");
-} catch (e) {}
+export var CLEAN = null;
 /**
  * Takes the current design as saved.
  */
-function markClean() {
+export function markClean() {
   CLEAN = designSnap(D, L, motorId, boostId);
   try {
     localStorage.setItem("rfs-clean2", CLEAN);
@@ -36,58 +40,13 @@ function markClean() {
  * True if the design differs from when it was last saved or opened.
  * @returns {boolean}
  */
-function isDirty() {
+export function isDirty() {
   const ref =
     CLEAN ??
     (SOURCE && SOURCE.base
       ? designSnap(SOURCE.base.D, SOURCE.base.L, SOURCE.base.motorId, SOURCE.base.boostId)
       : designSnap(defaultDesign(), defaultLaunch(), DEFAULT_MOTOR, boostId));
   return designSnap(D, L, motorId, boostId) !== ref;
-}
-{
-  let bypass = false;
-  const inp = document.getElementById("orkfile"),
-    box = document.getElementById("openconfirm"),
-    txt = document.getElementById("opentxt"),
-    bs = document.getElementById("opensave");
-  // the picker opens from a real tap on a label tied to the file input (programmatic clicks are blocked in some views)
-  const pick = () => {
-    bypass = true;
-    box.hidden = true;
-  };
-  const pk = document.getElementById("openpick"),
-    dc = document.getElementById("opendiscard");
-  inp.addEventListener("click", (e) => {
-    if (bypass) {
-      bypass = false;
-      return;
-    }
-    if (document.documentElement.classList.contains("nodesign") || !isDirty()) return;
-    e.preventDefault();
-    const nm = SOURCE ? SOURCE.name : D.name || "this design";
-    txt.textContent = `You have unsaved changes to ${nm}. Save them before opening another file?`;
-    bs.textContent = SOURCE ? "Save changes" : "Save as .ork file";
-    bs.hidden = false;
-    pk.hidden = true;
-    dc.hidden = false;
-    bs.onclick = async () => {
-      const ok = await saveDesignFile(!SOURCE);
-      if (ok) {
-        txt.textContent = "Saved. Now choose the file to open.";
-        bs.hidden = true;
-        dc.hidden = true;
-        pk.hidden = false;
-      } else txt.textContent = "The changes weren’t saved. Save again, discard them, or cancel.";
-    };
-    document.getElementById("resetconfirm").hidden = true;
-    box.hidden = false;
-    bs.focus();
-  });
-  pk.addEventListener("click", pick);
-  dc.addEventListener("click", pick);
-  document.getElementById("opencancel").onclick = () => {
-    box.hidden = true;
-  };
 }
 /**
  * True if a design is open and has unsaved changes.
@@ -102,7 +61,7 @@ function designDirty() {
 /**
  * Writes the rocket's name in the title, with an asterisk while there are unsaved changes.
  */
-function renderTitle() {
+export function renderTitle() {
   const el = document.getElementById("rtitle");
   if (!el) return;
   const dirty = designDirty();
@@ -118,7 +77,7 @@ function renderTitle() {
  *
  * a rocket is open (from a file or entered by hand) for the rest of this session
  */
-function setActive(on) {
+export function setActive(on) {
   try {
     on ? sessionStorage.setItem("rfs-active", "1") : sessionStorage.removeItem("rfs-active");
   } catch (e) {}
@@ -131,7 +90,7 @@ function setActive(on) {
 /**
  * Shows the Save changes button while there's something to save, worded for the file's format.
  */
-function renderSavePanel() {
+export function renderSavePanel() {
   renderTitle();
   const b = document.getElementById("savefile");
   if (!b) return;
@@ -152,7 +111,7 @@ function renderSavePanel() {
  * @param {boolean} [failed] the file couldn't be written over: offers only a copy
  * @returns {Promise<"over"|"copy"|null>} null if cancelled
  */
-function askOverwrite(name, failed = false) {
+export function askOverwrite(name, failed = false) {
   const box = document.getElementById("overask"),
     yes = document.getElementById("overyes"),
     cp = document.getElementById("overcopy"),
@@ -193,7 +152,7 @@ let nameMode = "first",
  * @param {string} mode "first" or "copy"
  * @param {object} [extra] more options for saveDesignFile (addSim to save the last run into the copy too)
  */
-function askName(mode, extra = {}) {
+export function askName(mode, extra = {}) {
   nameMode = mode;
   nameExtra = extra;
   const box = document.getElementById("namebox"),
@@ -214,50 +173,103 @@ function askName(mode, extra = {}) {
   inp.focus();
   inp.select();
 }
-document.getElementById("savefile").onclick = async () => {
-  if (SOURCE) {
-    // an .ork file in the Android app is written over in place: ask first, or save a copy
-    if (SOURCE.format === "ork" && isAndroidApp()) {
-      const a = await askOverwrite(SOURCE.name);
-      if (a === "over") saveDesignFile(false);
-      else if (a === "copy") askName("copy");
-      return;
-    }
-    saveDesignFile(false);
-    return;
-  }
-  // a new design is named on its first save
-  askName("first");
-};
-document.getElementById("savecopy").onclick = () => askName(SOURCE ? "copy" : "first");
-{
-  const box = document.getElementById("namebox"),
-    inp = document.getElementById("savename");
-  const go = async () => {
-    const nm = inp.value.trim().replace(/\.(ork|rkt)$/i, "");
-    if (!nm) {
-      document.getElementById("nameerr").textContent = "Type a file name.";
-      inp.focus();
-      return;
-    }
-    box.hidden = true;
-    await saveDesignFile(
-      false,
-      nameMode === "copy" && SOURCE ? { ...nameExtra, copyName: nm } : { ...nameExtra, name: nm },
-    );
-    bldRender();
-  };
-  document.getElementById("nameok").onclick = go;
-  inp.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      go();
-    } else if (e.key === "Escape") {
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  try {
+    CLEAN = localStorage.getItem("rfs-clean2");
+  } catch (e) {}
+  {
+    let bypass = false;
+    const inp = document.getElementById("orkfile"),
+      box = document.getElementById("openconfirm"),
+      txt = document.getElementById("opentxt"),
+      bs = document.getElementById("opensave");
+    // the picker opens from a real tap on a label tied to the file input (programmatic clicks are blocked in some views)
+    const pick = () => {
+      bypass = true;
       box.hidden = true;
+    };
+    const pk = document.getElementById("openpick"),
+      dc = document.getElementById("opendiscard");
+    inp.addEventListener("click", (e) => {
+      if (bypass) {
+        bypass = false;
+        return;
+      }
+      if (document.documentElement.classList.contains("nodesign") || !isDirty()) return;
+      e.preventDefault();
+      const nm = SOURCE ? SOURCE.name : D.name || "this design";
+      txt.textContent = `You have unsaved changes to ${nm}. Save them before opening another file?`;
+      bs.textContent = SOURCE ? "Save changes" : "Save as .ork file";
+      bs.hidden = false;
+      pk.hidden = true;
+      dc.hidden = false;
+      bs.onclick = async () => {
+        const ok = await saveDesignFile(!SOURCE);
+        if (ok) {
+          txt.textContent = "Saved. Now choose the file to open.";
+          bs.hidden = true;
+          dc.hidden = true;
+          pk.hidden = false;
+        } else txt.textContent = "The changes weren’t saved. Save again, discard them, or cancel.";
+      };
+      document.getElementById("resetconfirm").hidden = true;
+      box.hidden = false;
+      bs.focus();
+    });
+    pk.addEventListener("click", pick);
+    dc.addEventListener("click", pick);
+    document.getElementById("opencancel").onclick = () => {
+      box.hidden = true;
+    };
+  }
+  document.getElementById("savefile").onclick = async () => {
+    if (SOURCE) {
+      // an .ork file in the Android app is written over in place: ask first, or save a copy
+      if (SOURCE.format === "ork" && isAndroidApp()) {
+        const a = await askOverwrite(SOURCE.name);
+        if (a === "over") saveDesignFile(false);
+        else if (a === "copy") askName("copy");
+        return;
+      }
+      saveDesignFile(false);
+      return;
     }
-  });
-  document.getElementById("namecancel").onclick = () => {
-    box.hidden = true;
+    // a new design is named on its first save
+    askName("first");
   };
+  document.getElementById("savecopy").onclick = () => askName(SOURCE ? "copy" : "first");
+  {
+    const box = document.getElementById("namebox"),
+      inp = document.getElementById("savename");
+    const go = async () => {
+      const nm = inp.value.trim().replace(/\.(ork|rkt)$/i, "");
+      if (!nm) {
+        document.getElementById("nameerr").textContent = "Type a file name.";
+        inp.focus();
+        return;
+      }
+      box.hidden = true;
+      await saveDesignFile(
+        false,
+        nameMode === "copy" && SOURCE ? { ...nameExtra, copyName: nm } : { ...nameExtra, name: nm },
+      );
+      bldRender();
+    };
+    document.getElementById("nameok").onclick = go;
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        go();
+      } else if (e.key === "Escape") {
+        box.hidden = true;
+      }
+    });
+    document.getElementById("namecancel").onclick = () => {
+      box.hidden = true;
+    };
+  }
+  renderSavePanel();
 }
-renderSavePanel();

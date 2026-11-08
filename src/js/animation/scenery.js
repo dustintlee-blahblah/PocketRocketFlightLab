@@ -3,6 +3,11 @@
  * Positions in the world are meters; K is pixels per meter, CX the world x at the center of the view, gy the ground's
  * screen y.
  */
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { chargeEvents, lastSim } from "../ui/results.js";
+import { ANIM, animAt, animClose, animCount, animOpen, animPlay } from "./animation.js";
+import { VID } from "./video-export.js";
+import { css, niceTicks, setupCanvas } from "../ui/charts.js";
 /* ---------- animation scenery: sky, sun, clouds, mountains, tree line, field, windsock, smoke ---------- */
 /**
  * A repeatable pseudo-random number 0–1 for an index (scenery that doesn't change between frames).
@@ -295,7 +300,7 @@ function animSmoke(c, out, st, RD, t, SX, SY, K, wind) {
  *
  * draws one frame: on the screen, or (for a video) on a given canvas, with the readout drawn into the picture
  */
-function animDraw(target) {
+export function animDraw(target) {
   const video = !!target;
   const { c, W, H } = target || setupCanvas(document.getElementById("animcv"));
   const { out, st, L: RL, D: RD } = lastSim,
@@ -782,68 +787,73 @@ function animDraw(target) {
     });
   }
 }
-document.getElementById("animbtn").onclick = animOpen;
-// the phone's Back button (the Android app asks this first): close the animation window, or an info or About box, instead of leaving the app
-window.prBack = function () {
-  if (window.prSettingsOpen && window.prSettingsOpen()) {
-    window.prSettingsClose();
-    return true;
-  }
-  if (typeof ANIM !== "undefined" && ANIM.on) {
-    animClose();
-    return true;
-  }
-  const ib = document.getElementById("infobox");
-  if (ib && !ib.hidden) {
-    ib.hidden = true;
-    return true;
-  }
-  for (const [id, b] of [
-    ["altmodal", "altcancel"],
-    ["flallmodal", "flallclose"],
-    ["flmodal", "flcancel"],
-  ]) {
-    const e = document.getElementById(id);
-    if (e && !e.hidden) {
-      document.getElementById(b).click();
+/**
+ * Start-up: what this module does when the app opens (called once, in order, from main.js).
+ */
+export function start() {
+  document.getElementById("animbtn").onclick = animOpen;
+  // the phone's Back button (the Android app asks this first): close the animation window, or an info or About box, instead of leaving the app
+  window.prBack = function () {
+    if (window.prSettingsOpen && window.prSettingsOpen()) {
+      window.prSettingsClose();
       return true;
     }
-  }
-  const ab = document.getElementById("about");
-  if (ab && !ab.hidden) {
-    document.getElementById("aboutclose").click();
-    return true;
-  }
-  return false;
-};
-document.getElementById("animclose").onclick = animClose;
-document.getElementById("animplay").onclick = () => animPlay(!ANIM.playing);
-document.getElementById("animrestart").onclick = () => {
-  ANIM.t = 0;
-  ANIM.cam = null;
-  animPlay(true);
-};
-document.getElementById("animspeed").onchange = (e) => {
-  ANIM.speed = parseFloat(e.target.value) || 1;
-};
-document.getElementById("animscrub").addEventListener("input", (e) => {
-  // scrubbing skips the countdown
-  if (ANIM.countEnd) {
-    animCount(null);
-    ANIM.last = performance.now();
-  }
-  ANIM.t = parseFloat(e.target.value) || 0;
-  ANIM.cam = null;
-  if (!ANIM.playing) animDraw();
-});
-document.addEventListener("keydown", (e) => {
-  if (!ANIM.on) return;
-  if (e.key === "Escape") animClose();
-  else if (e.key === " ") {
-    e.preventDefault();
-    animPlay(!ANIM.playing);
-  }
-});
-window.addEventListener("resize", () => {
-  if (ANIM.on && !ANIM.playing && !VID.busy) animDraw();
-});
+    if (typeof ANIM !== "undefined" && ANIM.on) {
+      animClose();
+      return true;
+    }
+    const ib = document.getElementById("infobox");
+    if (ib && !ib.hidden) {
+      ib.hidden = true;
+      return true;
+    }
+    for (const [id, b] of [
+      ["altmodal", "altcancel"],
+      ["flallmodal", "flallclose"],
+      ["flmodal", "flcancel"],
+    ]) {
+      const e = document.getElementById(id);
+      if (e && !e.hidden) {
+        document.getElementById(b).click();
+        return true;
+      }
+    }
+    const ab = document.getElementById("about");
+    if (ab && !ab.hidden) {
+      document.getElementById("aboutclose").click();
+      return true;
+    }
+    return false;
+  };
+  document.getElementById("animclose").onclick = animClose;
+  document.getElementById("animplay").onclick = () => animPlay(!ANIM.playing);
+  document.getElementById("animrestart").onclick = () => {
+    ANIM.t = 0;
+    ANIM.cam = null;
+    animPlay(true);
+  };
+  document.getElementById("animspeed").onchange = (e) => {
+    ANIM.speed = parseFloat(e.target.value) || 1;
+  };
+  document.getElementById("animscrub").addEventListener("input", (e) => {
+    // scrubbing skips the countdown
+    if (ANIM.countEnd) {
+      animCount(null);
+      ANIM.last = performance.now();
+    }
+    ANIM.t = parseFloat(e.target.value) || 0;
+    ANIM.cam = null;
+    if (!ANIM.playing) animDraw();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (!ANIM.on) return;
+    if (e.key === "Escape") animClose();
+    else if (e.key === " ") {
+      e.preventDefault();
+      animPlay(!ANIM.playing);
+    }
+  });
+  window.addEventListener("resize", () => {
+    if (ANIM.on && !ANIM.playing && !VID.busy) animDraw();
+  });
+}

@@ -1,11 +1,27 @@
 /**
  * The flight animation: a side view along the wind, played from the last run's time history.
  */
+import { esc } from "../core/helpers.js";
+import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
+import { isThree, stackDesign, stackDesign3 } from "../physics/simulate.js";
+import { lastSim } from "../ui/results.js";
+import { animDraw } from "./scenery.js";
+import { VID } from "./video-export.js";
 /* ---------- flight animation (side view along the wind) ---------- */
 /**
  * Animation state: open, current time (s), playback speed, playing, animation frame id, last frame time, camera.
  */
-const ANIM = { on: false, t: 0, speed: 1, playing: false, raf: 0, last: 0, cam: null, countEnd: 0, countHide: 0 };
+export const ANIM = {
+  on: false,
+  t: 0,
+  speed: 1,
+  playing: false,
+  raf: 0,
+  last: 0,
+  cam: null,
+  countEnd: 0,
+  countHide: 0,
+};
 /**
  * The rocket's outline in its own frame, for drawing: x from the nose tip, r out from the axis.
  * @param {object} DD design (or stack)
@@ -40,7 +56,7 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
 /**
  * Opens the animation for the last run: the shapes of each stage, the time span and the camera.
  */
-function animOpen() {
+export function animOpen() {
   if (!lastSim) return;
   const { out, st, D: RD } = lastSim,
     two = !!st.staged;
@@ -80,7 +96,7 @@ function animOpen() {
 /**
  * Closes the animation and stops playback.
  */
-function animClose() {
+export function animClose() {
   if (VID.busy) VID.cancel = true;
   document.getElementById("animvidbox").hidden = true;
   ANIM.on = false;
@@ -93,7 +109,7 @@ function animClose() {
  * Starts or pauses playback (from the start again after the end).
  * @param {boolean} on
  */
-function animPlay(on) {
+export function animPlay(on) {
   ANIM.playing = on;
   document.getElementById("animplay").textContent = on ? "Pause" : "Play";
   animCount(null);
@@ -111,7 +127,7 @@ function animPlay(on) {
  * @param {string|null} text "3", "2", "1" or "Liftoff!"; null hides it and stops a countdown
  * @param {number} [ms] hide it after this long
  */
-function animCount(text, ms) {
+export function animCount(text, ms) {
   const el = document.getElementById("animcount");
   clearTimeout(ANIM.countHide);
   if (text == null) {
@@ -166,7 +182,7 @@ function animTick(now) {
  *
  * linear interpolation of a recorded series at time t
  */
-function animAt(ts, ys, t) {
+export function animAt(ts, ys, t) {
   if (!ts.length) return 0;
   if (t <= ts[0]) return ys[0];
   if (t >= ts[ts.length - 1]) return ys[ys.length - 1];
