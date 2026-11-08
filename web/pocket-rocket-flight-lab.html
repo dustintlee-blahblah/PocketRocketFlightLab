@@ -3127,7 +3127,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">272</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">273</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -3628,7 +3628,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
  * App start: strict mode and the build number, which the build script (bump.sh) writes here and into the splash screen.
  */
 "use strict";
-const APP_BUILD = "272";
+const APP_BUILD = "273";
 document.querySelectorAll(".bnum").forEach((e) => (e.textContent = APP_BUILD)); // set by the build script, with the splash screen's build number
 /**
  * Saved settings: a small wrapper around localStorage that stores JSON and never throws (private windows, full storage).
@@ -6677,6 +6677,7 @@ function finSetsOf(D) {
       cdo: D.finCdOverride || 0,
       pts: D.finPts || null,
       cant: D.finCant || 0,
+      par: D.finPar || 0,
     },
     ...xfinSets(D.extraFins, D.finFinish ?? D.finish),
   ];
@@ -6704,6 +6705,7 @@ function xfinSets(list, rs) {
     cdo: f.cdo || 0,
     pts: f.pts || null,
     cant: f.cant || 0,
+    par: f.par || 0,
   }));
 }
 /**
@@ -6915,6 +6917,10 @@ function aero(D) {
   });
   const last = segs[segs.length - 1],
     baseArea = Math.PI * last.r2 * last.r2;
+  /* fin-fin interference: more than four fins around the body at one station shield each other, so each set's lift is
+     scaled by the count of all fins on the same body overlapping it along its length (Barrowman's 3- and 4-fin results don't cover more;
+     factors as in OpenRocket: 5 fins 0.948, 6 0.913, 7 0.854, 8 0.81, more 0.75) */
+  const finInterK = (n) => (n <= 4 ? 1 : n === 5 ? 0.948 : n === 6 ? 0.913 : n === 7 ? 0.854 : n === 8 ? 0.81 : 0.75);
   const fins = finSetsOf(D)
     .filter((f) => f && f.n > 0 && f.a > 0 && f.s > 0)
     .map((f) => {
@@ -6951,6 +6957,15 @@ function aero(D) {
         cant: f.cant || 0,
       };
     });
+  for (const f of fins) {
+    const a0 = f.xLead,
+      a1 = f.xLead + f.a;
+    // fins on the same body only (pods carry their own)
+    const n = fins
+      .filter((g) => (g.par || 0) === (f.par || 0) && g.xLead < a1 - 0.005 && g.xLead + g.a > a0 + 0.005)
+      .reduce((t, g) => t + g.n, 0);
+    f.kff = finInterK(Math.max(n, f.n));
+  }
   let buttons = [];
   if (D.railPreset === "custom")
     buttons = (D.buttons || []).map((b) => ({
@@ -7258,7 +7273,7 @@ function cnaParts(A, M = 0) {
       xb = f.xLead,
       rf = radiusAt(A, xb + a / 2);
     const fm = finLiftRatio(f, M),
-      cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * fm.k;
+      cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * fm.k * (f.kff || 1);
     parts.push({ cn: cnf, x: xb + f.xcp + fm.dx, fin: true });
   }
   const cn = parts.reduce((t, p) => t + p.cn, 0),
@@ -7325,12 +7340,30 @@ function cpOf(A) {
     const { a, s, n } = f,
       xb = f.xLead,
       rf = radiusAt(A, xb + a / 2);
-    const cnf = ((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2));
+    const cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * (f.kff || 1);
     const xf = xb + f.xcp;
     CN += cnf;
     CNx += cnf * xf;
   }
   return CN > 0 ? CNx / CN : A.L / 2;
+}
+/** body lift across the flow: CN = K·(planform area / reference area)·sin²α, with Galejs's K = 1.1 (as OpenRocket
+    uses; the Allen–Perkins cylinder value η·Cdc ≈ 0.78 moves the CP forward less as the rocket tilts) */
+const CROSS_K = 1.1;
+/**
+ * The center of pressure at an angle of attack, as the flight works it out: Barrowman's normal force (sin α·cos α)
+ * plus the body's crossflow lift (sin²α), which acts at the middle of the body's side outline. On a long rocket that's
+ * ahead of the Barrowman CP, so the CP moves forward as the rocket tilts. Below the fins' stall (about 18°).
+ * @param {object} A aerodynamic model
+ * @param {number} deg angle of attack, degrees
+ * @returns {number} m from the nose tip
+ */
+function cpAtAoA(A, deg) {
+  const C = cnaParts(A, 0),
+    a = (deg * Math.PI) / 180,
+    lin = C.cn * Math.sin(a) * Math.cos(a),
+    x = ((CROSS_K * A.sideArea) / A.Aref) * Math.sin(a) ** 2;
+  return lin + x > 0 ? (lin * C.cp + x * A.xPlan) / (lin + x) : C.cp;
 }
 /**
  * Static stability with a motor: the center of pressure, the CG at liftoff and at burnout, and the margins.
@@ -7347,7 +7380,15 @@ function stability(D, m) {
   const cgL = (D.dryMass * D.cgEmpty + m.totalMass * mx) / (D.dryMass + m.totalMass);
   const mb = m.totalMass - m.propMass;
   const cgB = (D.dryMass * D.cgEmpty + mb * mx) / (D.dryMass + mb);
-  return { cp, cgL, cgB, marginL: (cp - cgL) / d, marginB: (cp - cgB) / d };
+  return {
+    cp,
+    cgL,
+    cgB,
+    marginL: (cp - cgL) / d,
+    marginB: (cp - cgB) / d,
+    marginL5: (cpAtAoA(A, 5) - cgL) / d,
+    marginL10: (cpAtAoA(A, 10) - cgL) / d,
+  };
 }
 /**
  * The flight simulation: stage geometry, motor thrust curves, fin flutter, the airframe's turning inertia, and
@@ -7392,6 +7433,7 @@ function boosterFinSets(D) {
       cdo: D.bFinCdOverride || 0,
       pts: D.bFinPts || null,
       cant: D.bFinCant || 0,
+      par: D.bFinPar || 0,
     },
     ...xfinSets(D.bExtraFins, D.bFinFinish ?? D.finish),
   ];
@@ -7497,7 +7539,16 @@ function stackStability(D, mS, mB, m1) {
   };
   const cgL = cgWith(mBurn.totalMass),
     cgB = cgWith(mBurn.totalMass - mBurn.propMass);
-  return { cp, cgL, cgB, marginL: (cp - cgL) / d, marginB: (cp - cgB) / d, d };
+  return {
+    cp,
+    cgL,
+    cgB,
+    marginL: (cp - cgL) / d,
+    marginB: (cp - cgB) / d,
+    marginL5: (cpAtAoA(A, 5) - cgL) / d,
+    marginL10: (cpAtAoA(A, 10) - cgL) / d,
+    d,
+  };
 }
 /**
  * A motor's thrust curve as functions of time from ignition.
@@ -7812,10 +7863,9 @@ function simulate(D, L, m, mb, opts = {}) {
         ? CdAdrogue * fill(openD, t) + 0.5 * Gs.Aref
         : Gs.tumbleCdA) + xcda(t);
   let phase = "rail";
-  /* pitch motion after rail exit: Barrowman normal force acting at the CP, Allen–Perkins body crossflow at larger angles,
+  /* pitch motion after rail exit: Barrowman normal force acting at the CP, body lift across the flow (Galejs) at larger angles,
      aerodynamic damping and jet damping (Mandell, Caporaso & Bengen, Topics in Advanced Model Rocketry, 1973).
      Moment of inertia: each airframe as a uniform rod, each motor as a uniform rod at its own position. */
-  const CROSS = 0.65 * 1.2; // crossflow: η·Cdc for a circular cylinder
   const GUIDES = railGuides(staged ? fullStack(D) : D); // where the rail guides are (on the whole stack), for the friction on the rail
   const airSp = (z, vx, vy, vz, t) => {
     const W = windVec(z, t);
@@ -7940,7 +7990,7 @@ function simulate(D, L, m, mb, opts = {}) {
             ca = Math.abs(Math.cos(al)),
             C = cnaPartsM(G, vrel / atm.a);
           const cL = C.cn * sa * ca,
-            cX = ((CROSS * G.sideArea) / G.Aref) * sa * sa,
+            cX = ((CROSS_K * G.sideArea) / G.Aref) * sa * sa,
             Nf = 0.5 * atm.rho * vrel * vrel * G.Aref * (cL + cX);
           fw = [(Nf * cx) / cm, (Nf * cy) / cm, (Nf * cz) / cm];
           xN = cL + cX > 0 ? (cL * C.cp + cX * G.xPlan) / (cL + cX) : cg;
@@ -8015,7 +8065,7 @@ function simulate(D, L, m, mb, opts = {}) {
       const sb = ca >= 0 ? 1 : -1,
         cnB = C.cn - C.cnFin,
         cnLin = (sb * cnB + ks * C.cnFin) * sa * Math.abs(ca),
-        cnX = ((CROSS * G.sideArea) / G.Aref) * sa * sa,
+        cnX = ((CROSS_K * G.sideArea) / G.Aref) * sa * sa,
         cnXf =
           ald <= 18
             ? 0
@@ -9513,6 +9563,7 @@ function parseOrk(xml) {
     const v = e ? parseFloat(e.textContent) : 0;
     return !isFinite(v) || v < 0 ? 0 : v > 0 ? v : e ? 1e-12 : 0;
   }; // an override of 0 (OpenRocket: the part adds no drag) is kept as 1e-12
+  let compUid = 0; // numbers each component, so fin sets know which body they're on
   let curStage = 0,
     parDepth = 0;
   const sMountAft = [],
@@ -9766,6 +9817,7 @@ function parseOrk(xml) {
         si: curStage,
         cdo: odc(c),
         oi: ord(c, "f", FINRE),
+        par: parent ? parent.uid : 0,
       });
     } else if (tag === "masscomponent") {
       m = num(c, "mass");
@@ -9870,7 +9922,7 @@ function parseOrk(xml) {
     // children
     const kids = subs(c);
     const innerOR = Math.max(0, ...kids.filter((k) => k.tagName === "innertube").map((k) => num(k, "outerradius")));
-    const me = { x, len, ri: ri || ro, ro: ro || (parent && parent.ro) || 0, innerOR };
+    const me = { x, len, ri: ri || ro, ro: ro || (parent && parent.ro) || 0, innerOR, uid: ++compUid };
     // pods and side boosters have their own outline: they don't change what an automatic size on the main body follows
     const lastR = R.last;
     if (tag === "parallelstage") parDepth++; // an OpenRocket parallel (side booster) stage: its motors' charges are its own
@@ -10070,6 +10122,7 @@ function parseOrk(xml) {
       edge: EDGE0(g.edge),
       cdo: g.cdo || 0,
       oi: g.oi,
+      par: g.par || 0,
       ...(g.pts ? { pts: g.pts } : {}),
     }));
     const length = x1 - x0;
@@ -10177,6 +10230,7 @@ function parseOrk(xml) {
     finThick: f.t,
     finAft: S.fAft,
     finPts: f.pts || null,
+    finPar: f.par || 0,
     finEdge: EDGE(f.edge),
     finCdOverride: f.cdo || 0,
     bFinCdOverride: 0,
@@ -10236,6 +10290,7 @@ function parseOrk(xml) {
       bFinSpan: bf.span,
       bFinSweep: bf.sweep,
       bFinPts: bf.pts || null,
+      bFinPar: bf.par || 0,
       bFinThick: bf.t,
       bFinAft: B.fAft,
       bFinEdge: EDGE(bf.edge),
@@ -10304,6 +10359,7 @@ function parseOrk(xml) {
       bFinSpan: cf.span,
       bFinSweep: cf.sweep,
       bFinPts: cf.pts || null,
+      bFinPar: cf.par || 0,
       bFinThick: cf.t,
       bFinAft: C1.fAft,
       bFinEdge: EDGE(cf.edge),
@@ -24065,7 +24121,8 @@ function bldDraw() {
       `<span>Length <b>${fmt(lay.length, "len", 1)} ${uname("len")}</b></span><span>Diameter <b>${fmt(2 * lay.maxR, "len")} ${uname("len")}</b></span>` +
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
       `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
-      `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff, <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>`;
+      `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff, <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
+      `<span class="${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
   } catch (e) {
     st.innerHTML = `<span class="bad">${esc(e.message || String(e))}</span>`;
   }
@@ -24218,6 +24275,8 @@ const SAVE_IGNORE = new Set([
   "bMountDia",
   "finPts",
   "bFinPts",
+  "finPar",
+  "bFinPar",
   "inertiaMass",
   "inertiaSource",
   "bInertiaMass",
