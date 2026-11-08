@@ -1,0 +1,22 @@
+# Dependabot: a weekly pull request when the build and test tools (npm), the GitHub Actions the workflows use, or the
+# Android build's Gradle plugins have a newer version. The Check workflow tests each one.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dev-tools:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: monthly
