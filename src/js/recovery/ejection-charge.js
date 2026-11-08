@@ -2,13 +2,13 @@
  * Ejection charges: black powder sizing for each recovery compartment of the design (from the builder's parts), and the
  * RockSim ejection-delay reader. The charge settings are saved with the design, inside its .ork file.
  */
-import { store } from "../core/storage.js";
+import { BLD, bldSave } from "../builder/builder-ui.js";
+import { BLD_NAMES, bldLayout } from "../builder/model.js";
 import { esc } from "../core/helpers.js";
+import { store } from "../core/storage.js";
 import { IN } from "../core/units-and-fin-edges.js";
 import { curMotor, D, units } from "../design/defaults.js";
 import { fmt, uname } from "../ui/units.js";
-import { BLD_NAMES, bldLayout } from "../builder/model.js";
-import { BLD, bldSave } from "../builder/builder-ui.js";
 /* ---------- ejection charge: black powder for a recovery compartment ----------
    Ideal gas: m = P·V / (R·T), with R = 22.16 ft·lbf/(lbm·°R) = 265.9 in·lbf/(lbm·°R) and T = 3307 °R for black powder's
    combustion gas (the figures most rocketry ejection calculators use; 15 psi in a 1 in² × 1 in volume ≈ 0.0061 g).

@@ -25,6 +25,10 @@ version and, wrapped in an Android WebView, the Android app.
   imported name can't be assigned. Objects like `D` and `L` are also changed in place.
 - **`window.__pr`** is a live view of every module's exports, for the tests and the browser console. The tests open
   the page with `window.PR_EXPOSE` set, which also makes each of them a global.
+- **Moving code between modules.** `tools/move-code.js` moves declarations (with their comments) from one module to
+  another, and `tools/relink.js` then rewrites every module's imports and exports from what it uses. `npm run lint`
+  checks the imports are current, that no export is unused, and that no module does anything at load
+  (`tools/check-module-tops.js`).
 - **No framework.** The UI is HTML in `src/index.html`, updated with plain DOM calls; drawings are `<canvas>`.
 - **Offline first.** Everything works without a network except the weather forecast (Open-Meteo) and, in the web
   version, the fonts and the PDF library from a CDN. The Android build bundles those (see `android/app/build.gradle`).
@@ -42,7 +46,7 @@ version and, wrapped in an Android WebView, the Android app.
 | `lastSim` | the last run: the flight's time history (`out`), its summary (`st`), stability, the wind table | `ui/results.js` |
 | `lastMC` | the last landing dispersion run | `physics/monte-carlo.js` |
 
-`BLD` is the source of truth for a design; `bldDerive()` (`builder/builder-ui.js`) turns it into `D` after every
+`BLD` is the source of truth for a design; `bldDerive()` (`builder/derive.js`) turns it into `D` after every
 change. Opening a file goes the other way: `loadDesignXml()` (`files/open-file.js`) reads an OpenRocket file with
 `parseOrk()` (`files/openrocket-import.js`; RockSim files are first rewritten as OpenRocket XML by
 `files/rocksim-import.js`) and the builder reads the same XML into parts with `bldFromOrk()` (`builder/ork-read.js`).
@@ -56,7 +60,7 @@ IndexedDB (`files/recent.js`).
 
 1. `runNow()` (`ui/state.js`) reads the fields into `L` and checks the rail length, that each stage has a motor that
    lights, and that each motor fits its mount (`ui/launch-warnings.js`).
-2. `runAll()` (`ui/results.js`) works out the static stability (`stability()`, or `stackStability()` for a staged
+2. `runAll()` (`ui/results.js`) works out the static stability (`stability()`, or `stackStability()` (`physics/staging.js`) for a staged
    rocket), flies the rocket with `simulate(D, L, motor, boosterMotor)`, and flies it again at five wind speeds for the
    wind table.
 3. `renderResults()` draws the Results tab: the tiles, the flight chart, the animation, the RSO Checklist
@@ -76,10 +80,11 @@ IndexedDB (`files/recent.js`).
   ejection charge, after any delay, with a main parachute at a set height for dual deployment. Lower stages separate and are flown down on their own by `flyBooster()`.
 - **Forces and moments.** Thrust from the motor's curve (`motorModel`), with the mass and inertia falling as propellant
   burns; gravity; drag from `cdParts()`; the normal force and its moment from `cnaPartsM()` with the angle of attack;
-  pitch damping; fin cant roll forcing and roll damping (`rollPartsM()`); the earth's rotation (`coriolis()`).
+  pitch damping; fin cant roll forcing and roll damping (`rollPartsM()`); the earth's rotation (`coriolis()`, `physics/wind.js`).
 - **Air.** `atmosphere()` (`physics/atmosphere.js`): the U.S. Standard Atmosphere 1976 shifted to the field's measured
   temperature and pressure, with humidity, or a forecast temperature profile aloft. Wind changes with height (a power
-  law, or the winds-aloft table) with gusts (`flightWind()`).
+  law, or the winds-aloft table) with gusts (`flightWind()`, `physics/wind.js`). Parachutes fill over a distance (`physics/parachutes.js`), and
+  each fin's flutter speed is checked against the airspeed (`physics/flutter.js`).
 - **Outputs.** `out`, the time history (altitude, speeds, Mach, angle of attack, stability...), and `st`, the summary
   (apogee, maximum speed, rail exit, stability at rail exit and in flight, deployment and landing speeds, drift, fin
   flutter margin, events and warnings).
@@ -116,6 +121,11 @@ computed. In outline:
 - `tests/drag-benchmarks.js` checks the drag model against two NACA reports (RM A53D02, RM E50D28).
 
 ## The other parts
+
+- **Rocket builder** (`builder/`): the parts model (`model.js`), the editor's fields (`fields.js`), the parts editor
+  (`editor.js`), the side view (`side-view.js`), undo (`undo.js`), turning parts into a design (`derive.js`), reading,
+  writing and merging OpenRocket files (`ork-read.js`, `ork-export.js`, `ork-merge.js`), and the tab itself
+  (`builder-ui.js`).
 
 - **Motors** (`motors/`): the built-in catalog (`data/motor-catalog.js`, generated; see `tools/motor-catalog/`), RASP
   `.eng` and RockSim `.rse` files, and clusters and airstarts combined into one motor per stage.

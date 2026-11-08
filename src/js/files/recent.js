@@ -3,14 +3,14 @@
  * one, and the Android app's report of where a new design was saved. Also the prompt to save unsaved changes before
  * the open design is closed (confirmUnsaved), which opening a recent file, an example or a new design goes through.
  */
+import { EXAMPLES } from "../../data/examples.js";
 import { b64ToU8, esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
-import { unzipOrk } from "./openrocket-import.js";
 import { openDesignAsk } from "./open-file.js";
 import { setSource, SOURCE } from "./save.js";
-import { EXAMPLES } from "../../data/examples.js";
 import { saveDesignFile } from "./saved-simulation.js";
 import { isDirty } from "./unsaved-changes.js";
+import { unzipOrk } from "./unzip.js";
 /* ---------- recently opened files: kept on this device so they can be opened again with one tap ---------- */
 const RECENT_MAX = 10;
 let recentDb = null;

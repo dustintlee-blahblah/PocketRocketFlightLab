@@ -3,11 +3,11 @@
  * Positions in the world are meters; K is pixels per meter, CX the world x at the center of the view, gy the ground's
  * screen y.
  */
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
-import { chargeEvents, lastSim } from "../ui/results.js";
 import { ANIM, animAt, animClose, animCount, animOpen, animPlay } from "./animation.js";
 import { VID } from "./video-export.js";
 import { css, niceTicks, setupCanvas } from "../ui/charts.js";
+import { chargeEvents, lastSim } from "../ui/results.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 /* ---------- animation scenery: sky, sun, clouds, mountains, tree line, field, windsock, smoke ---------- */
 /**
  * A repeatable pseudo-random number 0–1 for an index (scenery that doesn't change between frames).

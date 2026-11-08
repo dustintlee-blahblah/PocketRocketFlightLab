@@ -5,11 +5,7 @@
  */
 import { esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
-import { findMotor } from "../motors/clusters.js";
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
-import { inflate } from "../files/openrocket-import.js";
-import { lastSim, runAll } from "../ui/results.js";
-import { css, niceTicks, setupCanvas } from "../ui/charts.js";
+import { inflate } from "../files/unzip.js";
 import { ALT_PRESS, altCompute, altParse } from "./altimeter-files.js";
 import {
   altMode,
@@ -35,7 +31,11 @@ import {
   setAltP,
   setFlNow,
 } from "./flight-log.js";
+import { findMotor } from "../motors/clusters.js";
 import { downloadsNS } from "../report/pdf-report.js";
+import { css, niceTicks, setupCanvas } from "../ui/charts.js";
+import { lastSim, runAll } from "../ui/results.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 /* ---------- Excel (.xlsx) altimeter files: each worksheet becomes CSV text for the altimeter reader ---------- */
 /**
  * The entries of a zip archive (from its central directory).

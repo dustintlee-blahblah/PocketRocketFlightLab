@@ -69,6 +69,17 @@ import * as m55 from "./ui/disclaimer.js";
 import * as m56 from "./physics/monte-carlo.js";
 import * as m57 from "./weather/winds-aloft.js";
 import * as m58 from "./weather/forecast.js";
+import * as m59 from "./builder/fields.js";
+import * as m60 from "./builder/derive.js";
+import * as m61 from "./builder/undo.js";
+import * as m62 from "./builder/editor.js";
+import * as m63 from "./builder/side-view.js";
+import * as m64 from "./physics/staging.js";
+import * as m65 from "./physics/flutter.js";
+import * as m66 from "./physics/wind.js";
+import * as m67 from "./physics/parachutes.js";
+import * as m68 from "./physics/nose-weight.js";
+import * as m69 from "./files/unzip.js";
 
 const modules = [
   m0,
@@ -130,6 +141,17 @@ const modules = [
   m56,
   m57,
   m58,
+  m59,
+  m60,
+  m61,
+  m62,
+  m63,
+  m64,
+  m65,
+  m66,
+  m67,
+  m68,
+  m69,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

@@ -2,8 +2,8 @@
  * Compare motors: the rocket flown on every motor in the filtered list for the stage being chosen, as a sortable
  * table with each motor's apogee, speeds, stability and RSO result. Also the Motor tab's cluster panel.
  */
-import { store } from "../core/storage.js";
 import { esc } from "../core/helpers.js";
+import { store } from "../core/storage.js";
 import {
   boostId,
   curMotor,
@@ -20,12 +20,9 @@ import {
   units,
 } from "../design/defaults.js";
 import { clusterOf, findMotor, flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
-import { fmt, uname } from "./units.js";
-import { changed, markStale } from "./state.js";
 import { stability } from "../physics/aerodynamics.js";
-import { isThree, simulate, stackStability } from "../physics/simulate.js";
-import { lastSim, setLastSim } from "./results.js";
-import { rsoChecks } from "./rso-checklist.js";
+import { simulate } from "../physics/simulate.js";
+import { isThree, stackStability } from "../physics/staging.js";
 import { drawProfile } from "./charts.js";
 import {
   F,
@@ -41,6 +38,10 @@ import {
   tgtD,
   tgtFirst,
 } from "./motor-tab.js";
+import { lastSim, setLastSim } from "./results.js";
+import { rsoChecks } from "./rso-checklist.js";
+import { changed, markStale } from "./state.js";
+import { fmt, uname } from "./units.js";
 /* ---------- compare motors: the rocket flown on every motor in the filtered list, for the stage being chosen ---------- */
 /**
  * Comparison state: rows, the inputs they were run for (key), sort column and direction, running, stop

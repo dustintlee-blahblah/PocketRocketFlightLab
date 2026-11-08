@@ -1,26 +1,28 @@
 /**
  * A run written into the design file as a saved simulation (see the note below).
  */
-import { store } from "../core/storage.js";
-import { b64ToU8, esc, jclone } from "../core/helpers.js";
-import { boostId, D, firstId, L, motorId } from "../design/defaults.js";
-import { findMotor, flightBoost, flightMotor } from "../motors/clusters.js";
-import { BP_ORK, FIN_ORK, LAUNCH_ORK, STATE_ORK } from "../recovery/ejection-charge.js";
-import { isThree, simulate } from "../physics/simulate.js";
+import { BLD, bldSel, bldSyncMotors, setBldSel } from "../builder/builder-ui.js";
+import { bldOffList } from "../builder/derive.js";
 import { BLD_APP_SETTINGS } from "../builder/model.js";
 import { bldToOrk } from "../builder/ork-export.js";
-import { bldProblems } from "../builder/ork-read.js";
 import { bldMergeOrk, rktPartId } from "../builder/ork-merge.js";
-import { siteCur } from "../ui/launch-sites.js";
+import { bldProblems } from "../builder/ork-read.js";
+import { b64ToU8, esc, jclone } from "../core/helpers.js";
+import { store } from "../core/storage.js";
+import { boostId, D, firstId, L, motorId } from "../design/defaults.js";
+import { recentPut, recentSaved, renderRecent } from "./recent.js";
+import { ORK_CFG, setSource, SOURCE } from "./save.js";
+import { askName, askOverwrite, markClean, renderSavePanel } from "./unsaved-changes.js";
+import { isAndroidApp, zipDeflate, zipStore } from "./zip.js";
 import { CAL_STORE, calGet, calKey } from "../flightlog/drag-calibration.js";
 import { flAll, flId, flKey, flList, flMotorName, flSaveAll, setFlNow } from "../flightlog/flight-log.js";
 import { zipData, zipEntries } from "../flightlog/xlsx.js";
-import { BLD, bldOffList, bldSel, bldSyncMotors, setBldSel } from "../builder/builder-ui.js";
-import { ORK_CFG, setSource, SOURCE } from "./save.js";
-import { recentPut, recentSaved, renderRecent } from "./recent.js";
-import { isAndroidApp, zipDeflate, zipStore } from "./zip.js";
-import { askName, askOverwrite, markClean, renderSavePanel } from "./unsaved-changes.js";
+import { findMotor, flightBoost, flightMotor } from "../motors/clusters.js";
+import { simulate } from "../physics/simulate.js";
+import { isThree } from "../physics/staging.js";
+import { BP_ORK, FIN_ORK, LAUNCH_ORK, STATE_ORK } from "../recovery/ejection-charge.js";
 import { bufToB64, downloadsNS } from "../report/pdf-report.js";
+import { siteCur } from "../ui/launch-sites.js";
 /* ---------- a run written into the design file as a saved simulation ----------
    OpenRocket: a new <simulation> with its results summary, events and time history (OpenRocket opens it as a finished simulation).
    (A design opened from a RockSim file is saved as an .ork first; RockSim files are only read.) Runs saved from here are named "Pocket Rocket: …", so the app

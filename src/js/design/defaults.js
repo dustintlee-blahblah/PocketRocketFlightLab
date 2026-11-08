@@ -2,9 +2,9 @@
  * The starting design (a LOC IV X2) and launch conditions, the saved state loaded at startup (design D, launch L,
  * uploaded motors, flyer profile, selected motors), and the current-motor lookups.
  */
+import { OLD_MOTOR_IDS } from "../../data/old-motor-ids.js";
 import { store } from "../core/storage.js";
 import { FT, IN, LB } from "../core/units-and-fin-edges.js";
-import { OLD_MOTOR_IDS } from "../../data/old-motor-ids.js";
 import { BUILTIN, classifyUser, DEFAULT_MOTOR, dupMotor } from "../motors/catalog-lookup.js";
 import { motorStats } from "../motors/motor-files.js";
 import { noseSpec } from "../physics/geometry.js";

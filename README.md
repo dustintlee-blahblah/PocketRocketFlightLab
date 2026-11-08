@@ -50,6 +50,8 @@ tools/set-build.js                  sets the build number everywhere it appears
 tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
 tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
 tools/unused-exports.js             lint: module exports nothing uses
+tools/check-module-tops.js          lint: modules only define things when they load
+tools/relink.js, tools/move-code.js rewrite imports from what each module uses; move code between modules
 .github/workflows/                  Check (every push and pull request) and Release (on a version tag)
 CHANGELOG.md                        what changed in each build; a release's description comes from its section
 LICENSE                             GNU GPL v3
@@ -95,7 +97,7 @@ npm ci                              # Prettier, ESLint, Playwright and the Babel
 npx playwright install chromium     # the browser the tests run the app in
 node build.js                       # src/ -> web/pocket-rocket-flight-lab.html
 npm run format                      # Prettier (print width 120)
-npm run lint                        # ESLint, then tools/unused-exports.js (exports nothing uses)
+npm run lint                        # ESLint, unused exports, module load checks, imports up to date
 npm test                            # build, then the regression test against tests/golden-snapshot.json
 npm run test:smoke                  # build, then the UI smoke test
 ```

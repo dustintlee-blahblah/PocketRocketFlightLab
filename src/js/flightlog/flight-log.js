@@ -2,20 +2,21 @@
  * The Flight Log (see the note below): logging real flights, comparing them with the prediction, and fitting the drag
  * calibration to them.
  */
-import { store } from "../core/storage.js";
 import { esc } from "../core/helpers.js";
-import { motorStats } from "../motors/motor-files.js";
+import { store } from "../core/storage.js";
 import { D, series, setSeries } from "../design/defaults.js";
-import { findMotor, flightFirst } from "../motors/clusters.js";
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
-import { isThree, simulate } from "../physics/simulate.js";
-import { lastSim, runAll } from "../ui/results.js";
-import { impulseLetter } from "../ui/rso-checklist.js";
-import { drawChart, renderSeries } from "../ui/charts.js";
+import { SOURCE } from "../files/save.js";
 import { applyCal, calGet, calKeyOld, calSet, solveDragScale } from "./drag-calibration.js";
 import { altOpenFile, prIncomingGo, prPendingAlt } from "./xlsx.js";
-import { SOURCE } from "../files/save.js";
+import { findMotor, flightFirst } from "../motors/clusters.js";
+import { motorStats } from "../motors/motor-files.js";
 import { lastMC, MC_K68, MC_K95 } from "../physics/monte-carlo.js";
+import { simulate } from "../physics/simulate.js";
+import { isThree } from "../physics/staging.js";
+import { drawChart, renderSeries } from "../ui/charts.js";
+import { lastSim, runAll } from "../ui/results.js";
+import { impulseLetter } from "../ui/rso-checklist.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 /* ---------- Flight Log: each design's real flights, kept on this device ----------
    A design is known by the id inside its file (RockSim GUID or OpenRocket rocket id), or else by its file and rocket name. */
 /**

@@ -2,24 +2,25 @@
  * Run state: saving the design after a change, the notes that follow it (recovery, inertia, drag table), marking the
  * results out of date, and the Launch button (checks, then a run).
  */
+import { BLD, bldSave } from "../builder/builder-ui.js";
 import { store } from "../core/storage.js";
 import { FT } from "../core/units-and-fin-edges.js";
 import { curBoost, curFirst, curMotor, D, L } from "../design/defaults.js";
-import { flightMotor } from "../motors/clusters.js";
-import { fmt, fromDisp, uname } from "./units.js";
-import { FIELDS } from "./forms.js";
-import { atmosphere } from "../physics/atmosphere.js";
-import { aero, cdParts } from "../physics/aerodynamics.js";
-import { airInertia, isThree, stackDesign } from "../physics/simulate.js";
-import { lastSim, renderResults, runAll, setLastSim } from "./results.js";
-import { drawProfile } from "./charts.js";
-import { motorFit, mountTooBig, s1View } from "./motor-tab.js";
-import { siteRender } from "./launch-sites.js";
-import { showTab } from "./events.js";
-import { showFitWarn, showMountWarn, showRailWarn } from "./launch-warnings.js";
-import { BLD, bldSave } from "../builder/builder-ui.js";
 import { renderSavePanel, renderTitle } from "../files/unsaved-changes.js";
+import { flightMotor } from "../motors/clusters.js";
+import { aero, cdParts } from "../physics/aerodynamics.js";
+import { atmosphere } from "../physics/atmosphere.js";
+import { airInertia } from "../physics/simulate.js";
+import { isThree, stackDesign } from "../physics/staging.js";
+import { drawProfile } from "./charts.js";
 import { supNote } from "./donate.js";
+import { showTab } from "./events.js";
+import { FIELDS } from "./forms.js";
+import { siteRender } from "./launch-sites.js";
+import { showFitWarn, showMountWarn, showRailWarn } from "./launch-warnings.js";
+import { motorFit, mountTooBig, s1View } from "./motor-tab.js";
+import { lastSim, renderResults, runAll, setLastSim } from "./results.js";
+import { fmt, fromDisp, uname } from "./units.js";
 /**
  * Called after any edit: saves the design and launch conditions, marks the results out of date and refreshes the
  * notes and panels that depend on them.

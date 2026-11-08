@@ -3,12 +3,13 @@
  * likely apogee range shown on the Results tab, and the landing-ellipse drawing.
  */
 import { L, series, units } from "../design/defaults.js";
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
-import { readFields } from "../ui/state.js";
-import { isThree, simulate } from "./simulate.js";
+import { simulate } from "./simulate.js";
+import { isThree } from "./staging.js";
+import { css, drawChart, niceTicks } from "../ui/charts.js";
 import { bigDist, compass, lastSim } from "../ui/results.js";
 import { renderRSO } from "../ui/rso-checklist.js";
-import { css, drawChart, niceTicks } from "../ui/charts.js";
+import { readFields } from "../ui/state.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 /* ---------- landing dispersion (Monte Carlo) ----------
    Each flight draws its inputs from normal distributions (seeded, so a run repeats): surface and aloft wind speed (scaled
    together) and direction (shifted together), motor impulse, rocket weight, drag, rail angle, and a thrust misalignment

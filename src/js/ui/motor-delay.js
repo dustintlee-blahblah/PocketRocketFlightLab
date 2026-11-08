@@ -2,19 +2,19 @@
  * The Motor tab's motor configuration picker (for OpenRocket files with several) and Motor Delay, the one ejection
  * delay setting for each stage (see the note below), with the side view that shows which stage is being chosen for.
  */
+import { BLD, bldChanged } from "../builder/builder-ui.js";
+import { bldMounts } from "../builder/model.js";
 import { esc } from "../core/helpers.js";
 import { allMotors, curBoost, curFirst, curMotor, D, motorTarget, setMotorTarget } from "../design/defaults.js";
+import { loadDesignXml } from "../files/open-file.js";
+import { SOURCE } from "../files/save.js";
 import { findMotor } from "../motors/clusters.js";
-import { changed } from "./state.js";
 import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
-import { fullStack, isThree } from "../physics/simulate.js";
-import { bldMounts } from "../builder/model.js";
-import { lastSim } from "./results.js";
+import { fullStack, isThree } from "../physics/staging.js";
 import { setupCanvas } from "./charts.js";
 import { mountFilter, renderMotors, setPickSlot, TGT_NAME, tgtFirst } from "./motor-tab.js";
-import { loadDesignXml } from "../files/open-file.js";
-import { BLD, bldChanged } from "../builder/builder-ui.js";
-import { SOURCE } from "../files/save.js";
+import { lastSim } from "./results.js";
+import { changed } from "./state.js";
 /* ---------- motor configurations of an OpenRocket file (Motor tab) ---------- */
 /**
  * The motor configurations in an OpenRocket file, with a label from their motors and delays.

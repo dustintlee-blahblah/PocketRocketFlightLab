@@ -8,180 +8,26 @@
  * stage dropping off and flown down on its own by flyBooster), clusters and airstarts, wind with height and gusts,
  * the earth's rotation, motor charges and every deployment setting. Units are SI throughout (m, s, kg, N, rad).
  */
-import { WIND_ALPHA } from "../design/defaults.js";
 import { findMotor, flightFirst } from "../motors/clusters.js";
-import { atmosphere } from "./atmosphere.js";
 import {
   aero,
-  bodySegments,
   cdParts,
   cnaPartsM,
-  CP_UNC,
   cpAtAoA,
   cpOf,
   cpWithBodyLift,
   CROSS_K,
   finLiftRatio,
-  finSetsOf,
   pitchDamping,
   radiusAt,
   rollPartsM,
   smooth01,
-  xfinSets,
 } from "./aerodynamics.js";
-/* ---------- two-stage geometry ---------- */
-/**
- * Body sections of the booster (a plain tube when the design has no section list).
- * @param {object} D design
- * @returns {object[]} sections, x from the booster's front
- */
-function boosterSegments(D) {
-  if (D.bSegments && D.bSegments.length) return D.bSegments;
-  const r = D.bDiameter / 2;
-  return [{ kind: "tube", x: 0, len: D.bLength, r1: r, r2: r }];
-}
-/**
- * The booster's fin sets in the common fin-set form (see finSetsOf).
- * @param {object} D design
- * @returns {object[]}
- */
-function boosterFinSets(D) {
-  return [
-    {
-      n: D.bFinCount,
-      mat: D.bFinMat,
-      rho: D.bFinRho,
-      a: D.bFinRoot,
-      b: D.bFinTip,
-      s: D.bFinSpan,
-      sw: D.bFinSweep,
-      t: D.bFinThick,
-      xLead: D.bLength - D.bFinAft - D.bFinRoot,
-      edge: D.bFinEdge,
-      rs: D.bFinFinish ?? D.finish,
-      cdo: D.bFinCdOverride || 0,
-      pts: D.bFinPts || null,
-      cant: D.bFinCant || 0,
-      par: D.bFinPar || 0,
-    },
-    ...xfinSets(D.bExtraFins, D.bFinFinish ?? D.finish),
-  ];
-}
-/**
- * The sustainer and booster joined into one airframe, for the aerodynamics of the whole stack before separation.
- * @param {object} D two-stage design
- * @returns {object} a design-like object for aero()
- */
-export function stackDesign(D) {
-  const Ls = D.length;
-  const segs = [...bodySegments(D).map((s) => ({ ...s })), ...boosterSegments(D).map((s) => ({ ...s, x: s.x + Ls }))];
-  const fs = [...finSetsOf(D), ...boosterFinSets(D).map((f) => ({ ...f, xLead: f.xLead + Ls }))];
-  const custom = D.railPreset === "custom";
-  return {
-    ...D,
-    length: Ls + D.bLength,
-    diameter: Math.max(D.diameter, D.bDiameter),
-    segments: segs,
-    finSets: fs,
-    buttons: custom ? [...(D.buttons || []), ...(D.bButtons || []).map((b) => ({ ...b, x: b.x + Ls }))] : D.buttons,
-    lugs: custom ? [...(D.lugs || []), ...(D.bLugs || []).map((l) => ({ ...l, x: l.x + Ls }))] : D.lugs,
-    cdOverride: 0,
-  };
-}
-/**
- * Whether a design is a three-stage rocket (a first stage under the booster, in D.s1).
- *
- * three stages: the first (bottom) stage under the booster-and-sustainer stack; D.s1 holds its parts in the booster's field names
- */
-export const isThree = (D) => !!(D && D.twoStage && D.threeStage && D.s1 && D.s1.bLength > 0);
-/**
- * All three stages joined into one airframe (first stage under the two-stage stack).
- * @param {object} D three-stage design
- * @returns {object} a design-like object for aero()
- */
-export function stackDesign3(D) {
-  const S2 = stackDesign(D);
-  return stackDesign({ ...S2, ...D.s1, railPreset: D.railPreset });
-}
-/**
- * The whole stack of a two- or three-stage design, as one airframe.
- */
-export const fullStack = (D) => (isThree(D) ? stackDesign3(D) : stackDesign(D));
-/**
- * The booster on its own, as a design-like object for aero(), for its flight after separation.
- * @param {object} D two-stage design
- * @returns {object}
- */
-function boosterDesign(D) {
-  return {
-    length: D.bLength,
-    diameter: D.bDiameter,
-    segments: boosterSegments(D),
-    finSets: boosterFinSets(D),
-    finish: D.finish,
-    railPreset: "none",
-    buttons: [],
-    lugs: [],
-    otherCd: 0,
-    cdOverride: 0,
-    noseShape: "ogive:1",
-    noseLen: 0,
-  };
-}
-/**
- * Static stability of the whole stack at liftoff and at burnout of the motor lighting first.
- * @param {object} D two- or three-stage design
- * @param {object} mS sustainer motor
- * @param {object} mB booster motor
- * @param {object} [m1] first-stage motor (three stages; defaults to the one chosen)
- * @returns {{cp:number, cgL:number, cgB:number, marginL:number, marginB:number, d:number}} positions in m from the
- *   nose tip, margins in calibers of d (the largest body diameter)
- */
-export function stackStability(D, mS, mB, m1) {
-  // a three-stage rocket at liftoff: all three stages, the first stage's motor the one burning
-  const three = isThree(D);
-  if (three && !m1) m1 = flightFirst(D);
-  const A = aero(three ? stackDesign3(D) : stackDesign(D)),
-    d = 2 * A.R,
-    cp = cpOf(A),
-    Ls = D.length;
-  const xS = (D.mountAft ?? Ls) + D.motorOverhang - mS.len / 2,
-    xB = Ls + (D.bMountAft ?? D.bLength) + (D.bOverhang || 0) - mB.len / 2;
-  const parts = [
-    [D.dryMass, D.cgEmpty],
-    [mS.totalMass, xS],
-    [D.bDryMass, Ls + D.bCg],
-  ];
-  let mBurn = mB,
-    xBurn = xB;
-  if (three) {
-    const c = D.s1,
-      L2 = Ls + D.bLength;
-    parts.push([mB.totalMass, xB], [c.bDryMass, L2 + c.bCg]);
-    mBurn = m1;
-    xBurn = L2 + (c.bMountAft ?? c.bLength) + (c.bOverhang || 0) - m1.len / 2;
-  }
-  const cgWith = (mb) => {
-    const ps = [...parts, [mb, xBurn]];
-    const M = ps.reduce((a, p) => a + p[0], 0);
-    return ps.reduce((a, p) => a + p[0] * p[1], 0) / M;
-  };
-  const cgL = cgWith(mBurn.totalMass),
-    cgB = cgWith(mBurn.totalMass - mBurn.propMass);
-  return {
-    cp,
-    cgL,
-    cgB,
-    marginL: (cp - cgL) / d,
-    marginB: (cp - cgB) / d,
-    marginL5: (cpAtAoA(A, 5) - cgL) / d,
-    marginL10: (cpAtAoA(A, 10) - cgL) / d,
-    pctL: ((cp - cgL) / A.L) * 100,
-    unc: (CP_UNC * A.L) / d,
-    L: A.L,
-    d,
-  };
-}
+import { atmosphere } from "./atmosphere.js";
+import { flutterSpeed } from "./flutter.js";
+import { fill, fillStep, opening } from "./parachutes.js";
+import { boosterDesign, fullStack, isThree, stackDesign, stackDesign3 } from "./staging.js";
+import { coriolis, flightWind } from "./wind.js";
 /**
  * A motor's thrust curve as functions of time from ignition.
  * A cluster (m.members) adds each motor's thrust and mass, each starting at its own ignition delay.
@@ -226,64 +72,6 @@ function motorModel(m) {
   };
   const mass = (t) => m.totalMass - m.propMass * Math.min(1, impulse(t) / Itot);
   return { tb, Itot, thrust, mass, peak: Math.max(...m.F) };
-}
-/* fin flutter: Martin's bending-torsion flutter criterion (NACA TN 4197, 1958, eq. 18), applied to one fin panel:
-   Vf = a·√( G / ( 2.674·AR³·p·(λ + 1) / (2·(AR + 2)·(t/c)³) ) ), with G and p in the same units, AR = span²/area,
-   λ = tip/root chord and t/c taken at the root (the thinnest ratio of a constant-thickness fin, so the lowest speed).
-   G is the fin material's in-plane shear modulus. Wood, paper and woven composites are not isotropic, so G is not
-   E/(2(1+ν)) for them: wood's is about 4–8% of its grain-direction E (USDA Wood Handbook, Table 4-1). The values below
-   are handbook figures, on the low side. */
-/**
- * Shear modulus of a fin set's material, for the flutter estimate.
- * @param {object} f fin set (mat: material name, rho: density)
- * @returns {{G:number, est:boolean}} G in Pa; est is true when it was judged from the density (unknown material)
- */
-function finShearG(f) {
-  const n = (f.mat || "").toLowerCase(),
-    r = f.rho || 0;
-  const T = [
-    [/alumin/, 26e9],
-    [/titan/, 44e9],
-    [/steel/, 79e9],
-    [/carbon|graphite/, 5e9],
-    [/g-?10|fr-?4|fiberglass|fibreglass|glass/, 3e9],
-    [/phenolic/, 2e9],
-    [/polycarb|lexan/, 0.8e9],
-    [/abs|pla\b|petg|nylon|plastic|acrylic|styrene/, 0.9e9],
-    [/balsa/, 0.1e9],
-    [/ply|birch|bass|spruce|pine|wood|lite/, 0.6e9],
-    [/card|paper|kraft/, 0.4e9],
-  ];
-  for (const [re, G] of T) if (re.test(n)) return { G, est: false };
-  return { G: r > 2400 ? 26e9 : r > 1500 ? 3e9 : r > 900 ? 0.9e9 : r > 300 ? 0.6e9 : 0.1e9, est: true }; // unknown material: judged from its density
-}
-/**
- * Fin flutter speed by Martin's formula (NACA TN 4197).
- * @param {object} f fin set with its geometry (a root, b tip, s span, t thickness, area)
- * @param {object} atm the air at the height of interest, from atmosphere()
- * @returns {object|null} vf (flutter speed, m/s), the terms used, the shear modulus and whether it was estimated;
- *   null when the fin's size is incomplete
- */
-function flutterSpeed(f, atm) {
-  const cr = f.a,
-    ct = Math.max(f.b || 0, 0),
-    s = f.s,
-    t = f.t,
-    A = f.area;
-  if (!(cr > 0 && s > 0 && t > 0 && A > 0)) return null;
-  const AR = (s * s) / A,
-    lam = ct / cr,
-    tc = t / cr,
-    sh = finShearG(f);
-  // NACA TN 4197 (Martin, 1958) eq. 18: (Vf/a)² = G / [ 39.3·A³/((t/c)³(A+2)) · (λ+1)/2 · p/p0 ], with 39.3 psi = (24ε/π)·γ·p0 (ε = 0.25, γ = 1.4).
-  // In consistent units that is 2.674·p·A³(λ+1) / (2(t/c)³(A+2)). (The often-quoted 1.337·…/(2…) form halves this and gives a flutter speed √2 too high.)
-  const K = ((24 * 0.25) / Math.PI) * 1.4; // = 2.674
-  return {
-    vf: atm.a * Math.sqrt(sh.G / ((K * AR ** 3 * atm.p * (lam + 1)) / (2 * (AR + 2) * tc ** 3))),
-    G: sh.G,
-    est: sh.est,
-    mat: f.mat || "",
-  };
 }
 /**
  * Where the rocket's rail guides are, for rail friction: the aft guide's position and the gap to the front one.
@@ -1487,124 +1275,6 @@ export function simulate(D, L, m, mb, opts = {}) {
   return { out, st };
 }
 /**
- * The wind through a flight, as a function of height and time: [along x (downwind), along y] in m/s, in the flight
- * axes of simulate (x along the ground wind's direction of travel).
- * @param {object} L launch conditions (wind, its direction, profile and reference height, gustiness, winds aloft)
- * @returns {function(number, number=): number[]} windVec(z, t)
- */
-function flightWind(L) {
-  const alpha = WIND_ALPHA[L.windProfile] ?? 1 / 7,
-    zref = Math.max(L.windRef || 2, 0.5);
-  // gusts: four steady sine waves with fixed random phases (the same every run), scaled to the gustiness as an RMS fraction
-  const turb = Math.max(0, L.turb || 0),
-    GUST = (() => {
-      let sd = 97531;
-      const r = () => {
-        sd = (sd * 16807) % 2147483647;
-        return sd / 2147483647;
-      };
-      return [2.3, 4.7, 9.1, 17.3].map((Pd) => ({ w: (2 * Math.PI) / Pd, ph: 2 * Math.PI * r() }));
-    })();
-  const gust = (t) =>
-    turb > 0 ? Math.max(0, 1 + turb * Math.SQRT1_2 * GUST.reduce((a, g) => a + Math.sin(g.w * t + g.ph), 0)) : 1;
-  /* wind as a vector [along x, along y] in the flight axes. The surface wind grows with height by the power law; a
-     winds-aloft table (height, speed, direction) takes over: below its lowest level the surface wind blends into it,
-     between levels the wind is interpolated, and above the top level it holds. Gusts scale the whole vector. */
-  const h0 = (((L.windDir ?? 270) + 180) * Math.PI) / 180;
-  const vecOf = (spd, from) => {
-    const a = ((from + 180) * Math.PI) / 180 - h0;
-    return [spd * Math.cos(a), -spd * Math.sin(a)];
-  };
-  const ALOFT = (L.aloft || [])
-    .filter((r) => r && r.alt > 0 && r.speed >= 0 && isFinite(r.dir))
-    .slice()
-    .sort((a, b) => a.alt - b.alt)
-    .map((r) => ({ z: r.alt, v: vecOf(r.speed, r.dir) }));
-  const surf = (z) =>
-    alpha === 0
-      ? L.wind
-      : L.wind * Math.pow(Math.min(Math.max(z, 0.3), ALOFT.length ? Math.max(ALOFT[0].z, 1) : 1000) / zref, alpha);
-  const windVec = (z, t = 0) => {
-    let w;
-    if (!ALOFT.length) w = [surf(z), 0];
-    else if (z <= ALOFT[0].z) {
-      const f = Math.max(z, 0) / ALOFT[0].z,
-        s0 = surf(z);
-      w = [s0 * (1 - f) + ALOFT[0].v[0] * f, ALOFT[0].v[1] * f];
-    } else {
-      let i = ALOFT.findIndex((r) => r.z >= z);
-      if (i < 0) w = ALOFT[ALOFT.length - 1].v.slice();
-      else {
-        const a = ALOFT[i - 1],
-          b = ALOFT[i],
-          f = (z - a.z) / (b.z - a.z);
-        w = [a.v[0] + (b.v[0] - a.v[0]) * f, a.v[1] + (b.v[1] - a.v[1]) * f];
-      }
-    }
-    const gm = gust(t);
-    return [w[0] * gm, w[1] * gm];
-  };
-  return windVec;
-}
-/**
- * The Coriolis acceleration from the earth's rotation, in the flight axes of simulate.
- * @param {object} L launch conditions (latitude, wind direction)
- * @returns {{corX: function, corY: function, corZ: function}} each component from the velocity's other two
- */
-function coriolis(L) {
-  /* the earth's rotation (Coriolis acceleration −2Ω×v): Ω has components Ω·cos(lat) to the north and Ω·sin(lat) up;
-     in these axes (x downwind, heading h = wind direction + 180°; y to its left; z up) */
-  const OM = 7.2921159e-5,
-    latR = ((L.lat ?? 40) * Math.PI) / 180,
-    hdg = ((((L.windDir ?? 270) + 180) % 360) * Math.PI) / 180;
-  const Ox = OM * Math.cos(latR) * Math.cos(hdg),
-    Oy = OM * Math.cos(latR) * Math.sin(hdg),
-    Oz = OM * Math.sin(latR);
-  const corX = (vy, vz) => -2 * (Oy * vz - Oz * vy),
-    corY = (vx, vz) => -2 * (Oz * vx - Ox * vz),
-    corZ = (vx, vy) => -2 * (Ox * vy - Oy * vx);
-  return { corX, corY, corZ };
-}
-/* parachutes take time to open: a canopy fills once the air has travelled a set distance through it, n·D (Knacke's
-   fill distance, fill constant n = 8 for solid canopies), and the drag area grows as (s/(n·D))² with s the distance
-   so far. Knacke's fill time t_f = n·D/v is the same thing at a steady speed; counting distance instead keeps a chute
-   opened at apogee, where the rocket is barely moving, from taking many seconds to fill: it fills as the rocket falls.
-   The airframe hanging below adds its own drag (Cd about 0.5). */
-/**
- * A canopy starting to open: when, at what airspeed, the distance it needs to fill and an estimate of its fill time.
- * @param {number} t
- * @param {number} va airspeed
- * @param {number} d canopy diameter
- * @returns {object}
- */
-function opening(t, va, d) {
-  const FILL_N = 8; // fill constant n, for solid canopies
-  const sf = Math.max(FILL_N * d, 1e-3);
-  return { t, v: va, sf, s: 0, ts: t, va, tf: Math.max(sf / Math.max(va, 1), 0.05) };
-}
-/**
- * Moves a filling canopy's distance on to time t at airspeed va (after each step), and its fill-time estimate.
- * @param {object|null} o from opening
- * @param {number} t
- * @param {number} va
- */
-function fillStep(o, t, va) {
-  if (!o || o.s >= o.sf) return;
-  o.s += 0.5 * (o.va + va) * (t - o.ts);
-  o.ts = t;
-  o.va = va;
-  o.tf = o.s >= o.sf ? Math.max(t - o.t, 0.05) : Math.max(t - o.t + (o.sf - o.s) / Math.max(va, 1), 0.05);
-}
-/**
- * How far open a canopy is at time t, as a fraction of its full drag area (1 with none).
- * @param {object|null} o from opening
- * @param {number} t
- * @returns {number}
- */
-function fill(o, t) {
-  return !o ? 1 : Math.min(1, Math.max(0, (o.s + o.va * Math.max(t - o.ts, 0)) / o.sf) ** 2);
-}
-/**
  * One classic fourth-order Runge–Kutta step.
  * @param {function(number, number[]): number[]} f the derivative of the state at a time
  * @param {number} t
@@ -1791,51 +1461,4 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
  */
 export function airInertia(I0, m0, m, len) {
   return I0 > 0 ? I0 * (m0 > 0 ? m / m0 : 1) : (m * len * len) / 12;
-}
-
-/**
- * Nose weight: how much to add at the middle of the nose cone to reach each stability target, and what it costs in
- * apogee. Adding a weight m at x moves the CG to (M·cg + m·x)/(M + m), so reaching a CG of cg′ takes
- * m = M·(cg − cg′)/(cg′ − x). Targets: 1 caliber at liftoff, 10% of the length, and 1 caliber leaving the rail in this
- * wind (the CP at that angle of attack).
- * @param {object} D design
- * @param {object} S stability at liftoff (stability or stackStability)
- * @param {object} st the flight's summary (liftoff weight, rail exit angle)
- * @param {object} Lx launch conditions
- * @param {object} m motor; mb booster motor (or null)
- * @returns {{x:number, cal:number, pct:number, rail:(number|null), need:number, apoCost:(number|null)}|null}
- *   weights in kg (Infinity if no nose weight can reach it), x in m from the nose tip
- */
-export function noseWeightPlan(D, S, st, Lx, m, mb) {
-  if (!S || !st || !(st.liftMass > 0)) return null;
-  const segs = bodySegments(D),
-    nose = segs[0] && segs[0].kind === "nose" ? segs[0] : null,
-    x = nose ? nose.len / 2 : 0.05 * S.L,
-    M = st.liftMass,
-    cg = S.cgL;
-  const forCg = (cgT) => (cg <= cgT ? 0 : cgT <= x ? Infinity : (M * (cg - cgT)) / (cgT - x));
-  const out = { x, cal: forCg(S.cp - S.d), pct: forCg(S.cp - 0.1 * S.L), rail: null, need: 0, apoCost: null };
-  if (st.railAoA != null && st.offRail > 0) {
-    try {
-      const A = aero(D.twoStage ? fullStack(D) : D),
-        a = atmosphere(Lx, 0);
-      out.rail = forCg(cpAtAoA(A, Math.min(st.railAoA, 17), st.offRail / a.a) - S.d);
-    } catch (e) {
-      out.rail = null;
-    }
-  }
-  out.need = Math.max(out.cal, out.pct, out.rail || 0);
-  if (out.need > 0 && isFinite(out.need))
-    try {
-      const D2 = {
-        ...D,
-        dryMass: D.dryMass + out.need,
-        cgEmpty: (D.dryMass * D.cgEmpty + out.need * x) / (D.dryMass + out.need),
-      };
-      const r = simulate(D2, Lx, m, mb, { noRef: true });
-      if (!r.st.error) out.apoCost = st.maxAlt - r.st.maxAlt;
-    } catch (e) {
-      out.apoCost = null;
-    }
-  return out;
 }

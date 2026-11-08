@@ -2,17 +2,17 @@
  * Drawing: the canvas helpers, the flight chart and its series buttons, the weathercocking cone view, fins drawn to
  * scale, and the rocket's side view.
  */
-import { store } from "../core/storage.js";
+import { bldDraw } from "../builder/side-view.js";
 import { esc } from "../core/helpers.js";
+import { store } from "../core/storage.js";
 import { FIN_EDGES, IN } from "../core/units-and-fin-edges.js";
 import { series, setSeries, units } from "../design/defaults.js";
-import { fmt, fromDisp, toDisp, uname } from "./units.js";
+import { flOverlay } from "../flightlog/xlsx.js";
 import { finGeom } from "../physics/aerodynamics.js";
+import { drawMCInto } from "../physics/monte-carlo.js";
 import { lastSim } from "./results.js";
 import { SERIES } from "./rso-checklist.js";
-import { flOverlay } from "../flightlog/xlsx.js";
-import { bldDraw } from "../builder/builder-ui.js";
-import { drawMCInto } from "../physics/monte-carlo.js";
+import { fmt, fromDisp, toDisp, uname } from "./units.js";
 /**
  * Sizes a canvas for its displayed size and the screen's pixel ratio.
  * @param {HTMLCanvasElement} cv

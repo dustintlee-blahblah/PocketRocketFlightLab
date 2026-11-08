@@ -2,11 +2,13 @@
  * Opening files: a design (.ork or .rkt) from the file picker, loadDesignXml (which every way of opening a design goes
  * through), uploaded motor files (.eng, .rse, or a .zip of them), and Reset Changes.
  */
-import { store } from "../core/storage.js";
+import { BLD, BLD_ROOT, bldRender, bldSave, setBLD, setBldSel } from "../builder/builder-ui.js";
+import { bldDerive, bldOffApply, bldOffList } from "../builder/derive.js";
+import { BLD_APP_SETTINGS, bldDefault, bldMounts, bldSettings } from "../builder/model.js";
+import { bldFromOrk } from "../builder/ork-read.js";
 import { b64ToU8, esc, jclone } from "../core/helpers.js";
+import { store } from "../core/storage.js";
 import { FIN_EDGES } from "../core/units-and-fin-edges.js";
-import { classifyUser, dupMotor } from "../motors/catalog-lookup.js";
-import { parseEng, parseRse } from "../motors/motor-files.js";
 import {
   allMotors,
   boostId,
@@ -25,37 +27,27 @@ import {
   setUSER_MOTORS,
   USER_MOTORS,
 } from "../design/defaults.js";
-import { clusterOf, findMotor } from "../motors/clusters.js";
-import { fmt, uname } from "../ui/units.js";
-import { renderForms } from "../ui/forms.js";
-import { BP_ORK, FIN_ORK } from "../recovery/ejection-charge.js";
-import { changed, markStale } from "../ui/state.js";
-import { isThree } from "../physics/simulate.js";
-import { parseOrk, unzipEntries, unzipOrk } from "./openrocket-import.js";
+import { parseOrk } from "./openrocket-import.js";
+import { recentAdd, renderRecent } from "./recent.js";
 import { matchMotor, parseRkt } from "./rocksim-import.js";
-import { BLD_APP_SETTINGS, bldDefault, bldMounts, bldSettings } from "../builder/model.js";
-import { bldFromOrk } from "../builder/ork-read.js";
-import { fitStandIn, mountFilter, renderMotors, s1View } from "../ui/motor-tab.js";
-import { setSiteCur, siteCur, siteFind, siteKeep, siteRender } from "../ui/launch-sites.js";
+import { RANGE_KEYS, setORK_CFG, setORK_SIM, setSource, SOURCE } from "./save.js";
+import { prHash, prStateRead } from "./saved-simulation.js";
+import { isDirty, markClean, setActive } from "./unsaved-changes.js";
+import { unzipEntries, unzipOrk } from "./unzip.js";
+import { zipOthers } from "./zip.js";
 import { applyCal, calGet, calSet } from "../flightlog/drag-calibration.js";
 import { flDeleted, flList, flPut, setFlNow } from "../flightlog/flight-log.js";
 import { zipData, zipEntries } from "../flightlog/xlsx.js";
-import {
-  BLD,
-  BLD_ROOT,
-  bldDerive,
-  bldOffApply,
-  bldOffList,
-  bldRender,
-  bldSave,
-  setBLD,
-  setBldSel,
-} from "../builder/builder-ui.js";
-import { RANGE_KEYS, setORK_CFG, setORK_SIM, setSource, SOURCE } from "./save.js";
-import { recentAdd, renderRecent } from "./recent.js";
-import { zipOthers } from "./zip.js";
-import { prHash, prStateRead } from "./saved-simulation.js";
-import { isDirty, markClean, setActive } from "./unsaved-changes.js";
+import { classifyUser, dupMotor } from "../motors/catalog-lookup.js";
+import { clusterOf, findMotor } from "../motors/clusters.js";
+import { parseEng, parseRse } from "../motors/motor-files.js";
+import { isThree } from "../physics/staging.js";
+import { BP_ORK, FIN_ORK } from "../recovery/ejection-charge.js";
+import { renderForms } from "../ui/forms.js";
+import { setSiteCur, siteCur, siteFind, siteKeep, siteRender } from "../ui/launch-sites.js";
+import { fitStandIn, mountFilter, renderMotors, s1View } from "../ui/motor-tab.js";
+import { changed, markStale } from "../ui/state.js";
+import { fmt, uname } from "../ui/units.js";
 import { WX_KEYS } from "../weather/forecast.js";
 /**
  * True if two values are the same (numbers to a few parts in a million).

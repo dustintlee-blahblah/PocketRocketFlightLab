@@ -9,7 +9,7 @@
     "build": "node build.js",
     "format": "prettier --write \"src/**/*.{js,css}\" build.js tests/*.js tools/*.js",
     "format:check": "prettier --check \"src/**/*.{js,css}\" build.js tests/*.js tools/*.js",
-    "lint": "eslint src/js build.js tests tools && node tools/unused-exports.js",
+    "lint": "eslint src/js build.js tests tools && node tools/unused-exports.js && node tools/check-module-tops.js && node tools/relink.js --check",
     "test": "node build.js && node tests/golden.js check tests/golden-snapshot.json --no-fixtures",
     "test:drag": "node build.js && node tests/drag-benchmarks.js",
     "test:record": "node build.js && node tests/golden.js record tests/golden-snapshot.json --no-fixtures",

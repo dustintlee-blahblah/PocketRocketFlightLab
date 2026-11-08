@@ -3,9 +3,9 @@
  * and closing the pop-up dialogs with a tap outside them or the Escape key.
  */
 import { D, L, setMotorTarget, units } from "../design/defaults.js";
-import { fmt, uname } from "./units.js";
-import { mountFilter, renderMotors } from "./motor-tab.js";
 import { showTab } from "./events.js";
+import { mountFilter, renderMotors } from "./motor-tab.js";
+import { fmt, uname } from "./units.js";
 /**
  * The warning shown instead of a run when the rail is too short (almost always a units mix-up).
  */

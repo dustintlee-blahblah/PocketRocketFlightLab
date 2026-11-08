@@ -1,12 +1,12 @@
 /**
  * The flight animation: a side view along the wind, played from the last run's time history.
  */
-import { esc } from "../core/helpers.js";
-import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
-import { isThree, stackDesign, stackDesign3 } from "../physics/simulate.js";
-import { lastSim } from "../ui/results.js";
 import { animDraw } from "./scenery.js";
 import { VID } from "./video-export.js";
+import { esc } from "../core/helpers.js";
+import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
+import { isThree, stackDesign, stackDesign3 } from "../physics/staging.js";
+import { lastSim } from "../ui/results.js";
 /* ---------- flight animation (side view along the wind) ---------- */
 /**
  * Animation state: open, current time (s), playback speed, playing, animation frame id, last frame time, camera.

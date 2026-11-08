@@ -2,22 +2,24 @@
  * Results: running the flight (with the wind table and Monte Carlo inputs), and the Results tab's tiles, staging
  * timeline and ejection charge list.
  */
+import { animAt } from "../animation/animation.js";
 import { esc } from "../core/helpers.js";
 import { D, L, units } from "../design/defaults.js";
-import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
-import { fmt, fromDisp, uname } from "./units.js";
-import { stability } from "../physics/aerodynamics.js";
-import { isThree, noseWeightPlan, simulate, stackStability } from "../physics/simulate.js";
-import { renderRSO, renderWindTable, resultFlags } from "./rso-checklist.js";
-import { animAt } from "../animation/animation.js";
-import { drawChart, drawProfile } from "./charts.js";
-import { TGT_NAME } from "./motor-tab.js";
-import { renderFlightLog } from "../flightlog/flight-log.js";
 import { SOURCE } from "../files/save.js";
 import { renderTitle } from "../files/unsaved-changes.js";
-import { downloadsNS } from "../report/pdf-report.js";
-import { profNoteRender, supRender } from "./donate.js";
+import { renderFlightLog } from "../flightlog/flight-log.js";
+import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
+import { stability } from "../physics/aerodynamics.js";
 import { mcAuto, renderMC } from "../physics/monte-carlo.js";
+import { noseWeightPlan } from "../physics/nose-weight.js";
+import { simulate } from "../physics/simulate.js";
+import { isThree, stackStability } from "../physics/staging.js";
+import { downloadsNS } from "../report/pdf-report.js";
+import { drawChart, drawProfile } from "./charts.js";
+import { profNoteRender, supRender } from "./donate.js";
+import { TGT_NAME } from "./motor-tab.js";
+import { renderRSO, renderWindTable, resultFlags } from "./rso-checklist.js";
+import { fmt, fromDisp, uname } from "./units.js";
 /* ---------- rendering ---------- */
 /**
  * The last run: {st, out, S, m, mb, D, L, windTable, ...}, or null when results are out of date.

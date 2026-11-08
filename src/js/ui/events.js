@@ -1,15 +1,15 @@
 /**
  * Tabs, page spacing for the launch bar, swiping between tabs, and the units switch.
  */
+import { BLD, bldRender } from "../builder/builder-ui.js";
 import { store } from "../core/storage.js";
 import { setUnitsValue } from "../design/defaults.js";
-import { renderForms } from "./forms.js";
-import { renderResults } from "./results.js";
-import { drawChart, drawProfile } from "./charts.js";
-import { renderMotors } from "./motor-tab.js";
-import { siteRender } from "./launch-sites.js";
-import { BLD, bldRender } from "../builder/builder-ui.js";
 import { drawMC } from "../physics/monte-carlo.js";
+import { drawChart, drawProfile } from "./charts.js";
+import { renderForms } from "./forms.js";
+import { siteRender } from "./launch-sites.js";
+import { renderMotors } from "./motor-tab.js";
+import { renderResults } from "./results.js";
 /* ---------- events ---------- */
 /**
  * Shows one of the four tabs and draws what it needs.

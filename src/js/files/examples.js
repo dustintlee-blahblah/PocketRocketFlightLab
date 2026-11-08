@@ -1,14 +1,14 @@
 /**
  * The example rockets: the lists, and opening one as its own copy.
  */
+import { EXAMPLES } from "../../data/examples.js";
+import { BLD, bldRender, bldSave } from "../builder/builder-ui.js";
 import { b64ToU8, esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
-import { renderForms } from "../ui/forms.js";
-import { inflate, unzipOrk } from "./openrocket-import.js";
 import { openDesignAsk } from "./open-file.js";
-import { BLD, bldRender, bldSave } from "../builder/builder-ui.js";
 import { confirmUnsaved, renderRecent } from "./recent.js";
-import { EXAMPLES } from "../../data/examples.js";
+import { inflate, unzipOrk } from "./unzip.js";
+import { renderForms } from "../ui/forms.js";
 /**
  * Draws the example rockets lists.
  */

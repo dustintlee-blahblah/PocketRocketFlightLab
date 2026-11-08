@@ -2,21 +2,21 @@
  * The RSO checklist (the go/no-go items a range safety officer asks about), the results flags, the wind table and the
  * chart series.
  */
-import { store } from "../core/storage.js";
-import { esc } from "../core/helpers.js";
-import { motorStats } from "../motors/motor-files.js";
-import { curBoost, curMotor, L, mstats, PROFILE } from "../design/defaults.js";
-import { fmt, uname } from "./units.js";
-import { renderDragTable } from "./state.js";
-import { aero } from "../physics/aerodynamics.js";
-import { fullStack } from "../physics/simulate.js";
-import { bigDist, compass, driftDir, ejLiveFlag, lastSim, nosePlan, noseWeightText } from "./results.js";
-import { coneWindNote } from "./charts.js";
-import { motorFit } from "./motor-tab.js";
-import { siteRender } from "./launch-sites.js";
 import { BLD } from "../builder/builder-ui.js";
+import { esc } from "../core/helpers.js";
+import { store } from "../core/storage.js";
+import { curBoost, curMotor, L, mstats, PROFILE } from "../design/defaults.js";
 import { RANGE_KEYS } from "../files/save.js";
+import { motorStats } from "../motors/motor-files.js";
+import { aero } from "../physics/aerodynamics.js";
 import { apoRange, lastMC, mcFar95 } from "../physics/monte-carlo.js";
+import { fullStack } from "../physics/staging.js";
+import { coneWindNote } from "./charts.js";
+import { siteRender } from "./launch-sites.js";
+import { motorFit } from "./motor-tab.js";
+import { bigDist, compass, driftDir, ejLiveFlag, lastSim, nosePlan, noseWeightText } from "./results.js";
+import { renderDragTable } from "./state.js";
+import { fmt, uname } from "./units.js";
 /* ---------- RSO checklist: the go/no-go items a range safety officer asks about, from the last run ---------- */
 /* high power under FAA Part 101 / NAR and Tripoli: any motor over 160 N·s (H and up), more than 320 N·s in all, more than
    125 g of propellant, or a liftoff weight over 1,500 g */

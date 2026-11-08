@@ -1,8 +1,6 @@
 /**
  * Writing the builder's design as an OpenRocket .ork document.
  */
-import { allMotors } from "../design/defaults.js";
-import { findMotor } from "../motors/clusters.js";
 import {
   BLD_BULK,
   BLD_BUTTONS,
@@ -15,6 +13,8 @@ import {
   bldPts,
   bldSettings,
 } from "./model.js";
+import { allMotors } from "../design/defaults.js";
+import { findMotor } from "../motors/clusters.js";
 /* ---------- the .ork file ---------- */
 /**
  * The motor type OpenRocket uses to find a motor along with its name: single-use, reload or hybrid.

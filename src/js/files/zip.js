@@ -2,7 +2,7 @@
  * Zip files: writing them (compressed for a saved .ork, as OpenRocket writes it; stored for the web download wrapper),
  * and keeping an .ork file's other entries (decal images) when it is saved.
  */
-import { inflate } from "./openrocket-import.js";
+import { inflate } from "./unzip.js";
 import { bufToB64 } from "../report/pdf-report.js";
 /**
  * The CRC-32 lookup table.

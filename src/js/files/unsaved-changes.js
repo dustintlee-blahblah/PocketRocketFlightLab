@@ -2,13 +2,13 @@
  * Unsaved changes and the Save buttons: what counts as a change, the title asterisk, the prompt to save before the
  * file picker opens, the Save changes and Save a copy buttons, and naming a file on its first save.
  */
-import { DEFAULT_MOTOR } from "../motors/catalog-lookup.js";
-import { boostId, D, defaultDesign, defaultLaunch, L, motorId } from "../design/defaults.js";
-import { drawProfile } from "../ui/charts.js";
 import { BLD, bldRender } from "../builder/builder-ui.js";
+import { boostId, D, defaultDesign, defaultLaunch, L, motorId } from "../design/defaults.js";
 import { SAVE_IGNORE, SAVE_NOT, SOURCE } from "./save.js";
-import { isAndroidApp } from "./zip.js";
 import { saveDesignFile } from "./saved-simulation.js";
+import { isAndroidApp } from "./zip.js";
+import { DEFAULT_MOTOR } from "../motors/catalog-lookup.js";
+import { drawProfile } from "../ui/charts.js";
 /* ---------- unsaved changes: asked about before another file is opened ---------- */
 /**
  * A snapshot of what the design file can hold (app-only settings don't count as changes).

@@ -3,10 +3,10 @@
  */
 import { store } from "../core/storage.js";
 import { D } from "../design/defaults.js";
+import { SOURCE } from "../files/save.js";
+import { flKey } from "./flight-log.js";
 import { simulate } from "../physics/simulate.js";
 import { lastSim } from "../ui/results.js";
-import { flKey } from "./flight-log.js";
-import { SOURCE } from "../files/save.js";
 /* ---------- drag calibration ----------
    One drag multiplier for this rocket, fitted to the logged flights marked "Use for calibration" (see the Flight Log),
    kept on this device with the design's flight log. */

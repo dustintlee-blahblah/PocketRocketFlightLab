@@ -1,8 +1,6 @@
 /**
  * Reading a design file into builder parts (see the note below).
  */
-import { rktEj } from "../recovery/ejection-charge.js";
-import { matchMotor } from "../files/rocksim-import.js";
 import {
   BLD_BULK,
   BLD_BUTTONS,
@@ -16,7 +14,9 @@ import {
   bldPts,
   bldSettings,
 } from "./model.js";
+import { matchMotor } from "../files/rocksim-import.js";
 import { ORK_CFG, ORK_SIM } from "../files/save.js";
+import { rktEj } from "../recovery/ejection-charge.js";
 /* ---------- reading a design file into builder parts ----------
    .rkt files arrive already converted to .ork text. Parts the builder can't edit (pods, tube fins,
    engine blocks...) are kept exactly as written, so they still fly and still save. */

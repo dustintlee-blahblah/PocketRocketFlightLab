@@ -3,21 +3,22 @@
  * report (jsPDF): the design, motors, conditions, results, RSO checklist, every graph and the flyer's profile.
  * Coordinates in the PDF are points (1/72 in) from the top left.
  */
-import { APP_BUILD } from "../core/start.js";
-import { SYS_LABEL } from "../motors/catalog.js";
-import { mstats, NOSE_PRESETS, PROFILE } from "../design/defaults.js";
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
-import { noseSpec } from "../physics/geometry.js";
-import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
-import { airInertia, fullStack, isThree } from "../physics/simulate.js";
+import { BLD } from "../builder/builder-ui.js";
 import { bldLayout } from "../builder/model.js";
+import { APP_BUILD } from "../core/start.js";
+import { mstats, NOSE_PRESETS, PROFILE } from "../design/defaults.js";
+import { SOURCE } from "../files/save.js";
+import { SYS_LABEL } from "../motors/catalog.js";
+import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
+import { noseSpec } from "../physics/geometry.js";
+import { apoRange, apoRound, lastMC, MC_K68, MC_K95, mcBearing } from "../physics/monte-carlo.js";
+import { airInertia } from "../physics/simulate.js";
+import { fullStack, isThree } from "../physics/staging.js";
+import { chartEvents, niceTicks } from "../ui/charts.js";
+import { supNote } from "../ui/donate.js";
 import { compass, driftDir, lastSim, resultTiles } from "../ui/results.js";
 import { CERT_NAME, resultFlags, windRows } from "../ui/rso-checklist.js";
-import { chartEvents, niceTicks } from "../ui/charts.js";
-import { BLD } from "../builder/builder-ui.js";
-import { SOURCE } from "../files/save.js";
-import { supNote } from "../ui/donate.js";
-import { apoRange, apoRound, lastMC, MC_K68, MC_K95, mcBearing } from "../physics/monte-carlo.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 /* ---------- PDF flight report ---------- */
 /**
  * How files are saved here: an object with save({filename, data}) that resolves with {status}.

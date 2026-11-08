@@ -1,11 +1,8 @@
 /**
  * The Motor tab: the motor list with its filters, the selected motors, and the motor tube size checks.
  */
-import { store } from "../core/storage.js";
 import { esc } from "../core/helpers.js";
-import { SYS_LABEL } from "../motors/catalog.js";
-import { BRAND_SYS, BUILTIN_BRANDS, DEFAULT_MOTOR, SYS_ORDER } from "../motors/catalog-lookup.js";
-import { motorStats } from "../motors/motor-files.js";
+import { store } from "../core/storage.js";
 import {
   allMotors,
   boostId,
@@ -24,13 +21,16 @@ import {
   setUSER_MOTORS,
   USER_MOTORS,
 } from "../design/defaults.js";
+import { BRAND_SYS, BUILTIN_BRANDS, DEFAULT_MOTOR, SYS_ORDER } from "../motors/catalog-lookup.js";
+import { SYS_LABEL } from "../motors/catalog.js";
 import { findMotor, flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
-import { fmt, uname } from "./units.js";
-import { markStale } from "./state.js";
-import { isThree } from "../physics/simulate.js";
+import { motorStats } from "../motors/motor-files.js";
+import { isThree } from "../physics/staging.js";
 import { css, drawProfile, setupCanvas } from "./charts.js";
-import { cfgRender, drawMtarget, mdMotor, mdRender, mdSnap, mdTarget } from "./motor-delay.js";
 import { CMP, cmpRender, renderCluster } from "./compare-motors.js";
+import { cfgRender, drawMtarget, mdMotor, mdRender, mdSnap, mdTarget } from "./motor-delay.js";
+import { markStale } from "./state.js";
+import { fmt, uname } from "./units.js";
 /**
  * Draws a motor's thrust curve, small.
  * @param {HTMLCanvasElement} cv

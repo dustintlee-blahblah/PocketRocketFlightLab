@@ -3,12 +3,12 @@
  * meters and kilograms) and read by parseOrk, then RockSim's own simulation settings (motors per stage, ejection
  * delays, launch conditions) are applied on top.
  */
-import { brandOfMfr } from "../motors/catalog-lookup.js";
-import { allMotors, D } from "../design/defaults.js";
-import { rktEj } from "../recovery/ejection-charge.js";
-import { parseOrk } from "./openrocket-import.js";
 import { rktIndex, rktPartId } from "../builder/ork-merge.js";
+import { allMotors, D } from "../design/defaults.js";
+import { parseOrk } from "./openrocket-import.js";
 import { ORK_SIM } from "./save.js";
+import { brandOfMfr } from "../motors/catalog-lookup.js";
+import { rktEj } from "../recovery/ejection-charge.js";
 /* ---------- RockSim .rkt import: converted to the .ork file layout, then read by the .ork importer ---------- */
 /**
  * Reads a RockSim design.

@@ -1,9 +1,9 @@
 /**
  * Field help: the small "i" button beside each input, and the text it shows.
  */
+import { BLD } from "../builder/builder-ui.js";
 import { units } from "../design/defaults.js";
 import { uname } from "./units.js";
-import { BLD } from "../builder/builder-ui.js";
 /* ---------- field help: a small "i" button beside each input opens a box explaining how to fill it in ---------- */
 /**
  * The HTML of an "i" button that opens a help box (empty if there is no help text).

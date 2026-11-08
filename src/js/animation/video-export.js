@@ -1,12 +1,12 @@
 /**
  * Saving the animation as a video (see the note below).
  */
-import { lastSim } from "../ui/results.js";
 import { ANIM, animPlay } from "./animation.js";
 import { animDraw } from "./scenery.js";
 import { SOURCE } from "../files/save.js";
 import { isAndroidApp } from "../files/zip.js";
 import { bufToB64, downloadsNS } from "../report/pdf-report.js";
+import { lastSim } from "../ui/results.js";
 /* ---------- video export: the animation rendered frame by frame, H.264 in an .mp4 ----------
    Frames are drawn off screen at 720×1280 and encoded with the browser's own H.264 encoder (WebCodecs);
    the .mp4 container is written here (a plain, "fast start" file: ftyp, moov, mdat). */

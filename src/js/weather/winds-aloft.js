@@ -3,8 +3,8 @@
  */
 import { esc } from "../core/helpers.js";
 import { L } from "../design/defaults.js";
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 import { changed } from "../ui/state.js";
+import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 import { wxSiteNote } from "./forecast.js";
 /* ---------- winds aloft: a table of heights, speeds and directions, typed in by hand ---------- */
 /**

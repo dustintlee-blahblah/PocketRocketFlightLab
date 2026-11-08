@@ -2,16 +2,16 @@
  * The settings menu (units, appearance, app colors, swipe, disclaimer and About), and redrawing the drawings when the
  * screen size or the theme changes.
  */
+import { BLD, bldRender } from "../builder/builder-ui.js";
 import { store } from "../core/storage.js";
 import { PROFILE, units } from "../design/defaults.js";
+import { drawMC } from "../physics/monte-carlo.js";
+import { drawChart, drawProfile } from "./charts.js";
+import { profNoteRender } from "./donate.js";
+import { setUnits } from "./events.js";
+import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
 import { renderRSO } from "./rso-checklist.js";
-import { drawChart, drawProfile } from "./charts.js";
-import { renderMotors } from "./motor-tab.js";
-import { setUnits } from "./events.js";
-import { BLD, bldRender } from "../builder/builder-ui.js";
-import { profNoteRender } from "./donate.js";
-import { drawMC } from "../physics/monte-carlo.js";
 let rt = null;
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
