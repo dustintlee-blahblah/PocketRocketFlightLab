@@ -54,7 +54,8 @@ android {
     }
 
     sourceSets {
-        main.assets.srcDir(layout.buildDirectory.dir("generated/webAsset"))
+        // a folder (not a Provider: AGP 9 doesn't take those here); preBuild depends on generateWebAsset below
+        main.assets.srcDir(layout.buildDirectory.dir("generated/webAsset").get().asFile)
     }
 }
 
