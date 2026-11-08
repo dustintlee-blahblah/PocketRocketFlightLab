@@ -271,7 +271,7 @@ function animSmoke(c, out, st, RD, t, SX, SY, K, wind) {
     c.fill();
   }
   // ejection charge puffs
-  let evs = [];
+  let evs;
   try {
     evs = chargeEvents(st, RD, out) || [];
   } catch (_) {
@@ -544,7 +544,7 @@ export function animDraw(target) {
     return sc;
   };
   const size = Math.max(46, Math.min(90, H * 0.13));
-  let pose = null;
+  let pose;
   const thrust = animAt(out.t, out.thrust, t);
   const px = SX(x),
     py = SY(z);
@@ -607,7 +607,7 @@ export function animDraw(target) {
      the altimeter's drogue (apogee) charge just aft of the middle, the main charge forward of it. It lasts about 0.2 s
      of flight time (longer when the playback is sped up, so a frame still catches it) */
   if (pose) {
-    let evs = [];
+    let evs;
     try {
       evs = chargeEvents(st, RD, out) || [];
     } catch (_) {

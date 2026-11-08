@@ -167,7 +167,7 @@ async function xlsxSheets(buf) {
           body = c[2] || "";
         const ci = ref ? colN(ref[1]) : k;
         k = ci + 1;
-        let v = "";
+        let v;
         if (t === "s") {
           const m = body.match(/<v>([\s\S]*?)<\/v>/);
           v = m ? (ss[+m[1]] ?? "") : "";

@@ -484,7 +484,7 @@ export function chargeEvents(st, D, outs) {
 export function nosePlan(st, S) {
   if (st._nw !== undefined) return st._nw;
   const RS = lastSim || {};
-  let p = null;
+  let p;
   try {
     p = RS.D && !st.error ? noseWeightPlan(RS.D, S, st, RS.L, RS.m, RS.mb) : null;
   } catch (e) {

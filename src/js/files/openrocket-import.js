@@ -711,7 +711,7 @@ export function parseOrk(xml) {
     // mean squared distance from the rocket's axis, for the roll inertia
     const pr = (parent && parent.ro) || 0,
       pin = (parent && parent.ri) || pr;
-    let k2 = 0;
+    let k2;
     if (tag === "nosecone")
       k2 = (num(c, "thickness", 0) >= ro * 0.999 || txt(c, "filled") === "true" ? 0.3 : 0.5) * ro * ro;
     else if (tag === "transition") k2 = 0.5 * ro * ro;

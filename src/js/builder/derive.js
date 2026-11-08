@@ -141,7 +141,7 @@ export function bldOffApply(list) {
   if (!BLD || !Array.isArray(list)) return;
   for (const e of list) {
     if (!e || typeof e.k !== "string" || !isFinite(e.v)) continue;
-    let O = null;
+    let O;
     if (e.id === "settings") O = BLD.settings = BLD.settings || bldSettings();
     else {
       const f = bldFind(e.id);

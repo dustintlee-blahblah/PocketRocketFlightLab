@@ -91,7 +91,7 @@ function cmpFly(m) {
   };
   const { st } = simulate(Dx, L, ms, mb, { noRef: true, mb1: m1 });
   const S = D.twoStage && mb ? stackStability(Dx, ms, mb, m1 || undefined) : stability(Dx, ms);
-  let checks = [];
+  let checks;
   const keep = lastSim;
   try {
     setLastSim({ mb, when: -1 });
