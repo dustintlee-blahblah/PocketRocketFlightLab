@@ -121,6 +121,44 @@ const FINISH_RS = {
   mirror: 0,
 };
 /**
+ * The volume of a body of revolution and its centroid, solid or as a shell, the way OpenRocket works it out: in slices,
+ * each a frustum less the frustum inside it, with the wall measured square to the surface (so the inner radius is
+ * r − t·slant/length, and a slice whose wall fills it is solid).
+ * @param {function(number):number} rAt radius at a distance from the front, m
+ * @param {number} len length, m
+ * @param {number} t wall thickness, m (ignored when solid)
+ * @param {boolean} solid
+ * @returns {{V:number, x:number}} volume (m³) and centroid from the front (m)
+ */
+function orkShell(rAt, len, t, solid) {
+  const N = 100,
+    fr = (a, b, l) => (Math.PI * l * (a * a + a * b + b * b)) / 3,
+    // a frustum's centroid from its front face
+    fx = (a, b, l) =>
+      a * a + a * b + b * b > 0 ? (l * (a * a + 2 * a * b + 3 * b * b)) / (4 * (a * a + a * b + b * b)) : l / 2;
+  let V = 0,
+    M = 0;
+  for (let i = 0; i < N; i++) {
+    const x0 = (i / N) * len,
+      l = len / N,
+      a = rAt(x0),
+      b = rAt(x0 + l);
+    let v = fr(a, b, l),
+      m = v * (x0 + fx(a, b, l));
+    if (!solid) {
+      const h = (t * Math.hypot(b - a, l)) / l,
+        ai = Math.max(a - h, 0),
+        bi = Math.max(b - h, 0),
+        vi = fr(ai, bi, l);
+      v -= vi;
+      m -= vi * (x0 + fx(ai, bi, l));
+    }
+    V += v;
+    M += m;
+  }
+  return { V, x: V > 0 ? M / V : len / 2 };
+}
+/**
  * Reads an OpenRocket design.
  * @param {string} xml the design XML
  * @returns {{design:object, launch:object, notes:string[], motor:object, boosterMotor:object, firstMotor:object,
@@ -498,24 +536,9 @@ function parseOrk(xml) {
       const shp = ["ogive", "conical", "ellipsoid", "parabolic", "power", "haack"].includes(shape) ? shape : "ogive";
       // weight and balance point from the actual nose profile (solid, or a shell of the given thickness)
       {
-        let V = 0,
-          Vx = 0,
-          N = 200,
-          prev = 0;
-        for (let i = 1; i <= N; i++) {
-          const x0 = ((i - 1) / N) * len,
-            x1 = (i / N) * len,
-            r = noseR(shp, sp, x1, ro, len),
-            xm = (x0 + x1) / 2;
-          const dv = filled
-            ? (Math.PI * (x1 - x0) * (prev * prev + prev * r + r * r)) / 3
-            : Math.PI * (prev + r) * Math.hypot(x1 - x0, r - prev) * Math.min(t, Math.max(r, prev));
-          V += dv;
-          Vx += dv * xm;
-          prev = r;
-        }
-        m = rho * V;
-        cg = x + (V > 0 ? Vx / V : len * 0.6);
+        const sh = orkShell((u) => noseR(shp, sp, u, ro, len), len, t, filled);
+        m = rho * sh.V;
+        cg = x + (sh.V > 0 ? sh.x : len * 0.6);
       }
       const sl = num(c, "aftshoulderlength"),
         sr = num(c, "aftshoulderradius"),
@@ -562,16 +585,46 @@ function parseOrk(xml) {
       const r1 = isAuto(c, "foreradius") ? R.last || autoNum(c, "foreradius") : num(c, "foreradius"),
         r2 = isAuto(c, "aftradius") ? nextExplicit(c) || autoNum(c, "aftradius") || r1 : num(c, "aftradius");
       const t = num(c, "thickness", 0.002);
-      m = rho * Math.PI * (r1 + r2) * Math.sqrt(len * len + (r1 - r2) ** 2) * t;
-      ro = Math.max(r1, r2);
-      transitions.push({ x, len, d1: 2 * r1, d2: 2 * r2 });
-      R.last = r2;
       const tsh = (txt(c, "shape") || "conical").toLowerCase(),
         tshp = ["ogive", "conical", "ellipsoid", "parabolic", "power", "haack"].includes(tsh) ? tsh : "conical";
       const tp =
         txt(c, "shapeparameter") != null
           ? num(c, "shapeparameter", 0)
           : ({ ogive: 1, power: 0.5, parabolic: 1 }[tshp] ?? 0);
+      // weight and balance point from its profile, with its shoulders, as OpenRocket works them out
+      {
+        const rAt = (u) =>
+          r1 <= r2 ? r1 + noseR(tshp, tp, u, r2 - r1, len) : r2 + noseR(tshp, tp, len - u, r1 - r2, len);
+        const filledT = txt(c, "filled") === "true" || (Math.max(r1, r2) > 0 && t >= Math.max(r1, r2) * 0.999);
+        const sh = orkShell(rAt, len, t, filledT);
+        m = rho * sh.V;
+        cg = x + sh.x;
+        const sparts = [];
+        for (const [end, sx] of [
+          ["fore", -1],
+          ["aft", 1],
+        ]) {
+          const sl = num(c, end + "shoulderlength"),
+            sr = num(c, end + "shoulderradius"),
+            st = Math.min(num(c, end + "shoulderthickness", 0.002), sr);
+          if (!(sl > 0 && sr > 0)) continue;
+          const mid = sx < 0 ? x - sl / 2 : x + len + sl / 2;
+          sparts.push([rho * Math.PI * (sr * sr - Math.max(sr - st, 0) ** 2) * sl, mid]);
+          if (txt(c, end + "shouldercapped") === "true" && st < sr)
+            sparts.push([
+              rho * Math.PI * Math.max(sr - st, 0) ** 2 * st,
+              sx < 0 ? x - sl + st / 2 : x + len + sl - st / 2,
+            ]);
+        }
+        for (const [pm, px] of sparts)
+          if (pm > 0 && isFinite(px)) {
+            cg = (m * cg + pm * px) / (m + pm);
+            m += pm;
+          }
+      }
+      ro = Math.max(r1, r2);
+      transitions.push({ x, len, d1: 2 * r1, d2: 2 * r2 });
+      R.last = r2;
       if (parent.top)
         segments.push({ kind: "trans", x, len, r1, r2, shape: tshp, param: tp, rs: cfin, si: curStage, cdo: odc(c) });
     } else if (tag === "launchlug") {
