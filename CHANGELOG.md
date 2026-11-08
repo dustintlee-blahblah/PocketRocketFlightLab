@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 279 (2026-11-08)
+
+**Under the hood** (no change to results or how the app works)
+- **The code is reorganized for contributors**: the app's source is now ES modules, each importing what it uses by name, bundled into the same single page; the largest files are split into focused ones (the rocket builder into its fields, editor, side view, undo and design steps; staging, fin flutter, wind, parachutes and nose weight out of the flight simulation).
+- **Built and signed on GitHub**: this is the first release built by GitHub Actions from the tagged source, signed with the same key as before, so it installs over the app you have.
+- **Checks on every change**: formatting, lint, the regression test, a UI smoke test, the drag benchmarks and an Android build run on every push and pull request.
+
 ## Build 278 (2026-11-08)
 
 **Rocket tab**
