@@ -40,11 +40,17 @@ development on Venmo: [@PocketRocketFlightLab](https://venmo.com/u/PocketRocketF
 ```
 src/                                the app's source, in files by area (see below)
 build.js                            joins src/ into the single page the app ships
-web/pocket-rocket-flight-lab.html   the built app: one HTML file (HTML, CSS and JavaScript)
+web/                                build output (not in git): the app as one HTML file
 android/                            Android app: a WebView around the same page, built with Gradle
 tests/golden.js                     regression test: proves a change leaves every result the same
+tests/golden-snapshot.json          the recorded results of the built-in examples that `npm test` checks
 tests/drag-benchmarks.js            the drag model against published NACA measurements
-tools/                              maintenance scripts (unused-code check, a one-off split record)
+tools/set-build.js                  sets the build number everywhere it appears
+tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
+tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
+tools/unused-globals.js             lint: top-level names nothing uses
+.github/workflows/                  Check (every push and pull request) and Release (on a version tag)
+RELEASE_NOTES.md                    the newest release's description, newest build first
 LICENSE                             GNU GPL v3
 THIRD_PARTY_NOTICES.md              licenses of the bundled fonts, PDF library and data
 ```
@@ -74,16 +80,21 @@ The files are plain scripts that share one global scope, in the order `src/index
 
 ## Working on the code
 
-Requirements: Node.js 18 or later. For the regression test, also Playwright with its Chromium browser.
+Requirements: Node.js 18 or later.
 
 ```
-npm install            # Prettier, ESLint and the Babel parser the unused-code check uses
-node build.js          # src/ -> web/pocket-rocket-flight-lab.html
-npm run format         # Prettier (print width 120)
-npm run lint           # ESLint, then tools/unused-globals.js (top-level names nothing uses)
+npm ci                              # Prettier, ESLint, Playwright and the Babel parser the unused-code check uses
+npx playwright install chromium     # the browser the tests run the app in
+node build.js                       # src/ -> web/pocket-rocket-flight-lab.html
+npm run format                      # Prettier (print width 120)
+npm run lint                        # ESLint, then tools/unused-globals.js (top-level names nothing uses)
+npm test                            # build, then the regression test against tests/golden-snapshot.json
 ```
 
-Edit the files in `src/`, then build; don't edit `web/pocket-rocket-flight-lab.html` by hand.
+Edit the files in `src/`, then build. `web/` is build output and isn't in git.
+
+Every push and pull request runs the same checks on GitHub (`.github/workflows/check.yml`): formatting, lint, the
+regression test, the drag benchmarks, and an Android build.
 
 ### Drag benchmarks
 
@@ -97,8 +108,7 @@ npm run test:drag
 
 ### Regression test
 
-`tests/golden.js` flies a set of design files (yours: `.ork` and `.rkt` files in folders you name)
-and the built-in examples under several conditions, motors and delay settings, and records everything
+`tests/golden.js` flies the built-in examples (and any `.ork` and `.rkt` files in folders you name) under several conditions, motors and delay settings, and records everything
 the app computes: flight results, stability, RSO Checklist, charge timing, drag and stability
 coefficients, Monte Carlo dispersion, the Results text and the saved `.ork`. Record a snapshot before a
 change, then check against it after:
@@ -112,9 +122,14 @@ node tests/golden.js check before.json --fixtures path/to/designs
 
 A change meant to leave behavior alone (formatting, comments, refactoring) must pass with no differences.
 
+`npm test` checks the built-in examples against the committed `tests/golden-snapshot.json`. When a change is meant to
+alter results (a physics fix, new output), check that the differences are the intended ones, then record the snapshot
+again with `npm run test:record` and commit it with the change, saying in the commit message what changed and why.
+
 ## Running the web version
 
-Open `web/pocket-rocket-flight-lab.html` in a browser. It loads its fonts from Google Fonts and the PDF
+Build it (`node build.js`), then open `web/pocket-rocket-flight-lab.html` in a browser. Each release also carries the
+built page. It loads its fonts from Google Fonts and the PDF
 library (jsPDF) from cdnjs; everything else is in the file.
 
 ## Building the Android app
@@ -129,7 +144,22 @@ cd android
 Build the page first (`node build.js`). The Android build copies `web/pocket-rocket-flight-lab.html` into the app and switches it to the bundled fonts
 and PDF library, so the app works offline (only the weather forecast uses the internet).
 
-### Signing a release
+## Releasing
+
+Official releases are built and signed on GitHub (`.github/workflows/release.yml`), from the tagged commit:
+
+```
+node tools/set-build.js 279         # APP_BUILD, the splash screen and the Android versionCode
+# add "### What's new in build 279" at the top of RELEASE_NOTES.md
+git commit -am "Build 279" && git push
+git tag v1.0-build279 && git push origin v1.0-build279
+```
+
+The workflow checks that the tag and the source agree on the build number, builds the page and the signed APK,
+checks the APK's certificate, and publishes both with `RELEASE_NOTES.md` as the description. The signing keystore and
+its passwords are repository secrets, never files in the repository.
+
+### Signing your own build
 
 Release builds are signed only when `android/keystore.properties` exists. Copy
 `android/keystore.properties.example`, point it at your own keystore and fill in its passwords, then run

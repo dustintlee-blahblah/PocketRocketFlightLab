@@ -13,7 +13,11 @@
  *   node tests/golden.js check  <snapshot.json> [--html app.html] [--fixtures dir1:dir2]
  *
  * Design files (.ork, .rkt) are read from the fixture folders (default: $PR_FIXTURES), plus the app's built-in examples.
- * The fixtures and snapshots stay out of the repository.
+ * --no-fixtures flies the built-in examples only.
+ *
+ * tests/golden-snapshot.json is the committed snapshot of the built-in examples; `npm test` checks it, and
+ * `npm run test:record` records it again after a change that is meant to alter results (say which in the commit).
+ * Larger local snapshots with your own design files stay out of the repository.
  */
 "use strict";
 const fs = require("fs");
@@ -29,10 +33,14 @@ const opt = (name, def) => {
   return i >= 0 ? args[i + 1] : def;
 };
 const html = path.resolve(opt("--html", path.join(__dirname, "..", "web", "pocket-rocket-flight-lab.html")));
-const fixtureDirs = (opt("--fixtures", process.env.PR_FIXTURES || "") || "").split(":").filter(Boolean);
+const fixtureDirs = args.includes("--no-fixtures")
+  ? []
+  : (opt("--fixtures", process.env.PR_FIXTURES || "") || "").split(":").filter(Boolean);
 const jspdf = path.join(__dirname, "..", "android", "app", "src", "main", "assets", "jspdf.umd.min.js");
 if (!["record", "check"].includes(mode) || !snapFile) {
-  console.error("usage: node tests/golden.js record|check <snapshot.json> [--html app.html] [--fixtures dir1:dir2]");
+  console.error(
+    "usage: node tests/golden.js record|check <snapshot.json> [--html app.html] [--fixtures dir1:dir2 | --no-fixtures]",
+  );
   process.exit(2);
 }
 
@@ -211,7 +219,7 @@ async function snapshot(page, label) {
   console.log("");
 
   if (mode === "record") {
-    fs.writeFileSync(snapFile, JSON.stringify(results));
+    fs.writeFileSync(snapFile, JSON.stringify(results, null, 1) + "\n");
     console.log(
       `recorded ${Object.keys(results).length - 1} cases to ${snapFile}${errors.length ? `, with ${errors.length} page errors` : ""}`,
     );

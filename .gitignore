@@ -20,4 +20,8 @@ android/.idea/
 
 # development tools (npm install)
 node_modules/
-golden-snapshot.json
+# the built page (node build.js); releases carry it
+web/
+# local regression snapshots (tests/golden-snapshot.json is the committed one)
+/golden-snapshot.json
+*.golden.json

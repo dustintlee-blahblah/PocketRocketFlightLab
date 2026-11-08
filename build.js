@@ -12,5 +12,6 @@ const SRC = path.join(__dirname, "src");
 const out = path.resolve(process.argv[2] || path.join(__dirname, "web", "pocket-rocket-flight-lab.html"));
 const page = fs.readFileSync(path.join(SRC, "index.html"), "utf8");
 const built = page.replace(/^@@include (\S+)\n/gm, (_, f) => fs.readFileSync(path.join(SRC, f), "utf8"));
+fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, built);
 console.log(`built ${path.relative(process.cwd(), out) || out} (${(built.length / 1024).toFixed(0)} KB)`);
