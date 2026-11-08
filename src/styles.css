@@ -1036,6 +1036,24 @@ h2 + .subh {
   font-size: 0.82rem;
   color: var(--muted);
 }
+.bldstats {
+  cursor: pointer;
+}
+.bldstats:not(.open) > span:not(.bldsum),
+.bldstats.open > .bldsum {
+  display: none;
+}
+.bldstats.open::after {
+  content: "Hide details ▴";
+  color: var(--gulf-ink);
+  font-weight: 600;
+}
+.bldsum em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--gulf-ink);
+  margin-left: 10px;
+}
 .bldstats b {
   color: var(--ink);
   font-weight: 600;

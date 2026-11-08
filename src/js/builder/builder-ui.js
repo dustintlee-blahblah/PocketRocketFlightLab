@@ -897,6 +897,8 @@ function bldRenderTree() {
   );
 }
 let bldAddOpen = false;
+/** whether the stats under the side view are expanded */
+let bldStatsOpen = false;
 /**
  * Which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage.
  * @param {number} si stage index
@@ -1917,14 +1919,17 @@ function bldDraw() {
     const cls = (v) => (v >= 1.5 ? "good" : v >= 1 ? "warn" : "bad"),
       mname =
         (m1 ? `${m1.cn || m1.name} → ` : "") + (two && mb ? `${mb.cn || mb.name} → ${m.cn || m.name}` : m.cn || m.name);
+    // collapsed: one line with the liftoff stability; tapping the panel shows the full list
+    const worst = Math.min(S.marginL, S.marginL10);
     st.innerHTML =
+      `<span class="bldsum ${cls(worst)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff${worst < 1 ? " · check the details" : ""}<em>${bldStatsOpen ? "Hide details ▴" : "Show details ▾"}</em></span>` +
       `<span>Length <b>${fmt(lay.length, "len", 1)} ${uname("len")}</b></span><span>Diameter <b>${fmt(2 * lay.maxR, "len")} ${uname("len")}</b></span>` +
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
       `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
       `<span class="${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
       `<span class="${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
   } catch (e) {
-    st.innerHTML = `<span class="bad">${esc(e.message || String(e))}</span>`;
+    st.innerHTML = `<span class="bldsum bad">${esc(e.message || String(e))}</span>`;
   }
 }
 /**
@@ -1987,6 +1992,22 @@ function bldNewDesign() {
   }
 }
 document.getElementById("bldcv").addEventListener("click", bldPick);
+/** Shows or hides the full stats under the side view. */
+function bldStatsToggle() {
+  bldStatsOpen = !bldStatsOpen;
+  const st = document.getElementById("bldstats");
+  st.classList.toggle("open", bldStatsOpen);
+  st.setAttribute("aria-expanded", String(bldStatsOpen));
+  const em = st.querySelector(".bldsum em");
+  if (em) em.textContent = bldStatsOpen ? "Hide details ▴" : "Show details ▾";
+}
+document.getElementById("bldstats").addEventListener("click", bldStatsToggle);
+document.getElementById("bldstats").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    bldStatsToggle();
+  }
+});
 window.addEventListener("resize", () => {
   if (BLD) {
     bldDraw();
