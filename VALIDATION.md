@@ -2,7 +2,8 @@
 
 A simulator is only worth trusting as far as it has been checked. This page collects the checks made on Pocket
 Rocket Flight Lab's physics, what they found (including where the app is weaker), and how to run them yourself.
-Everything here can be reproduced from this repository; the scripts are in `validation/` and `tests/`.
+Everything here can be reproduced from this repository; the scripts are in `validation/` and `tests/`. [AERODYNAMICS.md](AERODYNAMICS.md) maps
+each part of the model to its source and to these checks.
 
 In short:
 
@@ -12,7 +13,8 @@ In short:
 | Apogee, OpenRocket's own examples | OpenRocket 24.12 | median −0.2%, typical ±2.3% (34 flights) |
 | Center of pressure | NASA wind-tunnel data, Arcas rocket, Mach 0.6–4.6 | RMS error 2.3% of body length |
 | Total drag | NACA wind-tunnel data, Mach 0.6–4.6 | mean error 17% |
-| Fin drag | NACA free-flight data, Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
+| Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
+| Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8%, CP 0.8% of length, CNα 16% low |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
@@ -84,12 +86,38 @@ is needed before changing the model.
 - **NACA RM A53D02**, total drag of a fineness-10 body with 72°-swept fins, Mach 0.6 to 4.6: mean error **17%**. The
   app is 12–21% high below Mach 1 and 7–25% low above it, so for this shape it's conservative subsonic and optimistic
   supersonic.
-- **NACA RM E50D28**, the drag the RM-10's 60°-swept fins add, Mach 1.5 to 2.0 (free flight): mean error **0.022**
+- **NACA RM E50D28**, the drag the RM-10's 60°-swept fins add, Mach 1.5 to 2.0 (Lewis 8- by 6-foot wind tunnel): mean error **0.022**
   in drag coefficient.
 
 These bodies are more slender and faster than most hobby rockets, where the OpenRocket comparison above is the
 better guide. The app can also fit its drag to your own flights (Flight Log & Calibration), which corrects the drag
 for that rocket.
+
+## A rocket the model was never tuned on: Aerobee 150A
+
+Every check above was used, at some point, to set or confirm a model constant, so agreeing with them is partly by
+construction. The Aerobee 150A sounding rocket is the first case kept back purely for checking. Its drag, center of
+pressure and lift-curve slope from Mach 0.1 to 5 are the manufacturer's, from Aerojet's wind-tunnel tests, as given in
+Vought Astronautics Report AST/E1R-13319 (1961) and NASA TM X-55123 (Pressly et al., 1965). The geometry is a
+15-inch, 289-inch rocket with a tangent-ogive nose and four beveled fins; the fin sizes are the
+[open-aerospace project's](https://github.com/open-aerospace/aerobee-150) reconstruction, which is also where the
+digitized curves come from.
+
+| | Subsonic (below 0.8) | Transonic (0.8–1.2) | Supersonic (1.2–3) | High supersonic (3–5) |
+|---|---|---|---|---|
+| Drag, mean error | 6.2% (app high) | 8.7% | 3.8% | 3.5% (app low) |
+| CP, mean error | 1.1% of length (app forward) | 0.5% | 1.0% | 0.4% |
+| CNα, mean error | 17.5% low | 11% low | 17% low | 16% low |
+
+Drag and CP agree well across the whole range; the app's drag rise through Mach 1 comes late (10–15% low at Mach 1–1.1, 14% high at 1.5), and above
+Mach 4 the app's drag falls a little faster than the manufacturer's. The normal-force slope is about 16% low at every
+speed. That may be the model (Barrowman's fin–body interference factor is a low-speed one) or the reconstructed fins
+being smaller than the real ones: the CP, which bigger fins would move aft, is a little forward too. A drawing of the real
+fins would settle it.
+
+`node validation/accuracy.js --verbose` runs every case and prints these tables, keeping the tuned cases apart from the
+check cases. The cases themselves, with their sources and geometry, are in `validation/cases.js`; a new measured
+rocket is added there.
 
 ## Running the checks
 
@@ -99,6 +127,7 @@ You need the built page (`node build.js`) and Playwright's Chromium (`npx playwr
 npm run validate:arcas                                   # CP against NASA's Arcas data
 npm run test:drag                                        # drag against the NACA reports
 npm run validate:openrocket -- --jar OpenRocket-24.12.jar   # apogee against OpenRocket's examples
+npm run validate:accuracy                                # every measured rocket, by speed band
 ```
 
 The OpenRocket comparison also needs Java 17 or later and

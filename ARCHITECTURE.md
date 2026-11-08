@@ -97,7 +97,7 @@ Everything is deterministic for a given design and conditions; the dispersion ru
 
 `physics/aerodynamics.js` holds the aerodynamic model. `aero(D)` turns a design into geometry (body sections, fin
 sets, protuberances, reference area); the functions below use that geometry. Each term's source is cited where it's
-computed. In outline:
+computed. In outline (AERODYNAMICS.md has every term, its source at each speed, and how well it's checked):
 
 **Stability (normal force and center of pressure)**
 - Barrowman's method (Barrowman 1966/1967): nose, shoulders and boattails from slender-body theory; fins from
