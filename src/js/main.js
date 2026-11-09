@@ -82,6 +82,7 @@ import * as m68 from "./physics/nose-weight.js";
 import * as m69 from "./files/unzip.js";
 import * as m70 from "./physics/flow-picture.js";
 import * as m71 from "./ui/wind-tunnel.js";
+import * as m72 from "./physics/flow-streams.js";
 
 const modules = [
   m0,
@@ -156,6 +157,7 @@ const modules = [
   m69,
   m70,
   m71,
+  m72,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

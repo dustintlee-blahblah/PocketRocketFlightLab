@@ -142,7 +142,9 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
 - **Wind Tunnel** (`ui/wind-tunnel.js`, on the Rocket tab): the design's drag, normal force and CP against Mach number
   and angle of attack, from the same functions the flight uses (`cdParts()`, `cnaPartsM()`, `normalForceAt()`). The
   shocks and surface pressures in its test section come from `physics/flow-picture.js` (Taylor–Maccoll cone flow,
-  second-order shock-expansion), which is drawn only and feeds no number.
+  second-order shock-expansion), and the streamlines, boundary layer and separated regions from
+  `physics/flow-streams.js` (slender-body potential flow, supersonic flow along Mach lines, and the drag model's
+  transition and separation rules); both are drawn only and feed no number.
 - **Recovery** (`recovery/ejection-charge.js`): black powder charge sizes for each compartment.
 - **Flight log** (`flightlog/`): real flights logged with altimeter files (several makers' CSV formats, Excel), compared
   with the prediction, and a drag correction fitted to them.

@@ -3108,7 +3108,10 @@ footer .linkbtn {
 #wtcv {
   display: block;
   width: 100%;
-  height: 220px;
+  height: 270px;
+}
+.wtflowsum {
+  margin: 0 0 4px;
 }
 .wtbadge {
   position: absolute;

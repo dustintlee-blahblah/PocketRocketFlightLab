@@ -10,6 +10,7 @@ import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { aero, cdParts, cnaPartsM, normalForceAt, radiusAt, segR, stability } from "../physics/aerodynamics.js";
 import { atmosphere } from "../physics/atmosphere.js";
 import { bodyPressures, obliqueShock } from "../physics/flow-picture.js";
+import { flowScene } from "../physics/flow-streams.js";
 import { noseRTip, noseTip } from "../physics/geometry.js";
 import { nozzleEstimate } from "../physics/simulate.js";
 import { fullStack, isThree, stackStability } from "../physics/staging.js";
@@ -19,10 +20,10 @@ import { fmt, fromDisp, toDisp, uname } from "./units.js";
 
 /** The last sweep over Mach number, for the charts, the readout and the CSV. */
 let WT = null;
-/** Flow streaks in the test section, and the animation's last frame time. */
-let streaks = [],
-  lastT = 0,
-  animOn = false;
+/** Whether the test section is animating. */
+let animOn = false;
+/** The last streamline picture worked out (for one speed, angle, design and canvas size). */
+let sceneCache = { key: "", sc: null, at: 0, design: null };
 /** The last flow picture worked out (it takes a moment at each Mach number). */
 let flowCache = { key: "", ff: null };
 
@@ -499,6 +500,236 @@ function flowAt(A, M, P) {
   return ff;
 }
 /**
+ * The streamline picture for this speed and angle, cached.
+ * @param {object} A aerodynamic model
+ * @param {{x:number, r:number}[]} P outline
+ * @param {number} M
+ * @param {number} aoa degrees
+ * @param {object|null} ff the shock picture above Mach 1
+ * @param {{W:number, H:number, sc:number, ox:number, oy:number, pivot:number, al:number}} v how the body sits on the canvas
+ * @returns {object|null}
+ */
+function sceneAt(A, P, M, aoa, ff, v) {
+  const key = [M.toFixed(2), aoa.toFixed(1), A.L, A.R, P.length, v.W, v.H, WT.alt].join("|"),
+    now = performance.now();
+  if (sceneCache.key === key) return sceneCache.sc;
+  // while a slider is being dragged, keep the last picture and work out a new one at most five times a second (the
+  // animation redraws, so the picture catches up as soon as the slider stops)
+  if (sceneCache.sc && sceneCache.design === WT.A && now - sceneCache.at < 200) return sceneCache.sc;
+  let sc = null;
+  try {
+    // the canvas's corners in the body's axes
+    const ca = Math.cos(v.al),
+      sa = Math.sin(v.al),
+      pts = [
+        [0, 0],
+        [v.W, 0],
+        [0, v.H],
+        [v.W, v.H],
+      ].map(([X, Y]) => {
+        const qx = X - v.ox - v.pivot * v.sc,
+          qy = Y - v.oy;
+        return [(qx * ca - qy * sa + v.pivot * v.sc) / v.sc, (qx * sa + qy * ca) / v.sc];
+      }),
+      box = {
+        x0: Math.min(...pts.map((q) => q[0])),
+        x1: Math.max(...pts.map((q) => q[0])),
+        y0: Math.min(...pts.map((q) => q[1])),
+        y1: Math.max(...pts.map((q) => q[1])),
+      },
+      P0 = P[0].x > 0 || P[0].r > 0 ? [{ x: P[0].x, r: 0 }, ...P] : P,
+      atm = WT.atm;
+    sc = flowScene(P0, A, {
+      M,
+      aoa,
+      V: Math.max(M, 0.01) * atm.a,
+      nu: atm.mu / atm.rho,
+      shock: ff && ff.shockAngle && !ff.detached ? ff.shockAngle : 0,
+      box,
+      n: v.W < 520 ? 30 : 40,
+    });
+  } catch (e) {
+    sc = null;
+  }
+  sceneCache = { key, sc, at: performance.now(), design: WT.A };
+  return sc;
+}
+/**
+ * Draws the streamlines, with marks moving along them at the flow's local speed.
+ * @param {CanvasRenderingContext2D} c in the body's axes, scaled by sc
+ * @param {object} scn
+ * @param {number} sc pixels per metre
+ * @param {number} now ms
+ * @param {number} M
+ */
+function drawStreams(c, scn, sc, now, M) {
+  const mut = css("--muted"),
+    ink = css("--ink"),
+    run = (now * (0.05 + 0.04 * Math.min(M, 3))) % 40;
+  c.lineWidth = 1;
+  for (const ln of scn.lines) {
+    c.strokeStyle = mut;
+    c.globalAlpha = 0.35;
+    c.beginPath();
+    ln.forEach((p, i) => (i ? c.lineTo(p[0] * sc, p[1] * sc) : c.moveTo(p[0] * sc, p[1] * sc)));
+    c.stroke();
+    // short dashes running along the line show the direction and, crowding together, where the flow slows
+    c.strokeStyle = ink;
+    c.globalAlpha = 0.5;
+    c.setLineDash([5, 35]);
+    c.lineDashOffset = -run;
+    c.stroke();
+    c.setLineDash([]);
+  }
+  c.globalAlpha = 1;
+}
+/**
+ * Draws the boundary layer (laminar smooth, turbulent ruffled, drawn far thicker than life), the separated regions as
+ * turning eddies, and where the flow divides on the nose and reattaches behind a step.
+ * @param {CanvasRenderingContext2D} c in the body's axes
+ * @param {object} scn
+ * @param {number} sc pixels per metre
+ * @param {number} now ms
+ * @param {object} A
+ */
+function drawLayer(c, scn, sc, now, A) {
+  const lamC = css("--good"),
+    turC = css("--gulf-ink"),
+    sepC = css("--warn"),
+    x0 = scn.stag[0],
+    L = scn.L,
+    dMax = Math.max(scn.delta(L), 1e-9),
+    E = Math.max(1, Math.min(80, (0.3 * A.R) / dMax)),
+    tt = now / 1000,
+    leeSep = scn.seps.find((q) => q.kind === "lee");
+  // the boundary layer on each side, up to where the flow leaves the body
+  for (const side of [-1, 1]) {
+    const stop = leeSep && side === leeSep.side ? leeSep.x0 : L,
+      N = 140;
+    let started = false;
+    c.lineWidth = 1.3;
+    // laminar: a smooth edge
+    c.strokeStyle = lamC;
+    c.globalAlpha = 0.9;
+    c.beginPath();
+    for (let k = 0; k <= N; k++) {
+      const x = x0 + ((Math.min(scn.xtr, stop) - x0) * k) / N,
+        y = side * (scn.rOf(x) + E * scn.delta(x));
+      started ? c.lineTo(x * sc, y * sc) : (c.moveTo(x * sc, y * sc), (started = true));
+    }
+    if (scn.xtr > x0) c.stroke();
+    // turbulent: a ruffled edge that keeps changing, with eddies inside it
+    if (scn.xtr < stop) {
+      c.strokeStyle = turC;
+      for (const [f, al] of [
+        [1, 0.9],
+        [0.55, 0.45],
+      ]) {
+        c.globalAlpha = al;
+        c.beginPath();
+        for (let k = 0; k <= N; k++) {
+          const x = scn.xtr + ((stop - scn.xtr) * k) / N,
+            d = E * scn.delta(x),
+            lam = Math.max(d * 2.2, 2 / sc),
+            w = 0.16 * Math.sin((x / lam) * 2 * Math.PI - tt * 9 + f * 3) + 0.08 * Math.sin((x / lam) * 5.3 - tt * 13),
+            y = side * (scn.rOf(x) + d * f * (1 + w));
+          k ? c.lineTo(x * sc, y * sc) : c.moveTo(x * sc, y * sc);
+        }
+        c.stroke();
+      }
+      // where it changes over
+      if (scn.xtr > x0 + 1e-6) {
+        c.strokeStyle = turC;
+        c.globalAlpha = 0.9;
+        c.beginPath();
+        c.moveTo(scn.xtr * sc, side * scn.rOf(scn.xtr) * sc);
+        c.lineTo(scn.xtr * sc, side * (scn.rOf(scn.xtr) + E * scn.delta(scn.xtr) * 1.6) * sc);
+        c.stroke();
+      }
+    }
+  }
+  // separated regions: turning eddies, shed downstream
+  c.lineWidth = 1.4;
+  for (const q of scn.seps) {
+    const sides = q.side ? [q.side] : [-1, 1],
+      len = Math.max(q.x1 - q.x0, 1e-6),
+      hh = Math.max(q.h, 1e-6),
+      n = Math.max(1, Math.min(7, Math.round(len / (hh * 1.4)))),
+      drift = q.kind === "corner" ? 0 : (tt * 0.25) % 1;
+    for (const side of sides) {
+      // the region, faintly
+      c.fillStyle = sepC;
+      c.globalAlpha = 0.1;
+      c.beginPath();
+      const M = 30,
+        base = (x) => (q.kind === "wake" ? 0 : scn.rOf(Math.min(x, L))),
+        top = (x) =>
+          q.kind === "wake"
+            ? hh * (1 - 0.6 * ((x - q.x0) / len))
+            : scn.rOf(Math.min(x, L)) +
+              hh * (q.kind === "lee" || q.kind === "stall" ? 0.4 + (0.6 * (x - q.x0)) / len : 1);
+      for (let k = 0; k <= M; k++) {
+        const x = q.x0 + (len * k) / M;
+        k ? c.lineTo(x * sc, side * top(x) * sc) : c.moveTo(x * sc, side * top(x) * sc);
+      }
+      for (let k = M; k >= 0; k--) {
+        const x = q.x0 + (len * k) / M;
+        c.lineTo(x * sc, side * base(x) * sc);
+      }
+      c.closePath();
+      c.fill();
+      // the eddies: each a curl turning with the flow over it
+      c.strokeStyle = sepC;
+      c.globalAlpha = 0.95;
+      for (let k = 0; k < n; k++) {
+        const u = (k + 0.5 + drift) / n;
+        if (u > 1) continue;
+        const x = q.x0 + len * u,
+          lo = base(x),
+          hi = top(x),
+          ry = Math.max((hi - lo) * 0.4, 1.5 / sc),
+          rx = Math.min(ry, len / n / 2),
+          cy = side * (lo + (hi - lo) / 2),
+          spin = side * tt * 4 + k;
+        c.beginPath();
+        for (let j = 0; j <= 26; j++) {
+          const a = spin + side * j * 0.24,
+            f = 1 - j / 34;
+          const px = (x + rx * f * Math.cos(a)) * sc,
+            py = (cy + ry * f * Math.sin(a)) * sc;
+          j ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.stroke();
+      }
+      // where the flow leaves the surface
+      if (q.kind !== "corner" && q.kind !== "wake") {
+        const xs = q.x0 * sc,
+          ys = side * scn.rOf(Math.min(q.x0, L)) * sc;
+        c.beginPath();
+        c.moveTo(xs - 3, ys - 3);
+        c.lineTo(xs + 3, ys + 3);
+        c.moveTo(xs - 3, ys + 3);
+        c.lineTo(xs + 3, ys - 3);
+        c.stroke();
+      }
+    }
+  }
+  // the flow divides at the nose and reattaches behind steps
+  c.globalAlpha = 1;
+  c.fillStyle = lamC;
+  c.beginPath();
+  c.arc(scn.stag[0] * sc, scn.stag[1] * sc, 3.5, 0, 2 * Math.PI);
+  c.fill();
+  c.strokeStyle = lamC;
+  c.lineWidth = 1.5;
+  for (const [x, r] of scn.reattach)
+    for (const side of [-1, 1]) {
+      c.beginPath();
+      c.arc(x * sc, side * r * sc, 3.5, 0, 2 * Math.PI);
+      c.stroke();
+    }
+}
+/**
  * Draws the test section: the rocket at its angle of attack in moving flow, with shocks, Mach waves and surface
  * pressure above Mach 1, and the CP and CG.
  * @param {number} [t] animation time
@@ -520,38 +751,18 @@ function wtTunnel(t) {
     sc = Math.min((W * 0.74) / A.L, (H * 0.36) / halfH),
     ox = W * 0.13,
     oy = H / 2;
-  // flow streaks, faster with speed
-  const spd = 0.35 + Math.min(M, 6) * 0.5,
-    now = t || performance.now(),
-    dt = lastT ? Math.min(50, now - lastT) : 16;
-  lastT = now;
-  if (!streaks.length)
-    for (let i = 0; i < 60; i++)
-      streaks.push({ x: Math.random() * W, y: Math.random() * H, l: 10 + Math.random() * 24 });
-  c.strokeStyle = mut;
-  c.globalAlpha = 0.3;
-  c.lineWidth = 1;
-  for (const p of streaks) {
-    p.x += spd * dt * 0.25;
-    if (p.x > W + 40) {
-      p.x = -40;
-      p.y = Math.random() * H;
-    }
-    c.beginPath();
-    c.moveTo(p.x, p.y);
-    c.lineTo(p.x - p.l * (0.6 + spd * 0.3), p.y);
-    c.stroke();
-  }
-  c.globalAlpha = 1;
   const pivot = cg != null ? cg : A.L / 2;
   c.save();
   c.translate(ox + pivot * sc, oy);
   c.rotate(-al);
   c.translate(-pivot * sc, 0);
-  const P = outline(A);
-  let ff = null;
+  const P = outline(A),
+    now = t || performance.now();
+  let ff = M > 1.05 ? flowAt(A, M, P) : null;
+  // streamlines, worked out once per speed, angle, design and size, then animated
+  const scn = sceneAt(A, P, M, aoa, ff, { W, H, sc, ox, oy, pivot, al });
+  if (scn) drawStreams(c, scn, sc, now, M);
   if (M > 1.05) {
-    ff = flowAt(A, M, P);
     const mu = Math.asin(1 / M),
       far = W * 1.3,
       bad = css("--bad");
@@ -660,6 +871,7 @@ function wtTunnel(t) {
     c.lineCap = "butt";
     c.globalAlpha = 1;
   }
+  if (scn) drawLayer(c, scn, sc, now, A);
   // CP at this angle and the CG
   const N = normalForceAt(A, M, aoa),
     mark = (x, kind) => {
@@ -713,6 +925,29 @@ function wtTunnel(t) {
     W - 8,
     H - 8,
   );
+  const leg = document.getElementById("wtflowleg");
+  if (leg && scn) {
+    const lam =
+      scn.xtr >= scn.L - 1e-9
+        ? "all of it"
+        : scn.xtr <= P[0].x + 0.01 * scn.L
+          ? "none"
+          : fmt(scn.xtr, "len", units2()) + " " + uname("len");
+    const want = `${lam}|${scn.seps.map((q) => q.kind).join(",")}`;
+    if (leg.dataset.k !== want) {
+      leg.dataset.k = want;
+      const kinds = new Set(scn.seps.map((q) => q.kind)),
+        sep = [
+          kinds.has("wake") && "base wake",
+          kinds.has("boattail") && "boattail",
+          kinds.has("step") && "behind a step",
+          kinds.has("lee") && "lee side",
+          kinds.has("stall") && "fins stalled",
+        ].filter(Boolean);
+      document.getElementById("wtflowsum").textContent =
+        `Laminar from the tip: ${lam}${sep.length ? " · separated: " + sep.join(", ") : ""}`;
+    }
+  }
   c.textAlign = "start";
 }
 /**
