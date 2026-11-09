@@ -16,7 +16,7 @@ In short:
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.9–6.9%, CP 0.8% of length, CNα 16% low |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 8.4% low |
-| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 11.2%, app high (RASAero II: 5.4%) |
+| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 9.9%, app high (RASAero II: 5.4%) |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
@@ -164,18 +164,18 @@ numbers are copied into `validation/cases.js` (`FLIGHTS`); the files themselves 
 | Full Metal Jacket, BALLS 005 | 2.29 | 37,981 | optical tracking | +2.1% | +4.0% |
 | Kinsel A-601 (P4935) | 2.32 | 42,771 | GPS | −3.9% | +34.4% |
 | Full Metal Jacket, Black Rock 6 | 2.44 | 30,038 | optical tracking | +8.4% | +3.3% |
-| Proteus 6 (P9381) | 2.98 | 85,067 | integrated accelerometers | −4.2% | +32.9% |
+| Proteus 6 (P9381) | 2.97 | 85,067 | integrated accelerometers | −4.2% | +19.4% |
 | Don't Debate This (N5800 minimum diameter) | 3.09 | 56,573 | average of two barometric altimeters | +9.6% | +2.7% |
-| Qu8k (Q18000) | 3.63 | 121,478 | integrated accelerometer | −1.5% | +35.8% |
+| Qu8k (Q18000) | 3.60 | 121,478 | integrated accelerometer | −1.5% | +20.7% |
 
 | Mean absolute error (bias) | Flights | RASAero II | App |
 |---|---|---|---|
-| All | 23 | 5.4% (+1.8%) | 11.2% (+10.4%) |
+| All | 23 | 5.4% (+1.8%) | 9.9% (+9.2%) |
 | Below Mach 0.8 | 9 | 5.8% (+3.6%) | 7.9% (+7.2%) |
 | Mach 0.8–1.2 | 5 | 4.8% (−2.4%) | 8.1% (+6.0%) |
-| Above Mach 1.2 | 9 | 5.3% (+2.2%) | 16.1% (+16.1%) |
+| Above Mach 1.2 | 9 | 5.3% (+2.2%) | 13.0% (+13.0%) |
 
-**The app predicts high on real flights: by 10% on average, and 16% above Mach 1.2.** None of its constants were set
+**The app predicts high on real flights: by 9% on average, and 13% above Mach 1.2.** None of its constants were set
 from these flights, and the comparison is not entirely independent of RASAero II either: these are the flights
 RASAero II's author chose to publish, and its own model is partly calibrated on flights like them, which helps explain
 its 5.4%. Flight-to-flight scatter is real too: the three Test Pilot School rockets are the same airframe on the same
@@ -185,8 +185,8 @@ What the comparison shows so far:
 
 - **Top speed agrees; the coast doesn't.** The app's top speed is within about 1–6% of RASAero II's on every flight,
   and on Proteus 6, the one flight with a measured top speed (3,201 ft/s from its accelerometers), the app's 3,235 ft/s
-  is closer than RASAero II's 3,063. But several rockets coast much higher in the app: Proteus 6 +33%, Qu8k +39%, Raven
-  +32%. Real rockets lose more speed while coasting than the app's drag allows.
+  is closer than RASAero II's 3,063. But several rockets coast much higher in the app: Raven +32%, Qu8k +21%, Proteus
+  6 +19%. Real rockets lose more speed while coasting than the app's drag allows.
 - **OpenRocket overshoots the same way.** The same designs flown in OpenRocket 24.12 (where it has the motor) give
   apogees as high as the app's or higher (Raven 12,587 ft against the app's 11,595 and a measured 8,815), so this isn't
   a fault peculiar to the app's code: both programs' drag build-ups come out below what these real rockets show.
@@ -194,6 +194,10 @@ What the comparison shows so far:
   app now take them (Ackeret: K = 1/e₁ + 1/e₃, each bevel capped at what a square edge would cost). That moved the
   mean error from 11.7% to 11.2% and above Mach 1.2 from 17.6% to 16.1%; the Kinsel A-601, beveled over about 1% of
   its chord, from +44% to +34%.
+- **Tail cones** (build 284). The supersonic base drag's boattail correction gave steep, separated tail cones the
+  relief of attached flow, and near Mach 1.2 removed nearly all base drag even behind gentle ones, against the RM-10's
+  measured base pressure in flight (NACA TN 3320). It now counts only the attached share of a tail cone and fades in
+  from Mach 1.5 to 2. Proteus 6 went from +33% to +19% and Qu8k from +36% to +21%; the mean error from 11.2% to 9.9%.
 - **Compared with the build before the TN 3819 and trailing-edge changes**, the mean error went from 12.0% to 11.7%: 14
   flights closer, 3 further, 6 unchanged.
 

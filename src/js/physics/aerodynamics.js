@@ -204,7 +204,14 @@ function baseCpRocket(B, M) {
   const m = Math.max(M, 1),
     q = 0.7 * m * m;
   let cp = tblAt(TN3819_BODY, m);
-  if (B.bt > 0 && m > 1.05) {
+  /* The boattail relief below works by taking the boattail's angle off the turn the flow makes at the base. Near Mach 1
+     that turn is only a few degrees, so any boattail would cancel it; flight data say otherwise: the RM-10's 4.8°
+     afterbody (NACA TN 3320, full-scale free flight) keeps a base pressure coefficient of about 0.11 from Mach 1.2 to
+     2.8, against the method's 0 at Mach 1.2. So the relief fades in from Mach 1.5 to 2.0, where it agrees with that
+     flight once the fins' share is added, and below Mach 1.5 the base keeps the body curve. */
+  const btW = smooth01((m - 1.5) / 0.5);
+  if (B.bt > 0 && btW > 0) {
+    const cp0 = cp;
     // δe from the body curve: the Prandtl–Meyer turn that gives the body-alone base pressure
     const pb = 1 - cp * q;
     let lo = 0,
@@ -217,7 +224,7 @@ function baseCpRocket(B, M) {
     const de = (lo + hi) / 2,
       K = 0.85 + 0.15 * Math.min(Math.max(B.hD, 0), 1),
       d = Math.max(de - K * B.bt, 0);
-    cp = (1 - pmPressureRatio(m, d)) / q;
+    cp = cp0 * (1 - btW) + ((1 - pmPressureRatio(m, d)) / q) * btW;
   }
   let fin = 0;
   const ref = m <= 3 ? tblAt(TN3819_FIN, m) : (tblAt(TN3819_FIN, 3) * tblAt(TN3819_BODY, m)) / tblAt(TN3819_BODY, 3),
@@ -1016,9 +1023,13 @@ export function aero(D) {
     baseArea,
     // the base's shape for its pressure above Mach 1 (TN 3819): a boattail ending at the base, and the fins near it
     baseB: (() => {
-      const ls = segs[segs.length - 1];
+      const ls = segs[segs.length - 1],
+        bt = ls && ls.kind === "trans" && ls.r2 < ls.r1 && ls.len > 0 ? Math.atan((ls.r1 - ls.r2) / ls.len) : 0;
       return {
-        bt: ls && ls.kind === "trans" && ls.r2 < ls.r1 && ls.len > 0 ? Math.atan((ls.r1 - ls.r2) / ls.len) : 0,
+        /* TN 3819's boattail effect is for flow that follows the boattail. Steeper than about 8° the flow starts to
+           leave it (Hoerner's rule above, fully separated by 20°, where the step counts as base instead), so only the
+           attached share of the angle turns the flow: a separated tail cone gives no relief at the base. */
+        bt: bt * (1 - smooth01((bt * (180 / Math.PI) - 8) / 12)),
         hD: ls ? ls.r2 / R : 1,
         fins: fins
           .filter((f) => f.pod == null)
