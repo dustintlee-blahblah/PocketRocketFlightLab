@@ -17,9 +17,9 @@
 const IN = 0.0254;
 
 /**
- * An OpenRocket design: an ogive nose, a body tube and one set of four trapezoidal fins at the aft end (sizes in
+ * An OpenRocket design: an ogive (or conical) nose, a body tube and one set of four trapezoidal fins at the aft end (sizes in
  * inches).
- * @param {object} o {name, finish, nose, body, r, cr, ct, sw, s, t, edge, n?}
+ * @param {object} o {name, finish, nose, body, r, cr, ct, sw, s, t, edge, n?, shape?}
  * @returns {string} XML
  */
 function finnedOrk(o) {
@@ -29,7 +29,7 @@ function finnedOrk(o) {
 <motorconfiguration configid="c" default="true"><stage number="0" active="true"/></motorconfiguration>
 <referencetype>maximum</referencetype><subcomponents><stage><name>Stage</name><id>s</id><subcomponents>
 <nosecone><name>nose</name><id>n</id><finish>${o.finish}</finish>${m}<length>${o.nose * IN}</length>
-<thickness>${o.r * IN}</thickness><shape>ogive</shape><shapeclipped>false</shapeclipped><shapeparameter>1</shapeparameter>
+<thickness>${o.r * IN}</thickness><shape>${o.shape || "ogive"}</shape><shapeclipped>false</shapeclipped><shapeparameter>${o.shape === "conical" ? 0 : 1}</shapeparameter>
 <aftradius>${o.r * IN}</aftradius><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength>
 <aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></nosecone>
 <bodytube><name>body</name><id>b</id><finish>${o.finish}</finish>${m}<length>${o.body * IN}</length>
@@ -227,15 +227,51 @@ const AEROBEE_CNA_DEG = [
   [0.1, 0.3],
   [0.5, 0.295],
   [0.9, 0.287],
-  [1.2, 0.362],
+  [1.2, 0.34],
   [1.45, 0.401],
-  [1.6, 0.377],
-  [1.8, 0.343],
+  [1.6, 0.383],
+  [1.8, 0.352],
   [2.0, 0.32],
   [2.5, 0.263],
   [3.0, 0.237],
   [4.0, 0.206],
   [5.0, 0.184],
+];
+
+/* NACA RM L55G28a (Rumsey, 1955): free-flight drag of a fin-stabilized cone-cylinder, two rocket-propelled models
+   flown by NACA Langley. Figure 1(a): a 10° (total angle) cone 40 in long on a 7.0 in body, 150 in overall
+   (fineness 21.4); four fins at the base, root chord 18 in, tip chord 9 in, leading edge swept back 8 in over a 9 in
+   span, the trailing edge 1 in ahead of the base at the tip; steel, 0.2 in (model 1) or 0.3 in (model 2) thick at the
+   root tapering to 0.1 in, wedge leading edges, square trailing edges. Drag coefficients from figure 5 (coasting,
+   radar and telemeter data: model 1 Mach 2.5–2.9, model 2 Mach 3.55–3.9), on the body's cross-section; Reynolds
+   numbers on the body length from figure 2 (model-alone coasting lines). The figure was read off the scan to about
+   ±0.003 in Cd. */
+const L55 = {
+  name: "RM L55G28a",
+  finish: "smooth",
+  shape: "conical",
+  nose: 40,
+  body: 110,
+  r: 3.5,
+  cr: 18,
+  ct: 9,
+  sw: 8,
+  s: 9,
+  t: 0.175, // the two models' mean thickness
+  edge: "beveled",
+};
+// [Mach, Cd, Reynolds number on the body length]
+const L55_PTS = [
+  [2.48, 0.389, 121e6],
+  [2.54, 0.384, 130e6],
+  [2.63, 0.378, 149e6],
+  [2.73, 0.372, 169e6],
+  [2.82, 0.368, 188e6],
+  [2.92, 0.362, 208e6],
+  [3.55, 0.275, 85e6],
+  [3.67, 0.273, 110e6],
+  [3.76, 0.273, 141e6],
+  [3.86, 0.276, 176e6],
 ];
 
 /** Every case, for validation/accuracy.js. */
@@ -277,6 +313,15 @@ const CASES = [
     quantity: "cp",
     xml: ARCAS.long.xml,
     pts: Object.entries(ARCAS.long.cp).map(([M, v]) => [+M, v / 100]),
+  },
+  {
+    id: "l55g28a-cd",
+    title: "NACA RM L55G28a, fin-stabilized cone-cylinder: total drag",
+    tier: "free flight",
+    role: "check",
+    quantity: "cd",
+    xml: finnedOrk(L55),
+    pts: L55_PTS,
   },
   {
     id: "aerobee-cd-on",

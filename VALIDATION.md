@@ -15,6 +15,7 @@ In short:
 | Total drag | NACA wind-tunnel data, Mach 0.6–4.6 | mean error 17% |
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8%, CP 0.8% of length, CNα 16% low |
+| Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 12.7% low |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
@@ -93,10 +94,12 @@ These bodies are more slender and faster than most hobby rockets, where the Open
 better guide. The app can also fit its drag to your own flights (Flight Log & Calibration), which corrects the drag
 for that rocket.
 
-## A rocket the model was never tuned on: Aerobee 150A
+## Rockets the model was never tuned on
 
 Every check above was used, at some point, to set or confirm a model constant, so agreeing with them is partly by
-construction. The Aerobee 150A sounding rocket is the first case kept back purely for checking. Its drag, center of
+construction. The two rockets here are kept back purely for checking.
+
+**Aerobee 150A.** The sounding rocket's drag, center of
 pressure and lift-curve slope from Mach 0.1 to 5 are the manufacturer's, from Aerojet's wind-tunnel tests, as given in
 Vought Astronautics Report AST/E1R-13319 (1961) and NASA TM X-55123 (Pressly et al., 1965). The geometry is a
 15-inch, 289-inch rocket with a tangent-ogive nose and four beveled fins; the fin sizes are the
@@ -107,7 +110,7 @@ digitized curves come from.
 |---|---|---|---|---|
 | Drag, mean error | 6.2% (app high) | 8.7% | 3.8% | 3.5% (app low) |
 | CP, mean error | 1.1% of length (app forward) | 0.5% | 1.0% | 0.4% |
-| CNα, mean error | 17.5% low | 11% low | 17% low | 16% low |
+| CNα, mean error | 17.5% low | 11% low | 16.5% low | 16% low |
 
 Drag and CP agree well across the whole range; the app's drag rise through Mach 1 comes late (10–15% low at Mach 1–1.1, 14% high at 1.5), and above
 Mach 4 the app's drag falls a little faster than the manufacturer's. The normal-force slope is about 16% low at every
@@ -115,9 +118,19 @@ speed. That may be the model (Barrowman's fin–body interference factor is a lo
 being smaller than the real ones: the CP, which bigger fins would move aft, is a little forward too. A drawing of the real
 fins would settle it.
 
+**NACA RM L55G28a.** Two rocket-propelled models of a fin-stabilized cone-cylinder (a 10° cone on a 7-inch body, 150
+inches long, four steel fins at the base) flown by NACA Langley (reported 1955), their drag measured by radar and
+on-board accelerometers while coasting at Mach 2.5–2.9 and 3.55–3.9, at Reynolds numbers of 85 to 210 million. The app
+is 13.9–14.7% low at Mach 2.5–2.9 and 9.7–11.7% low at 3.55–3.9: low in the same way, by about the same amount, as on
+RM A53D02. Two things in the model point that way. Its supersonic base drag, Fleeman's 0.25/M, is below NACA TN 3819's
+measured base pressures for finned bodies; and these fins, like the Aerobee's, have a sharp leading edge and a blunt
+trailing edge, which the app can't describe (its "beveled" section is sharp at both ends), so their trailing-edge base
+drag is missing.
+
 `node validation/accuracy.js --verbose` runs every case and prints these tables, keeping the tuned cases apart from the
 check cases. The cases themselves, with their sources and geometry, are in `validation/cases.js`; a new measured
-rocket is added there.
+rocket is added there. With both check rockets, the drag error by speed band is 6.2% subsonic, 8.7% transonic, 8.2%
+supersonic and 5.5% from Mach 3 to 5, the app low above Mach 1.
 
 ## Running the checks
 
