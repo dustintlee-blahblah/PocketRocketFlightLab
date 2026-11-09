@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 285 (2026-11-09)
+
+**Wind Tunnel**
+- **Streamlines** replace the drifting streaks in the test section: worked out for your rocket at the chosen speed and angle of attack, with dashes running along them with the flow. Below Mach 1 they bend round the nose and body; above it they kink at the shocks and turn into the wake behind the base.
+- **The boundary layer and separated flow**: laminar (a smooth edge) from the tip, turbulent (a ruffled, moving edge) behind; separated air shown as turning eddies, with a cross where the flow leaves the surface, behind the base, behind steps (and a ring where it reattaches), off tail cones steeper than 8°, along the lee side at larger angles of attack, and off the fins as they stall from 18° to 35°; a dot where the flow divides on the nose. A legend and a line under the picture say how far the flow stays laminar and what is separated. The picture uses the drag model's own transition and separation rules and doesn't change any number.
+
 ## Build 284 (2026-11-08)
 
 **Drag model** (results change)
