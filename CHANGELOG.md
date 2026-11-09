@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 284 (2026-11-08)
+
+**Drag model** (results change)
+- **Tail cones above Mach 1**: the supersonic base drag no longer gives a steep, separated tail cone the relief of smoothly attached flow, and boattail relief now comes in only from Mach 1.5 to 2, where NASA flight data (the RM-10, NACA TN 3320) support it. Build 282's version removed nearly all base drag near Mach 1.2 behind any tail cone, so rockets with tail cones that fly supersonic predicted too high: a CT Concept 98 with a 16° tail cone went from 18,576 ft to 17,417 ft, against a GPS apogee of about 17,400 ft. Rockets without a tail cone, or that stay subsonic, are unchanged.
+
 ## Build 283 (2026-11-08)
 
 **Rocket tab**
