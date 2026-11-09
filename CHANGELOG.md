@@ -4,6 +4,27 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 282 (2026-11-08)
+
+**Rocket tab**
+- **Wind Tunnel**: a new block after Imperfections (folded at start) puts your design in a test section from a crawl to Mach 6 at any angle of attack: drag coasting and burning, lift slope, CP and stability, charts against Mach and angle, the shocks drawn around the rocket, and a CSV of the sweep. Every number is the flight's own aerodynamics.
+- **Nose cone tip radius** (0 is a sharp point): a rounded tip adds drag above about Mach 0.8, is drawn in the side view, and is saved in the app's data inside the .ork.
+- **Bevel lengths for beveled fins**: how far the leading- and trailing-edge bevels run along the chord. Short, steep bevels add wave drag above Mach 1; 0 keeps the usual bevels, a fifth of the chord.
+
+**Opening files**
+- **Pods, side boosters and tube fins** from OpenRocket and RockSim files now fly: each pod's body, fins and mass, side boosters dropping away at separation with their motors, and tube fins' lift and drag. Reversed nose cones read as tail cones; each flight configuration flies its own motors.
+- Extra fin sets keep a beveled or double-wedge section (they were read as square).
+
+**Drag model** (results change)
+- **Supersonic base drag** follows NASA's measured base pressures (NACA TN 3819, Love 1957) for the body, boattails and fins near the base, in place of a single correlation.
+- **Square and rounded fin trailing edges** below the speed of sound get the base drag of a two-dimensional edge (Hoerner), which is higher than the rocket's round base; rounded edges keep 0.7 of it. Apogees of rockets with square or rounded fins come out up to about 3% lower; subsonic rockets with sharp-edged fins are unchanged.
+
+**Motor tab**
+- Compare motors counts the motors it will actually fly, and says "the first 200" when the list is longer.
+
+**How accurate is it?**
+- [AERODYNAMICS.md](AERODYNAMICS.md) maps every drag and stability term to its source; [VALIDATION.md](VALIDATION.md) now compares apogee with 23 measured flights (RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft) and drag with two more NACA and Aerobee rockets. The app predicts high on real flights (11% on average, more above Mach 1.2), which is the next thing to work on.
+
 ## Build 281 (2026-11-08)
 
 **Results tab**
