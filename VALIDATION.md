@@ -175,6 +175,11 @@ numbers are copied into `validation/cases.js` (`FLIGHTS`); the files themselves 
 | Mach 0.8–1.2 | 5 | 4.8% (−2.4%) | 8.1% (+6.0%) |
 | Above Mach 1.2 | 9 | 5.3% (+2.2%) | 13.0% (+13.0%) |
 
+One more flight, shared by a flyer and not in this repository: a **CT Concept 98 with an external fin can** on a
+Cesaroni 6251M1400 (Mach 1.6, Black Rock), **GPS apogee about 17,400 ft**. With the launch conditions of its run saved in
+the app, the app gives 17,417 ft (+0.1%; build 283 gave 18,576, +6.8%, before the tail-cone fix below) and OpenRocket
+24.12 16,875 ft (−3.0%). It isn't in the averages above, which cover the RASAero II files only.
+
 **The app predicts high on real flights: by 9% on average, and 13% above Mach 1.2.** None of its constants were set
 from these flights, and the comparison is not entirely independent of RASAero II either: these are the flights
 RASAero II's author chose to publish, and its own model is partly calibrated on flights like them, which helps explain
@@ -198,6 +203,7 @@ What the comparison shows so far:
   relief of attached flow, and near Mach 1.2 removed nearly all base drag even behind gentle ones, against the RM-10's
   measured base pressure in flight (NACA TN 3320). It now counts only the attached share of a tail cone and fades in
   from Mach 1.5 to 2. Proteus 6 went from +33% to +19% and Qu8k from +36% to +21%; the mean error from 11.2% to 9.9%.
+  The CT Concept 98 flight above is what showed it.
 - **Compared with the build before the TN 3819 and trailing-edge changes**, the mean error went from 12.0% to 11.7%: 14
   flights closer, 3 further, 6 unchanged.
 
