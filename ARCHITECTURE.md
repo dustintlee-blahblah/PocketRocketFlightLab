@@ -119,7 +119,9 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
   the transonic and supersonic range. Flares and shoulders above Mach 1: Bonney's cone correlation (via Fleeman).
   A rounded nose tip (`tipCapCd()`) costs nothing below Mach 0.8 and rises to modified Newtonian theory over its
   frontal area by Mach 1.3, with the sharp nose's drag over the rest, as DATCOM builds a spherically blunted cone.
-- Base drag: Fleeman's base-pressure correlation, with the motor nozzle's exit area during the burn.
+- Base drag: Fleeman's correlation below Mach 0.95; above Mach 1.2, the measured base pressure in NACA TN 3819 (Love):
+  bodies of revolution, the effect of a boattail and of fins at the base, and two-dimensional fin trailing edges; less
+  the motor nozzle's exit area during the burn. See [AERODYNAMICS.md](AERODYNAMICS.md).
 - Boattail separation (Hoerner), fin edges (stagnation pressure, Newtonian and Ackeret wave drag by edge type; blunt
   trailing edges below Mach 1 with Hoerner's two-dimensional base drag, 0.135/∛C_f from each fin's own friction), launch
   lugs and rail buttons (Hoerner protuberance drag), tumbling (Allen–Perkins crossflow).
