@@ -598,7 +598,7 @@ function bldWire(el, p, mode, si) {
         full = true;
       } else if (kind === "sel") {
         O[k] = inp.value;
-        full = ["shape", "deploy", "size", "cluster", "ign"].includes(key);
+        full = ["shape", "deploy", "size", "cluster", "ign", "edge"].includes(key); // "edge": beveled fins show their bevel lengths
         // switching fins to free-form starts from the outline they had, so there's a shape to edit
         if (key === "shape" && p && p.type === "fins" && inp.value === "freeform" && !bldPts(p).pts.length) {
           const r = p.root || 0.1,
