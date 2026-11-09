@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 283 (2026-11-08)
+
+**Rocket tab**
+- **Bevel length fields show as soon as you choose Beveled**: changing a fin set's Edges to Beveled now brings up Leading-edge and Trailing-edge bevel length right away (before, they appeared only after selecting another part and coming back).
+
 ## Build 282 (2026-11-08)
 
 **Rocket tab**
