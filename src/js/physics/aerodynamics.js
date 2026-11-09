@@ -145,7 +145,7 @@ const tn3819W = (M) => smooth01((M - 0.95) / 0.25);
  * @returns {number}
  */
 function baseCpBody(M) {
-  const sub = 0.12 + 0.13 * Math.min(M, 1) ** 2,
+  const sub = 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1),
     w = tn3819W(M);
   if (w <= 0) return sub;
   const sup = Math.min(tblAt(TN3819_BODY, Math.max(M, 1)), 0.95 / (0.7 * Math.max(M, 1) ** 2));
@@ -157,7 +157,7 @@ function baseCpBody(M) {
  * @returns {number}
  */
 function baseCp2D(M) {
-  const sub = 0.12 + 0.13 * Math.min(M, 1) ** 2,
+  const sub = 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1),
     w = tn3819W(M);
   if (w <= 0) return sub;
   const m = Math.max(M, 1),
@@ -198,7 +198,7 @@ function pmPressureRatio(M, turn) {
  */
 function baseCpRocket(B, M) {
   const w = tn3819W(M),
-    sub = 0.12 + 0.13 * Math.min(M, 1) ** 2;
+    sub = 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1);
   if (w <= 0 || !B) return w <= 0 ? sub : baseCpBody(M);
   const m = Math.max(M, 1),
     q = 0.7 * m * m;
