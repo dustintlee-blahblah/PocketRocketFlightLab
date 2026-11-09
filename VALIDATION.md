@@ -186,6 +186,26 @@ RASAero II's author chose to publish, and its own model is partly calibrated on 
 its 5.4%. Flight-to-flight scatter is real too: the three Test Pilot School rockets are the same airframe on the same
 motor within 0.16 lb, and their measured apogees spread over 7%.
 
+**How the rockets were finished is the largest unknown.** The files describe most of these rockets as "Smooth (Zero
+Roughness)", RASAero II's own setting, so they fly here with the nearest OpenRocket finish, polished (2 µm). How they
+were really finished isn't recorded, and the result depends on it more than on any drag term tried so far:
+
+| Finish given to the "zero roughness" rockets | Mean error | Bias | Above Mach 1.2 |
+|---|---|---|---|
+| Polished, 2 µm (as the files say; the headline numbers) | 9.9% | +9.2% | 13.0% |
+| Smooth paint, 20 µm | 8.7% | +7.6% | 10.0% |
+| Regular paint, 60 µm | 8.8% | +0.5% | 11.7% |
+
+Regular paint takes away the bias but not the scatter (the student rockets then come out 9–13% low, the L500 15% low),
+so the real finishes were probably mixed. The headline keeps the files' own setting rather than whichever finish fits
+best, which would turn these check flights into tuning. The CT Concept 98 above, the one flight whose finish is known
+(regular paint), agrees with its GPS apogee within 0.1%. A few rockets stay high whatever the finish: Kinsel A-601
+(+34%), Qu8k (+21%), Raven (+16%), EZI-65 and Thunder and Lightning (+11%).
+
+Hoerner's drag of surface imperfections (*Fluid-Dynamic Drag*, ch. V) was also tried and left out: a joint or step
+between airframe sections sits inside the boundary layer and feels only its slow air (q_eff ≈ 0.75·q·(h/δ)^1/3), so even
+a sharp 0.25 mm step adds about 0.2% to the drag. With one at every joint the mean error moved from 9.9% to 9.7%.
+
 What the comparison shows so far:
 
 - **Top speed agrees; the coast doesn't.** The app's top speed is within about 1–6% of RASAero II's on every flight,
