@@ -65,8 +65,9 @@ where the step counts as base area; in between, blended.
 
 | Mach | Source |
 |---|---|
-| below 1 | Fleeman: −Cp,base = 0.12 + 0.13 M², on the base area. |
-| above 1 | Fleeman: 0.25 / M. |
+| below 0.95 | Fleeman: −Cp,base = 0.12 + 0.13 M², on the base area. |
+| 0.95 – 1.2 | Blended from Fleeman to NACA TN 3819 (Love, 1957). |
+| above 1.2 | NACA TN 3819 (Love, 1957), measured base pressure: the body curve (fig. 18) on the rocket base with boattail and fin-set corrections (pressure ratio across the boattail's turn, fin term from fig. 35); the two-dimensional curve (fig. 5) on fin trailing edges. Pods, lugs and tube fins use the body curve. |
 | Motor burning | The nozzle exit area is taken off the base (entered, or estimated from the motor's average thrust). The exhaust plume's effect on base pressure isn't modeled. |
 
 ### Fins
@@ -110,20 +111,20 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 | Part | Against | Result |
 |---|---|---|
 | Center of pressure, Mach 0.6–4.6 | NASA TN D-4013/4014, Arcas sounding rocket, two body lengths, wind tunnel | RMS error 2.3% of body length (17 points). Worst at Mach 0.85–0.9 on the short model: 4–5% too far aft. |
-| Total drag, Mach 0.6–4.6 | NACA RM A53D02, fineness-10 body with 72° fins, free flight | Mean error 17%: 12–21% high below Mach 1, 7–25% low above. |
+| Total drag, Mach 0.6–4.6 | NACA RM A53D02, fineness-10 body with 72° fins, free flight | Mean error 14.4%: 12–21% high below Mach 1, 8–20% low above. |
 | Fin drag, Mach 1.5–2.0 | NACA RM E50D28, RM-10 fins, wind tunnel | Mean error 0.022 in Cd. |
-| Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 4.8% mean (6% subsonic, 9% transonic, 4% supersonic); CP 0.8% of length; CNα 16% low throughout. |
-| Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 12.7% low. |
+| Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 6.9% mean while thrusting, 4.9% coasting (both high; was 5.5% and 3.0% before TN 3819); CP 0.8% of length; CNα 16% low throughout. |
+| Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 8.4% low (was 12.7%). |
 | Nose drag | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%. Another program, not a measurement. |
 | Large angles of attack, rounded tips, pods, tube fins | — | Not checked against measurements. |
 
 ## Known gaps, in the order they're worth fixing
 
-1. **Supersonic base drag.** Fleeman's 0.25/M is a single correlation. NACA TN 3819 (Love, 1957) gives the base
-   pressure of bodies, boattails and fins above Mach 1 from measurements; the Wind Tunnel tool already uses it and
-   comes out at 14.4% on RM A53D02 against the app's 17%. The app is low above Mach 2 on both free-flight rockets
-   (RM A53D02 and RM L55G28a, 10–25%).
+1. **Supersonic base drag (partly done).** NACA TN 3819 (Love, 1957) now sets the base pressure above Mach 1.2
+   (see Base). RM A53D02 improved from 17% to 14.4% and RM L55G28a from 12.7% to 8.4% low. The Aerobee 150A got
+   worse (drag now high by 2.7 and 1.0 points). The app is still low on RM A53D02 from Mach 1 to 3 (8–20%), so
+   the base isn't the whole story there.
 2. **The exhaust plume.** A burning motor's plume raises the base pressure above Mach 1, lowering the base drag
    while it burns. Only the nozzle's area is taken off now.
 3. **Transonic center of pressure.** The measured CP moves forward near Mach 0.85–0.9 on short rockets; the model

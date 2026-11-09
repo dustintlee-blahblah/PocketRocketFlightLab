@@ -17,7 +17,8 @@ import { noseR, noseSpec, noseTip } from "./geometry.js";
    Forebody pressure drag below the critical Mach number: Hoerner's shoulder-angle rule, 0.8·sin²(shoulder angle).
    Transonic and supersonic nose drag: free-flight and wind-tunnel measurements in NASA TR R-100 (Stoney, 1961), figs. 11–12.
    Supersonic drag of body flares and shoulders: Bonney's cone correlation, as presented by Fleeman (Tactical Missile Design, AIAA).
-   Base drag (coasting and powered): Fleeman's base-pressure correlation.
+   Base drag (coasting and powered): Fleeman's base-pressure correlation below Mach 1; above it NACA TN 3819 (Love,
+     1957): body base pressure, boattails, fins near the base, and blunt fin trailing edges, from measurements.
    Boattail separation: attached below about 8° half-angle, fully separated above about 20° (Hoerner, ch. 3).
    Fin edges: stagnation pressure on blunt leading edges (isentropic below Mach 1, Rayleigh pitot above), sweep by the
      independence principle; Newtonian rounded edges; Ackeret thin-airfoil wave drag for sharp sections.
@@ -58,9 +59,188 @@ function tipCapCd(M) {
   return M <= 0.8 ? 0 : (stagCp(M) / 2) * smooth01((M - 0.8) / 0.5);
 }
 /**
- * Base drag coefficient on the base area at Mach M (Fleeman's correlation).
+ * Base drag coefficient on the base area at Mach M (Fleeman's correlation). Kept for protuberances in crossflow
+ * (rail buttons); the rocket's own bases use the TN 3819 curves below.
  */
-const baseCp = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M); // Fleeman base-drag coefficient (based on base area)
+const fleemanBase = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M);
+/* ---------- base pressure: NACA TN 3819 (Love, 1957) above Mach 1, Fleeman below ----------
+   Body base (no fins, no boattail): the "basic curve of present analysis" of fig. 18, digitized, as −Cp,base.
+   Blunt fin trailing edges (two-dimensional bases): fig. 5, the estimate from Pr + 0.06 that matches the experimental
+   compilations. Below Mach 1 the report has no data, so Fleeman's subsonic 0.12 + 0.13M² is kept, blended into the
+   TN 3819 curves between Mach 0.95 and 1.2.
+   Boattails: the report's method, the effective two-dimensional expansion angle at the base δe (taken here from the
+   fig. 18 curve by Prandtl–Meyer) reduced by K·β, K = 0.85 + 0.15·h/D, conditions ahead of the base taken as free
+   stream (the report's Mo ≈ M∞ form).
+   Fins near the base: the free-flight finned-model increment of fig. 35 (t/c = 0.10, unswept, 4 fins, trailing edges at
+   the base, exposed span 1.25 body diameters), scaled to other fins by thickness (fig. 33: increment ∝ (t/c)^0.8), sweep
+   (cos²Λ on t/c, which with the span ratio reproduces the RM-10 increments of fig. 34 within 0.004), fin count (N/4)
+   and span, and faded as the trailing edges move ahead of the base (fig. 32: the region of influence reaches about
+   one chord at Mach 1.5 and two at Mach 2, growing with Mach number). Past Mach 3 the increment shrinks in proportion
+   to the body-alone base suction (the report: fin effects lessen as Mach number rises).
+   Ported from the Wind Tunnel tool (v2.1), where these were checked against RM A53D02 (mean error 17.0% → 14.4%). */
+const TN3819_BODY = [
+  [1.0, 0.186],
+  [1.2, 0.185],
+  [1.4, 0.179],
+  [1.6, 0.171],
+  [1.8, 0.16],
+  [2.0, 0.1485],
+  [2.2, 0.1375],
+  [2.4, 0.125],
+  [2.6, 0.115],
+  [2.8, 0.106],
+  [3.0, 0.098],
+  [3.2, 0.091],
+  [3.4, 0.0827],
+  [3.6, 0.076],
+  [3.8, 0.07],
+  [4.0, 0.0657],
+  [4.4, 0.0577],
+  [4.8, 0.05],
+  [5.0, 0.0463],
+  [5.4, 0.041],
+  [5.8, 0.037],
+  [6.0, 0.035],
+  [7.0, 0.027],
+  [8.0, 0.022],
+];
+const TN3819_2D = [
+  [1.0, 0.5],
+  [1.2, 0.45],
+  [1.4, 0.364],
+  [1.6, 0.318],
+  [1.8, 0.274],
+  [2.0, 0.226],
+  [2.2, 0.2],
+  [2.4, 0.172],
+  [2.6, 0.148],
+  [2.8, 0.13],
+  [3.0, 0.116],
+  [3.4, 0.088],
+  [4.0, 0.065],
+];
+/* fig. 35: free-flight finned model minus the body-alone curve (t/c = 0.10, x/c = 0, unswept) */
+const TN3819_FIN = [
+  [1.0, 0.115],
+  [1.2, 0.101],
+  [1.4, 0.098],
+  [1.6, 0.099],
+  [1.7, 0.098],
+  [1.8, 0.06],
+  [2.0, 0.044],
+  [2.2, 0.033],
+  [2.4, 0.027],
+  [2.6, 0.017],
+  [3.0, 0.018],
+];
+/**
+ * Weight of the TN 3819 (supersonic) base pressures against Fleeman's subsonic correlation: 0 below Mach 0.95, 1 above 1.2.
+ * @param {number} M
+ * @returns {number}
+ */
+const tn3819W = (M) => smooth01((M - 0.95) / 0.25);
+/**
+ * −Cp at the base of a body without fins or boattail, on the base area.
+ * @param {number} M Mach number
+ * @returns {number}
+ */
+function baseCpBody(M) {
+  const sub = 0.12 + 0.13 * Math.min(M, 1) ** 2,
+    w = tn3819W(M);
+  if (w <= 0) return sub;
+  const sup = Math.min(tblAt(TN3819_BODY, Math.max(M, 1)), 0.95 / (0.7 * Math.max(M, 1) ** 2));
+  return sub * (1 - w) + sup * w;
+}
+/**
+ * −Cp at a blunt two-dimensional base (a square or rounded fin trailing edge), on its frontal area.
+ * @param {number} M Mach number
+ * @returns {number}
+ */
+function baseCp2D(M) {
+  const sub = 0.12 + 0.13 * Math.min(M, 1) ** 2,
+    w = tn3819W(M);
+  if (w <= 0) return sub;
+  const m = Math.max(M, 1),
+    vac = 1 / (0.7 * m * m),
+    sup = m <= 4 ? tblAt(TN3819_2D, m) : Math.min(0.73 * vac, baseCpBody(m));
+  return sub * (1 - w) + Math.min(sup, 0.95 * vac) * w;
+}
+/**
+ * Pressure ratio p/p∞ after a Prandtl–Meyer turn of `turn` radians from free stream at Mach M (expansion if > 0).
+ * @param {number} M
+ * @param {number} turn rad
+ * @returns {number}
+ */
+function pmPressureRatio(M, turn) {
+  const nu = (m) => {
+    const b = Math.sqrt(Math.max(m * m - 1, 0));
+    return Math.sqrt(6) * Math.atan(b / Math.sqrt(6)) - Math.atan(b);
+  };
+  if (!(turn > 0)) return 1;
+  const target = nu(M) + turn;
+  let lo = 1,
+    hi = 100;
+  for (let i = 0; i < 60; i++) {
+    const m = (lo + hi) / 2;
+    if (nu(m) < target) lo = m;
+    else hi = m;
+  }
+  const M2 = (lo + hi) / 2;
+  return Math.pow((1 + 0.2 * M * M) / (1 + 0.2 * M2 * M2), 3.5);
+}
+/**
+ * −Cp over the rocket's own base (TN 3819 above Mach 1): the body curve, corrected for a boattail ending at the base,
+ * plus the fins' added suction, limited to 95% of vacuum.
+ * @param {{bt:number, hD:number, fins:{g:number, xc:number}[]}} B base geometry from aero(): boattail half-angle (rad)
+ *   ending at the base, base over maximum diameter, and each fin set's base-influence terms (tn3819FinTerm)
+ * @param {number} M Mach number
+ * @returns {number}
+ */
+function baseCpRocket(B, M) {
+  const w = tn3819W(M),
+    sub = 0.12 + 0.13 * Math.min(M, 1) ** 2;
+  if (w <= 0 || !B) return w <= 0 ? sub : baseCpBody(M);
+  const m = Math.max(M, 1),
+    q = 0.7 * m * m;
+  let cp = tblAt(TN3819_BODY, m);
+  if (B.bt > 0 && m > 1.05) {
+    // δe from the body curve: the Prandtl–Meyer turn that gives the body-alone base pressure
+    const pb = 1 - cp * q;
+    let lo = 0,
+      hi = 1.2;
+    for (let i = 0; i < 50; i++) {
+      const t = (lo + hi) / 2;
+      if (pmPressureRatio(m, t) > pb) lo = t;
+      else hi = t;
+    }
+    const de = (lo + hi) / 2,
+      K = 0.85 + 0.15 * Math.min(Math.max(B.hD, 0), 1),
+      d = Math.max(de - K * B.bt, 0);
+    cp = (1 - pmPressureRatio(m, d)) / q;
+  }
+  let fin = 0;
+  const ref = m <= 3 ? tblAt(TN3819_FIN, m) : (tblAt(TN3819_FIN, 3) * tblAt(TN3819_BODY, m)) / tblAt(TN3819_BODY, 3),
+    reach = Math.min(Math.max(1 + 2 * (m - 1.5), 1), 3);
+  for (const f of B.fins) {
+    const fx = f.xc <= 0 ? 1 : Math.max(0, 1 - f.xc / reach) ** 2;
+    fin += ref * f.g * fx;
+  }
+  const sup = Math.min(cp + fin, 0.95 / q);
+  return sub * (1 - w) + sup * w;
+}
+/**
+ * The base-pressure terms of one fin set for baseCpRocket (TN 3819, figs. 32–35).
+ * @param {object} f fin set (from aero()): n, s (span), t (thickness), mac, cosL, a (root chord), xLead
+ * @param {number} L rocket length, m
+ * @param {number} dBody body diameter at the fins, m
+ * @returns {{g:number, xc:number}} size factor, and how far the trailing edges sit ahead of the base in root chords
+ */
+function tn3819FinTerm(f, L, dBody) {
+  const tc = f.mac > 0 ? f.t / f.mac : 0,
+    gt = Math.pow(Math.max((tc * f.cosL * f.cosL) / 0.1, 0), 0.8),
+    gs = Math.min(f.s / (1.25 * Math.max(dBody, 1e-6)), 1.5);
+  return { g: gt * (f.n / 4) * gs, xc: (L - (f.xLead + f.a)) / Math.max(f.a, 1e-6) };
+}
 /**
  * Smoothstep: 0 below 0, 1 above 1, an S-curve between. Used to blend models across a range.
  */
@@ -358,7 +538,7 @@ function cylinderCd(M) {
   // cylinder in crossflow (rail button): Hoerner's subsonic 1.2 scaled by stagnation pressure;
   // supersonic by modified Newtonian (2/3·Cp,max) plus base pressure, blended over Mach 1.0–1.3
   const sub = (m) => 1.2 * stagCp(Math.min(m, 1)),
-    sup = (m) => (2 / 3) * stagCp(m) + baseCp(m);
+    sup = (m) => (2 / 3) * stagCp(m) + fleemanBase(m);
   if (M <= 1) return sub(M);
   const t = smooth01((M - 1) / 0.3);
   return (1 - t) * sub(1) + t * sup(M);
@@ -419,16 +599,26 @@ export function bodySegments(D) {
   return segs;
 }
 /**
+ * Body radius at a distance from the nose tip, from a list of sections.
+ * @param {object[]} segs
+ * @param {number} x m
+ * @param {number} R radius beyond the sections
+ * @returns {number}
+ */
+function radiusAtSegs(segs, x, R) {
+  for (const sg of segs) {
+    if (x >= sg.x - 1e-9 && x <= sg.x + sg.len + 1e-9) return segR(sg, Math.min(Math.max(x - sg.x, 0), sg.len));
+  }
+  return R;
+}
+/**
  * Body radius at a distance from the nose tip.
  * @param {object} A aerodynamic model from aero()
  * @param {number} x m from the nose tip
  * @returns {number} m
  */
 export function radiusAt(A, x) {
-  for (const sg of A.segs) {
-    if (x >= sg.x - 1e-9 && x <= sg.x + sg.len + 1e-9) return segR(sg, Math.min(Math.max(x - sg.x, 0), sg.len));
-  }
-  return A.R;
+  return radiusAtSegs(A.segs, x, A.R);
 }
 /**
  * All fin sets of a design in one form {n, a (root), b (tip), s (span), sw (sweep), t, xLead, edge, ...}:
@@ -817,6 +1007,17 @@ export function aero(D) {
     fore,
     aft,
     baseArea,
+    // the base's shape for its pressure above Mach 1 (TN 3819): a boattail ending at the base, and the fins near it
+    baseB: (() => {
+      const ls = segs[segs.length - 1];
+      return {
+        bt: ls && ls.kind === "trans" && ls.r2 < ls.r1 && ls.len > 0 ? Math.atan((ls.r1 - ls.r2) / ls.len) : 0,
+        hD: ls ? ls.r2 / R : 1,
+        fins: fins
+          .filter((f) => f.pod == null)
+          .map((f) => tn3819FinTerm(f, L, 2 * radiusAtSegs(segs, f.xLead + f.a, R))),
+      };
+    })(),
     ffBody,
     tailLen: segs.length > 1 && segs[segs.length - 1].kind === "trans" ? segs[segs.length - 1].len : 0,
     Rt: segs.length ? segs[segs.length - 1].r2 : R,
@@ -1007,7 +1208,9 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
   const M = v / atm.a,
     nu = kinVisc(atm),
     q0 = stagCp(M),
-    cb = baseCp(M),
+    cb = baseCpBody(M),
+    cb2 = baseCp2D(M),
+    cbBase = baseCpRocket(A.baseB, M),
     S = A.Aref;
   /* where the transonic drag rise starts depends on the shape. Bodies: the transonic similarity rule (Oswatitsch) says
      flows over slender bodies match when (1 − M²) scales with (d/l)^(2/3), so a slender body's drag rise comes later than
@@ -1060,7 +1263,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
   for (const it of A.aft) {
     if (!skip(it)) base += (it.k * cb * it.area) / S;
   }
-  if (A.baseArea > 0) base += (cb * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
+  if (A.baseArea > 0) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
   for (const f of A.fins) {
     if (f.cdo > 0) continue;
     const Mn = M * f.cosL,
@@ -1070,10 +1273,10 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       trF = smooth01((Mn - Mdd) / (1.06 - Mdd));
     if (f.edge === "square") {
       pressure += 0.8 * stagCp(Mn) * c2 * edge;
-      base += cb * edge;
+      base += cb2 * edge;
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
-      base += 0.5 * cb * edge;
+      base += 0.5 * cb2 * edge;
     } else {
       const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
         kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),
