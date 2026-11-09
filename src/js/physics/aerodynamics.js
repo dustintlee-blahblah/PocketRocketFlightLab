@@ -21,7 +21,8 @@ import { noseR, noseSpec, noseTip } from "./geometry.js";
      1957): body base pressure, boattails, fins near the base, and blunt fin trailing edges, from measurements.
    Boattail separation: attached below about 8° half-angle, fully separated above about 20° (Hoerner, ch. 3).
    Fin edges: stagnation pressure on blunt leading edges (isentropic below Mach 1, Rayleigh pitot above), sweep by the
-     independence principle; Newtonian rounded edges; Ackeret thin-airfoil wave drag for sharp sections.
+     independence principle; Newtonian rounded edges; Ackeret thin-airfoil wave drag for sharp sections. Blunt trailing
+     edges (square and rounded) below Mach 1: Hoerner's two-dimensional base drag, 0.135/∛C_f (ch. 3).
    Rail buttons and lugs: Hoerner protuberance drag (Newtonian cylinder above Mach 1), scaled by the 1/7-power turbulent
      boundary-layer profile.
    Tumbling: Allen–Perkins crossflow drag averaged over all pitch angles.
@@ -1193,6 +1194,38 @@ function kinVisc(atm) {
   const mu = (1.458e-6 * Math.pow(atm.T, 1.5)) / (atm.T + 110.4);
   return mu / atm.rho;
 } // Sutherland's law
+/* Base drag of a blunt fin trailing edge. A fin's flat trailing edge is a two-dimensional base: its wake sheds vortices
+   in a regular (periodic) street, which pulls the base pressure far lower than behind the rocket's round,
+   three-dimensional base. Hoerner (Fluid-Dynamic Drag, ch. 3) correlates both against the friction drag of what lies
+   ahead of the base, referred to the base area: 3-D C_Db = 0.029/√C_f, 2-D C_Db = 0.135/∛C_f. For a fin, the friction
+   ahead of its trailing edge on that edge's area is C_f·2·chord/thickness (both faces). Below Mach 1 the edge takes the
+   larger of the 2-D value and the two-dimensional base coefficient; across Mach 0.95–1.2 Hoerner's value fades out
+   as that coefficient blends into NACA TN 3819's measured two-dimensional base pressure (fig. 5), which governs above. */
+/* Checked against NACA TN 2074 (Smith & Schaefer, 1950): NACA 0012 sections cut off square at the rear, trailing
+   edges 0.68, 1.40 and 4.01% of chord, Reynolds number 6 million. With the 0012's own drag as the friction ahead, the
+   formula gives the measured base drag of the 0.68% edge, and reads 29% and 20% low for the 1.40% and 4.01% edges;
+   the body correlation it replaces (0.12) read 60% low on the thickest. */
+const FIN_TE_2D = true;
+/* rounded trailing edges: the flow still breaks away from a rounded edge, but a little later and into a slightly
+   narrower wake. NASA TN D-6637 (Prust & Helon, 1972) measured round and square trailing edges of the same thickness
+   (11% of the throat width) on turbine stator blades: the round edge added 0.9 points of loss over a sharp edge, the
+   square about 1.4 below 0.7 of critical velocity and 1.15 at 0.8, so a round edge keeps about 0.64–0.78 of a square
+   edge's loss. 0.7 is the middle of that range (the earlier 0.5 had no published source). */
+const FIN_ROUND_TE = 0.7;
+/**
+ * Base drag coefficient of a blunt fin trailing edge, on the edge's area (span × thickness).
+ * @param {number} M Mach number
+ * @param {number} cb the body's base drag coefficient at M
+ * @param {number} cf the fin's friction coefficient on its wetted area (with form factor)
+ * @param {object} f fin set (mac: mean aerodynamic chord, t: thickness)
+ * @returns {number}
+ */
+function finTeCp(M, cb, cf, f) {
+  const w = tn3819W(M);
+  if (!FIN_TE_2D || w >= 1 || !(cf > 0) || !(f.t > 0)) return cb;
+  const cfx = (cf * 2 * f.mac) / f.t;
+  return Math.max(cb, (0.135 / Math.cbrt(cfx)) * (1 - w));
+}
 /**
  * Zero-angle drag coefficient of the rocket at a speed, split into friction, pressure and base drag.
  * @param {object} A aerodynamic model from aero()
@@ -1222,6 +1255,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
     tr = transonic(mEq(M, bodyFin));
   // skin friction with form factors
   let friction = 0;
+  const finCf = new Map(); // each fin set's friction coefficient on its wetted area (for its trailing-edge base drag)
   let ovr = 0;
   const skip = (it) => A.segs[it.seg] && A.segs[it.seg].cdo > 0; // per-part Cd overrides from the design file
   for (const sg of A.segs) {
@@ -1237,7 +1271,9 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       ovr += f.cdo;
       continue;
     }
-    friction += f.n * plateCf((v * f.mac) / nu, f.mac, f.rs, M, A.blMode) * 2 * f.area * f.ff;
+    const cfF = plateCf((v * f.mac) / nu, f.mac, f.rs, M, A.blMode) * f.ff;
+    friction += f.n * cfF * 2 * f.area;
+    finCf.set(f, cfF);
   }
   friction /= S;
   // pressure and wave drag
@@ -1273,10 +1309,10 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       trF = smooth01((Mn - Mdd) / (1.06 - Mdd));
     if (f.edge === "square") {
       pressure += 0.8 * stagCp(Mn) * c2 * edge;
-      base += cb2 * edge;
+      base += finTeCp(M, cb2, finCf.get(f), f) * edge;
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
-      base += 0.5 * cb2 * edge;
+      base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;
     } else {
       const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
         kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),
