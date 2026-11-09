@@ -718,6 +718,9 @@ export function parseOrk(xml, opts = {}) {
         cant: num(c, "cant", 0),
         pts: outline,
         edge: (txt(c, "crosssection") || "square").toLowerCase(),
+        // the app's own bevel lengths (beveled fins; not part of OpenRocket's format)
+        bevLE: num(c, "prflbevelle", 0),
+        bevTE: num(c, "prflbevelte", 0),
         rs: cfin,
         si: curStage,
         cdo: odc(c),
@@ -1121,7 +1124,7 @@ export function parseOrk(xml, opts = {}) {
       notes.push(
         `${pre}${groups.size} fin sets were imported. The aft-most (${f.n} fins) is the main set; the other${others.length > 1 ? "s are" : " is"} listed under Fin set 2${others.length > 1 ? "–" + (others.length + 1) : ""}.`,
       );
-    const EDGE0 = (e) => ({ square: "square", rounded: "rounded", airfoil: "airfoil" })[e] || "square";
+    const EDGE0 = (e) => (FIN_EDGES.some((x) => x[0] === e) ? e : "square");
     const extra = others.map((g) => ({
       n: g.n,
       mat: g.mat,
@@ -1134,6 +1137,8 @@ export function parseOrk(xml, opts = {}) {
       cant: g.cant || 0,
       pos: g.x - x0,
       edge: EDGE0(g.edge),
+      bevLE: g.bevLE || 0,
+      bevTE: g.bevTE || 0,
       cdo: g.cdo || 0,
       oi: g.oi,
       par: g.par || 0,
@@ -1261,6 +1266,8 @@ export function parseOrk(xml, opts = {}) {
     finRb: f.rb ?? null,
     finSb: f.sb ?? null,
     finEdge: EDGE(f.edge),
+    finBevLE: f.bevLE || 0,
+    finBevTE: f.bevTE || 0,
     finCdOverride: f.cdo || 0,
     bFinCdOverride: 0,
     extraFins: S.extra,
@@ -1331,6 +1338,8 @@ export function parseOrk(xml, opts = {}) {
       bFinThick: bf.t,
       bFinAft: B.fAft,
       bFinEdge: EDGE(bf.edge),
+      bFinBevLE: bf.bevLE || 0,
+      bFinBevTE: bf.bevTE || 0,
       bFinFinish: bf.rs ?? null,
       bFinCdOverride: bf.cdo || 0,
       bExtraFins: B.extra,
@@ -1405,6 +1414,8 @@ export function parseOrk(xml, opts = {}) {
       bFinThick: cf.t,
       bFinAft: C1.fAft,
       bFinEdge: EDGE(cf.edge),
+      bFinBevLE: cf.bevLE || 0,
+      bFinBevTE: cf.bevTE || 0,
       bFinFinish: cf.rs ?? null,
       bFinCdOverride: cf.cdo || 0,
       bExtraFins: C1.extra,

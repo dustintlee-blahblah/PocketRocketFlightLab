@@ -144,6 +144,12 @@ export function bldFields(p) {
             ]),
         ["t", "Thickness", "num", "small"],
         ["edge", "Edges", "sel", FIN_EDGES],
+        ...(p.edge === "beveled"
+          ? [
+              ["bevLE", "Leading-edge bevel length", "num", "small"],
+              ["bevTE", "Trailing-edge bevel length", "num", "small"],
+            ]
+          : []),
         ["cant", "Cant angle", "num", "deg"],
         ...posF,
         ...mat(),

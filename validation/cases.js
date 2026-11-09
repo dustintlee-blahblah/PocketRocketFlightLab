@@ -372,7 +372,7 @@ const CASES = [
    Parts after the nose, front to back: "tube" (a body tube, with its fins if it has them; RASAero's fin location is
    from the tube's aft end to the root leading edge) and "tail" (a conical transition: a fin can's shoulder or a
    boattail). RASAero "hexagonal" fins (flat with beveled leading and trailing edges) fly as the app's beveled section;
-   their bevel lengths (le, te: RASAero's FX1 and FX3) are kept, though the app's beveled section doesn't use them yet.
+   their bevel lengths (le, te: RASAero's FX1 and FX3) go in as the app's bevel lengths.
    The motors' thrust curves are RASAero's own (validation/flight-motors.eng). */
 const LB = 0.45359237,
   FT = 0.3048,
@@ -1544,7 +1544,7 @@ function flightOrk(f, motor) {
       return `<transition><name>t${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><shape>conical</shape><shapeclipped>false</shapeclipped><shapeparameter>0</shapeparameter><foreradius>${(p.d0 / 2) * IN}</foreradius><aftradius>${(p.d1 / 2) * IN}</aftradius><foreshoulderradius>0</foreshoulderradius><foreshoulderlength>0</foreshoulderlength><foreshoulderthickness>0</foreshoulderthickness><foreshouldercapped>false</foreshouldercapped><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></transition>`;
     const F = p.fins,
       fins = F
-        ? `<trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.loc - F.cr) * IN}</axialoffset>${fin}<fincount>${F.n}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection><cant>0</cant><rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset>`
+        ? `<trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.loc - F.cr) * IN}</axialoffset>${fin}<fincount>${F.n}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection><cant>0</cant>${F.le > 0 || F.te > 0 ? `<prflbevelle>${(F.le || 0) * IN}</prflbevelle><prflbevelte>${(F.te || 0) * IN}</prflbevelte>` : ""}<rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset>`
         : "",
       rail =
         f.rail && p === railOn

@@ -484,11 +484,19 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         try {
           const t = await side(FIN_ORK);
           if (t) {
-            const fe = JSON.parse(t).finEdges || {};
+            const j = JSON.parse(t),
+              fe = j.finEdges || {},
+              fb = j.finBevels || {};
             for (const st of BLD.stages)
               for (const pp of st.parts || [])
-                for (const k of pp.kids || [])
+                for (const k of pp.kids || []) {
                   if (k.type === "fins" && fe[k.id] && FIN_EDGES.some((x) => x[0] === fe[k.id])) k.edge = fe[k.id];
+                  const b = k.type === "fins" && fb[k.id];
+                  if (b) {
+                    k.bevLE = isFinite(b.le) && b.le > 0 ? +b.le : 0;
+                    k.bevTE = isFinite(b.te) && b.te > 0 ? +b.te : 0;
+                  }
+                }
           }
         } catch (e) {}
       if (!isR)

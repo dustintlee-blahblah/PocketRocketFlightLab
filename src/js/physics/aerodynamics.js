@@ -641,6 +641,8 @@ export function finSetsOf(D) {
       t: D.finThick,
       xLead: D.length - D.finAft - D.finRoot,
       edge: D.finEdge,
+      bevLE: D.finBevLE || 0,
+      bevTE: D.finBevTE || 0,
       rs: D.finFinish ?? D.finish,
       cdo: D.finCdOverride || 0,
       pts: D.finPts || null,
@@ -670,6 +672,8 @@ export function xfinSets(list, rs) {
     t: f.t,
     xLead: f.pos,
     edge: f.edge,
+    bevLE: f.bevLE || 0,
+    bevTE: f.bevTE || 0,
     rs,
     cdo: f.cdo || 0,
     pts: f.pts || null,
@@ -814,6 +818,8 @@ export function aero(D) {
     D.finThick,
     D.finAft,
     D.finEdge,
+    D.finBevLE,
+    D.finBevTE,
     D.finish,
     D.railPreset,
     D.buttons,
@@ -1226,6 +1232,26 @@ function finTeCp(M, cb, cf, f) {
   const cfx = (cf * 2 * f.mac) / f.t;
   return Math.max(cb, (0.135 / Math.cbrt(cfx)) * (1 - w));
 }
+/* Wave drag of a beveled fin from its bevel lengths. Ackeret's thin-airfoil theory for a flat plate whose leading and
+   trailing edges are beveled over fractions e1 and e3 of the chord gives Cd = (t/c)²/β · (1/e1 + 1/e3) (a double wedge,
+   e1 = e3 = 0.5, gives the familiar 4; the default 20% bevels give 10). A short bevel is a steep wedge, where linear
+   theory overstates the drag, so each bevel is held to at most what a flat edge of the same thickness costs: the
+   leading bevel no more than a square leading edge (0.8 of stagnation pressure on its face), the trailing bevel no
+   more than a blunt two-dimensional base. Without bevel lengths the section keeps the 20% bevels. */
+/**
+ * Supersonic wave-drag constant K of a fin set's section, in Cd = K·(t/c)²/β.
+ * @param {object} f fin set (edge, tc, mac, and for beveled fins bevLE and bevTE in m)
+ * @param {number} Mn Mach number normal to the leading edge
+ * @param {number} beta √(Mn² − 1), at least 0.4
+ * @param {number} cb2 two-dimensional base pressure coefficient at this Mach number
+ * @returns {number}
+ */
+function finK(f, Mn, beta, cb2) {
+  if (f.edge !== "beveled" || !(f.bevLE > 0 || f.bevTE > 0) || !(f.mac > 0) || !(f.tc > 0)) return finWaveK(f.edge);
+  const e1 = Math.min(0.5, Math.max(f.bevLE > 0 ? f.bevLE / f.mac : 0.2, f.tc / (0.8 * stagCp(Mn) * beta))),
+    e3 = Math.min(0.5, Math.max(f.bevTE > 0 ? f.bevTE / f.mac : 0.2, f.tc / (Math.max(cb2, 0.05) * beta)));
+  return 1 / e1 + 1 / e3;
+}
 /**
  * Zero-angle drag coefficient of the rocket at a speed, split into friction, pressure and base drag.
  * @param {object} A aerodynamic model from aero()
@@ -1317,7 +1343,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
         kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),
         subLE = kS + (1 - kS) * smooth01((Mn - 1) / 0.1); // a subsonic leading edge weakens it (see finTransonicCd)
-      pressure += (((trF * subLE * finWaveK(f.edge) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
+      pressure += (((trF * subLE * finK(f, Mn, beta, cb2) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
     }
     if (!finBlunt(f.edge)) pressure += (finTransonicCd(M, f.tc, f.cosL) * f.n * f.area) / S;
   }

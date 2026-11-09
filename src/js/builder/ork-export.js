@@ -141,7 +141,7 @@ export function bldToOrk(model, L, opts = {}) {
       pr = Math.max(R * 0.9, 0.005);
     switch (k.type) {
       case "fins": {
-        const base = `${head(k)}${fin(k)}${bulk(k)}<fincount>${k.n}</fincount><rotation>${n(k.rot || 0)}</rotation><thickness>${n(k.t)}</thickness><crosssection>${k.edge}</crosssection><cant>${n(k.cant || 0)}</cant>`;
+        const base = `${head(k)}${fin(k)}${bulk(k)}<fincount>${k.n}</fincount><rotation>${n(k.rot || 0)}</rotation><thickness>${n(k.t)}</thickness><crosssection>${k.edge}</crosssection><cant>${n(k.cant || 0)}</cant>${k.edge === "beveled" && (+k.bevLE > 0 || +k.bevTE > 0) ? `<prflbevelle>${n(+k.bevLE || 0)}</prflbevelle><prflbevelte>${n(+k.bevTE || 0)}</prflbevelte>` : ""}`;
         if (k.shape === "elliptical")
           return `<ellipticalfinset>${base}<rootchord>${n(k.root)}</rootchord><height>${n(k.span)}</height></ellipticalfinset>`;
         if (k.shape === "freeform") {

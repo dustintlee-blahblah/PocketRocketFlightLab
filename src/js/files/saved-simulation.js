@@ -505,7 +505,9 @@ export async function saveDesignFile(asNew, opts = {}) {
   }
   window.prLastSimNote = simNote;
   // the file keeps its name on Save changes, whatever the rocket is called (a new file name comes only from Save a copy)
-  text = text.replace(/<crosssection>(beveled|doublewedge)<\/crosssection>/g, "<crosssection>airfoil</crosssection>");
+  text = text
+    .replace(/<crosssection>(beveled|doublewedge)<\/crosssection>/g, "<crosssection>airfoil</crosssection>")
+    .replace(/<prflbevel(le|te)>[^<]*<\/prflbevel(le|te)>/g, "");
   const bytes = new TextEncoder().encode(text);
   const extras = into
     ? (SOURCE.extras || [])
@@ -531,19 +533,31 @@ export async function saveDesignFile(asNew, opts = {}) {
   extras.push({ name: STATE_ORK, data: new TextEncoder().encode(JSON.stringify(prStateNow(text, runs))) });
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
-    const fe = {};
+    const fe = {},
+      fb = {};
     if (BLD)
       for (const st of BLD.stages)
         for (const pp of st.parts || [])
-          for (const k of pp.kids || [])
+          for (const k of pp.kids || []) {
             if (k.type === "fins" && k.id && !["square", "rounded", "airfoil"].includes(k.edge || "square"))
               fe[k.id] = k.edge;
+            // bevel lengths of beveled fins (OpenRocket's format has no place for them)
+            if (k.type === "fins" && k.id && k.edge === "beveled" && (+k.bevLE > 0 || +k.bevTE > 0))
+              fb[k.id] = { le: +k.bevLE || 0, te: +k.bevTE || 0 };
+          }
     const i = extras.findIndex((x) => x.name === FIN_ORK);
     if (i >= 0) extras.splice(i, 1);
     if (Object.keys(fe).length)
       extras.push({
         name: FIN_ORK,
-        data: new TextEncoder().encode(JSON.stringify({ app: "Pocket Rocket Flight Lab", version: 1, finEdges: fe })),
+        data: new TextEncoder().encode(
+          JSON.stringify({
+            app: "Pocket Rocket Flight Lab",
+            version: 1,
+            finEdges: fe,
+            ...(Object.keys(fb).length ? { finBevels: fb } : {}),
+          }),
+        ),
       });
   }
   {

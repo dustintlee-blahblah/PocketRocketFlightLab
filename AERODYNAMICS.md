@@ -76,7 +76,7 @@ where the step counts as base area; in between, blended.
 |---|---|---|
 | Square edges | all | 0.8 × stagnation pressure on the leading edge, swept by the independence principle (cos²Λ), plus base drag on the trailing edge. |
 | Rounded edges | all | Modified Newtonian (⅔ × stagnation pressure) on the leading edge from the drag-divergence Mach number, half the base on the trailing edge. |
-| Sharp edges (airfoil, beveled, double wedge) | above 1 | Ackeret thin-airfoil wave drag K(t/c)²/β (double wedge 4, airfoil 16/3, 20% bevel 10), weakened while the leading edge is still subsonic (M·cos Λ < 1). |
+| Sharp edges (airfoil, beveled, double wedge) | above 1 | Ackeret thin-airfoil wave drag K(t/c)²/β (double wedge 4, airfoil 16/3), weakened while the leading edge is still subsonic (M·cos Λ < 1). Beveled fins: K = 1/e₁ + 1/e₃ from the bevel lengths as shares of the mean chord (20% bevels, the default, give 10), each bevel held to at most what a square leading edge or a blunt trailing edge of the same thickness would cost. |
 | Sharp edges | 0.85 – 3 | The transonic drag rise, calibrated to the Arcas fins (NASA TN D-4013/4014, fins on minus fins off), scaled to other thicknesses by transonic similarity, (t/c)^(5/3), and to sweep by (cos Λ / cos 30°)⁵, fitted to the RM-10's 60° fins (NACA RM E50D28). |
 | Drag divergence | | M_dd = 0.96 − 1.5(t/c) (NACA 0006 ≈ 0.87, 0012 ≈ 0.78). |
 
@@ -115,7 +115,7 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 | Fin drag, Mach 1.5–2.0 | NACA RM E50D28, RM-10 fins, wind tunnel | Mean error 0.022 in Cd. |
 | Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 6.9% mean while thrusting, 4.9% coasting (both high; was 5.5% and 3.0% before TN 3819); CP 0.8% of length; CNα 16% low throughout. |
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 8.4% low (was 12.7%). |
-| Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 11.7% mean, app high (+11%; +18% above Mach 1.2); RASAero II 5.4%. |
+| Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 11.2% mean, app high (+10%; +16% above Mach 1.2); RASAero II 5.4%. |
 | Nose drag | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%. Another program, not a measurement. |
 | Large angles of attack, rounded tips, pods, tube fins | — | Not checked against measurements. |
@@ -139,14 +139,13 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
    such fins lose their trailing-edge base drag.
 7. **Normal-force slope.** On the Aerobee 150A the app's CNα is about 16% low at every speed while its CP agrees;
    either the reconstructed fins are too small or the interference factor is (see item 4).
-8. **Real rockets coast lower than the model says.** On the 23 measured flights the app is high by 11% on average,
-   18% above Mach 1.2, while its top speeds agree with RASAero II's within a few percent: the missing drag is in the
+8. **Real rockets coast lower than the model says.** On the 23 measured flights the app is high by 10% on average,
+   16% above Mach 1.2, while its top speeds agree with RASAero II's within a few percent: the missing drag is in the
    coast. OpenRocket overshoots the same flights the same way. Where it comes from (protuberances, finish, fin
    misalignment, base drag while coasting at altitude) is the largest open question.
-9. **Bevel length of beveled fins.** The beveled section assumes bevels 20% of the chord; real ones run from about
-   1% (nearly square) to 28%. Supersonic wave drag goes as K = 1/e₁ + 1/e₃, so a short bevel has several times the
-   drag; on the Kinsel A-601 using the real bevels moves the apogee error from +44% to +10%. Needs a bevel-length
-   field for beveled fins.
+9. **Very short bevels.** Beveled fins take their bevel lengths since build 282. With bevels of about 1% of the chord,
+   as on the Kinsel A-601, linear theory would give more drag than a square edge, so each bevel is capped there; the
+   Kinsel A-601 moved from +44% to +34%. How a nearly square bevel really behaves between the two is open.
 10. **Thick rounded fins below Mach 1.** On the EZI-65 (0.25 in rounded fins, 3.6% of the chord) the app needs 23% more
    drag to match RASAero II and 40% to match the flight.
 11. **More test cases.** `validation/accuracy.js` scores every measured rocket in `validation/cases.js` by speed band,

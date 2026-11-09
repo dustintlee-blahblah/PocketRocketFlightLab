@@ -16,7 +16,7 @@ In short:
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.9–6.9%, CP 0.8% of length, CNα 16% low |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 8.4% low |
-| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 11.7%, app high (RASAero II: 5.4%) |
+| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 11.2%, app high (RASAero II: 5.4%) |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
@@ -162,20 +162,20 @@ numbers are copied into `validation/cases.js` (`FLIGHTS`); the files themselves 
 | Torrent | 1.27 | 12,807 | barometric altimeter | +7.1% | +10.6% |
 | Kline-Rogers L500 rocket, USXRL-89 | 2.09 | 24,771 | optical tracking | +7.0% | +10.1% |
 | Full Metal Jacket, BALLS 005 | 2.29 | 37,981 | optical tracking | +2.1% | +4.0% |
-| Kinsel A-601 (P4935) | 2.39 | 42,771 | GPS | −3.9% | +44.1% |
-| Full Metal Jacket, Black Rock 6 | 2.44 | 30,038 | optical tracking | +8.4% | +3.5% |
-| Proteus 6 (P9381) | 2.98 | 85,067 | integrated accelerometers | −4.2% | +33.2% |
+| Kinsel A-601 (P4935) | 2.32 | 42,771 | GPS | −3.9% | +34.4% |
+| Full Metal Jacket, Black Rock 6 | 2.44 | 30,038 | optical tracking | +8.4% | +3.3% |
+| Proteus 6 (P9381) | 2.98 | 85,067 | integrated accelerometers | −4.2% | +32.9% |
 | Don't Debate This (N5800 minimum diameter) | 3.09 | 56,573 | average of two barometric altimeters | +9.6% | +2.7% |
-| Qu8k (Q18000) | 3.64 | 121,478 | integrated accelerometer | −1.5% | +38.5% |
+| Qu8k (Q18000) | 3.63 | 121,478 | integrated accelerometer | −1.5% | +35.8% |
 
 | Mean absolute error (bias) | Flights | RASAero II | App |
 |---|---|---|---|
-| All | 23 | 5.4% (+1.8%) | 11.7% (+11.0%) |
+| All | 23 | 5.4% (+1.8%) | 11.2% (+10.4%) |
 | Below Mach 0.8 | 9 | 5.8% (+3.6%) | 7.9% (+7.2%) |
 | Mach 0.8–1.2 | 5 | 4.8% (−2.4%) | 8.1% (+6.0%) |
-| Above Mach 1.2 | 9 | 5.3% (+2.2%) | 17.6% (+17.6%) |
+| Above Mach 1.2 | 9 | 5.3% (+2.2%) | 16.1% (+16.1%) |
 
-**The app predicts high on real flights: by 11% on average, and 18% above Mach 1.2.** None of its constants were set
+**The app predicts high on real flights: by 10% on average, and 16% above Mach 1.2.** None of its constants were set
 from these flights, and the comparison is not entirely independent of RASAero II either: these are the flights
 RASAero II's author chose to publish, and its own model is partly calibrated on flights like them, which helps explain
 its 5.4%. Flight-to-flight scatter is real too: the three Test Pilot School rockets are the same airframe on the same
@@ -190,10 +190,10 @@ What the comparison shows so far:
 - **OpenRocket overshoots the same way.** The same designs flown in OpenRocket 24.12 (where it has the motor) give
   apogees as high as the app's or higher (Raven 12,587 ft against the app's 11,595 and a measured 8,815), so this isn't
   a fault peculiar to the app's code: both programs' drag build-ups come out below what these real rockets show.
-- **Beveled fins need their bevel length.** RASAero's "hexagonal" fins record how long the bevels are; the app's
-  beveled section assumes 20% of the chord. The Kinsel A-601's fins are beveled over about 1% of the chord, nearly
-  square, and using its real bevels in the supersonic wave drag (Ackeret: K = 1/e₁ + 1/e₃) brings it from +44% to
-  +10%. That is a gap in the app, not in the data; the bevel lengths are kept in `FLIGHTS` for when it is filled.
+- **Bevel lengths** (build 282). RASAero's "hexagonal" fins record how long the bevels are, and beveled fins in the
+  app now take them (Ackeret: K = 1/e₁ + 1/e₃, each bevel capped at what a square edge would cost). That moved the
+  mean error from 11.7% to 11.2% and above Mach 1.2 from 17.6% to 16.1%; the Kinsel A-601, beveled over about 1% of
+  its chord, from +44% to +34%.
 - **Compared with the build before the TN 3819 and trailing-edge changes**, the mean error went from 12.0% to 11.7%: 14
   flights closer, 3 further, 6 unchanged.
 
