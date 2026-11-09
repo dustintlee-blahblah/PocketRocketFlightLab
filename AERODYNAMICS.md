@@ -115,7 +115,7 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 | Fin drag, Mach 1.5–2.0 | NACA RM E50D28, RM-10 fins, wind tunnel | Mean error 0.022 in Cd. |
 | Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 6.9% mean while thrusting, 4.9% coasting (both high; was 5.5% and 3.0% before TN 3819); CP 0.8% of length; CNα 16% low throughout. |
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 8.4% low (was 12.7%). |
-| Apogee, 7 measured flights, Mach 0.6–2.1 (never used for tuning) | Altimeter and optical tracking, RASAero II design files | 5.8% mean (RASAero II 4.2%); the EZI-65, with thick rounded fins, 16.9% high. |
+| Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 11.7% mean, app high (+11%; +18% above Mach 1.2); RASAero II 5.4%. |
 | Nose drag | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%. Another program, not a measurement. |
 | Large angles of attack, rounded tips, pods, tube fins | — | Not checked against measurements. |
@@ -139,10 +139,17 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
    such fins lose their trailing-edge base drag.
 7. **Normal-force slope.** On the Aerobee 150A the app's CNα is about 16% low at every speed while its CP agrees;
    either the reconstructed fins are too small or the interference factor is (see item 4).
-8. **Thick rounded fins below Mach 1.** On the EZI-65 flight (0.25 in rounded fins, 3.6% of the chord) the app needs
-   23% more drag to match RASAero II and 40% to match the flight, while the other six measured flights need 1–3.5%.
-   How RASAero II prices a rounded fin's leading edge and thickness subsonically is the place to look.
-9. **More test cases.** `validation/accuracy.js` scores every measured rocket in `validation/cases.js` by speed band,
+8. **Real rockets coast lower than the model says.** On the 23 measured flights the app is high by 11% on average,
+   18% above Mach 1.2, while its top speeds agree with RASAero II's within a few percent: the missing drag is in the
+   coast. OpenRocket overshoots the same flights the same way. Where it comes from (protuberances, finish, fin
+   misalignment, base drag while coasting at altitude) is the largest open question.
+9. **Bevel length of beveled fins.** The beveled section assumes bevels 20% of the chord; real ones run from about
+   1% (nearly square) to 28%. Supersonic wave drag goes as K = 1/e₁ + 1/e₃, so a short bevel has several times the
+   drag; on the Kinsel A-601 using the real bevels moves the apogee error from +44% to +10%. Needs a bevel-length
+   field for beveled fins.
+10. **Thick rounded fins below Mach 1.** On the EZI-65 (0.25 in rounded fins, 3.6% of the chord) the app needs 23% more
+   drag to match RASAero II and 40% to match the flight.
+11. **More test cases.** `validation/accuracy.js` scores every measured rocket in `validation/cases.js` by speed band,
    keeping the cases the model was tuned on apart from those kept back for checking, and `validation/flights.js` the
-   measured flights' apogees. The Aerobee 150A, RM L55G28a and the seven flights are the check cases so far; each new
+   measured flights' apogees. The Aerobee 150A, RM L55G28a and the 23 flights are the check cases so far; each new
    measured rocket goes there.

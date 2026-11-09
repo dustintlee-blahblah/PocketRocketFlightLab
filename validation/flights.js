@@ -3,19 +3,28 @@
  * The app's apogee against measured flights (validation/cases.js, FLIGHTS), next to RASAero II's prediction for the
  * same flight:
  *
- *   node build.js && node validation/flights.js
+ *   node build.js && node validation/flights.js [--html other-build.html] [--verbose] [--csv out.csv]
  *
  * Each rocket is opened in the built app (headless Chromium) as an OpenRocket design with its launch weight and CG,
  * flown on RASAero's own thrust curve for its motor (validation/flight-motors.eng), from its launch site's altitude and
- * temperature, off its rail at its angle, in still air. Printed: measured apogee, RASAero II's and the app's, and each
- * one's error; then the mean absolute error of both.
+ * temperature, off its rail at its angle, in the file's wind (taken as the same at every height). Printed: measured
+ * apogee, RASAero II's and the app's, each one's error; then the mean absolute error and bias of both, overall and by
+ * top speed. --html flies another build of the app (to compare before and after a change).
  */
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
-const { IN, FT, flightOrk, FLIGHTS } = require("./cases.js");
+const { IN, FT, LB, MPH, flightOrk, FLIGHTS } = require("./cases.js");
 
+const args = process.argv.slice(2);
+const opt = (k) => {
+  const i = args.indexOf(k);
+  return i >= 0 ? args[i + 1] : null;
+};
+const html = path.resolve(opt("--html") || path.join(__dirname, "..", "web", "pocket-rocket-flight-lab.html"));
+const csvOut = opt("--csv");
+const verbose = args.includes("--verbose");
 const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
 
 (async () => {
@@ -23,19 +32,18 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
   const p = await browser.newPage();
   await p.route(/^https?:/, (r) => r.abort());
   await p.addInitScript(() => (window.PR_EXPOSE = true));
-  await p.goto("file://" + path.join(__dirname, "..", "web", "pocket-rocket-flight-lab.html"));
+  await p.goto("file://" + html);
   await p.waitForFunction(() => typeof window.simulate === "function" && typeof window.parseEng === "function");
   const motors = await p.evaluate(
-    (eng) => parseEng(eng).map((m) => ({ name: m.name, totalMass: m.totalMass, len: m.len })),
+    (eng) => parseEng(eng).map((m) => ({ name: m.name, mfr: m.mfr, totalMass: m.totalMass, len: m.len })),
     eng,
   );
   const rows = [];
   for (const f of FLIGHTS) {
-    const mo = motors.find((m) => m.name === f.motor);
-    if (!mo) throw new Error("no thrust curve for " + f.motor);
-    const xml = flightOrk(f, mo);
+    const mo = motors.find((m) => m.name === f.motor && m.mfr === f.mfr);
+    if (!mo) throw new Error(`no thrust curve for ${f.motor} (${f.mfr})`);
     const app = await p.evaluate(
-      async ({ xml, eng, f, IN, FT }) => {
+      async ({ xml, eng, f, IN, FT, MPH }) => {
         window.PR_NO_ASK = false;
         L = defaultLaunch();
         siteCur = "";
@@ -49,32 +57,68 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
           humidity: 0,
           rail: f.rod * FT,
           angle: f.angle,
-          wind: 0,
+          wind: f.wind * MPH,
+          windProfile: "constant",
           turb: 0,
         });
         D.nozzleDia = f.noz > 0 ? f.noz * IN : 0;
-        const m = parseEng(eng).find((x) => x.name === f.motor);
+        D.noseTip = f.nose.tip > 0 ? f.nose.tip * IN : 0;
+        const m = parseEng(eng).find((x) => x.name === f.motor && x.mfr === f.mfr);
         m.id = "flight-" + m.name;
         const R = simulate(D, L, m, null);
-        return { apogee: R.st.maxAlt, maxV: R.st.maxV, maxMach: R.st.maxMach, error: R.st.error || null };
+        return {
+          apogee: R.st.maxAlt,
+          maxV: R.st.maxV,
+          maxMach: R.st.maxMach,
+          liftMass: R.st.liftMass,
+          error: R.st.error || null,
+        };
       },
-      { xml, eng, f, IN, FT },
+      { xml: flightOrk(f, mo), eng, f, IN, FT, MPH },
     );
     if (app.err || app.error) throw new Error(`${f.title}: ${app.err || app.error}`);
+    // the loaded rocket must weigh what the file says, or the comparison means nothing
+    if (Math.abs(app.liftMass / (f.w * LB) - 1) > 0.002)
+      throw new Error(`${f.title}: launch mass ${app.liftMass} kg, file says ${f.w * LB}`);
     rows.push({ f, app: app.apogee / FT, mach: app.maxMach });
   }
   await browser.close();
 
   const pct = (a, m) => (100 * (a - m)) / m,
     sg = (x) => (x >= 0 ? "+" : "") + x.toFixed(1) + "%";
+  rows.sort((a, b) => a.mach - b.mach);
   console.log("flight | max Mach | measured ft (how) | RASAero II ft, error | app ft, error");
   for (const { f, app, mach } of rows)
     console.log(
-      `${f.title} | ${mach != null ? mach.toFixed(2) : "?"} | ${f.meas} (${f.how}) | ${f.ras}, ${sg(pct(f.ras, f.meas))} | ${app.toFixed(0)}, ${sg(pct(app, f.meas))}`,
+      `${f.title} | ${mach.toFixed(2)} | ${f.meas} (${f.how}) | ${f.ras}, ${sg(pct(f.ras, f.meas))} | ${app.toFixed(0)}, ${sg(pct(app, f.meas))}`,
     );
-  const mean = (k) => rows.reduce((s, r) => s + Math.abs(pct(k(r), r.f.meas)), 0) / rows.length,
-    bias = (k) => rows.reduce((s, r) => s + pct(k(r), r.f.meas), 0) / rows.length;
-  console.log(
-    `\nmean absolute error: RASAero II ${mean((r) => r.f.ras).toFixed(1)}% (bias ${sg(bias((r) => r.f.ras))}), app ${mean((r) => r.app).toFixed(1)}% (bias ${sg(bias((r) => r.app))}), ${rows.length} flights`,
-  );
+  const sum = (sel, k) => {
+    const e = sel.map((r) => pct(k(r), r.f.meas));
+    return `${(e.reduce((s, x) => s + Math.abs(x), 0) / e.length).toFixed(1)}% (bias ${sg(e.reduce((s, x) => s + x, 0) / e.length)})`;
+  };
+  console.log("\nmean absolute error (bias):");
+  for (const [label, lo, hi] of [
+    ["all", 0, 99],
+    ["below Mach 0.8", 0, 0.8],
+    ["Mach 0.8–1.2", 0.8, 1.2],
+    ["above Mach 1.2", 1.2, 99],
+  ]) {
+    const sel = rows.filter((r) => r.mach >= lo && r.mach < hi);
+    if (sel.length)
+      console.log(
+        `  ${label.padEnd(15)} ${String(sel.length).padStart(2)} flights   RASAero II ${sum(sel, (r) => r.f.ras)}   app ${sum(sel, (r) => r.app)}`,
+      );
+  }
+  if (verbose) for (const { f } of rows) console.log(`  ${f.title}: ${f.file}`);
+  if (csvOut) {
+    const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
+    fs.writeFileSync(
+      csvOut,
+      "flight,max_mach,measured_ft,how,rasaero_ft,app_ft\n" +
+        rows
+          .map(({ f, app, mach }) => [q(f.title), mach.toFixed(3), f.meas, q(f.how), f.ras, app.toFixed(0)].join(","))
+          .join("\n") +
+        "\n",
+    );
+  }
 })();
