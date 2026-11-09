@@ -362,4 +362,120 @@ const CASES = [
   },
 ];
 
-module.exports = { IN, finnedOrk, arcasOrk, A53, A53_PTS, RM10, RM10_PTS, ARCAS, CASES };
+/* ---------- measured flights (apogee) ----------
+   Rockets flown with a recording altimeter or optical tracking, as RASAero II's author published them in RASAero
+   design files (rasaero.com): geometry, launch weight and CG, launch site, motor, the measured apogee and RASAero II's
+   prediction. All sizes in inches, weights in lb, temperatures in °F, site altitude and apogees in ft, as in the files.
+   The motors' thrust curves are RASAero's own (validation/flight-motors.eng). RASAero "hexagonal" fins (flat with
+   beveled leading and trailing edges) fly as the app's beveled section; its "rounded" as rounded. */
+const LB = 0.45359237,
+  FT = 0.3048;
+// the Cal Poly Pomona ARO-414 and USAF Test Pilot School course rockets share one airframe
+const CALISP = {
+  nose: 11.25,
+  dia: 3.1,
+  body: 48,
+  rail: { d: 0.375, h: 0.3438 },
+  fins: { n: 4, cr: 8.5, ct: 0.75, s: 3.5, sw: 7.18, t: 0.125, loc: 9.5, edge: "beveled" },
+  noz: 0.63,
+};
+const FLIGHTS = [
+  ...[
+    ["USAF TPS 2004, Team 1", "I205", 3.25, 2302, 78, 3837, 3948],
+    ["USAF TPS 2004, Team 2", "I205", 3.4, 2302, 76, 3710, 3876],
+    ["USAF TPS 2004, Team 3", "I205", 3.41, 2302, 77, 3964, 3876],
+    ["Cal Poly Pomona 2005, Team Columbia", "I285", 3.36, 2848, 62, 5085, 4847],
+    ["Cal Poly Pomona 2005, Team Discovery", "I285", 3.55, 2848, 64, 4930, 4836],
+  ].map(([title, motor, w, site, tF, meas, ras]) => ({
+    title,
+    ...CALISP,
+    motor,
+    w,
+    cg: 40,
+    site,
+    tF,
+    rod: 10,
+    angle: 3,
+    meas,
+    ras,
+    how: "barometric altimeter (AltAcc)",
+  })),
+  {
+    title: "LOC/Precision EZI-65, LDRS-26",
+    nose: 13,
+    dia: 4,
+    body: 72,
+    rail: { d: 0.625, h: 0.469 },
+    fins: { n: 3, cr: 7, ct: 4.5, s: 4.75, sw: 1.25, t: 0.25, loc: 7, edge: "rounded" },
+    noz: 0,
+    motor: "J450ST",
+    w: 10.06,
+    cg: 59,
+    site: 2750,
+    tF: 70,
+    rod: 10,
+    angle: 0,
+    meas: 3965,
+    ras: 4214,
+    how: "barometric altimeter",
+  },
+  {
+    title: "Kline-Rogers L500 rocket, USXRL-89",
+    nose: 10,
+    dia: 2.26,
+    body: 52,
+    rail: null,
+    fins: { n: 3, cr: 11, ct: 0, s: 5, sw: 9.798, t: 0.125, loc: 12, edge: "beveled" },
+    noz: 1,
+    motor: "L500",
+    w: 8.5,
+    cg: 42.6,
+    site: 2848,
+    tF: 80,
+    rod: 8,
+    angle: 0,
+    meas: 24771,
+    ras: 26509,
+    how: "optical tracking",
+  },
+];
+
+/**
+ * A measured flight's rocket as an OpenRocket design: tangent ogive nose, body tube, one fin set (RASAero's fin
+ * location is from the base to the root leading edge) and two rail buttons, with the stage's mass and CG set so the
+ * loaded rocket matches the file's launch weight and CG (the motor's own mass and CG are taken off).
+ * @param {object} f one of FLIGHTS
+ * @param {{totalMass:number, len:number}} motor the motor (kg, m)
+ * @returns {string} XML
+ */
+function flightOrk(f, motor) {
+  const r = (f.dia / 2) * IN,
+    len = (f.nose + f.body) * IN,
+    W = f.w * LB,
+    dry = W - motor.totalMass,
+    xm = len - motor.len / 2, // motor flush with the base
+    cgDry = (W * f.cg * IN - motor.totalMass * xm) / dry,
+    F = f.fins,
+    m = '<material type="bulk" density="1000">Fiberglass</material>',
+    rail = f.rail
+      ? `<railbutton><name>buttons</name><axialoffset method="bottom">${-0.05}</axialoffset><outerdiameter>${f.rail.d * IN}</outerdiameter><innerdiameter>${0.6 * f.rail.d * IN}</innerdiameter><height>${f.rail.h * IN}</height><instancecount>2</instancecount><instanceseparation>${0.5 * f.body * IN}</instanceseparation></railbutton>`
+      : "";
+  return `<?xml version='1.0' encoding='utf-8'?>
+<openrocket version="1.9" creator="validation"><rocket><name>${f.title}</name>
+<motorconfiguration configid="c" default="true"><stage number="0" active="true"/></motorconfiguration>
+<referencetype>maximum</referencetype><subcomponents><stage><name>Stage</name>
+<overridemass>${dry}</overridemass><overridesubcomponentsmass>true</overridesubcomponentsmass>
+<overridecg>${cgDry}</overridecg><overridesubcomponentscg>true</overridesubcomponentscg><subcomponents>
+<nosecone><name>nose</name><finish>polished</finish>${m}<length>${f.nose * IN}</length><thickness>0.002</thickness>
+<shape>ogive</shape><shapeclipped>false</shapeclipped><shapeparameter>1</shapeparameter><aftradius>${r}</aftradius>
+<aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></nosecone>
+<bodytube><name>body</name><finish>polished</finish>${m}<length>${f.body * IN}</length><thickness>0.002</thickness>
+<radius>${r}</radius><motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0</ignitiondelay><overhang>0</overhang></motormount><subcomponents>
+<trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.loc - F.cr) * IN}</axialoffset><finish>polished</finish>${m}
+<fincount>${F.n}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection>
+<cant>0</cant><rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength>
+<height>${F.s * IN}</height></trapezoidfinset>${rail}</subcomponents></bodytube></subcomponents></stage></subcomponents>
+</rocket></openrocket>`;
+}
+
+module.exports = { IN, LB, FT, finnedOrk, arcasOrk, flightOrk, A53, A53_PTS, RM10, RM10_PTS, ARCAS, CASES, FLIGHTS };

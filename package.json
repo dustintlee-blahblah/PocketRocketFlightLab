@@ -16,7 +16,8 @@
     "test:smoke": "node build.js && node tests/smoke.js",
     "validate:arcas": "node build.js && node validation/arcas.js",
     "validate:openrocket": "node build.js && node validation/openrocket.js",
-    "validate:accuracy": "node build.js && node validation/accuracy.js"
+    "validate:accuracy": "node build.js && node validation/accuracy.js",
+    "validate:flights": "node build.js && node validation/flights.js"
   },
   "devDependencies": {
     "@babel/parser": "7.26.2",

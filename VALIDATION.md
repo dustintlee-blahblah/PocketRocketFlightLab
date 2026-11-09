@@ -12,10 +12,11 @@ In short:
 | Apogee, 33 design files | OpenRocket 24.12, same files and conditions | median +0.9%, typical ±1.5% (65 flights) |
 | Apogee, OpenRocket's own examples | OpenRocket 24.12 | median −0.2%, typical ±2.3% (34 flights) |
 | Center of pressure | NASA wind-tunnel data, Arcas rocket, Mach 0.6–4.6 | RMS error 2.3% of body length |
-| Total drag | NACA wind-tunnel data, Mach 0.6–4.6 | mean error 17% |
+| Total drag | NACA free-flight data (RM A53D02), Mach 0.6–4.6 | mean error 14.4% |
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.022 in drag coefficient |
-| Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8%, CP 0.8% of length, CNα 16% low |
-| Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 12.7% low |
+| Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.9–6.9%, CP 0.8% of length, CNα 16% low |
+| Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 8.4% low |
+| Apogee of measured flights | 7 hobby and student rockets, altimeter or optical tracking, Mach 0.6–2.1 | mean error 5.8% (RASAero II: 4.2%) |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
@@ -84,9 +85,9 @@ is needed before changing the model.
 
 `tests/drag-benchmarks.js` compares the drag build-up with two NACA reports, and runs on every change:
 
-- **NACA RM A53D02**, total drag of a fineness-10 body with 72°-swept fins, Mach 0.6 to 4.6: mean error **17%**. The
-  app is 12–21% high below Mach 1 and 7–25% low above it, so for this shape it's conservative subsonic and optimistic
-  supersonic.
+- **NACA RM A53D02**, total drag of a fineness-10 body with 72°-swept fins in free flight, Mach 0.6 to 4.6: mean
+  error **14.4%** (17% before the supersonic base drag followed NACA TN 3819). The app is 12–21% high below Mach 1
+  and 8–20% low above it, so for this shape it's conservative subsonic and optimistic supersonic.
 - **NACA RM E50D28**, the drag the RM-10's 60°-swept fins add, Mach 1.5 to 2.0 (Lewis 8- by 6-foot wind tunnel): mean error **0.022**
   in drag coefficient.
 
@@ -108,12 +109,13 @@ digitized curves come from.
 
 | | Subsonic (below 0.8) | Transonic (0.8–1.2) | Supersonic (1.2–3) | High supersonic (3–5) |
 |---|---|---|---|---|
-| Drag, mean error | 6.2% (app high) | 8.7% | 3.8% | 3.5% (app low) |
+| Drag, mean error (while thrusting) | 6.2% (app high) | 9.0% | 8.2% (app high) | 4.3% |
 | CP, mean error | 1.1% of length (app forward) | 0.5% | 1.0% | 0.4% |
 | CNα, mean error | 17.5% low | 11% low | 16.5% low | 16% low |
 
-Drag and CP agree well across the whole range; the app's drag rise through Mach 1 comes late (10–15% low at Mach 1–1.1, 14% high at 1.5), and above
-Mach 4 the app's drag falls a little faster than the manufacturer's. The normal-force slope is about 16% low at every
+Drag and CP agree well across the whole range; the app's drag rise through Mach 1 comes late (10–15% low at Mach 1–1.1), and
+from Mach 1.2 to 3 the app is now about 8% high, thrusting and coasting alike: since the supersonic base drag follows NACA
+TN 3819 the Aerobee came out worse (3.8% before), while the two free-flight rockets came out better. The normal-force slope is about 16% low at every
 speed. That may be the model (Barrowman's fin–body interference factor is a low-speed one) or the reconstructed fins
 being smaller than the real ones: the CP, which bigger fins would move aft, is a little forward too. A drawing of the real
 fins would settle it.
@@ -121,16 +123,43 @@ fins would settle it.
 **NACA RM L55G28a.** Two rocket-propelled models of a fin-stabilized cone-cylinder (a 10° cone on a 7-inch body, 150
 inches long, four steel fins at the base) flown by NACA Langley (reported 1955), their drag measured by radar and
 on-board accelerometers while coasting at Mach 2.5–2.9 and 3.55–3.9, at Reynolds numbers of 85 to 210 million. The app
-is 13.9–14.7% low at Mach 2.5–2.9 and 9.7–11.7% low at 3.55–3.9: low in the same way, by about the same amount, as on
-RM A53D02. Two things in the model point that way. Its supersonic base drag, Fleeman's 0.25/M, is below NACA TN 3819's
-measured base pressures for finned bodies; and these fins, like the Aerobee's, have a sharp leading edge and a blunt
-trailing edge, which the app can't describe (its "beveled" section is sharp at both ends), so their trailing-edge base
-drag is missing.
+is 8.8% low at Mach 2.5–2.9 and 8.0% low at 3.55–3.9 (13.9–14.7% and 9.7–11.7% before the supersonic base drag
+followed NACA TN 3819): low in the same way as RM A53D02. These fins, like the Aerobee's, have a sharp leading edge and
+a blunt trailing edge, which the app can't describe yet (its "beveled" section is sharp at both ends), so their
+trailing-edge base drag is still missing.
 
 `node validation/accuracy.js --verbose` runs every case and prints these tables, keeping the tuned cases apart from the
 check cases. The cases themselves, with their sources and geometry, are in `validation/cases.js`; a new measured
-rocket is added there. With both check rockets, the drag error by speed band is 6.2% subsonic, 8.7% transonic, 8.2%
-supersonic and 5.5% from Mach 3 to 5, the app low above Mach 1.
+rocket is added there. With both check rockets, the drag error by speed band is 6.2% subsonic, 9.0% transonic, 8.3%
+supersonic and 5.2% from Mach 3 to 5.
+
+## Apogee against measured flights
+
+Seven rockets flown with a recording altimeter or optical tracking, as RASAero II's author published them in RASAero
+design files on [rasaero.com](https://www.rasaero.com): five student rockets of one airframe (USAF Test Pilot School
+2004 and Cal Poly Pomona 2005, CTI I205 and I285, barometric altimeters), a LOC/Precision EZI-65 on an AMW J450ST
+(LDRS-26, barometric altimeter) and the Kline-Rogers L500 rocket, which reached Mach 2.1 (USXRL-89, optical tracking).
+`validation/flights.js` flies each in the app with the file's launch weight, CG, launch site and rail, on RASAero's own
+thrust curve for the motor (`validation/flight-motors.eng`, from OpenRocket's motor database), in still air.
+
+| Flight | Max Mach | Measured (ft) | RASAero II | App |
+|---|---|---|---|---|
+| USAF TPS 2004, Team 1 | 0.67 | 3837 | +2.9% | +3.7% |
+| USAF TPS 2004, Team 2 | 0.64 | 3710 | +4.5% | +5.2% |
+| USAF TPS 2004, Team 3 | 0.64 | 3964 | −2.2% | −1.6% |
+| Cal Poly Pomona 2005, Team Columbia | 0.86 | 5085 | −4.7% | −3.0% |
+| Cal Poly Pomona 2005, Team Discovery | 0.82 | 4930 | −1.9% | −0.4% |
+| LOC/Precision EZI-65 | 0.62 | 3965 | +6.3% | +16.9% |
+| Kline-Rogers L500 rocket | 2.09 | 24771 | +7.0% | +10.1% |
+
+**Mean absolute error: 5.8% for the app, 4.2% for RASAero II.** None of the model's constants were set from these
+flights. The three Test Pilot School rockets are the same airframe on the same motor within 0.16 lb, yet their measured
+apogees spread over 7%, so differences of a few percent on one flight are within what the flights themselves scatter.
+
+On six of the seven the app tracks RASAero II closely: matching RASAero's apogee takes 1–3% more drag in the app, and
+3.5% on the L500. The exception is the EZI-65, where the app needs 23% more drag to match RASAero and 40% more to match
+the flight. It is the only one with thick (0.25 in, 3.6% of the chord) rounded fins and large rail buttons, which
+points at how the app prices thick rounded fin edges below the speed of sound; that is open.
 
 ## Running the checks
 
@@ -141,6 +170,7 @@ npm run validate:arcas                                   # CP against NASA's Arc
 npm run test:drag                                        # drag against the NACA reports
 npm run validate:openrocket -- --jar OpenRocket-24.12.jar   # apogee against OpenRocket's examples
 npm run validate:accuracy                                # every measured rocket, by speed band
+npm run validate:flights                                 # apogee against measured flights
 ```
 
 The OpenRocket comparison also needs Java 17 or later and
