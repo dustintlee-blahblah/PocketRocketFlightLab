@@ -115,6 +115,8 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 | Fin drag, Mach 1.5–2.0 | NACA RM E50D28, RM-10 fins, wind tunnel | Mean error 0.022 in Cd. |
 | Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 6.9% mean while thrusting, 4.9% coasting (both high; was 5.5% and 3.0% before TN 3819); CP 0.8% of length; CNα 16% low throughout. |
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 8.4% low (was 12.7%). |
+| Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (never used for tuning) | NACA RM L56G24, free flight | Drag 12.5% low (the model's instrument fairings, not in the app's design, account for about that); CP 6.0% of length forward. |
+| Slender missile with small tail fins, Mach 0.6–3.95 (never used for tuning) | NASA TM-2005-213541, configuration 3, wind tunnel (the report's digital data) | Drag less base 9–14% high outside Mach 0.9–1.2, 37–60% high inside it; CP 3.5–13% of length forward; CNα 4% low at Mach 0.6, 15–28% low above 1. |
 | Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 9.9% mean, app high (+9%; +13% above Mach 1.2); RASAero II 5.4%. |
 | Nose drag | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%. Another program, not a measurement. |
@@ -139,8 +141,10 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 6. **Fins with a sharp leading edge and a blunt trailing edge.** Sounding-rocket fins are often made this way
    (the Aerobee 150A's and RM L55G28a's are). The app's edge types are square, rounded, or sharp at both ends, so
    such fins lose their trailing-edge base drag.
-7. **Normal-force slope.** On the Aerobee 150A the app's CNα is about 16% low at every speed while its CP agrees;
-   either the reconstructed fins are too small or the interference factor is (see item 4).
+7. **Normal-force slope and CP with small fins on long bodies.** On the Aerobee 150A the app's CNα is about 16% low
+   at every speed while its CP agrees. On NASA TM-2005-213541's configuration 3 it is 4% low at Mach 0.6 and 15–25%
+   low above Mach 1, with the CP 4–8% of the length forward, and RM L56G24's CP is 6% forward too: the fins seem to
+   carry more lift than the app gives them, or the body less (see items 4 and 5).
 8. **Real rockets coast lower than the model says.** On the 23 measured flights the app is high by 9% on average,
    13% above Mach 1.2, while its top speeds agree with RASAero II's within a few percent: the missing drag is in the
    coast. OpenRocket overshoots the same flights the same way. Where it comes from (protuberances, finish, fin
@@ -152,8 +156,11 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
    drag to match RASAero II and 40% to match the flight.
 11. **More test cases.** `validation/accuracy.js` scores every measured rocket in `validation/cases.js` by speed band,
    keeping the cases the model was tuned on apart from those kept back for checking, and `validation/flights.js` the
-   measured flights' apogees. The Aerobee 150A, RM L55G28a and the 23 flights are the check cases so far; each new
-   measured rocket goes there.
+   measured flights' apogees. The Aerobee 150A, RM L55G28a, RM L56G24, TM-2005-213541 and the 23 flights are the check cases so far; each new
+   measured rocket goes there. RM L56G24 and TM-2005-213541 are the newest.
+12. **Transonic drag of short noses with a flare behind them.** On TM-2005-213541's configuration 3 (a 2.3-caliber
+   ogive on a narrower forebody, then a cone out to the body) the app's drag without base is 37% high at Mach 0.9,
+   where the tunnel shows no rise yet, and 60% high at Mach 1.19.
 
 ## Further reading for the open gaps
 
