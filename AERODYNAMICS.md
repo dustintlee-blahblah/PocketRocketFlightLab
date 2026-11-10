@@ -24,6 +24,36 @@ sources cited beside it. [VALIDATION.md](VALIDATION.md) has the full comparisons
 Where one method hands over to another the two are blended smoothly over a stated Mach range (a smoothstep), so no
 coefficient jumps.
 
+## The test drag model
+
+Settings → Drag model switches between the released model (this page) and a test model being built term by term
+from public sources, mainly the method choices in the Missile DATCOM final report (Vukelich et al., AFWAL-TR-86-3091
+Volume I, 1988, approved for public release) and the NACA and NASA reports it relies on. A term not yet moved over is
+computed exactly as the released model computes it. Flights, the landing dispersion, flight-log calibration and the
+Wind Tunnel follow the setting; with the test model chosen, the Wind Tunnel also draws the released model's drag and
+the Results tab marks the run "TEST drag model". The code is in `src/js/physics/drag-model.js`.
+
+| Term | Test model | Released model |
+|---|---|---|
+| Skin friction compressibility | Van Driest II (J. Aero. Sci., March 1951), wall at the free-stream temperature as in Missile DATCOM, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
+| Everything else | as released | |
+
+Against the same measurements (mean absolute error):
+
+| Case | Released | Test |
+|---|---|---|
+| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 9.2% |
+| NACA RM E50D28, fin drag (tuned) | 0.025 Cd | 0.030 Cd |
+| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 13.4%, high |
+| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 24.3%, high |
+| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 16.0%, high |
+| 23 measured flights, apogee | 9.9% (+9.2% bias) | 7.8% (+5.9% bias) |
+| the 9 flights above Mach 1.2 | 13.0% | 7.9% |
+
+The cold wall helps the measured flights and hurts the wind-tunnel case, where a model runs long enough to reach the
+adiabatic wall temperature. An adiabatic wall in the same formula gave 10.3%, 0.027, 2.8%, 9.1%, 9.1% and 8.9% (10.4%
+above Mach 1.2). The wall temperature is the open choice for this term.
+
 ## Drag at zero angle of attack (`cdParts`)
 
 Every drag coefficient is on the reference area, the frontal area of the widest body section.

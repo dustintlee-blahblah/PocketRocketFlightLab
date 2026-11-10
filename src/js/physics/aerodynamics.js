@@ -8,6 +8,7 @@
  * Sources for each term are given where it is computed.
  */
 import { FIN_SWEEP_N, finBlunt, finSweepRatio, finTransonicCd, finWaveK } from "../core/units-and-fin-edges.js";
+import { dragModel, vanDriestRatio } from "./drag-model.js";
 import { noseR, noseSpec, noseTip } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
    Skin friction: Prandtl–Schlichting turbulent flat-plate law, boundary layer turbulent from the tip (Schlichting, Boundary-Layer Theory),
@@ -518,9 +519,10 @@ function noseCdTR100(shape, param, M) {
  * @param {number} k roughness height, m
  * @param {number} M Mach number
  * @param {string} mode "natural" for natural laminar-to-turbulent transition; otherwise turbulent from the start
+ * @param {boolean} [vd] the test drag model's compressibility (Van Driest II, drag-model.js) in place of the released one
  * @returns {number} Cf on the wetted area
  */
-function plateCf(Re, Lc, k, M, mode) {
+function plateCf(Re, Lc, k, M, mode, vd = false) {
   // flat-plate skin friction: turbulent (or natural transition), with roughness and compressibility
   // The boundary layer is taken as turbulent from the nose tip: on a real rocket the tip, joints, lugs and paint trip it early.
   // Roughness is measured against the component's own streamwise length (body length, or a fin's mean chord), as in
@@ -535,7 +537,8 @@ function plateCf(Re, Lc, k, M, mode) {
   // Nikuradse regimes: roughness has no effect below k+ ≈ 5 (hydraulically smooth) and full effect above k+ ≈ 70 (fully rough)
   const kPlus = k * (Re / Lc) * Math.sqrt(smoothCf / 2);
   const w = kPlus > 0 ? smooth01(Math.log(kPlus / 5) / Math.log(70 / 5)) : 0;
-  return (smoothCf + w * Math.max(roughCf - smoothCf, 0)) * Math.pow(1 + 0.144 * M * M, -0.65);
+  const comp = vd ? vanDriestRatio(M, Re) : Math.pow(1 + 0.144 * M * M, -0.65);
+  return (smoothCf + w * Math.max(roughCf - smoothCf, 0)) * comp;
 }
 /**
  * Drag coefficient of a short cylinder in crossflow (a rail button), on its frontal area.
@@ -1269,9 +1272,10 @@ function finK(f, Mn, beta, cb2) {
  * @param {number} v airspeed, m/s
  * @param {object} atm the air, from atmosphere()
  * @param {number} [nozzleArea=0] nozzle exit area while a motor burns, m² (its exhaust fills that much of the base)
+ * @param {string} [model] "released" or "test" (drag-model.js); by default the one chosen in Settings
  * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref
  */
-export function cdParts(A, v, atm, nozzleArea = 0) {
+export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel) {
   // a fixed Cd for the whole rocket (from the design file): used as it is, scaled by any calibration to a real flight
   if (A.override > 0) return { cd: A.override * (A.scale || 1), friction: 0, pressure: 0, base: 0, override: true };
   v = Math.max(v, 0.01);
@@ -1281,7 +1285,8 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
     cb = baseCpBody(M),
     cb2 = baseCp2D(M),
     cbBase = baseCpRocket(A.baseB, M),
-    S = A.Aref;
+    S = A.Aref,
+    vd = model === "test"; // the test model's terms (drag-model.js); everything else is the released model
   /* where the transonic drag rise starts depends on the shape. Bodies: the transonic similarity rule (Oswatitsch) says
      flows over slender bodies match when (1 − M²) scales with (d/l)^(2/3), so a slender body's drag rise comes later than
      a stubby one's: the measured fineness-3 curves are read at an equivalent Mach number, 1 − M_eq² = (1 − M²)·(l/d ÷ 3)^(2/3).
@@ -1300,7 +1305,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       ovr += sg.cdo;
       continue;
     }
-    friction += plateCf((v * A.L) / nu, A.L, sg.rs, M, A.blMode) * sg.wet;
+    friction += plateCf((v * A.L) / nu, A.L, sg.rs, M, A.blMode, vd) * sg.wet;
   }
   friction *= A.ffBody;
   for (const f of A.fins) {
@@ -1308,7 +1313,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       ovr += f.cdo;
       continue;
     }
-    const cfF = plateCf((v * f.mac) / nu, f.mac, f.rs, M, A.blMode) * f.ff;
+    const cfF = plateCf((v * f.mac) / nu, f.mac, f.rs, M, A.blMode, vd) * f.ff;
     friction += f.n * cfF * 2 * f.area;
     finCf.set(f, cfF);
   }
@@ -1362,7 +1367,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
   for (const pd of A.pods || []) {
     const trP = transonic(mEq(M, pd.L / (2 * pd.R)));
     let fr = 0;
-    for (const sg of pd.segs) fr += plateCf((v * pd.L) / nu, pd.L, sg.rs, M, A.blMode) * sg.wet;
+    for (const sg of pd.segs) fr += plateCf((v * pd.L) / nu, pd.L, sg.rs, M, A.blMode, vd) * sg.wet;
     friction += (pd.k * fr * pd.ffBody) / S;
     for (const it of pd.fore) {
       let cd;
@@ -1386,7 +1391,7 @@ export function cdParts(A, v, atm, nozzleArea = 0) {
       ovr += t.cdo;
       continue;
     }
-    friction += (t.n * plateCf((v * t.c) / nu, t.c, t.rs, M, A.blMode) * t.wet) / S;
+    friction += (t.n * plateCf((v * t.c) / nu, t.c, t.rs, M, A.blMode, vd) * t.wet) / S;
     let inner = 0;
     if (t.inner > 1e-10) {
       const Re = Math.max((v * 2 * t.ri) / nu, 1),

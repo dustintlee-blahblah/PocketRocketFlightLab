@@ -115,6 +115,8 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <button type="button" class="linkbtn setreset" id="s-colreset">Reset to the default colors</button>
       </div>
       <label class="setrow setchk"><span>Swipe left or right to change tabs</span><input type="checkbox" id="s-swipe"></label>
+      <div class="setrow"><span>Drag model</span><div class="seg2" role="group" aria-label="Drag model"><button type="button" data-drag-set="released">Released</button><button type="button" data-drag-set="test">Test</button></div></div>
+      <p class="setnote" id="s-dragnote" hidden>Test drag model: a model in development, built term by term from public NACA, NASA and Missile DATCOM sources, for comparing with the released one. Flights, the landing dispersion, flight-log calibration and the Wind Tunnel all use it; the Wind Tunnel also draws the released model's drag for comparison. Launch again to fly it.</p>
       <button type="button" class="setrow setitem supitem" id="s-supbtn" aria-expanded="false" aria-controls="s-sup"><span><span class="supheart" aria-hidden="true">♥</span> Support the app</span><span class="setdots"><span class="supdon">Donate</span><b aria-hidden="true">›</b></span></button>
       <div class="setsub" id="s-sup" hidden>
         <p class="setnote" style="font-size:.86rem;color:var(--ink)">Pocket Rocket Flight Lab is free, with no ads. If it helps your flying, you can chip in toward its development.</p>
@@ -136,7 +138,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <!-- RESULTS -->
   <section class="view" id="v-results" hidden>
     <div class="panel">
-      <p class="eyebrow">Predicted apogee, above ground</p>
+      <p class="eyebrow" id="apoeyebrow">Predicted apogee, above ground</p>
       <div class="hero">
         <div class="apogee" id="apogee">—</div>
         <div class="motorchip"><span class="sub">Motor</span><b id="mchip">—</b><button id="mchange">Change</button></div>

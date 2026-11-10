@@ -9,6 +9,7 @@ import { D, L } from "../design/defaults.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { aero, cdParts, cnaPartsM, normalForceAt, radiusAt, segR, stability } from "../physics/aerodynamics.js";
 import { atmosphere } from "../physics/atmosphere.js";
+import { dragModel } from "../physics/drag-model.js";
 import { bodyPressures, obliqueShock } from "../physics/flow-picture.js";
 import { flowScene } from "../physics/flow-streams.js";
 import { noseRTip, noseTip } from "../physics/geometry.js";
@@ -87,7 +88,8 @@ function wtCompute() {
   const S = wtSetup(),
     { A, atm, An } = S,
     mmax = +document.getElementById("wtmax").value || 2,
-    nu = atm.mu / atm.rho;
+    nu = atm.mu / atm.rho,
+    test = dragModel === "test"; // with the test drag model chosen, the released model's drag is worked out alongside
   const rows = machGrid(mmax).map((M) => {
     const v = M * atm.a,
       off = cdParts(A, v, atm, 0),
@@ -99,13 +101,15 @@ function wtCompute() {
       Re: (v * A.L) / nu,
       off,
       on: on.cd,
+      rel: test ? cdParts(A, v, atm, 0, "released") : null,
+      relOn: test ? cdParts(A, v, atm, An, "released").cd : null,
       cn: C.cn,
       cnFin: C.cnFin,
       cnBody: C.cn - C.cnFin,
       cp: C.cp,
     };
   });
-  WT = { ...S, rows, mmax };
+  WT = { ...S, rows, mmax, test };
 }
 
 /* ---------- charts: SVG lines with a crosshair readout ---------- */
@@ -309,9 +313,20 @@ function wtReadout() {
   const stab = cg != null ? (C.cp - cg) / d : null;
   const tile = (k, val, u) =>
     `<div class="stat"><div class="k">${k}</div><div class="v">${val}<i>${u || ""}</i></div></div>`;
+  // with the test drag model chosen: the released model's coasting Cd at this speed, and how far the test model is from it
+  const rel = WT.test && !off.override ? cdParts(A, v, atm, 0, "released").cd : null;
   document.getElementById("wttiles").innerHTML = [
-    tile("Cd coasting", off.cd.toFixed(3)),
-    tile("Cd motor burning", on.cd.toFixed(3)),
+    tile(rel != null ? "Cd coasting, test" : "Cd coasting", off.cd.toFixed(3)),
+    ...(rel != null
+      ? [
+          tile(
+            "Cd coasting, released",
+            rel.toFixed(3),
+            `test ${off.cd >= rel ? "+" : "−"}${Math.abs((off.cd / rel - 1) * 100).toFixed(1)}%`,
+          ),
+        ]
+      : []),
+    tile(rel != null ? "Cd motor burning, test" : "Cd motor burning", on.cd.toFixed(3)),
     tile("Drag force", fmt(q * A.Aref * off.cd, "force"), uname("force")),
     tile("CNα", C.cn.toFixed(2), "per rad"),
     tile("CP from tip", fmt(C.cp, "len"), uname("len")),
@@ -366,19 +381,28 @@ function wtCharts() {
     band = [0.8, 1.2],
     fx = (x, i) => `Mach ${x.toFixed(2)} · ${fmt(R[i].v, "speed")} ${uname("speed")}`,
     ov = R.some((r) => r.off.override);
+  const cmp = WT.test && !ov; // the test drag model, drawn over the released one
   lineChart(document.getElementById("wtc-cd"), {
-    title: "Drag coefficient",
+    title: cmp ? "Drag coefficient: test model against released" : "Drag coefficient",
     desc: ov
       ? "The design file sets a fixed Cd, so it doesn't change with speed."
-      : "At zero angle of attack. Dashed: with the motor burning, its nozzle filling part of the base.",
+      : cmp
+        ? "At zero angle of attack. The test drag model (chosen in Settings) against the released one, coasting and with the motor burning (dashed)."
+        : "At zero angle of attack. Dashed: with the motor burning, its nozzle filling part of the base.",
     x: X,
     xLabel: "Mach",
     yLabel: "Cd",
     yMin: 0,
     band,
     series: [
-      { name: "Coasting", color: css("--accent"), values: R.map((r) => r.off.cd) },
-      { name: "Motor burning", color: css("--cg"), dash: true, values: R.map((r) => r.on) },
+      { name: cmp ? "Test, coasting" : "Coasting", color: css("--accent"), values: R.map((r) => r.off.cd) },
+      { name: cmp ? "Test, burning" : "Motor burning", color: css("--cg"), dash: true, values: R.map((r) => r.on) },
+      ...(cmp
+        ? [
+            { name: "Released, coasting", color: css("--muted"), values: R.map((r) => r.rel.cd) },
+            { name: "Released, burning", color: css("--muted"), dash: true, values: R.map((r) => r.relOn) },
+          ]
+        : []),
     ],
     vline: M,
     fmtX: fx,
@@ -971,8 +995,13 @@ function anim(t) {
 function csvText() {
   const { A, atm, alt } = WT;
   let s = `# Pocket Rocket Flight Lab wind tunnel: ${(D.name || "rocket").replace(/\n/g, " ")}\n# reference area ${A.Aref.toExponential(5)} m^2 (diameter ${(2 * A.R).toFixed(5)} m), length ${A.L.toFixed(4)} m, ${alt.toFixed(0)} m above the pad, air ${(atm.T - 273.15).toFixed(1)} C\n`;
+  if (WT.test) s += "# drag: TEST model (the cd_ columns); the released model's drag is in the cd_released_ columns\n";
   s +=
-    "mach,velocity_m_s,reynolds,cd_coasting,cd_friction,cd_pressure,cd_base,cd_motor_burning,cn_alpha_per_rad,cn_alpha_fins,cn_alpha_body,cp_from_tip_m\n";
+    "mach,velocity_m_s,reynolds,cd_coasting,cd_friction,cd_pressure,cd_base,cd_motor_burning,cn_alpha_per_rad,cn_alpha_fins,cn_alpha_body,cp_from_tip_m" +
+    (WT.test
+      ? ",cd_released_coasting,cd_released_friction,cd_released_pressure,cd_released_base,cd_released_motor_burning"
+      : "") +
+    "\n";
   for (const r of WT.rows)
     s +=
       [
@@ -988,6 +1017,15 @@ function csvText() {
         r.cnFin.toFixed(4),
         r.cnBody.toFixed(4),
         r.cp.toFixed(5),
+        ...(WT.test
+          ? [
+              r.rel.cd.toFixed(5),
+              (r.rel.friction || 0).toFixed(5),
+              (r.rel.pressure || 0).toFixed(5),
+              (r.rel.base || 0).toFixed(5),
+              r.relOn.toFixed(5),
+            ]
+          : []),
       ].join(",") + "\n";
   return s;
 }

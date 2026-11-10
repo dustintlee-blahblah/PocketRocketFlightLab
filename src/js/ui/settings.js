@@ -5,6 +5,7 @@
 import { BLD, bldRender } from "../builder/builder-ui.js";
 import { store } from "../core/storage.js";
 import { PROFILE, units } from "../design/defaults.js";
+import { setDragModel } from "../physics/drag-model.js";
 import { drawMC } from "../physics/monte-carlo.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender } from "./donate.js";
@@ -12,6 +13,7 @@ import { setUnits } from "./events.js";
 import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
 import { renderRSO } from "./rso-checklist.js";
+import { wtRefresh } from "./wind-tunnel.js";
 let rt = null;
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
@@ -70,6 +72,19 @@ export function start() {
           store.set("rfs-theme", b.dataset.themeSet);
           applyTheme(b.dataset.themeSet);
           sync();
+        }),
+    );
+    /* drag model: the released one, or the test model being built for comparison (physics/drag-model.js). The last
+       run's results stay until the next Launch, which says which model flew it. */
+    menu.querySelectorAll("[data-drag-set]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          store.set("rfs-dragmodel", b.dataset.dragSet);
+          setDragModel(b.dataset.dragSet);
+          sync();
+          try {
+            wtRefresh();
+          } catch (_) {}
         }),
     );
     const sw = document.getElementById("s-swipe");
@@ -216,8 +231,12 @@ export function start() {
       document.getElementById("s-imp").setAttribute("aria-pressed", units === "imp");
       document.getElementById("s-met").setAttribute("aria-pressed", units === "met");
       sw.checked = store.get("rfs-swipe", true) !== false;
+      const dm = store.get("rfs-dragmodel", "released") === "test" ? "test" : "released";
+      menu.querySelectorAll("[data-drag-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.dragSet === dm));
+      document.getElementById("s-dragnote").hidden = dm !== "test";
     }
     applyTheme(store.get("rfs-theme", "auto"));
+    setDragModel(store.get("rfs-dragmodel", "released"));
     sync();
   })();
   window.addEventListener("resize", () => {

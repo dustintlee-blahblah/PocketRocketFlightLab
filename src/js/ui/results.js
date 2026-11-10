@@ -10,6 +10,7 @@ import { renderTitle } from "../files/unsaved-changes.js";
 import { renderFlightLog } from "../flightlog/flight-log.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { stability } from "../physics/aerodynamics.js";
+import { dragModel } from "../physics/drag-model.js";
 import { mcAuto, renderMC } from "../physics/monte-carlo.js";
 import { noseWeightPlan } from "../physics/nose-weight.js";
 import { simulate } from "../physics/simulate.js";
@@ -59,6 +60,7 @@ export function runAll() {
     D: { ...D },
     L: { ...L },
     windTable,
+    dragModel,
     when: Date.now(),
   };
   renderResults();
@@ -100,6 +102,11 @@ export function renderResults() {
       if (b) b.disabled = !SOURCE;
     }
   }
+  // a run flown with the test drag model says so, so it can't be mistaken for the released model's prediction
+  document.getElementById("apoeyebrow").textContent =
+    lastSim && lastSim.dragModel === "test"
+      ? "Predicted apogee, above ground · TEST drag model"
+      : "Predicted apogee, above ground";
   if (!lastSim) {
     document.getElementById("mchip").textContent = flightMotor().cn || flightMotor().name;
     document.getElementById("stats").hidden = true;
