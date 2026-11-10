@@ -54,19 +54,20 @@ on what the airframe survives. A cooler skin has more friction, so a rocket's dr
 
 Against the same measurements (mean absolute error), term by term:
 
-| Case | Released | Test: friction only | Test: friction and base | Test: first four terms | Test: with the fin term |
-|---|---|---|---|---|---|
-| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 8.1% | 8.6% | 6.2% |
-| NACA RM E50D28, fin drag, wind tunnel (tuned; fin thickness corrected, see Fins) | 0.027 Cd, low | | | 0.027 Cd, low | 0.013 Cd |
-| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 2.8% | 2.6% | 2.7% |
-| TR R-100 configuration 11, 8° boattail, total drag, free flight (check) | 8.1%, low | | | 9.3% | 14.4%, high |
-| TR R-100 configuration 36, 4° boattail, total drag, free flight (check) | 35.7%, high | | | 31.9%, high | 27.8%, high |
-| TR R-100 figure 5, pressure drag of 45° fins 2.8% thick (check) | 0.028 Cd | | | 0.028 Cd | 0.012 Cd |
-| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 9.2%, high | 7.8%, high | 9.3%, high |
-| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 10.3% | 9.8% | 7.9% |
-| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) | 9.7% (+9.5%) | 8.3% (+7.0%) |
-| the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% | 9.5% | 9.5% |
-| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% | 11.2% | 7.5% |
+| Case | Released | Test: friction only | Test: friction and base | Test: first four terms | Test: with the fin term | Test: boattails and transonic fins |
+|---|---|---|---|---|---|---|
+| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 8.1% | 8.6% | 6.2% | 6.2% |
+| NACA RM E50D28, fin drag, wind tunnel (tuned; fin thickness corrected, see Fins) | 0.027 Cd, low | | | 0.027 Cd, low | 0.013 Cd | 0.013 Cd |
+| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 2.8% | 2.6% | 2.7% | 2.7% |
+| NASA TN D-4013, Arcas short model, 15° boattail, total drag, wind tunnel (check) | 25.4%, high | | | 22.0% | 7.2% |
+| TR R-100 configuration 11, 8° boattail, total drag, free flight (check) | 16.7%, low | | | 7.2% | 6.9% |
+| TR R-100 configuration 36, 4° boattail, total drag, free flight (check) | 27.1%, high | | | 18.6%, high | 16.8%, high |
+| TR R-100 figure 5, pressure drag of 45° fins 2.8% thick (check) | 0.028 Cd | | | 0.028 Cd | 0.012 Cd | 0.012 Cd |
+| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 9.2%, high | 7.8%, high | 9.3%, high | 9.3%, high |
+| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 10.3% | 9.8% | 7.9% | 7.9% |
+| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) | 9.7% (+9.5%) | 8.3% (+7.0%) | 8.3% (+7.0%) |
+| the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% | 9.5% | 9.5% | 9.5% |
+| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% | 11.2% | 7.5% | 7.5% |
 
 **Friction.** The skin's temperature has two limits: held at the pad temperature the friction-only column reads 9.2%,
 0.030, 13.4% high, 24.3% high, 16.0% high, 7.8% and 7.9%; fully heated it reads 10.3%, 0.027, 2.8%, 9.1%, 9.1%, 8.9%
@@ -87,22 +88,34 @@ body curve, so on R-100's higher curve from Mach 1 to 2 it may count some of the
 **Nose.** Shock-expansion reads 4–9% under the released nose drag from Mach 2.5 to 4 and above it past Mach 5, where
 the released model blends into Newtonian theory. The first-four-terms column's changes from the one before are all the nose's.
 
-**Boattail.** Two rocket-boosted models from TR R-100's appendix with conical boattails ending at the base now check
-this term (the flights of Ion Drive, Proteus 6 and Qu8k have one too). Configuration 11 (an 8° boattail to 0.67 of the
-diameter, delta fins) goes from 8% low on average to within 6% from Mach 1.3 to 1.5 and 11–15% high from Mach
-1.7 to 2: the released model's boattail relief leaves almost no base drag at Mach 2 (0.012), the test model's
-base and afterbody drag there (0.07) is more than was measured. Configuration 36 (a 4° boattail to 0.72, three
-45°-swept untapered fins) is 30–50% high in both models below Mach 1 and above Mach 1.2, for reasons that are mostly not the boattail's:
+**Boattails.** Three cases check them: two rocket-boosted models from TR R-100's appendix (configuration 11, an 8°
+boattail to 0.67 of the diameter with delta fins; configuration 36, 4° to 0.72 with 45° untapered fins) and the
+Arcas short model in the wind tunnel (NASA TN D-4013: 15° to 0.65, Mach 0.6 to 1.2, with the base's own force given
+separately). The measured flights' boattails are all steeper than 25° and count as separated. The NACA models were
+polished metal: flown with a 2 µm finish the test model's friction matches the report's own estimate for
+configuration 11 at Mach 2 (0.110); with 20 µm it was a third higher, because at those Reynolds numbers 20 µm is
+rough.
 
-- Its fins' pressure drag was measured separately (TR R-100 figure 5: 0.0037 on their exposed area from Mach 1.05 to
-  3, nothing below Mach 0.97). Both models give 0.008 from Mach 1.2 to 1.5, more than twice that (0.055 of Cd too
-  much on this model), and under half the measured value at Mach 3. This is now the "TR R-100 figure 5" case. The fin
-  wave-drag term was fitted to 10%-thick 60° fins and 4%-thick 30° fins; thin fins swept 45° are between them.
-- Below Mach 1 the model's friction alone (0.24) is the whole measured drag (0.24). The report's own all-turbulent
-  friction estimate is 0.205 and it warns that polished models like these flew with long runs of laminar flow on
-  their fins, so this part of the miss may be the models' finish, not the method.
-- What the body's base and pressure drag come to once those are taken out is about 0.04 at Mach 0.9, under half of
-  what either model gives a 0.72 base: base drag behind a boattail below Mach 1 is still too high.
+The last column changes three things in the test model, each from the Arcas data:
+
+- The flow stays on a boattail up to 15° (none past 25°; the released model starts to separate it at 8°, after
+  Hoerner). The Arcas base reads at or above free-stream pressure below Mach 0.95, which it could not behind a
+  separated cone.
+- The base-radius rule for the base pressure applies below Mach 1 too.
+- The afterbody's wave drag (TR R-100's equation 1) fades in from Mach 0.88 to 1 instead of from 1 to 1.2. With
+  its fins off the Arcas model gains about 0.15 of pressure drag over that range; the equation gives 0.14 at Mach 1.
+
+The Arcas case goes from 22% to 7%. What is left: the test model is 15% high below Mach 0.8, where the tunnel's base
+force is negative (−0.04; a sting was in the wake) and the model's is +0.04; configuration 11 is 8% low at Mach 1.1
+and 10% high at Mach 2; configuration 36 is 13–27% high throughout, about half of it below Mach 1 where the
+report suspects laminar flow on the fins, and its nose (a curved tip faired into a cone) is only roughly what the
+app can describe.
+
+**Fins near Mach 1.** The Arcas fins (30° sweep, 4.3% thick) add 0.03 on their own area from Mach 0.95 to 1.05 (fins
+on minus fins off, less friction), twice what thin-airfoil theory gives, and are back on it by Mach 1.2. The test
+model now takes the larger of the linear term and a transonic peak, 5.7·(t/c)^(5/3) times the released model's
+sweep factor, which also gives the 0.0055 peak of TR R-100's 45° fins. The released model's bump has the same form
+with 9.36, fitted to the Arcas total drag when its base drag was too high.
 
 **The missing coast drag is not spread evenly.** Scaling each flight's drag until its apogee matches gives the factor
 that rocket needs. Eleven of the 23 need 0.97–1.12 (1.04 on average): the university and research rockets with
@@ -126,14 +139,13 @@ beveled fins, and Blister. The other twelve need 1.13–1.63: nine are rockets w
 So there is no one missing term. The fins are where the evidence points: blunt and rounded edges below Mach 1, and
 the wave drag of thin swept fins above it.
 
-**Fins.** The last column. A sharp-edged fin's wave drag is now thin-airfoil theory on the free stream,
+**Fins.** The fifth column. A sharp-edged fin's wave drag is now thin-airfoil theory on the free stream,
 K·(t/c)²/β on the fin's area, held at K·(t/c)²·cot Λ while the leading edge is swept behind the Mach line, rising from
-the section's drag-divergence Mach number to Mach 1.05 (where Missile DATCOM also puts the full value), with no
-separate transonic bump. On the 45° fins of TR R-100 figure 5 it gives 0.0046 against 0.0037 measured up to Mach
+the section's drag-divergence Mach number to Mach 1.05 (where Missile DATCOM also puts the full value); the peak near
+Mach 1 is described below. On the 45° fins of TR R-100 figure 5 it gives 0.0046 against 0.0037 measured up to Mach
 1.4, and falls below the measurement past Mach 2 (the report draws one level line to Mach 3 and says it did not try
 for accuracy). The 72° fins of RM A53D02 improve too, and the supersonic flights, whose short bevels now cost what
-theory says: 11.2% to 7.5%. Configuration 11 gets worse (its base and afterbody drag were already too high, and its
-delta fins now add more), and so does the Aerobee coasting.
+theory says: 11.2% to 7.5%. The Aerobee coasting gets worse (7.8% to 9.3% high).
 
 The RM-10 case had its fins twice too thick. RM E50D28 gives their thickness ratio as 0.10; NACA Report 1160 says
 that is measured normal to the 60° leading edge, so it is 5% along the flow. The released model's sweep factor
@@ -232,7 +244,7 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 | Fin drag, Mach 1.5–2.0 | NACA RM E50D28, RM-10 fins, wind tunnel | Mean error 0.027 in Cd, low (the case had the fins 10% thick along the flow; they are 5%). |
 | Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 6.9% mean while thrusting, 4.9% coasting (both high; was 5.5% and 3.0% before TN 3819); CP 0.8% of length; CNα 16% low throughout. |
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 8.4% low (was 12.7%). |
-| Boattailed bodies, Mach 0.9–2 (never used for tuning) | NASA TR R-100, configurations 11 and 36, free flight | Drag 8.1% low on configuration 11; 36% high on configuration 36, whose fins' measured wave drag (figure 5) the model more than doubles. |
+| Boattailed bodies, Mach 0.6–2 (never used for tuning) | NASA TR R-100, configurations 11 and 36, free flight; NASA TN D-4013, Arcas short model, wind tunnel | Drag 17% low on configuration 11, 27% high on configuration 36 (whose fins' measured wave drag, figure 5, the model more than doubles), 25% high on the Arcas. |
 | Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 9.9% mean, app high (+9%; +13% above Mach 1.2); RASAero II 5.4%. |
 | Nose drag | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%. Another program, not a measurement. |

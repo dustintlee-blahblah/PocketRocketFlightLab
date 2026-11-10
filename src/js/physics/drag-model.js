@@ -15,11 +15,13 @@
  *   3. Nose wave drag above Mach 2: second-order shock-expansion (NACA Report 1328) from the exact cone solution, in
  *      place of the released curves' extension and Newtonian blend (noseCdSE in aerodynamics.js).
  *   4. Boattails above Mach 1: TR R-100's equation 1, a wave drag term the released model doesn't have and its
- *      base-diameter-ratio rule for the base pressure, in place of TN 3819's boattail correction.
+ *      base-diameter-ratio rule for the base pressure (at every speed), in place of TN 3819's boattail correction.
+ *      The flow stays on boattails up to 15°, and the wave drag fades in from Mach 0.88 to 1 (NASA TN D-4013).
  *   5. Wave drag of sharp-edged fins: thin-airfoil theory on the free-stream Mach number, held at its value where the
  *      Mach line reaches the leading edge while the edge is swept behind it, in place of the released model's
  *      normal-Mach form with a fitted sweep factor and transonic bump. Checked against the measured fin pressure
- *      drag of NASA TR R-100 figure 5 and NACA RM E50D28.
+ *      drag of NASA TR R-100 figure 5 and NACA RM E50D28. Near Mach 1 a transonic peak, 5.7·(t/c)^(5/3) with the
+ *      released sweep factor, from the Arcas fins' measured drag (NASA TN D-4013), where it is the larger.
  *
  * cdParts() in aerodynamics.js reads the setting; the Wind Tunnel asks for both models by name to draw them together.
  */

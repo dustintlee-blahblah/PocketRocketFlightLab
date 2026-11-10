@@ -231,7 +231,11 @@ function pmPressureRatio(M, turn) {
 function baseCpRocket(B, M, test = false) {
   const w = tn3819W(M),
     sub = test ? baseCpBody(M, true) : 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1);
-  if (w <= 0 || !B) return w <= 0 ? sub : baseCpBody(M, test);
+  /* The test drag model's boattail rule (below): the body curve's pressure times base radius / maximum radius, at
+     every speed. Below Mach 1 that is also the form of Hoerner's base drag rule, (base diameter / diameter)³; TR
+     R-100 warns it can still be too high there (boattailed bases can read above free-stream pressure). */
+  const btK = test && B && B.attT > 0 ? 1 - B.attT * (1 - Math.min(Math.max(B.hD, 0), 1)) : 1;
+  if (w <= 0 || !B) return w <= 0 ? sub * btK : baseCpBody(M, test);
   const m = Math.max(M, 1),
     q = 0.7 * m * m;
   let cp = tblAt(test ? R100_BODY : TN3819_BODY, m);
@@ -247,7 +251,7 @@ function baseCpRocket(B, M, test = false) {
      afterbodies, so it needs no fade-in below Mach 2: on the RM-10 (base 0.6 of the maximum) it gives 0.12 at Mach
      1.2, where TN 3320 measured about 0.11 in flight. Only the attached share of a steep tail cone counts. */
   if (test) {
-    if (B.att > 0) cp *= 1 - B.att * (1 - Math.min(Math.max(B.hD, 0), 1));
+    cp *= btK;
   } else if (B.bt > 0 && btW > 0) {
     const cp0 = cp;
     // δe from the body curve: the Prandtl–Meyer turn that gives the body-alone base pressure
@@ -272,7 +276,7 @@ function baseCpRocket(B, M, test = false) {
     fin += ref * f.g * fx;
   }
   const sup = Math.min(cp + fin, 0.95 / q);
-  return sub * (1 - w) + sup * w;
+  return sub * btK * (1 - w) + sup * w;
 }
 /**
  * The base-pressure terms of one fin set for baseCpRocket (TN 3819, figs. 32–35).
@@ -1014,7 +1018,8 @@ export function aero(D) {
       });
     } else {
       const deg = (Math.atan(dr / sg.len) * 180) / Math.PI;
-      aft.push({ seg: i, k: smooth01((deg - 8) / 12), area });
+      // kT: the test drag model keeps the flow on boattails up to 15° (see baseB.attT)
+      aft.push({ seg: i, k: smooth01((deg - 8) / 12), kT: smooth01((deg - 15) / 10), area });
     }
   });
   const last = segs[segs.length - 1],
@@ -1143,6 +1148,10 @@ export function aero(D) {
         // flow that stays attached to it, and its start over the body's maximum radius
         btDeg: bt * (180 / Math.PI),
         att: bt > 0 ? 1 - smooth01((bt * (180 / Math.PI) - 8) / 12) : 0,
+        /* The test drag model's attached share: full up to 15°, none past 25°. TR R-100 checked its afterbody
+           equation against flight data for slopes up to 15°, and the Arcas model's 15° boattail (NASA TN D-4013)
+           keeps its base at or above free-stream pressure below Mach 0.95, which a separated tail cone could not. */
+        attT: bt > 0 ? 1 - smooth01((bt * (180 / Math.PI) - 15) / 10) : 0,
         fins: fins
           .filter((f) => f.pod == null)
           .map((f) => tn3819FinTerm(f, L, 2 * radiusAtSegs(segs, f.xLead + f.a, R))),
@@ -1486,21 +1495,23 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
     pressure += ((M < 1 ? (1 - tr) * it.sub + tr * wave(1) : wave(M)) * it.area) / S;
   }
   for (const it of A.aft) {
-    if (!skip(it)) base += (it.k * cb * it.area) / S;
+    if (!skip(it)) base += ((tm && it.kT != null ? it.kT : it.k) * cb * it.area) / S;
   }
   if (A.baseArea > 0) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
   /* The test drag model: the pressure (wave) drag of a boattail ending at the base, above Mach 1. TR R-100's
      equation 1 for conical afterbodies: (0.0010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)^n] on the
      maximum cross-section, θ the afterbody's slope in degrees, n = 4 below Mach 3.5 and 3 above. Its first part
      approximates the second-order theory of NACA TN 2972 (Jack) and was checked against flight data for slopes under
-     15°; the report warns against using it below Mach 1, so it fades in from Mach 1 to 1.2, and only the attached
-     share of a steeper cone counts (the rest is already base area, above). The released model has no such term. */
-  if (tm && M > 1 && A.baseB && A.baseB.att > 0) {
+     15°; the report warns against using it below Mach 1, so it fades in through the transonic drag rise, from Mach
+     0.88 to 1 (the Arcas model's 15° boattail, NASA TN D-4013 with its fins off, gains about 0.15 of pressure drag
+     over that range and holds it to Mach 1.2; this gives 0.14 at Mach 1 and 0.12 at 1.2). Only the attached share
+     of a steeper cone counts (the rest is already base area, above). The released model has no such term. */
+  if (tm && M > 0.88 && A.baseB && A.baseB.attT > 0) {
     const B = A.baseB,
       th = Math.min(B.btDeg, 15),
       h = Math.min(Math.max(B.hD, 0), 1);
     pressure +=
-      (((B.att * smooth01((M - 1) / 0.2) * (0.001 * th + 0.00071 * th * th)) / M) *
+      (((B.attT * smooth01((M - 0.88) / 0.12) * (0.001 * th + 0.00071 * th * th)) / Math.max(M, 1)) *
         (1 - Math.pow(h, M < 3.5 ? 4 : 3)) *
         Math.PI *
         A.R *
@@ -1532,7 +1543,20 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
       const tanL = Math.sqrt(Math.max(1 - c2, 0)) / Math.max(f.cosL, 1e-6),
         bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), tanL, 0.4),
         rise = smooth01((M - Mdd) / (1.05 - Mdd));
-      pressure += (((rise * finK(f, Math.max(M, 1.05), bEff, cb2) * f.tc * f.tc) / bEff) * f.n * f.area) / S;
+      /* Near Mach 1 thin-airfoil theory is too low for fins with little sweep: by transonic similarity the drag there
+         goes as (t/c)^(5/3). The peak is 5.7·(t/c)^(5/3) times the fifth power of cos Λ / cos 30° (the released
+         model's sweep rule), from the drag the Arcas model's 30° fins add (NASA TN D-4013, fins on minus fins off,
+         less their friction: 0.03 on the fin area from Mach 0.95 to 1.05, back to the linear value by Mach 1.2);
+         the 45° fins of TR R-100 figure 5 peak at 0.0055, and this gives 0.0053. Sweep past 30° also delays the
+         rise (those 45° fins show none below Mach 0.97). The larger of the two terms is used. */
+      const lin = (rise * finK(f, Math.max(M, 1.05), bEff, cb2) * f.tc * f.tc) / bEff,
+        peak =
+          5.7 *
+          Math.pow(Math.min(f.tc, 0.12), 5 / 3) *
+          Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N) *
+          smooth01((M - Math.min((Mdd - 0.03) / Math.sqrt(finSweepRatio(f.cosL)), 0.98)) / 0.09) *
+          (M > 1.05 ? Math.exp(-(M - 1.05) / 0.2) : 1);
+      pressure += (Math.max(lin, peak) * f.n * f.area) / S;
     } else {
       const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
         kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),

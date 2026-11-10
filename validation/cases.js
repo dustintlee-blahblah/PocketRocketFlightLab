@@ -143,6 +143,26 @@ const ARCAS = {
   long: { xml: arcasOrk(42.665, 40.475), cp: { 0.6: 76.5, 0.7: 75.7, 0.8: 75.5, 0.85: 75.8, 0.9: 75.8 } },
 };
 
+/* Arcas short model: axial force at zero angle of attack, fins undeflected, NASA TN D-4013 figure 11 (Mach 0.6–1.2,
+   3 million per foot, the model 40.95 in long). The report gives the force with the base at free-stream pressure
+   (C_A,corr) and the base's own share (C_A,b) separately; a boattail ends the body at 0.65 of its diameter. The base
+   reads above free-stream pressure below Mach 0.95 (a negative base drag, with a sting in the wake). The model's
+   fin anchors, small lugs at the fin roots, are not in the design.
+   [Mach, C_A,corr, C_A,b] */
+const ARCAS_CA = [
+  [0.6, 0.299, -0.039],
+  [0.7, 0.309, -0.048],
+  [0.8, 0.329, -0.045],
+  [0.85, 0.356, -0.035],
+  [0.9, 0.415, -0.019],
+  [0.95, 0.593, -0.011],
+  [1.0, 0.686, 0.014],
+  [1.05, 0.686, 0.024],
+  [1.1, 0.664, 0.03],
+  [1.2, 0.593, 0.041],
+];
+const ARCAS_RE = (3e6 * 40.95) / 12;
+
 /* Aerobee 150A sounding rocket, sustainer (the vehicle without its booster), Aerojet-General / Space-General.
    Geometry (in): 87.8 tangent-ogive nose, 15 diameter, 201.2 body (288.97 from the nose to the base, as both sources
    give), four fins at the base: root chord 38.96, tip 28, span 16.13, leading edge swept back 16.13, 1.1 thick, the
@@ -286,7 +306,7 @@ const L55_PTS = [
      45°-swept fins of 9 in chord. Mach 0.88 to 1.7. */
 const R100_11 = {
   title: "TR R-100 configuration 11",
-  finish: "smooth",
+  finish: "polished",
   nose: { shape: "ogive", len: 17.5 },
   parts: [
     {
@@ -314,7 +334,7 @@ const R100_11 = {
 };
 const R100_36 = {
   title: "TR R-100 configuration 36",
-  finish: "smooth",
+  finish: "polished",
   nose: { shape: "ogive", len: 13.5, d: 3.9 },
   parts: [
     { t: "tail", len: 9, d0: 3.9, d1: 5 },
@@ -420,6 +440,15 @@ const CASES = [
     quantity: "cd",
     xml: finnedOrk(L55),
     pts: L55_PTS,
+  },
+  {
+    id: "arcas-short-cd",
+    title: "NASA TN D-4013, Arcas short model (boattailed): total drag",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cd",
+    xml: ARCAS.short.xml,
+    pts: ARCAS_CA.map(([M, corr, b]) => [M, corr + b, ARCAS_RE]),
   },
   {
     id: "r100-11-cd",
@@ -1713,6 +1742,7 @@ module.exports = {
   A53_PTS,
   RM10,
   RM10_PTS,
+  ARCAS_CA,
   ARCAS,
   CASES,
   FLIGHTS,
