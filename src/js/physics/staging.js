@@ -78,6 +78,7 @@ export function stackDesign(D) {
         : null,
     buttons: custom ? [...(D.buttons || []), ...(D.bButtons || []).map((b) => ({ ...b, x: b.x + Ls }))] : D.buttons,
     lugs: custom ? [...(D.lugs || []), ...(D.bLugs || []).map((l) => ({ ...l, x: l.x + Ls }))] : D.lugs,
+    bumps: [...(D.bumps || []), ...(D.bBumps || []).map((b) => ({ ...b, x: b.x + Ls }))],
     cdOverride: 0,
   };
 }

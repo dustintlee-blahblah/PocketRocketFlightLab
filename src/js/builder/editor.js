@@ -121,6 +121,8 @@ const bldSum = (p) => {
       return L_(p.dia);
     case "mass":
       return `${fmt(p.mass, "smass")} ${uname("smass")}`;
+    case "bump":
+      return `${fmt(p.w, "small")} × ${fmt(p.h, "small")} ${uname("small")}`;
     case "buttons":
       return `${p.n} × ${p.size === "custom" ? "from file" : p.size}`;
     case "raw":
@@ -200,7 +202,7 @@ export function bldRenderAdd() {
   if (!hasNose && si === 0) h += `<button class="btn ghost" data-add="nose">Nose cone</button>`;
   h += `<button class="btn ghost" data-add="tube">Body tube</button><button class="btn ghost" data-add="transition">Transition</button></div>`;
   if (body)
-    h += `<div class="bldh">Add to ${esc(body.name)}</div><div class="bldadds">${["fins", "mount", "inner", "ring", "bulkhead", "coupler", "lug", "buttons", "chute", "streamer", "cord", "mass"].map((t) => `<button class="btn ghost" data-add="${t}">${BLD_NAMES[t]}</button>`).join("")}</div>`;
+    h += `<div class="bldh">Add to ${esc(body.name)}</div><div class="bldadds">${["fins", "mount", "inner", "ring", "bulkhead", "coupler", "lug", "buttons", "chute", "streamer", "cord", "mass", "bump"].map((t) => `<button class="btn ghost" data-add="${t}">${BLD_NAMES[t]}</button>`).join("")}</div>`;
   else
     h += `<p class="note" style="margin:6px 0 0">Select a body part to add fins, a motor mount, recovery and other parts to it.</p>`;
   {

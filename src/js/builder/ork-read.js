@@ -583,6 +583,18 @@ export function bldFromOrk(xml, info) {
               });
               break;
             case "masscomponent":
+              if (txt(e, "prflbump")) {
+                // a protuberance on the outside of the body (this app's tags on an OpenRocket mass)
+                Object.assign(k, {
+                  type: "bump",
+                  shape: txt(e, "prflbump").trim(),
+                  w: num(e, "prflbumpw"),
+                  h: num(e, "prflbumph"),
+                  len: num(e, "packedlength"),
+                  mass: num(e, "mass"),
+                });
+                break;
+              }
               Object.assign(k, {
                 type: "mass",
                 mass: num(e, "mass"),

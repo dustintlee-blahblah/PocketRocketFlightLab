@@ -185,6 +185,9 @@ export function bldToOrk(model, L, opts = {}) {
         return `<shockcord>${head(k)}<packedlength>${n(k.packLen)}</packedlength><packedradius>${k.packAuto ? "auto " : ""}${n(k.packR > 0 ? k.packR : pr * 0.6)}</packedradius><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><cordlength>${n(k.cordLen)}</cordlength>${line(k)}</shockcord>`;
       case "mass":
         return `<masscomponent>${head(k)}<packedlength>${n(k.len)}</packedlength><packedradius>${k.packAuto ? "auto " : ""}${n(k.packR > 0 ? k.packR : pr * 0.6)}</packedradius><radialposition>${n(k.radPos || 0)}</radialposition><radialdirection>0.0</radialdirection><mass>${n(k.mass)}</mass><masscomponenttype>${e(k.massType || "masscomponent")}</masscomponenttype></masscomponent>`;
+      case "bump":
+        // OpenRocket reads it as a mass; the prflbump tags carry its outside shape and size for this app
+        return `<masscomponent>${head(k)}<packedlength>${n(k.len)}</packedlength><packedradius>${k.packAuto ? "auto " : ""}${n(k.packR > 0 ? k.packR : pr * 0.6)}</packedradius><radialposition>${n(k.radPos || 0)}</radialposition><radialdirection>0.0</radialdirection><mass>${n(k.mass)}</mass><masscomponenttype>masscomponent</masscomponenttype><prflbump>${e(k.shape || "bluff")}</prflbump><prflbumpw>${n(k.w)}</prflbumpw><prflbumph>${n(k.h)}</prflbumph></masscomponent>`;
       case "raw":
         return String(k.xml || "").replace(/^(<[a-z]+[^>]*>)/i, `$1${pos(k)}`);
     }

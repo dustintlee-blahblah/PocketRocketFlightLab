@@ -3,7 +3,7 @@
  * each stage, and the choices they offer (shapes, motor sizes, cluster layouts, deployment events).
  */
 import { BLD, bldFind } from "./builder-ui.js";
-import { BLD_BUTTONS, bldOvOn } from "./model.js";
+import { BLD_BUMPS, BLD_BUTTONS, bldOvOn } from "./model.js";
 import { FIN_EDGES } from "../core/units-and-fin-edges.js";
 /**
  * Nose and transition shapes offered: [shape, label].
@@ -297,6 +297,16 @@ export function bldFields(p) {
       ];
     case "mass":
       return [["name", "Name", "text"], ["mass", "Weight", "num", "smass"], ["len", "Length", "num", "small"], ...posF];
+    case "bump":
+      return [
+        ["name", "Name", "text"],
+        ["shape", "Shape", "sel", BLD_BUMPS],
+        ["w", "Width", "num", "small"],
+        ["h", "Height above the body", "num", "small"],
+        ["len", "Length", "num", "small"],
+        ["mass", "Weight", "num", "smass"],
+        ...posF,
+      ];
     case "raw":
       return [["name", "Name", "text"], ...posF];
   }

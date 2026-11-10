@@ -64,8 +64,19 @@ export const BLD_NAMES = {
   streamer: "Streamer",
   cord: "Shock cord",
   mass: "Mass",
+  bump: "Protuberance",
   raw: "Part from file",
 };
+/**
+ * Shapes of a protuberance on the outside of the body (a camera, a switch box, an antenna, a shroud): [name, label].
+ * Their drag: BUMP_CD in physics/aerodynamics.js.
+ */
+export const BLD_BUMPS = [
+  ["bluff", "Blunt, about as long as tall (camera, switch box)"],
+  ["long", "Blunt, over twice as long as tall"],
+  ["round", "Upright cylinder or bolt head"],
+  ["faired", "Streamlined shroud"],
+];
 /**
  * Surface finishes offered: [OpenRocket name, label].
  */
@@ -257,6 +268,20 @@ export function bldNew(type, R = 0.0333) {
       return { id, type, name, cordLen: R * 90, ref: "top", pos: 0.04, packLen: 0.04, mat: "Kevlar 1/4 in", known: 0 };
     case "mass":
       return { id, type, name: "Mass", mass: 0.03, len: 0.03, ref: "top", pos: 0.02, known: 0 };
+    case "bump":
+      return {
+        id,
+        type,
+        name,
+        shape: "bluff",
+        w: 0.03,
+        h: 0.025,
+        len: 0.05,
+        mass: 0.03,
+        ref: "top",
+        pos: 0.1,
+        known: 0,
+      };
   }
 }
 /**

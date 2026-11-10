@@ -27,6 +27,8 @@ import { noseR, noseSpec, noseTip } from "./geometry.js";
      edges (square and rounded) below Mach 1: Hoerner's two-dimensional base drag, 0.135/∛C_f (ch. 3).
    Rail buttons and lugs: Hoerner protuberance drag (Newtonian cylinder above Mach 1), scaled by the 1/7-power turbulent
      boundary-layer profile.
+   Other protuberances (cameras, switch boxes, shrouds): Hoerner's coefficients for three-dimensional protuberances
+     (ch. 5, figure 13), scaled the same way.
    Tumbling: Allen–Perkins crossflow drag averaged over all pitch angles.
    Air viscosity: Sutherland's law. */
 /**
@@ -678,6 +680,30 @@ function blFactor(h, x, v, nu) {
   return h <= del ? (7 / 9) * Math.pow(h / del, 2 / 7) : 1 - ((2 / 9) * del) / h;
 }
 /**
+ * Drag coefficients of protuberances on a wall, on their frontal area and the mean dynamic pressure the boundary layer
+ * leaves them: Hoerner, Fluid-Dynamic Drag, chapter V, figure 13 ("independent" coefficients of three-dimensional
+ * protuberances). bluff: a box or plate about as long as it is tall (a, 1.20; the text gives 1.0 to 1.3 for square
+ * plates). long: a box more than twice as long as tall (b, 0.74). round: an upright cylinder or bolt (e and f, 0.80 and
+ * 0.76). faired: a streamlined blister (g, 0.07).
+ */
+const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07 };
+/**
+ * Drag coefficient of a protuberance, on its frontal area, before the boundary-layer factor (blFactor: Hoerner's
+ * effective dynamic pressure, 0.75·(h/δ)^(1/3), is the same thing within a few percent). Below Mach 1 Hoerner's
+ * value. Above it there is no such data: a blunt shape follows the rail button's rise (cylinderCd, by stagnation
+ * pressure and modified Newtonian), and a faired one takes the larger of that and the Newtonian pressure on a front
+ * face that climbs to its height over half its length, 2·sin²θ.
+ * @param {{shape:string, h:number, len:number}} b protuberance
+ * @param {number} M Mach number
+ * @returns {number}
+ */
+function bumpCd(b, M) {
+  const c = (BUMP_CD[b.shape] * cylinderCd(M)) / 1.2;
+  if (b.shape !== "faired" || M <= 1) return c;
+  const s = Math.sin(Math.atan2(b.h, Math.max(b.len / 2, 1e-6)));
+  return Math.max(c, smooth01((M - 1) / 0.3) * 2 * s * s);
+}
+/**
  * Standard rail buttons, by rail size: outer and inner diameter, height, flange and base thickness (m).
  */
 const RAIL_PRESETS = {
@@ -942,6 +968,7 @@ export function aero(D) {
     D.railPreset,
     D.buttons,
     D.lugs,
+    D.bumps,
     D.otherCd,
     D.cdOverride,
     D.pods,
@@ -1085,6 +1112,16 @@ export function aero(D) {
     buttons = [0.55 * L, 0.92 * L].map((x) => ({ x, h: P.h, front: P.od * (P.fl + P.bs) + P.id * w }));
   }
   const lugs = D.railPreset === "custom" ? D.lugs || [] : [];
+  // protuberances on the outside of the body: frontal area, height, and where the boundary layer reaches them
+  const bumps = (D.bumps || [])
+    .filter((b) => b.w > 0 && b.h > 0)
+    .map((b) => ({
+      x: b.x,
+      h: b.h,
+      len: b.len || 0,
+      front: b.w * b.h,
+      shape: BUMP_CD[b.shape] != null ? b.shape : "bluff",
+    }));
   const nose = segs[0];
   // tumbling end over end: Allen–Perkins crossflow drag ∝ sin³α, mean over α = 4/(3π); roll-averaged fin projection 2/π per fin
   let sideArea = 0,
@@ -1128,6 +1165,7 @@ export function aero(D) {
     Rs: D.finish,
     buttons,
     lugs,
+    bumps,
     otherCd: D.otherCd || 0,
     override: D.cdOverride || 0,
     scale: D.dragScale > 0 ? D.dragScale : 1,
@@ -1605,6 +1643,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
   for (const bt of A.buttons)
     if (bt.cdo > 0) ovr += bt.cdo;
     else pressure += (cylinderCd(M) * blFactor(bt.h, bt.x, v, nu) * bt.front) / S;
+  for (const b of A.bumps || []) pressure += (bumpCd(b, M) * blFactor(b.h, b.x, v, nu) * b.front) / S;
   for (const lg of A.lugs) {
     if (lg.cdo > 0) {
       ovr += lg.cdo;

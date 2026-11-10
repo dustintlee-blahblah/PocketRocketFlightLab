@@ -430,6 +430,7 @@ export function parseOrk(xml, opts = {}) {
     stages = 0,
     buttons = [],
     lugs = [],
+    bumps = [],
     cdComp = false,
     segments = [];
   let cdCount = 0;
@@ -759,6 +760,16 @@ export function parseOrk(xml, opts = {}) {
       });
     } else if (tag === "masscomponent") {
       m = num(c, "mass");
+      // a protuberance on the outside of the body: this app's tags on an OpenRocket mass (see the builder's "bump")
+      if (txt(c, "prflbump"))
+        bumps.push({
+          x,
+          len: num(c, "packedlength"),
+          w: num(c, "prflbumpw"),
+          h: num(c, "prflbumph"),
+          shape: txt(c, "prflbump").trim(),
+          si: curStage,
+        });
     } else if (tag === "parachute") {
       const d = num(c, "diameter"),
         lc = num(c, "linecount"),
@@ -1244,6 +1255,7 @@ export function parseOrk(xml, opts = {}) {
       chutes: chutes.filter((c) => inS(c) && c.sb == null),
       buttons: buttons.filter(inS).map(shift),
       lugs: lugs.filter(inS).map(shift),
+      bumps: bumps.filter(inS).map(shift),
       pods: pods.filter(inS).map((pd) => ({ ...shift(pd), segs: pd.segs.map(shift) })),
       tubeFins: tfl.map(shift),
       sideBoosters: sideBoosters.filter(inS).map((b) => ({
@@ -1337,6 +1349,7 @@ export function parseOrk(xml, opts = {}) {
     finFinish: f.rs ?? null,
     buttons: S.buttons,
     lugs: S.lugs,
+    bumps: S.bumps,
     railPreset: buttons.length || lugs.length ? "custom" : "none",
     otherCd: 0,
     nozzleDia: motor?.nozzle || 0,
@@ -1390,6 +1403,7 @@ export function parseOrk(xml, opts = {}) {
       bInertiaSource: B.inertia > 0 ? "file" : null,
       bButtons: B.buttons,
       bLugs: B.lugs,
+      bBumps: B.bumps,
     });
     const bc = B.chutes.reduce((a, b) => (!a || b.d > a.d ? b : a), null);
     if (bc) {
@@ -1466,6 +1480,7 @@ export function parseOrk(xml, opts = {}) {
       bInertiaSource: C1.inertia > 0 ? "file" : null,
       bButtons: C1.buttons,
       bLugs: C1.lugs,
+      bBumps: C1.bumps,
       bRecovery: cc ? "chute" : "tumble",
       bChuteDia: cc ? cc.d : 0,
       bChuteCd: cc ? cc.cd : 0.8,

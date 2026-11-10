@@ -61,6 +61,7 @@ export function defaultDesign() {
     railPreset: "1010",
     buttons: [],
     lugs: [],
+    bumps: [],
     otherCd: 0,
     cdOverride: 0,
     nozzleDia: 0,

@@ -237,6 +237,7 @@ where the step counts as base area; in between, blended.
 | Term | Source |
 |---|---|
 | Rail buttons | Hoerner's cylinder in crossflow (1.2 × stagnation pressure) subsonic, modified Newtonian plus base above Mach 1.3, reduced by how deep they sit in a 1/7-power turbulent boundary layer. |
+| Protuberances (a camera, a switch box, an antenna, a shroud: the Protuberance part) | Hoerner, chapter V, figure 13: on the frontal area, 1.20 for a blunt box about as long as tall, 0.74 for one over twice as long, 0.78 for an upright cylinder or bolt, 0.07 for a streamlined blister; reduced by the boundary layer as the buttons are (Hoerner's 0.75·∛(h/δ) is the same within a few percent). Above Mach 1 there is no data: blunt shapes rise as the rail button does, a streamlined one takes the Newtonian pressure on its front slope if larger. A bare 1 in cube on a 4 in rocket adds 0.09 to Cd; the same size streamlined, 0.005 below Mach 1 and 0.03 above. |
 | Launch lugs | Stagnation pressure on the front face, base on the back, pipe friction through the bore. |
 | Pods | Each pod's own body: friction, nose, transitions and base as above, once per copy. |
 | Tube fins | OpenRocket's method: friction outside, Darcy–Weisbach pipe flow inside (Swamee–Jain friction factor), stagnation and base pressure on the front face and the gap at the body. |

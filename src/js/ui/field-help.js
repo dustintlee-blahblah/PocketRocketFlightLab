@@ -153,9 +153,11 @@ export function bldInfo(F) {
     sepDelay:
       "Seconds after this stage's motor burns out that it separates from the stage above. If the stage above lights first, the stages separate when it lights (hot staging).",
     shape:
-      t === "fins"
-        ? "Trapezoid fins are set by root chord, tip chord, span and sweep; elliptical fins by root chord and span; free-form fins by a list of outline points."
-        : "The profile shape. Ogive and Haack (von Kármán) shapes have the lowest drag at most speeds; a cone does well above Mach 1. The Shape parameter, where shown, fine-tunes the shape.",
+      t === "bump"
+        ? "What the item looks like to the air. A blunt box or bare camera has about 17 times the drag of a streamlined shroud of the same width and height; a box more than twice as long as it is tall, or an upright cylinder, about two thirds of the blunt box’s.\n\nThe drag also grows with width times height, and a little with how far back the item sits (the slow air near the body is thinner near the nose)."
+        : t === "fins"
+          ? "Trapezoid fins are set by root chord, tip chord, span and sweep; elliptical fins by root chord and span; free-form fins by a list of outline points."
+          : "The profile shape. Ogive and Haack (von Kármán) shapes have the lowest drag at most speeds; a cone does well above Mach 1. The Shape parameter, where shown, fine-tunes the shape.",
     param:
       "Fine-tunes the shape.\n\nOgive: 1 is a tangent ogive, 0 is a cone.\nPower series: 1 is a cone; smaller values are blunter.\nParabolic: 0 is a cone, 1 is a full parabola.\nHaack series: 0 is von Kármán (LD-Haack), 1/3 is LV-Haack.",
     len:
@@ -171,6 +173,7 @@ export function bldInfo(F) {
         lug: "Length of the launch lug.",
         streamer: "Length of the streamer.",
         mass: "Length of the item along the rocket, used to place its balance point.",
+        bump: "Length of the item along the rocket. It places the item’s balance point, tells a long box from a short one, and above Mach 1 sets how steep a streamlined shroud’s front is.",
       }[t] || "Length along the rocket’s axis.",
     dia:
       t === "chute"
@@ -246,7 +249,12 @@ export function bldInfo(F) {
     packLen: "Length of the packed chute, streamer or cord inside the airframe, used for its weight and balance point.",
     width: "Width of the streamer.",
     cordLen: "Length of the shock cord.",
-    mass: "Weight of this item, such as an altimeter, battery, ballast or payload.",
+    mass:
+      t === "bump"
+        ? "Weight of the item, such as a camera with its shroud."
+        : "Weight of this item, such as an altimeter, battery, ballast or payload.",
+    w: "How wide the item is, across the airflow.",
+    h: "How far the item stands out from the body tube.",
   };
   if (k === "inertia") return T.dryInertia;
   if (k === "known" && !t && two)

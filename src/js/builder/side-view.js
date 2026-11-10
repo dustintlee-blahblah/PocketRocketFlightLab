@@ -455,6 +455,11 @@ export function bldDraw() {
           hit = [x1, x2, Y(pr), Yb(pr)];
           break;
         }
+        case "bump": {
+          c.fillRect(x1, Y(rr + k.h), Math.max(kk.len * sc, 3), Math.max(k.h * sc, 2));
+          hit = [x1, x2, Y(rr + k.h) - 4, Y(rr) + 2];
+          break;
+        }
         case "mass": {
           const pr = ri * 0.5;
           c.fillRect(x1, Y(pr), Math.max(kk.len * sc, 4), 2 * pr * sc);
