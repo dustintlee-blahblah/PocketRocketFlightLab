@@ -675,7 +675,7 @@ function renderFlCal(list) {
   const k = c && c.k > 0 ? c.k : null,
     pct = k ? (k - 1) * 100 : 0,
     busy = flFitBusy || /^Calibrating/.test(flFitMsg);
-  let h = "";
+  let h;
   if (k && c.flights)
     h =
       `<span id="flcalst">Drag calibrated <b>×${k.toFixed(2)}</b> (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%) from ${c.n > 1 ? `${c.n} flights, which fit within ±${(c.rms || 0).toFixed(1)}%` : "1 flight"}${c.skipped ? ` (${c.skipped} ticked flight${c.skipped > 1 ? "s" : ""} skipped: motor not on this device)` : ""}.</span>` +

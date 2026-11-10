@@ -484,7 +484,7 @@ export async function saveDesignFile(asNew, opts = {}) {
       simNote =
         " This run flew a stand-in motor because the file’s own motor isn’t on this device, so it wasn’t saved as a simulation.";
     else if (!held && opts.addSim) {
-      let R = null;
+      let R;
       try {
         R = simFresh();
       } catch (e) {

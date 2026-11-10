@@ -106,7 +106,7 @@ New here? [CONTRIBUTING.md](CONTRIBUTING.md) says how to report problems and sen
 [ARCHITECTURE.md](ARCHITECTURE.md) explains how the app works and how a flight is computed. What changed in each build is
 in [CHANGELOG.md](CHANGELOG.md).
 
-Requirements: Node.js 18 or later.
+Requirements: Node.js 22.18 or later.
 
 ```
 npm ci                              # Prettier, ESLint, Playwright and the Babel parser the unused-code check uses

@@ -360,7 +360,7 @@ async function wxGet(lat, lon, date, kind) {
     try {
       j = JSON.parse(txt);
     } catch (e) {
-      throw new Error("The weather service sent something unexpected.");
+      throw new Error("The weather service sent something unexpected.", { cause: e });
     }
     if (j && j.error) {
       const m = /invalid String value (\w+)/.exec(j.reason || "");
@@ -426,7 +426,7 @@ function wxRows(j, key, elev) {
      when no level gets there (clear) */
   let ceil = null,
     haveCloud = false,
-    prof = null;
+    prof;
   {
     const cl = [];
     for (const p of WX_LEVELS) {
@@ -683,7 +683,7 @@ export function start() {
     const p = PR_FETCH[id];
     if (!p) return;
     delete PR_FETCH[id];
-    let t = "";
+    let t;
     try {
       t = new TextDecoder().decode(Uint8Array.from(atob(b64 || ""), (c) => c.charCodeAt(0)));
     } catch (e) {
