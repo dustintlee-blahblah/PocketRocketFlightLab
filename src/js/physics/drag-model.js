@@ -9,6 +9,9 @@
  *   1. Skin friction compressibility: Van Driest II (below), in place of the released (1 + 0.144 M²)^−0.65, at the
  *      skin's own temperature. A flight follows the skin as it heats (skinStep below); with no flight history (the
  *      Wind Tunnel, the validation cases) the skin is taken as fully heated, as in a wind tunnel run.
+ *   2. Body base pressure: NASA TR R-100's flight-measured curve from Mach 0.5 to 2 (R100_BODY in aerodynamics.js),
+ *      in place of Fleeman's correlation below Mach 1 and TN 3819's basic curve from 1 to 2. Above Mach 2, and for
+ *      the boattail and fin corrections and fin trailing edges, TN 3819 as released.
  *
  * cdParts() in aerodynamics.js reads the setting; the Wind Tunnel asks for both models by name to draw them together.
  */

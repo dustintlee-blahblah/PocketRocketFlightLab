@@ -37,6 +37,7 @@ the Results tab marks the run "TEST drag model". The code is in `src/js/physics/
 |---|---|---|
 | Skin friction compressibility | Van Driest II (J. Aero. Sci., March 1951) at the skin's own temperature, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
 | Skin temperature | In a flight, followed from the pad's air temperature as the boundary layer heats the skin (below). With no flight history (the Wind Tunnel, the drag cases) the skin is fully heated, as on a wind tunnel model. | not used |
+| Body base pressure | NASA TR R-100 (Stoney, 1961), fig. 3: the flight-measured curve for a cylindrical afterbody, Mach 0.5 to 2 (the middle of its band: 0.136 below Mach 0.9, a peak of 0.214 at Mach 1.05, meeting TN 3819 at Mach 2). Missile DATCOM takes cylinder base drag from this report. TN 3819 above Mach 2, and its boattail and fin corrections above Mach 1, as released. | Fleeman below 0.95 (0.12 + 0.13 M²: 0.17 at Mach 0.6, 0.24 at 0.95), blended into TN 3819's basic curve by Mach 1.2 |
 | Everything else | as released | |
 
 **The skin's temperature in flight.** One temperature for the whole skin. The boundary layer heats it at
@@ -49,23 +50,34 @@ titanium, aluminium, laminates, paper and plastics). Left out: the motor's heat,
 sections, and the much hotter nose tip and fin leading edges, so it is the temperature the friction sees, not a check
 on what the airframe survives. A cooler skin has more friction, so a rocket's drag is highest early in a fast flight.
 
-Against the same measurements (mean absolute error; "cool" and "heated" are the two limits of the skin temperature):
+Against the same measurements (mean absolute error), term by term:
 
-| Case | Released | Test | Test, skin held cool | Test, skin fully heated |
-|---|---|---|---|---|
-| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 9.2% | 10.3% |
-| NACA RM E50D28, fin drag, wind tunnel (tuned) | 0.025 Cd | 0.027 Cd | 0.030 Cd | 0.027 Cd |
-| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 13.4%, high | 2.8% |
-| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 24.3%, high | 9.1%, high |
-| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 16.0%, high | 9.1%, high |
-| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 7.8% (+5.9%) | 8.9% (+7.8%) |
-| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 7.9% | 10.4% |
+| Case | Released | Test: friction only | Test: friction and base |
+|---|---|---|---|
+| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 8.1% |
+| NACA RM E50D28, fin drag, wind tunnel (tuned) | 0.025 Cd | 0.027 Cd | 0.027 Cd |
+| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 2.8% |
+| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 9.2%, high |
+| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 10.3% |
+| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) |
+| the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% |
+| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% |
 
-The drag cases have no flight history, so the test model flies them fully heated. That is right for the wind tunnel
-cases; the two free-flight models' skin temperatures aren't known. The measured flights are flown with the skin
-followed in time, but `validation/cases.js` gives every one of them the same placeholder wall (2 mm, density 1000),
-which heats within a few seconds, so their result sits near the fully heated limit. Flown as 3 mm aluminium instead
-they give 8.4% (9.1% above Mach 1.2). Each rocket's real wall is the missing input there.
+**Friction.** The skin's temperature has two limits: held at the pad temperature the friction-only column reads 9.2%,
+0.030, 13.4% high, 24.3% high, 16.0% high, 7.8% and 7.9%; fully heated it reads 10.3%, 0.027, 2.8%, 9.1%, 9.1%, 8.9%
+and 10.4%. The drag cases have no flight history, so the test model flies them fully heated: right for the wind
+tunnel cases, unknown for the two free-flight models. The measured flights are flown with the skin followed in time,
+but `validation/cases.js` gives every one of them the same placeholder wall (2 mm, density 1000), which heats within a
+few seconds. Flown as 3 mm aluminium they give 8.4% (9.1% above Mach 1.2), as 6 mm 8.2% (8.8%). Published build
+details give only the Qu8k's material (aluminium); each rocket's real wall is the missing input there.
+
+**Base.** TR R-100's flight-measured base pressure is lower than Fleeman's correlation at subsonic speeds (0.136
+against 0.17–0.24) and a little higher from Mach 1.2 to 2. Against measured drag it is the better curve: RM A53D02
+goes from 12% high to 4.5% high at Mach 0.6 and from 10.3% to 8.1% overall. Against measured apogees it is worse, by
+about a point at every speed: the flights want more drag than the model has, and Fleeman's higher subsonic base
+drag was supplying some of it. This is gap 8 below (real rockets coast lower than the model says) made plainer: the
+missing drag is not in the base of a clean body. The fin correction above Mach 1 is TN 3819's increment over its own
+body curve, so on R-100's higher curve from Mach 1 to 2 it may count some of the fins' effect twice.
 
 ## Drag at zero angle of attack (`cdParts`)
 

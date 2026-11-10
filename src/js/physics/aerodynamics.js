@@ -135,6 +135,31 @@ const TN3819_FIN = [
   [2.6, 0.017],
   [3.0, 0.018],
 ];
+/* The test drag model's body base pressure (drag-model.js), as −Cp,base: NASA TR R-100 (Stoney, 1961), fig. 3, the
+   three-dimensional curve for a cylindrical afterbody with a turbulent boundary layer, from free-flight
+   measurements, Mach 0.5 to 2. The Missile DATCOM final report (section 3.1.1.8) takes cylinder base drag from this
+   report. The figure draws a band (the scatter of the flight data); these are its middle, digitized: nearly level
+   at 0.136 below Mach 0.9, a sharp rise through Mach 1 to a peak of 0.214 at Mach 1.05, then falling to meet
+   TN 3819's curve at Mach 2, which carries on above. The band is about ±0.013 wide below Mach 1 and ±0.025 at the
+   peak, and the report warns the curve is least sure at subsonic speeds. Below Mach 0.5, where the figure stops,
+   its Mach 0.5 value is held. */
+const R100_BODY = [
+  [0.5, 0.136],
+  [0.8, 0.135],
+  [0.9, 0.137],
+  [0.95, 0.147],
+  [0.975, 0.165],
+  [1.0, 0.2025],
+  [1.05, 0.214],
+  [1.1, 0.203],
+  [1.15, 0.199],
+  [1.2, 0.197],
+  [1.25, 0.192],
+  [1.5, 0.18],
+  [1.75, 0.165],
+  [2.0, 0.1495],
+  ...TN3819_BODY.filter((p) => p[0] > 2.1),
+];
 /**
  * Weight of the TN 3819 (supersonic) base pressures against Fleeman's subsonic correlation: 0 below Mach 0.95, 1 above 1.2.
  * @param {number} M
@@ -144,9 +169,11 @@ const tn3819W = (M) => smooth01((M - 0.95) / 0.25);
 /**
  * −Cp at the base of a body without fins or boattail, on the base area.
  * @param {number} M Mach number
+ * @param {boolean} [test] the test drag model: TR R-100's flight-measured curve at every speed (R100_BODY)
  * @returns {number}
  */
-function baseCpBody(M) {
+function baseCpBody(M, test = false) {
+  if (test) return Math.min(tblAt(R100_BODY, M), 0.95 / (0.7 * Math.max(M, 1) ** 2));
   const sub = 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1),
     w = tn3819W(M);
   if (w <= 0) return sub;
@@ -196,15 +223,17 @@ function pmPressureRatio(M, turn) {
  * @param {{bt:number, hD:number, fins:{g:number, xc:number}[]}} B base geometry from aero(): boattail half-angle (rad)
  *   ending at the base, base over maximum diameter, and each fin set's base-influence terms (tn3819FinTerm)
  * @param {number} M Mach number
+ * @param {boolean} [test] the test drag model: the body curve is TR R-100's (R100_BODY) at every speed, with the same
+ *   boattail and fin corrections above Mach 1
  * @returns {number}
  */
-function baseCpRocket(B, M) {
+function baseCpRocket(B, M, test = false) {
   const w = tn3819W(M),
-    sub = 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1);
-  if (w <= 0 || !B) return w <= 0 ? sub : baseCpBody(M);
+    sub = test ? baseCpBody(M, true) : 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1);
+  if (w <= 0 || !B) return w <= 0 ? sub : baseCpBody(M, test);
   const m = Math.max(M, 1),
     q = 0.7 * m * m;
-  let cp = tblAt(TN3819_BODY, m);
+  let cp = tblAt(test ? R100_BODY : TN3819_BODY, m);
   /* The boattail relief below works by taking the boattail's angle off the turn the flow makes at the base. Near Mach 1
      that turn is only a few degrees, so any boattail would cancel it; flight data say otherwise: the RM-10's 4.8°
      afterbody (NACA TN 3320, full-scale free flight) keeps a base pressure coefficient of about 0.11 from Mach 1.2 to
@@ -1315,12 +1344,13 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
   const M = v / atm.a,
     nu = kinVisc(atm),
     q0 = stagCp(M),
-    cb = baseCpBody(M),
+    tm = model === "test", // the test drag model's terms (drag-model.js); everything else is the released model
+    cb = baseCpBody(M, tm),
     cb2 = baseCp2D(M),
-    cbBase = baseCpRocket(A.baseB, M),
+    cbBase = baseCpRocket(A.baseB, M, tm),
     S = A.Aref,
     // the test model's friction (drag-model.js) takes the wall's temperature over the air's; 0 means the released model
-    vd = model === "test" ? (skinT > 0 ? skinT / atm.T : 1 + VD_R * 0.2 * M * M) : 0;
+    vd = tm ? (skinT > 0 ? skinT / atm.T : 1 + VD_R * 0.2 * M * M) : 0;
   /* where the transonic drag rise starts depends on the shape. Bodies: the transonic similarity rule (Oswatitsch) says
      flows over slender bodies match when (1 − M²) scales with (d/l)^(2/3), so a slender body's drag rise comes later than
      a stubby one's: the measured fineness-3 curves are read at an equivalent Mach number, 1 − M_eq² = (1 − M²)·(l/d ÷ 3)^(2/3).
