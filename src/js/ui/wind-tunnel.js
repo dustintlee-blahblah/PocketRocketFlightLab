@@ -387,7 +387,7 @@ function wtCharts() {
     desc: ov
       ? "The design file sets a fixed Cd, so it doesn't change with speed."
       : cmp
-        ? "At zero angle of attack. The test drag model (chosen in Settings) against the released one, coasting and with the motor burning (dashed)."
+        ? "At zero angle of attack. The test drag model (chosen in Settings) against the released one, coasting and with the motor burning (dashed). The test model’s skin is taken as fully heated here; a flight follows it as it warms."
         : "At zero angle of attack. Dashed: with the motor burning, its nozzle filling part of the base.",
     x: X,
     xLabel: "Mach",

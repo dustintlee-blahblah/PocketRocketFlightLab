@@ -560,6 +560,8 @@ export function parseOrk(xml, opts = {}) {
           rs: cfin,
           si: curStage,
           cdo: odc(c),
+          wt: t,
+          wd: rho,
         });
       if (!["ogive", "conical", "ellipsoid", "parabolic", "power", "haack"].includes(shape))
         notes.push(`Nose shape “${shape}” was treated as ogive.`);
@@ -567,7 +569,20 @@ export function parseOrk(xml, opts = {}) {
       ro = isAuto(c, "radius") ? R.last || nextExplicit(c) || autoNum(c, "radius") : num(c, "radius");
       ri = Math.max(ro - num(c, "thickness", 0.001), 0);
       m = rho * Math.PI * (ro * ro - ri * ri) * len;
-      if (parent.top) segments.push({ kind: "tube", x, len, r1: ro, r2: ro, rs: cfin, si: curStage, cdo: odc(c) });
+      // wt, wd: the wall's thickness and density, for the skin's heating in flight (the test drag model, drag-model.js)
+      if (parent.top)
+        segments.push({
+          kind: "tube",
+          x,
+          len,
+          r1: ro,
+          r2: ro,
+          rs: cfin,
+          si: curStage,
+          cdo: odc(c),
+          wt: ro - ri,
+          wd: rho,
+        });
       if (parent.podTop) podCur.segs.push({ kind: "tube", x, len, r1: ro, r2: ro, rs: cfin });
       if (kid(c, "motormount")) {
         motorMountIn(c, ri, false, x + len);
@@ -618,7 +633,20 @@ export function parseOrk(xml, opts = {}) {
       transitions.push({ x, len, d1: 2 * r1, d2: 2 * r2 });
       R.last = r2;
       if (parent.top)
-        segments.push({ kind: "trans", x, len, r1, r2, shape: tshp, param: tp, rs: cfin, si: curStage, cdo: odc(c) });
+        segments.push({
+          kind: "trans",
+          x,
+          len,
+          r1,
+          r2,
+          shape: tshp,
+          param: tp,
+          rs: cfin,
+          si: curStage,
+          cdo: odc(c),
+          wt: t,
+          wd: rho,
+        });
       if (parent.podTop) podCur.segs.push({ kind: "trans", x, len, r1, r2, shape: tshp, param: tp, rs: cfin });
     } else if (tag === "launchlug") {
       ro = num(c, "radius", num(c, "outerradius", 0.003));
@@ -1191,6 +1219,19 @@ export function parseOrk(xml, opts = {}) {
       mass,
       cg: mass > 0 ? mom / mass - x0 : length / 2,
       segs: useSegs ? segs : null,
+      // the body's wall, averaged over its sections by surface: for the skin's heating in flight (the test drag model)
+      wall: (() => {
+        let w = 0,
+          t = 0,
+          r = 0;
+        for (const sg of segs) {
+          const a = sg.len * (sg.r1 + sg.r2);
+          w += a;
+          t += a * (sg.wt > 0 ? sg.wt : 0.002);
+          r += a * (sg.wd > 0 ? sg.wd : 1300);
+        }
+        return w > 0 ? { t: t / w, rho: r / w } : null;
+      })(),
       tailLen,
       tailDia,
       nose: nz ? { len: nz.len, shape: nz.shape + ":" + +(+nz.param).toFixed(4) } : null,
@@ -1249,6 +1290,7 @@ export function parseOrk(xml, opts = {}) {
     tailLen: S.tailLen,
     tailDia: S.tailDia,
     segments: S.segs,
+    wall: S.wall,
     finCount: f.n,
     finMat: f.mat || "",
     finRho: f.rho || 0,

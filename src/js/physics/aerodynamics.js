@@ -8,7 +8,7 @@
  * Sources for each term are given where it is computed.
  */
 import { FIN_SWEEP_N, finBlunt, finSweepRatio, finTransonicCd, finWaveK } from "../core/units-and-fin-edges.js";
-import { dragModel, vanDriestRatio } from "./drag-model.js";
+import { dragModel, heatCoef, vanDriestRatio, VD_R, wallThermal } from "./drag-model.js";
 import { noseR, noseSpec, noseTip } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
    Skin friction: Prandtl–Schlichting turbulent flat-plate law, boundary layer turbulent from the tip (Schlichting, Boundary-Layer Theory),
@@ -519,10 +519,11 @@ function noseCdTR100(shape, param, M) {
  * @param {number} k roughness height, m
  * @param {number} M Mach number
  * @param {string} mode "natural" for natural laminar-to-turbulent transition; otherwise turbulent from the start
- * @param {boolean} [vd] the test drag model's compressibility (Van Driest II, drag-model.js) in place of the released one
+ * @param {number} [wall] the test drag model (drag-model.js): the wall's temperature over the air's, Tw/Te, for
+ *   Van Driest II compressibility in place of the released factor. 0 or left out: the released model.
  * @returns {number} Cf on the wetted area
  */
-function plateCf(Re, Lc, k, M, mode, vd = false) {
+function plateCf(Re, Lc, k, M, mode, wall = 0) {
   // flat-plate skin friction: turbulent (or natural transition), with roughness and compressibility
   // The boundary layer is taken as turbulent from the nose tip: on a real rocket the tip, joints, lugs and paint trip it early.
   // Roughness is measured against the component's own streamwise length (body length, or a fin's mean chord), as in
@@ -537,7 +538,7 @@ function plateCf(Re, Lc, k, M, mode, vd = false) {
   // Nikuradse regimes: roughness has no effect below k+ ≈ 5 (hydraulically smooth) and full effect above k+ ≈ 70 (fully rough)
   const kPlus = k * (Re / Lc) * Math.sqrt(smoothCf / 2);
   const w = kPlus > 0 ? smooth01(Math.log(kPlus / 5) / Math.log(70 / 5)) : 0;
-  const comp = vd ? vanDriestRatio(M, Re) : Math.pow(1 + 0.144 * M * M, -0.65);
+  const comp = wall > 0 ? vanDriestRatio(M, Re, wall) : Math.pow(1 + 0.144 * M * M, -0.65);
   return (smoothCf + w * Math.max(roughCf - smoothCf, 0)) * comp;
 }
 /**
@@ -839,6 +840,7 @@ export function aero(D) {
     D.pods,
     D.tubeFins,
     D.noseTip,
+    D.wall,
   ]);
   if (aeroCache.has(key)) return aeroCache.get(key);
   const segs = bodySegments(D).map((s) => ({ ...s }));
@@ -1040,6 +1042,7 @@ export function aero(D) {
       };
     })(),
     ffBody,
+    skin: skinWall(D.wall),
     tailLen: segs.length > 1 && segs[segs.length - 1].kind === "trans" ? segs[segs.length - 1].len : 0,
     Rt: segs.length ? segs[segs.length - 1].r2 : R,
   };
@@ -1210,6 +1213,34 @@ function extraCnParts(A, M) {
  * @param {{T:number, rho:number}} atm the air, from atmosphere()
  * @returns {number} m²/s
  */
+/**
+ * The airframe's wall for the skin's heating in flight (the test drag model): thickness, heat capacity per volume and
+ * thermal diffusivity. A design without a wall on file (entered by its outline, or saved before walls were kept)
+ * counts as 2 mm of a paper or plastic tube.
+ * @param {{t:number, rho:number}} [wall] the body's wall from the design file: thickness m, density kg/m³
+ * @returns {{t:number, rhoC:number, alpha:number}}
+ */
+function skinWall(wall) {
+  const t = wall && wall.t > 0 ? wall.t : 0.002,
+    rho = wall && wall.rho > 0 ? wall.rho : 1300,
+    th = wallThermal(rho);
+  return { t, rhoC: rho * th.c, alpha: th.alpha };
+}
+/**
+ * How fast the air heats the skin (the test drag model, drag-model.js): the heat transfer coefficient from the body's
+ * own friction at the skin's temperature, and the adiabatic wall temperature the skin is heading for.
+ * @param {object} A aerodynamic model from aero()
+ * @param {number} v airspeed, m/s
+ * @param {object} atm the air, from atmosphere()
+ * @param {number} skinT the skin's temperature, K
+ * @returns {{h:number, Taw:number}} W/m²·K, K
+ */
+export function skinHeating(A, v, atm, skinT) {
+  v = Math.max(v, 0.01);
+  const M = v / atm.a,
+    cf = plateCf((v * A.L) / kinVisc(atm), A.L, A.segs[0] ? A.segs[0].rs : 0, M, A.blMode, skinT / atm.T);
+  return { h: heatCoef(cf, atm.rho, v), Taw: atm.T * (1 + VD_R * 0.2 * M * M) };
+}
 function kinVisc(atm) {
   const mu = (1.458e-6 * Math.pow(atm.T, 1.5)) / (atm.T + 110.4);
   return mu / atm.rho;
@@ -1273,9 +1304,11 @@ function finK(f, Mn, beta, cb2) {
  * @param {object} atm the air, from atmosphere()
  * @param {number} [nozzleArea=0] nozzle exit area while a motor burns, m² (its exhaust fills that much of the base)
  * @param {string} [model] "released" or "test" (drag-model.js); by default the one chosen in Settings
+ * @param {number} [skinT] the test model: the skin's temperature, K (a flight follows it, skinHeating() below). Left
+ *   out, the skin is fully heated (the adiabatic wall), as on a wind tunnel model.
  * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref
  */
-export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel) {
+export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0) {
   // a fixed Cd for the whole rocket (from the design file): used as it is, scaled by any calibration to a real flight
   if (A.override > 0) return { cd: A.override * (A.scale || 1), friction: 0, pressure: 0, base: 0, override: true };
   v = Math.max(v, 0.01);
@@ -1286,7 +1319,8 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel) {
     cb2 = baseCp2D(M),
     cbBase = baseCpRocket(A.baseB, M),
     S = A.Aref,
-    vd = model === "test"; // the test model's terms (drag-model.js); everything else is the released model
+    // the test model's friction (drag-model.js) takes the wall's temperature over the air's; 0 means the released model
+    vd = model === "test" ? (skinT > 0 ? skinT / atm.T : 1 + VD_R * 0.2 * M * M) : 0;
   /* where the transonic drag rise starts depends on the shape. Bodies: the transonic similarity rule (Oswatitsch) says
      flows over slender bodies match when (1 − M²) scales with (d/l)^(2/3), so a slender body's drag rise comes later than
      a stubby one's: the measured fineness-3 curves are read at an equivalent Mach number, 1 − M_eq² = (1 − M²)·(l/d ÷ 3)^(2/3).

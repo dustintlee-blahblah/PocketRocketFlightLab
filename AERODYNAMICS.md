@@ -35,24 +35,37 @@ the Results tab marks the run "TEST drag model". The code is in `src/js/physics/
 
 | Term | Test model | Released model |
 |---|---|---|
-| Skin friction compressibility | Van Driest II (J. Aero. Sci., March 1951), wall at the free-stream temperature as in Missile DATCOM, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
+| Skin friction compressibility | Van Driest II (J. Aero. Sci., March 1951) at the skin's own temperature, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
+| Skin temperature | In a flight, followed from the pad's air temperature as the boundary layer heats the skin (below). With no flight history (the Wind Tunnel, the drag cases) the skin is fully heated, as on a wind tunnel model. | not used |
 | Everything else | as released | |
 
-Against the same measurements (mean absolute error):
+**The skin's temperature in flight.** One temperature for the whole skin. The boundary layer heats it at
+h·(Taw − Tw), with h from the body's own friction coefficient by the Reynolds–Colburn analogy (St = Cf/2·Pr^−2/3) and
+Taw the adiabatic wall temperature (recovery factor 0.89). The heat goes into the wall down to the depth a steadily
+heated thick solid would have warmed, √(π·α·t)/2 (Carslaw and Jaeger), up to the wall's thickness: all of a thin
+metal skin, only the outer part of a composite or paper one. The wall's thickness and density come from the design
+file (a body average); its heat capacity and diffusivity are typical values for the density's class (steel and
+titanium, aluminium, laminates, paper and plastics). Left out: the motor's heat, radiation, the fins' thinner
+sections, and the much hotter nose tip and fin leading edges, so it is the temperature the friction sees, not a check
+on what the airframe survives. A cooler skin has more friction, so a rocket's drag is highest early in a fast flight.
 
-| Case | Released | Test |
-|---|---|---|
-| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 9.2% |
-| NACA RM E50D28, fin drag (tuned) | 0.025 Cd | 0.030 Cd |
-| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 13.4%, high |
-| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 24.3%, high |
-| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 16.0%, high |
-| 23 measured flights, apogee | 9.9% (+9.2% bias) | 7.8% (+5.9% bias) |
-| the 9 flights above Mach 1.2 | 13.0% | 7.9% |
+Against the same measurements (mean absolute error; "cool" and "heated" are the two limits of the skin temperature):
 
-The cold wall helps the measured flights and hurts the wind-tunnel case, where a model runs long enough to reach the
-adiabatic wall temperature. An adiabatic wall in the same formula gave 10.3%, 0.027, 2.8%, 9.1%, 9.1% and 8.9% (10.4%
-above Mach 1.2). The wall temperature is the open choice for this term.
+| Case | Released | Test | Test, skin held cool | Test, skin fully heated |
+|---|---|---|---|---|
+| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 9.2% | 10.3% |
+| NACA RM E50D28, fin drag, wind tunnel (tuned) | 0.025 Cd | 0.027 Cd | 0.030 Cd | 0.027 Cd |
+| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 13.4%, high | 2.8% |
+| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 24.3%, high | 9.1%, high |
+| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 16.0%, high | 9.1%, high |
+| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 7.8% (+5.9%) | 8.9% (+7.8%) |
+| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 7.9% | 10.4% |
+
+The drag cases have no flight history, so the test model flies them fully heated. That is right for the wind tunnel
+cases; the two free-flight models' skin temperatures aren't known. The measured flights are flown with the skin
+followed in time, but `validation/cases.js` gives every one of them the same placeholder wall (2 mm, density 1000),
+which heats within a few seconds, so their result sits near the fully heated limit. Flown as 3 mm aluminium instead
+they give 8.4% (9.1% above Mach 1.2). Each rocket's real wall is the missing input there.
 
 ## Drag at zero angle of attack (`cdParts`)
 
