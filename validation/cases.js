@@ -274,6 +274,103 @@ const L55_PTS = [
   [3.86, 0.276, 176e6],
 ];
 
+/* NASA TR R-100 (Stoney, 1961), appendix: total drag of rocket-boosted free-flight models with conical boattails ending
+   at the base, the only measured cases here that have one. Geometry from each data sheet's sketch and table
+   (inches); the drag and Reynolds number curves read off its plot (about ±0.006 in Cd). Both models' fins have a
+   flat-sided section with wedge edges and straddle the start of the boattail.
+   Configuration 11: 5 in diameter, 56 in long, fineness-3.5 ogive nose, an 8° boattail 5.7 in long to 0.67 of the
+     diameter (base area 0.45 of the maximum), four 60°-swept delta fins. Mach 1.1 to 2.07.
+   Configuration 36: 5 in diameter, 75 in long, a 22.5 in nose (a curved tip to 0.78 of the diameter in 13.5 in, then
+     a conical frustum), a 4.02° boattail 10 in long to 0.72 of the diameter (base area 0.52), three untapered
+     45°-swept fins of 9 in chord. Mach 0.88 to 1.7. */
+const R100_11 = {
+  title: "TR R-100 configuration 11",
+  finish: "smooth",
+  nose: { shape: "ogive", len: 17.5 },
+  parts: [
+    {
+      t: "tube",
+      len: 32.8,
+      d: 5,
+      fins: {
+        n: 4,
+        cr: 10.5,
+        ct: 0.375,
+        s: 5.5,
+        sw: 10.125,
+        t: 0.128,
+        loc: 7.83,
+        edge: "beveled",
+        le: 0.75,
+        te: 0.375,
+      },
+    },
+    { t: "tail", len: 5.7, d0: 5, d1: 3.354 },
+  ],
+  rail: null,
+  w: 50,
+  cg: 28,
+};
+const R100_36 = {
+  title: "TR R-100 configuration 36",
+  finish: "smooth",
+  nose: { shape: "ogive", len: 13.5, d: 3.9 },
+  parts: [
+    { t: "tail", len: 9, d0: 3.9, d1: 5 },
+    {
+      t: "tube",
+      len: 42.5,
+      d: 5,
+      fins: { n: 3, cr: 9, ct: 9, s: 9, sw: 9, t: 0.25, loc: 4, edge: "beveled", le: 3, te: 3 },
+    },
+    { t: "tail", len: 10, d0: 5, d1: 3.606 },
+  ],
+  rail: null,
+  w: 50,
+  cg: 37,
+};
+// [Mach, Cd on the maximum cross-section, Reynolds number on the body length]
+const R100_11_PTS = [
+  [1.1, 0.4],
+  [1.2, 0.386],
+  [1.3, 0.36],
+  [1.4, 0.332],
+  [1.5, 0.315],
+  [1.6, 0.3],
+  [1.7, 0.288],
+  [1.8, 0.28],
+  [1.9, 0.272],
+  [2.0, 0.265],
+].map(([M, cd]) => [M, cd, 17e6 + (M - 0.95) * 37.4e6]);
+const R100_36_PTS = [
+  [0.9, 0.241],
+  [0.95, 0.243],
+  [1.05, 0.35],
+  [1.1, 0.363],
+  [1.2, 0.367],
+  [1.3, 0.358],
+  [1.4, 0.344],
+  [1.5, 0.33],
+  [1.6, 0.316],
+  [1.7, 0.303],
+].map(([M, cd]) => [M, cd, 17.7e6 + (M - 0.8) * 50.6e6]);
+const NO_MOTOR = { totalMass: 0, len: 0 };
+/* TR R-100 figure 5: the pressure (wave) drag of the report's fin types A and B, the 45°-swept untapered fins of
+   configuration 36 (2.8% thick, flat-sided with wedge edges), measured on special gun-launched and rocket models with
+   cylindrical bodies: nothing below Mach 0.97, a brief peak at Mach 1, then a level 0.0037 on the fins' exposed planform
+   area from Mach 1.05 to 3. Here on configuration 36's three fins (12.4 times the body's cross-section), as the
+   difference in pressure drag between that body with its fins and with token ones. */
+const R100_36_BARE = {
+  ...R100_36,
+  parts: R100_36.parts.map((p) =>
+    p.fins ? { ...p, fins: { n: 3, cr: 0.3, ct: 0.3, s: 0.2, sw: 0, t: 0.02, loc: 1, edge: "square" } } : p,
+  ),
+};
+const R100_FIN_A_PTS = [0.9, 1.1, 1.2, 1.3, 1.5, 1.7, 2.0, 2.5, 3.0].map((M) => [
+  M,
+  M < 1 ? 0 : (0.0037 * 3 * 9 * 9) / (Math.PI * 2.5 * 2.5),
+]);
+
 /** Every case, for validation/accuracy.js. */
 const CASES = [
   {
@@ -322,6 +419,42 @@ const CASES = [
     quantity: "cd",
     xml: finnedOrk(L55),
     pts: L55_PTS,
+  },
+  {
+    id: "r100-11-cd",
+    title: "NASA TR R-100 configuration 11, ogive body with an 8° boattail: total drag",
+    tier: "free flight",
+    role: "check",
+    quantity: "cd",
+    get xml() {
+      return flightOrk(R100_11, NO_MOTOR);
+    },
+    pts: R100_11_PTS,
+  },
+  {
+    id: "r100-36-cd",
+    title: "NASA TR R-100 configuration 36, body with a 4° boattail: total drag",
+    tier: "free flight",
+    role: "check",
+    quantity: "cd",
+    get xml() {
+      return flightOrk(R100_36, NO_MOTOR);
+    },
+    pts: R100_36_PTS,
+  },
+  {
+    id: "r100-fin-a",
+    title: "NASA TR R-100 figure 5, 45° untapered fins 2.8% thick: fin pressure drag",
+    tier: "free flight",
+    role: "check",
+    quantity: "cdFinsPressure",
+    get xml() {
+      return flightOrk(R100_36, NO_MOTOR);
+    },
+    get xmlBody() {
+      return flightOrk(R100_36_BARE, NO_MOTOR);
+    },
+    pts: R100_FIN_A_PTS,
   },
   {
     id: "aerobee-cd-on",
@@ -1562,7 +1695,7 @@ function flightOrk(f, motor) {
 <referencetype>maximum</referencetype><subcomponents><stage><name>Stage</name>
 <overridemass>${dry}</overridemass><overridesubcomponentsmass>true</overridesubcomponentsmass>
 <overridecg>${cgDry}</overridecg><overridesubcomponentscg>true</overridesubcomponentscg><subcomponents>
-<nosecone><name>nose</name>${fin}<length>${f.nose.len * IN}</length><thickness>0.002</thickness><shape>${shape}</shape><shapeclipped>false</shapeclipped><shapeparameter>${param}</shapeparameter><aftradius>${(f.parts[0].d / 2) * IN}</aftradius><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></nosecone>
+<nosecone><name>nose</name>${fin}<length>${f.nose.len * IN}</length><thickness>0.002</thickness><shape>${shape}</shape><shapeclipped>false</shapeclipped><shapeparameter>${param}</shapeparameter><aftradius>${((f.nose.d || f.parts[0].d) / 2) * IN}</aftradius><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></nosecone>
 ${f.parts.map(part).join("\n")}
 </subcomponents></stage></subcomponents></rocket></openrocket>`;
 }
