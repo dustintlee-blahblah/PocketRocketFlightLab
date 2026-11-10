@@ -241,7 +241,14 @@ function baseCpRocket(B, M, test = false) {
      2.8, against the method's 0 at Mach 1.2. So the relief fades in from Mach 1.5 to 2.0, where it agrees with that
      flight once the fins' share is added, and below Mach 1.5 the base keeps the body curve. */
   const btW = smooth01((m - 1.5) / 0.5);
-  if (B.bt > 0 && btW > 0) {
+  /* The test drag model: TR R-100's equation 1 for a conical afterbody takes the cylinder's base drag times (base
+     radius / maximum radius)³: on the base's own area, the body curve's pressure times that ratio. "A purely empirical
+     approximation for the effect of base diameter ratio on the base pressure", from flight data on bodies with
+     afterbodies, so it needs no fade-in below Mach 2: on the RM-10 (base 0.6 of the maximum) it gives 0.12 at Mach
+     1.2, where TN 3320 measured about 0.11 in flight. Only the attached share of a steep tail cone counts. */
+  if (test) {
+    if (B.att > 0) cp *= 1 - B.att * (1 - Math.min(Math.max(B.hD, 0), 1));
+  } else if (B.bt > 0 && btW > 0) {
     const cp0 = cp;
     // δe from the body curve: the Prandtl–Meyer turn that gives the body-alone base pressure
     const pb = 1 - cp * q;
@@ -1132,6 +1139,10 @@ export function aero(D) {
            attached share of the angle turns the flow: a separated tail cone gives no relief at the base. */
         bt: bt * (1 - smooth01((bt * (180 / Math.PI) - 8) / 12)),
         hD: ls ? ls.r2 / R : 1,
+        // for the test drag model's boattail (TR R-100, equation 1): its whole angle in degrees, the share of the
+        // flow that stays attached to it, and its start over the body's maximum radius
+        btDeg: bt * (180 / Math.PI),
+        att: bt > 0 ? 1 - smooth01((bt * (180 / Math.PI) - 8) / 12) : 0,
         fins: fins
           .filter((f) => f.pod == null)
           .map((f) => tn3819FinTerm(f, L, 2 * radiusAtSegs(segs, f.xLead + f.a, R))),
@@ -1478,6 +1489,24 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
     if (!skip(it)) base += (it.k * cb * it.area) / S;
   }
   if (A.baseArea > 0) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
+  /* The test drag model: the pressure (wave) drag of a boattail ending at the base, above Mach 1. TR R-100's
+     equation 1 for conical afterbodies: (0.0010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)^n] on the
+     maximum cross-section, θ the afterbody's slope in degrees, n = 4 below Mach 3.5 and 3 above. Its first part
+     approximates the second-order theory of NACA TN 2972 (Jack) and was checked against flight data for slopes under
+     15°; the report warns against using it below Mach 1, so it fades in from Mach 1 to 1.2, and only the attached
+     share of a steeper cone counts (the rest is already base area, above). The released model has no such term. */
+  if (tm && M > 1 && A.baseB && A.baseB.att > 0) {
+    const B = A.baseB,
+      th = Math.min(B.btDeg, 15),
+      h = Math.min(Math.max(B.hD, 0), 1);
+    pressure +=
+      (((B.att * smooth01((M - 1) / 0.2) * (0.001 * th + 0.00071 * th * th)) / M) *
+        (1 - Math.pow(h, M < 3.5 ? 4 : 3)) *
+        Math.PI *
+        A.R *
+        A.R) /
+      S;
+  }
   for (const f of A.fins) {
     if (f.cdo > 0) continue;
     const Mn = M * f.cosL,

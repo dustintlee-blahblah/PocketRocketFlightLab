@@ -38,6 +38,8 @@ the Results tab marks the run "TEST drag model". The code is in `src/js/physics/
 | Skin friction compressibility | Van Driest II (J. Aero. Sci., March 1951) at the skin's own temperature, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
 | Skin temperature | In a flight, followed from the pad's air temperature as the boundary layer heats the skin (below). With no flight history (the Wind Tunnel, the drag cases) the skin is fully heated, as on a wind tunnel model. | not used |
 | Body base pressure | NASA TR R-100 (Stoney, 1961), fig. 3: the flight-measured curve for a cylindrical afterbody, Mach 0.5 to 2 (the middle of its band: 0.136 below Mach 0.9, a peak of 0.214 at Mach 1.05, meeting TN 3819 at Mach 2). Missile DATCOM takes cylinder base drag from this report. TN 3819 above Mach 2, and its boattail and fin corrections above Mach 1, as released. | Fleeman below 0.95 (0.12 + 0.13 M²: 0.17 at Mach 0.6, 0.24 at 0.95), blended into TN 3819's basic curve by Mach 1.2 |
+| Nose wave drag above Mach 2 | Second-order shock-expansion (Syvertson and Dennis, NACA Report 1328) from the exact Taylor–Maccoll cone solution at the tip, summed over the nose (the routine behind the Wind Tunnel's flow picture), taking over from the TR R-100 curves between Mach 2 and 2.5. Missile DATCOM's choice; its report found the method about 20% high below Mach 2. Pointed noses only. | TR R-100 curves to Mach 3.6, then Bonney or the nearest shape's trend, blended into modified Newtonian theory from Mach 4 to 6 |
+| Boattail ending at the base, above Mach 1 | TR R-100's equation 1 for conical afterbodies: a wave drag of (0.0010·θ + 0.00071·θ²)/M·[1 − (base radius/maximum radius)ⁿ], θ in degrees, n = 4 below Mach 3.5 and 3 above (it approximates the second-order theory of NACA TN 2972), fading in from Mach 1 to 1.2; and the base pressure times base radius/maximum radius. For the attached share of the boattail, slopes to 15°. | No wave drag on an attached boattail; base pressure by TN 3819's boattail correction, fading in from Mach 1.5 to 2 |
 | Everything else | as released | |
 
 **The skin's temperature in flight.** One temperature for the whole skin. The boundary layer heats it at
@@ -52,16 +54,16 @@ on what the airframe survives. A cooler skin has more friction, so a rocket's dr
 
 Against the same measurements (mean absolute error), term by term:
 
-| Case | Released | Test: friction only | Test: friction and base |
-|---|---|---|---|
-| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 8.1% |
-| NACA RM E50D28, fin drag, wind tunnel (tuned) | 0.025 Cd | 0.027 Cd | 0.027 Cd |
-| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 2.8% |
-| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 9.2%, high |
-| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 10.3% |
-| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) |
-| the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% |
-| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% |
+| Case | Released | Test: friction only | Test: friction and base | Test: all four terms |
+|---|---|---|---|---|
+| NACA RM A53D02, total drag, free flight (tuned) | 14.4% | 10.3% | 8.1% | 8.6% |
+| NACA RM E50D28, fin drag, wind tunnel (tuned) | 0.025 Cd | 0.027 Cd | 0.027 Cd | 0.027 Cd |
+| NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 2.8% | 2.6% |
+| Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 9.2%, high | 7.8%, high |
+| Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 10.3% | 9.8% |
+| 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) | 9.7% (+9.5%) |
+| the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% | 9.5% |
+| the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% | 11.2% |
 
 **Friction.** The skin's temperature has two limits: held at the pad temperature the friction-only column reads 9.2%,
 0.030, 13.4% high, 24.3% high, 16.0% high, 7.8% and 7.9%; fully heated it reads 10.3%, 0.027, 2.8%, 9.1%, 9.1%, 8.9%
@@ -78,6 +80,19 @@ about a point at every speed: the flights want more drag than the model has, and
 drag was supplying some of it. This is gap 8 below (real rockets coast lower than the model says) made plainer: the
 missing drag is not in the base of a clean body. The fin correction above Mach 1 is TN 3819's increment over its own
 body curve, so on R-100's higher curve from Mach 1 to 2 it may count some of the fins' effect twice.
+
+**Nose.** Shock-expansion reads 4–9% under the released nose drag from Mach 2.5 to 4 and above it past Mach 5, where
+the released model blends into Newtonian theory. The last column's changes from the one before are all the nose's.
+
+**Boattail.** None of the drag cases or measured flights has a boattail ending at its base, so this term changes
+none of the numbers above and is unchecked by them. On a test body with a 4.8° boattail to 0.6 of the diameter it
+adds 0.015 of wave drag at Mach 1.2 and gives a body-alone base pressure coefficient of 0.12, against about 0.11
+measured on the RM-10 in flight (NACA TN 3320). TR R-100's appendix has drag for many bodies with afterbodies; they
+are the cases to add.
+
+**Not moved: the fins' transonic drag rise.** Missile DATCOM ramps a fin's wave drag linearly from Mach 0.8 to a
+potential-flow value at Mach 1.05 its report doesn't give, and calls the scheme approximate. The released model's rise
+is fitted to measured fin drag (the Arcas fins and the RM-10's), which is the better evidence, so the test model keeps it.
 
 ## Drag at zero angle of attack (`cdParts`)
 

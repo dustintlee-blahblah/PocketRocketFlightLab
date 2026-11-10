@@ -12,6 +12,10 @@
  *   2. Body base pressure: NASA TR R-100's flight-measured curve from Mach 0.5 to 2 (R100_BODY in aerodynamics.js),
  *      in place of Fleeman's correlation below Mach 1 and TN 3819's basic curve from 1 to 2. Above Mach 2, and for
  *      the boattail and fin corrections and fin trailing edges, TN 3819 as released.
+ *   3. Nose wave drag above Mach 2: second-order shock-expansion (NACA Report 1328) from the exact cone solution, in
+ *      place of the released curves' extension and Newtonian blend (noseCdSE in aerodynamics.js).
+ *   4. Boattails above Mach 1: TR R-100's equation 1, a wave drag term the released model doesn't have and its
+ *      base-diameter-ratio rule for the base pressure, in place of TN 3819's boattail correction.
  *
  * cdParts() in aerodynamics.js reads the setting; the Wind Tunnel asks for both models by name to draw them together.
  */
