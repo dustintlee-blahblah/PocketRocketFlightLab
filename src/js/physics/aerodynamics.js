@@ -690,8 +690,10 @@ const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07 };
 /**
  * Drag coefficient of a protuberance, on its frontal area, before the boundary-layer factor (blFactor: Hoerner's
  * effective dynamic pressure, 0.75·(h/δ)^(1/3), is the same thing within a few percent). Below Mach 1 Hoerner's
- * value. Above it there is no such data: a blunt shape follows the rail button's rise (cylinderCd, by stagnation
- * pressure and modified Newtonian), and a faired one takes the larger of that and the Newtonian pressure on a front
+ * value. Above Mach 1 a blunt shape follows the rail button's rise (cylinderCd, by stagnation pressure and
+ * modified Newtonian: about 1.3 at Mach 1.5 for the blunt box), which Hoerner's free-flight values at Mach 1 to 2
+ * bracket (ch. XX, p. 20-14: 0.75 for a forward-facing step plus 0.45 for a rear-facing one, 0.8 for blunt rings,
+ * 2.0 for round rivet heads, which he calls high). There is no such data for a faired one: it takes the larger of that and the Newtonian pressure on a front
  * face that climbs to its height over half its length, 2·sin²θ.
  * @param {{shape:string, h:number, len:number}} b protuberance
  * @param {number} M Mach number
@@ -1564,7 +1566,13 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
       Mdd = Math.max(0.6, 0.96 - 1.5 * f.tc),
       trF = smooth01((Mn - Mdd) / (1.06 - Mdd));
     if (f.edge === "square") {
-      pressure += 0.8 * stagCp(Mn) * c2 * edge;
+      /* The test drag model below the drag rise: 0.4 of stagnation pressure, what a blunt leading edge adds over a
+         rounded one on long rectangular sections tested between walls (Hoerner, Fluid-Dynamic Drag, ch. III, figure
+         22: the flow closes again on the sides once the section is 2.5 thicknesses long). The 0.8 is a flat face
+         in three-dimensional flow, kept above Mach 1 and in the released model. Hoerner's figure 23 also shows a
+         corner radius of 0.2 of the thickness is enough to lose the penalty, which is why a rounded leading edge has
+         none below Mach 1. */
+      pressure += (tm ? 0.4 + 0.4 * trF : 0.8) * stagCp(Mn) * c2 * edge;
       base += finTeCp(M, cb2, finCf.get(f), f) * edge;
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;

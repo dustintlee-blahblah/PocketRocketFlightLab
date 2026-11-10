@@ -990,7 +990,12 @@ export function resultFlags(st, S, m, D) {
       flags.push(["warn", `Average thrust-to-weight is ${st.avgTtw.toFixed(1)}:1, below the usual 5:1 minimum`]);
     if (lastSim && lastSim.L && lastSim.L.wind > 8.95)
       flags.push(["bad", `Wind above 20 mph. The NFPA 1127 high-power safety code prohibits launching.`]);
-    if (st.maxMach > 2)
+    if (st.maxMach > 5)
+      flags.push([
+        "warn",
+        `Flies at Mach ${st.maxMach.toFixed(1)}. Above Mach 5 the drag has no measurements to check it against (the methods are carried up from lower speeds), and the heating of the air around the rocket isn’t modeled. Treat the apogee as a rough estimate.`,
+      ]);
+    else if (st.maxMach > 2)
       flags.push([
         "warn",
         `Flies at Mach ${st.maxMach.toFixed(1)}. Above Mach 2 the estimates are less certain: fin lift and drag come from linear supersonic theory, and aerodynamic heating isn’t modeled.`,

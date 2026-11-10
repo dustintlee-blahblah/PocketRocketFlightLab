@@ -302,7 +302,8 @@ const L55_PTS = [
    Configuration 11: 5 in diameter, 56 in long, fineness-3.5 ogive nose, an 8° boattail 5.7 in long to 0.67 of the
      diameter (base area 0.45 of the maximum), four 60°-swept delta fins. Mach 1.1 to 2.07.
    Configuration 36: 5 in diameter, 75 in long, a 22.5 in nose (a curved tip to 0.78 of the diameter in 13.5 in, then
-     a conical frustum), a 4.02° boattail 10 in long to 0.72 of the diameter (base area 0.52), three untapered
+     a conical frustum; flown as a power-series nose of exponent 0.45, which passes within 0.03 of the diameter of
+     the sketch's profile), a 4.02° boattail 10 in long to 0.72 of the diameter (base area 0.52), three untapered
      45°-swept fins of 9 in chord. Mach 0.88 to 1.7. */
 const R100_11 = {
   title: "TR R-100 configuration 11",
@@ -335,9 +336,8 @@ const R100_11 = {
 const R100_36 = {
   title: "TR R-100 configuration 36",
   finish: "polished",
-  nose: { shape: "ogive", len: 13.5, d: 3.9 },
+  nose: { shape: "power", len: 22.5, param: 0.45 },
   parts: [
-    { t: "tail", len: 9, d0: 3.9, d1: 5 },
     {
       t: "tube",
       len: 42.5,
@@ -495,6 +495,17 @@ const CASES = [
     xml: finnedOrk(AEROBEE),
     nozzleDia: AEROBEE_NOZZLE_DIA,
     pts: AEROBEE_CD_ON,
+  },
+  {
+    id: "aerobee-cd-jet",
+    title: "Aerobee 150A sustainer: drag coasting less drag thrusting (what the exhaust removes)",
+    tier: "manufacturer (from wind-tunnel tests)",
+    role: "check",
+    quantity: "cdJet",
+    xml: finnedOrk(AEROBEE),
+    nozzleDia: AEROBEE_NOZZLE_DIA,
+    // the two curves above, where both are drawn (Mach 2 to 5)
+    pts: AEROBEE_CD_OFF.map(([M, off]) => [M, off - AEROBEE_CD_ON.find((q) => q[0] === M)[1]]),
   },
   {
     id: "aerobee-cd-off",
@@ -1697,7 +1708,7 @@ function flightOrk(f, motor) {
     m = '<material type="bulk" density="1000">Fiberglass</material>',
     fin = `<finish>${f.finish}</finish>${m}`,
     shape = f.nose.shape === "vonkarman" ? "haack" : f.nose.shape,
-    param = f.nose.shape === "ogive" ? 1 : 0,
+    param = f.nose.param ?? (f.nose.shape === "ogive" ? 1 : 0),
     tubes = f.parts.filter((p) => p.t === "tube"),
     railOn = tubes.reduce((a, b) => (b.len > a.len ? b : a)),
     lastTube = tubes[tubes.length - 1],

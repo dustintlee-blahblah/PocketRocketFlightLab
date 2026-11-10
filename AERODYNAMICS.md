@@ -61,15 +61,16 @@ Against the same measurements (mean absolute error), term by term:
 | NACA RM L55G28a, total drag, free flight (check) | 8.4%, low | 2.8% | 2.8% | 2.6% | 2.7% | 2.7% |
 | NASA TN D-4013, Arcas short model, 15° boattail, total drag, wind tunnel (check) | 25.4%, high | | | 22.0% | 7.2% |
 | TR R-100 configuration 11, 8° boattail, total drag, free flight (check) | 16.7%, low | | | 7.2% | 6.9% |
-| TR R-100 configuration 36, 4° boattail, total drag, free flight (check) | 27.1%, high | | | 18.6%, high | 16.8%, high |
+| TR R-100 configuration 36, 4° boattail, total drag, free flight (check) | 24.0%, high | | | | 13.8%, high |
 | TR R-100 figure 5, pressure drag of 45° fins 2.8% thick (check) | 0.028 Cd | | | 0.028 Cd | 0.012 Cd | 0.012 Cd |
 | Aerobee 150A, drag coasting, wind tunnel (check) | 4.9% | 9.1%, high | 9.2%, high | 7.8%, high | 9.3%, high | 9.3%, high |
 | Aerobee 150A, drag thrusting, wind tunnel (check) | 6.9% | 9.1%, high | 10.3% | 9.8% | 7.9% | 7.9% |
+| Aerobee 150A, what the exhaust removes (coasting less thrusting), Mach 2–5 (check) | 0.002 Cd | | | | | 0.002 Cd |
 | 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) | 9.7% (+9.5%) | 8.3% (+7.0%) | 8.3% (+7.0%) |
 | the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% | 9.5% | 9.5% | 9.5% |
 | the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% | 11.2% | 7.5% | 7.5% |
 | the same 23 flights, as the altimeter reads (below) | 8.3% (+3.9%) | | | | | 5.8% (+1.7%) |
-| the flights below Mach 0.8, as the altimeter reads | 4.7% (−0.5%) | | | | | 4.1% (+1.8%) |
+| the flights below Mach 0.8, as the altimeter reads | 4.7% (−0.5%) | | | | | 4.3% (+2.0%) |
 | the 9 flights above Mach 1.2, as the altimeter reads | 12.2% (+10.4%) | | | | | 7.0% (+1.9%) |
 
 **Friction.** The skin's temperature has two limits: held at the pad temperature the friction-only column reads 9.2%,
@@ -139,6 +140,39 @@ it 2% or more from the true height.
 
 The paragraphs below were written before this, from true heights; the factors in them are about 10% too large for
 the warm-day altimeter flights.
+
+**What was looked at after that, and what came of it.**
+
+- _Power-on base drag._ While the motor burns the app takes the base drag off the nozzle's exit area and leaves
+  it on the rest. The Aerobee's two curves, thrusting and coasting, overlap from Mach 2 to 5, and their difference
+  is that term measured: 0.034 at Mach 2 falling to 0.011 at Mach 5. The app gives it within 0.005 (the new "what
+  the exhaust removes" case). Hoerner (p. 16-10) reports the pressure on the ring around a nozzle falling to about
+  −0.2 at Mach 2 with the jet running, twice the coasting value, which would add drag; the Aerobee curves show no
+  such thing. Below Mach 2 nothing here checks it.
+- _Base drag below Mach 1._ Hoerner's rule for bodies (0.029/√ of the forebody's drag on the base area, ch. III,
+  equations 34 and 35) has the base-diameter-cubed form the test model uses behind boattails, but its level is a
+  third to a half of TR R-100's flight-measured 0.136 on a long rocket. Tried in the test model, it fixed the Arcas
+  and configuration 36 below Mach 1 and put the eight slowest flights 10.7% high (from 2%). The flights and TR
+  R-100 agree with each other, so the level stays.
+- _Square and rounded fin edges._ Hoerner's sections between walls (ch. III, figures 22 and 23): a blunt leading
+  edge adds 0.4 on its face over a rounded one, and a corner radius of 0.2 of the thickness is enough to lose it.
+  So a rounded leading edge keeps no drag below Mach 1, and the test model's square leading edge now has 0.4
+  there in place of 0.8 (a flat face in three-dimensional flow). Only Gary Byrum's rocket has square fins: +1.5% to
+  +3.1%. On the altimeter's reading the nine rockets with rounded fins need 1.10 times the model's drag on average
+  (0.87 to 1.39) and the other fourteen 0.99; flown as square they need 0.95. Too scattered to act on.
+- _Protuberances above Mach 1._ Hoerner's free-flight values at Mach 1 to 2 (p. 20-14: 0.75 for a forward-facing
+  step, 0.45 for a rear-facing one, 0.8 for blunt rings, 2.0 for round rivet heads) bracket what the app gives a
+  blunt box there (about 1.3). A streamlined shroud above Mach 1 is still an estimate.
+- _Configuration 36's nose_ is now a power-series shape that follows the sketch (exponent 0.45): 16.8% to 13.8%.
+  The rest is not the nose.
+- _The altimeter correction high up._ With a well-mixed layer to 3 km above the pad and the standard tropopause in
+  place of a uniform shift, the 23 flights come to 6.0% (+2.2%) from 5.8% (+1.7%), and Don't Debate This to 12.5%
+  low from 15.7%. The result does not hang on the profile; that one flight does.
+- _The EZI-65's 70 °F_ is what its file says, and the file is not here to check. At 100 °F it would be 9% high, not
+  13%.
+- _Above Mach 5_ nothing checks the drag. The app now says so on any flight that gets there.
+- _A design with a protuberance opens in OpenRocket 24.12_ with its weight and position kept and a warning for each
+  of the three tags it does not know.
 
 **The missing coast drag is not spread evenly.** Scaling each flight's drag until its apogee matches gives the factor
 that rocket needs. Eleven of the 23 need 0.97–1.12 (1.04 on average): the university and research rockets with

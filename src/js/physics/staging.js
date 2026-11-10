@@ -118,6 +118,7 @@ export function boosterDesign(D) {
     railPreset: "none",
     buttons: [],
     lugs: [],
+    bumps: D.bBumps || [],
     otherCd: 0,
     cdOverride: 0,
     noseShape: "ogive:1",
