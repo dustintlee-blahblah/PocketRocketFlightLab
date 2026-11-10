@@ -69,12 +69,8 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
         const m = parseEng(eng).find((x) => x.name === f.motor && x.mfr === f.mfr);
         m.id = "flight-" + m.name;
         const R = simulate(D, L, m, null);
-        /* What a barometric altimeter would report at that apogee. It turns the pressure it reads into height with
-           the standard atmosphere, whatever the day's temperature, so in air warmer than standard it reads low
-           (about 1% for every 3 °C). */
-        const hStd = (p) => 44330.8 * (1 - Math.pow(p / 101325, 0.190263));
         return {
-          baro: hStd(atmosphere(L, R.st.maxAlt).p) - hStd(atmosphere(L, 0).p),
+          baro: baroReading(L, R.st.maxAlt), // what a barometric altimeter would report at that apogee
           apogee: R.st.maxAlt,
           maxV: R.st.maxV,
           maxMach: R.st.maxMach,

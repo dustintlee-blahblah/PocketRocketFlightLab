@@ -10,6 +10,7 @@ import { renderTitle } from "../files/unsaved-changes.js";
 import { renderFlightLog } from "../flightlog/flight-log.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { stability } from "../physics/aerodynamics.js";
+import { baroReading } from "../physics/atmosphere.js";
 import { dragModel } from "../physics/drag-model.js";
 import { mcAuto, renderMC } from "../physics/monte-carlo.js";
 import { noseWeightPlan } from "../physics/nose-weight.js";
@@ -113,6 +114,7 @@ export function renderResults() {
     document.getElementById("apogee").textContent = "—";
     document.getElementById("flags").innerHTML = "";
     document.getElementById("orkref").hidden = true;
+    document.getElementById("baroref").hidden = true;
     return;
   }
   document.getElementById("stats").hidden = false;
@@ -155,6 +157,15 @@ export function renderResults() {
     const diff = st.maxAlt ? ((st.maxAlt - D.orkApogee) / D.orkApogee) * 100 : 0;
     ref.textContent = `${D.refSource || "OpenRocket"} file reports ${fmt(D.orkApogee, "alt")} ${uname("alt")}${D.orkMotor ? " on " + D.orkMotor : ""}; this run is ${diff >= 0 ? "+" : ""}${diff.toFixed(0)}%.`;
   } else ref.hidden = true;
+  {
+    // what a barometric altimeter would show for this apogee, when the day's air makes it differ by 2% or more
+    const br = document.getElementById("baroref"),
+      baro = st.error || !(st.maxAlt > 0) ? 0 : baroReading(L, st.maxAlt),
+      pc = baro ? (baro / st.maxAlt - 1) * 100 : 0;
+    br.hidden = Math.abs(pc) < 2;
+    if (!br.hidden)
+      br.textContent = `A barometric altimeter would read about ${fmt(baro, "alt")} ${uname("alt")} (${pc >= 0 ? "+" : ""}${pc.toFixed(0)}%): it assumes standard-atmosphere temperatures, and this air is ${pc < 0 ? "warmer" : "colder"}.`;
+  }
   renderFlightLog();
   drawChart();
   drawProfile();

@@ -134,6 +134,9 @@ pad, which is doubtful for Don't Debate This (56,000 ft; 15.7% low on this readi
 left below Mach 0.8 is the EZI-65 (+13%, entered at 70 °F where the other LDRS-26 flights have 100 °F) and Thunder
 and Lightning (+6%); above it, Raven (+22%) and Proteus 6 (+15%, measured by accelerometer).
 
+The Results tab now says what a barometric altimeter would read for the predicted apogee when the day's air puts
+it 2% or more from the true height.
+
 The paragraphs below were written before this, from true heights; the factors in them are about 10% too large for
 the warm-day altimeter flights.
 

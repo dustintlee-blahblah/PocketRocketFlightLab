@@ -181,3 +181,16 @@ export function atmosphere(L, h) {
   const mu = (1.458e-6 * Math.pow(T, 1.5)) / (T + 110.4);
   return { rho, a, mu, T, p };
 }
+
+/**
+ * What a barometric altimeter would report at a height above the pad. It turns the pressure it reads into height with
+ * the standard atmosphere, whatever the day's temperature, and zeroes itself on the pad, so in air warmer than
+ * standard it reads low (about 1% for every 3 °C) and in colder air high.
+ * @param {object} L launch conditions (as for atmosphere)
+ * @param {number} h true height above the pad, m
+ * @returns {number} indicated height above the pad, m
+ */
+export function baroReading(L, h) {
+  const hStd = (p) => 44330.8 * (1 - Math.pow(p / 101325, 0.190263));
+  return hStd(atmosphere(L, h).p) - hStd(atmosphere(L, 0).p);
+}
