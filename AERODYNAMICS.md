@@ -170,6 +170,13 @@ Mach 1 is described below. On the 45° fins of TR R-100 figure 5 it gives 0.0046
 for accuracy). The 72° fins of RM A53D02 improve too, and the supersonic flights, whose short bevels now cost what
 theory says: 11.2% to 7.5%. The Aerobee coasting gets worse (7.8% to 9.3% high).
 
+**The Aerobee coasting case cannot tell the models apart.** The whole difference between them on it is friction
+(Van Driest II gives 0.014 more Cd at Mach 2 and 0.027 more at Mach 5 than the released power law), and how the
+case scores depends on a finish and Reynolds number its source does not give. Flown at sea-level density, the test
+model is 7–11% high at every speed with a 20 µm finish and 2–12% low with 5 µm; the released model is 9% high at
+Mach 2 falling to 9% low at Mach 5 with 20 µm (its 4.9% mean is the two ends cancelling) and 2–23% low with 5 µm.
+The test model holds the measured slope with Mach in either case; its level is set by the assumed finish.
+
 The RM-10 case had its fins twice too thick. RM E50D28 gives their thickness ratio as 0.10; NACA Report 1160 says
 that is measured normal to the 60° leading edge, so it is 5% along the flow. The released model's sweep factor
 (the fifth power of cos Λ / cos 30°) was fitted to the thicker fin, which is how it came to cut too little at 45°

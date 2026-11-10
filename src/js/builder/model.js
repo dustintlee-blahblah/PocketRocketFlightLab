@@ -72,10 +72,10 @@ export const BLD_NAMES = {
  * Their drag: BUMP_CD in physics/aerodynamics.js.
  */
 export const BLD_BUMPS = [
-  ["bluff", "Blunt, about as long as tall (camera, switch box)"],
-  ["long", "Blunt, over twice as long as tall"],
-  ["round", "Upright cylinder or bolt head"],
-  ["faired", "Streamlined shroud"],
+  ["bluff", "Blunt box"],
+  ["long", "Long blunt box"],
+  ["round", "Upright cylinder"],
+  ["faired", "Streamlined"],
 ];
 /**
  * Surface finishes offered: [OpenRocket name, label].
