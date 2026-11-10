@@ -9,6 +9,7 @@
  */
 import { FIN_SWEEP_N, finBlunt, finSweepRatio, finTransonicCd, finWaveK } from "../core/units-and-fin-edges.js";
 import { dragModel, heatCoef, vanDriestRatio, VD_R, wallThermal } from "./drag-model.js";
+import { bodyPressures } from "./flow-picture.js";
 import { noseR, noseSpec, noseTip } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
    Skin friction: Prandtl–Schlichting turbulent flat-plate law, boundary layer turbulent from the tip (Schlichting, Boundary-Layer Theory),
@@ -540,6 +541,72 @@ function noseCdTR100(shape, param, M) {
       return curveCd("ell", M);
   }
   return curveCd("par", M);
+}
+/* ---------- the test drag model's nose wave drag above Mach 2 (drag-model.js) ----------
+   The pressure along the nose by the second-order shock-expansion method (Syvertson and Dennis, NACA Report 1328),
+   started from the exact Taylor–Maccoll cone solution at the tip (NACA Report 1135; flow-picture.js, which the Wind
+   Tunnel's picture already uses), summed over the nose's frontal area. For a cone this is the exact cone pressure.
+   The Missile DATCOM final report (section 3.1.1.4) chose this method for supersonic body wave drag, and found it
+   reads about 20% high below Mach 2 and fails near Mach 1.4, where the flow behind the nose shock goes subsonic; so
+   the released model's measured curves (TR R-100) are kept to Mach 2 and this takes over by Mach 2.5. Report 1328
+   checks the method for Mach number over nose fineness ratio from about 0.4 to 2; past that it tends to the
+   tangent-cone pressures, which is where Newtonian theory also goes.
+   A nose's drag coefficient on its own base area depends only on its shape and fineness, so it is worked out once
+   per shape on a Mach grid (the cone solutions take a moment) and interpolated. */
+const NOSE_SE_M0 = 2,
+  NOSE_SE_DM = 0.25,
+  NOSE_SE_N = 33; // Mach 2 to 10
+const noseSeCache = new Map();
+/**
+ * A sharp nose's pressure drag coefficient on its base area at Mach 2, 2.25 ... 10, by second-order shock-expansion.
+ * @param {string} shape nose shape (noseR)
+ * @param {number} param its shape parameter
+ * @param {number} fin fineness ratio, length over base diameter
+ * @returns {(number|null)[]} null where the shock stands off the tip or the method gives no answer
+ */
+function noseSeTable(shape, param, fin) {
+  const key = `${shape}|${(+param || 0).toFixed(4)}|${fin.toFixed(3)}`;
+  if (noseSeCache.has(key)) return noseSeCache.get(key);
+  const N = 80,
+    L = 2 * fin, // base radius 1
+    P = [];
+  for (let i = 0; i <= N; i++) {
+    const x = (L * i) / N;
+    P.push({ x, r: noseR(shape, param, x, 1, L) });
+  }
+  const rAt = (x) => noseR(shape, param, x, 1, L),
+    tab = [];
+  for (let j = 0; j < NOSE_SE_N; j++) {
+    let cd = null;
+    try {
+      const bp = bodyPressures(P, NOSE_SE_M0 + j * NOSE_SE_DM);
+      if (!bp.detached && bp.cps.length) {
+        cd = 0;
+        for (const c of bp.cps) cd += c.cp * (rAt(c.x1) ** 2 - rAt(c.x0) ** 2);
+        if (!isFinite(cd) || cd <= 0) cd = null;
+      }
+    } catch (e) {
+      cd = null;
+    }
+    tab.push(cd);
+  }
+  if (noseSeCache.size > 60) noseSeCache.clear();
+  noseSeCache.set(key, tab);
+  return tab;
+}
+/**
+ * A sharp nose's pressure drag coefficient on its base area above Mach 2, by second-order shock-expansion.
+ * @param {{shape:string, param:number, fin:number}} nose
+ * @param {number} M Mach number
+ * @returns {number|null} null when the method has no answer there (the caller keeps the released model's value)
+ */
+function noseCdSE(nose, M) {
+  const tab = noseSeTable(nose.shape, nose.param, nose.fin),
+    x = Math.min(Math.max((M - NOSE_SE_M0) / NOSE_SE_DM, 0), NOSE_SE_N - 1.000001),
+    i = Math.floor(x),
+    a = tab[i],
+    b = tab[i + 1];
+  return a == null || b == null ? null : a + (b - a) * (x - i);
 }
 /**
  * Flat-plate skin-friction coefficient, with surface roughness and compressibility.
@@ -1396,6 +1463,11 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
       let cdn = Math.max(it.sub, noseCdTR100(it.nose.shape, it.nose.param, mEq(M, it.nose.fin)) * it.nose.scale);
       // beyond the measured data, blend from Mach 4 to 6 into modified Newtonian theory: Cp,max·sin²θ over the nose (Lees)
       if (M > 4) cdn = mix(cdn, stagCp(M) * it.kN, smooth01((M - 4) / 2));
+      // the test drag model: second-order shock-expansion from Mach 2 (fully by 2.5), for noses that come to a point
+      if (tm && M > NOSE_SE_M0 && !it.blunt) {
+        const se = noseCdSE(it.nose, M);
+        if (se != null) cdn = mix(cdn, se, smooth01((M - NOSE_SE_M0) / 0.5));
+      }
       if (it.nose.tipF > 0) cdn = (1 - it.nose.tipF) * cdn + it.nose.tipF * tipCapCd(M);
       pressure += (cdn * it.area) / S;
       continue;
