@@ -68,6 +68,9 @@ Against the same measurements (mean absolute error), term by term:
 | 23 measured flights, apogee | 9.9% (+9.2% bias) | 8.7% (+7.5%) | 9.7% (+9.3%) | 9.7% (+9.5%) | 8.3% (+7.0%) | 8.3% (+7.0%) |
 | the flights below Mach 0.8 | 7.9% | 7.8% | 9.5% | 9.5% | 9.5% | 9.5% |
 | the 9 flights above Mach 1.2 | 13.0% | 9.9% | 11.0% | 11.2% | 7.5% | 7.5% |
+| the same 23 flights, as the altimeter reads (below) | 8.3% (+3.9%) | | | | | 5.8% (+1.7%) |
+| the flights below Mach 0.8, as the altimeter reads | 4.7% (−0.5%) | | | | | 4.1% (+1.8%) |
+| the 9 flights above Mach 1.2, as the altimeter reads | 12.2% (+10.4%) | | | | | 7.0% (+1.9%) |
 
 **Friction.** The skin's temperature has two limits: held at the pad temperature the friction-only column reads 9.2%,
 0.030, 13.4% high, 24.3% high, 16.0% high, 7.8% and 7.9%; fully heated it reads 10.3%, 0.027, 2.8%, 9.1%, 9.1%, 8.9%
@@ -116,6 +119,23 @@ on minus fins off, less friction), twice what thin-airfoil theory gives, and are
 model now takes the larger of the linear term and a transonic peak, 5.7·(t/c)^(5/3) times the released model's
 sweep factor, which also gives the 0.0055 peak of TR R-100's 45° fins. The released model's bump has the same form
 with 9.36, fitted to the Arcas total drag when its base drag was too high.
+
+**Most of the missing coast drag was the altimeters.** Seventeen of the 23 apogees were read by barometric
+altimeters, which turn pressure into height with the standard atmosphere whatever the day's temperature. In air
+warmer than standard the same pressure change spans more height, so the altimeter reads low: about 1% for every
+3 °C, 9% at LDRS-26's 100 °F (Featherweight's Raven manual says 10% or more; Nakka's flights with GPS and a
+barometric altimeter side by side show the same). The flights were compared as true heights. `validation/flights.js`
+now compares those 17 with what the altimeter would have read at the simulated apogee (both the app's and RASAero
+II's predictions; `--geometric` gives the old comparison). The test model's error falls from 8.3% (+7.0% bias) to
+5.8% (+1.7%), and below Mach 0.8 from 9.5% to 4.1%; RASAero II's becomes 5.2% with a −3.3% bias, so on this
+reading it has slightly too much drag, not the app too little. Limits: it assumes no altimeter's reading was
+corrected for temperature afterwards, and that the air aloft is as much warmer than standard as the air at the
+pad, which is doubtful for Don't Debate This (56,000 ft; 15.7% low on this reading, 6.9% as true height). What is
+left below Mach 0.8 is the EZI-65 (+13%, entered at 70 °F where the other LDRS-26 flights have 100 °F) and Thunder
+and Lightning (+6%); above it, Raven (+22%) and Proteus 6 (+15%, measured by accelerometer).
+
+The paragraphs below were written before this, from true heights; the factors in them are about 10% too large for
+the warm-day altimeter flights.
 
 **The missing coast drag is not spread evenly.** Scaling each flight's drag until its apogee matches gives the factor
 that rocket needs. Eleven of the 23 need 0.97–1.12 (1.04 on average): the university and research rockets with
@@ -245,7 +265,7 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
 | Aerobee 150A, Mach 0.1–5 (never used for tuning) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 6.9% mean while thrusting, 4.9% coasting (both high; was 5.5% and 3.0% before TN 3819); CP 0.8% of length; CNα 16% low throughout. |
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (never used for tuning) | NACA RM L55G28a, free flight | Drag 8.4% low (was 12.7%). |
 | Boattailed bodies, Mach 0.6–2 (never used for tuning) | NASA TR R-100, configurations 11 and 36, free flight; NASA TN D-4013, Arcas short model, wind tunnel | Drag 17% low on configuration 11, 27% high on configuration 36 (whose fins' measured wave drag, figure 5, the model more than doubles), 25% high on the Arcas. |
-| Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 9.9% mean, app high (+9%; +13% above Mach 1.2); RASAero II 5.4%. |
+| Apogee, 23 measured flights, Mach 0.55–3.6 (never used for tuning) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 8.3% mean, app high (+4%; +10% above Mach 1.2), barometric readings compared as the altimeter reads them; RASAero II 5.2%. As true heights: 9.9% and 5.4%. |
 | Nose drag | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%. Another program, not a measurement. |
 | Large angles of attack, rounded tips, pods, tube fins | — | Not checked against measurements. |
@@ -271,7 +291,7 @@ Roll: fin cant forcing with the same interference factor; roll damping by strip 
    such fins lose their trailing-edge base drag.
 7. **Normal-force slope.** On the Aerobee 150A the app's CNα is about 16% low at every speed while its CP agrees;
    either the reconstructed fins are too small or the interference factor is (see item 4).
-8. **Real rockets coast lower than the model says.** On the 23 measured flights the app is high by 9% on average,
+8. **Real rockets coast lower than the model says** (most of this turned out to be barometric altimeters reading low on warm days: see "Most of the missing coast drag was the altimeters" above). On the 23 measured flights the app is high by 9% on average,
    13% above Mach 1.2, while its top speeds agree with RASAero II's within a few percent: the missing drag is in the
    coast. OpenRocket overshoots the same flights the same way. Where it comes from (protuberances, finish, fin
    misalignment, base drag while coasting at altitude) is the largest open question.

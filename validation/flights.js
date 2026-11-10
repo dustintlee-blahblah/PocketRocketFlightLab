@@ -25,6 +25,7 @@ const opt = (k) => {
 const html = path.resolve(opt("--html") || path.join(__dirname, "..", "web", "pocket-rocket-flight-lab.html"));
 const csvOut = opt("--csv");
 const verbose = args.includes("--verbose");
+const geometric = args.includes("--geometric"); // compare true heights even where a barometric altimeter measured
 const model = opt("--model"); // "test": fly the drag model in development (Settings, Drag model)
 const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
 
@@ -68,7 +69,12 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
         const m = parseEng(eng).find((x) => x.name === f.motor && x.mfr === f.mfr);
         m.id = "flight-" + m.name;
         const R = simulate(D, L, m, null);
+        /* What a barometric altimeter would report at that apogee. It turns the pressure it reads into height with
+           the standard atmosphere, whatever the day's temperature, so in air warmer than standard it reads low
+           (about 1% for every 3 °C). */
+        const hStd = (p) => 44330.8 * (1 - Math.pow(p / 101325, 0.190263));
         return {
+          baro: hStd(atmosphere(L, R.st.maxAlt).p) - hStd(atmosphere(L, 0).p),
           apogee: R.st.maxAlt,
           maxV: R.st.maxV,
           maxMach: R.st.maxMach,
@@ -82,7 +88,9 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
     // the loaded rocket must weigh what the file says, or the comparison means nothing
     if (Math.abs(app.liftMass / (f.w * LB) - 1) > 0.002)
       throw new Error(`${f.title}: launch mass ${app.liftMass} kg, file says ${f.w * LB}`);
-    rows.push({ f, app: app.apogee / FT, mach: app.maxMach });
+    // flights measured by barometric altimeter are compared with what the altimeter would read (--geometric: not)
+    const baro = /barometric/.test(f.how) && !geometric ? app.baro / app.apogee : 1;
+    rows.push({ f, app: (app.apogee / FT) * baro, ras: f.ras * baro, mach: app.maxMach });
   }
   await browser.close();
 
@@ -90,9 +98,9 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
     sg = (x) => (x >= 0 ? "+" : "") + x.toFixed(1) + "%";
   rows.sort((a, b) => a.mach - b.mach);
   console.log("flight | max Mach | measured ft (how) | RASAero II ft, error | app ft, error");
-  for (const { f, app, mach } of rows)
+  for (const { f, app, ras, mach } of rows)
     console.log(
-      `${f.title} | ${mach.toFixed(2)} | ${f.meas} (${f.how}) | ${f.ras}, ${sg(pct(f.ras, f.meas))} | ${app.toFixed(0)}, ${sg(pct(app, f.meas))}`,
+      `${f.title} | ${mach.toFixed(2)} | ${f.meas} (${f.how}) | ${ras.toFixed(0)}, ${sg(pct(ras, f.meas))} | ${app.toFixed(0)}, ${sg(pct(app, f.meas))}`,
     );
   const sum = (sel, k) => {
     const e = sel.map((r) => pct(k(r), r.f.meas));
@@ -108,7 +116,7 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
     const sel = rows.filter((r) => r.mach >= lo && r.mach < hi);
     if (sel.length)
       console.log(
-        `  ${label.padEnd(15)} ${String(sel.length).padStart(2)} flights   RASAero II ${sum(sel, (r) => r.f.ras)}   app ${sum(sel, (r) => r.app)}`,
+        `  ${label.padEnd(15)} ${String(sel.length).padStart(2)} flights   RASAero II ${sum(sel, (r) => r.ras)}   app ${sum(sel, (r) => r.app)}`,
       );
   }
   if (verbose) for (const { f } of rows) console.log(`  ${f.title}: ${f.file}`);
@@ -118,7 +126,9 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
       csvOut,
       "flight,max_mach,measured_ft,how,rasaero_ft,app_ft\n" +
         rows
-          .map(({ f, app, mach }) => [q(f.title), mach.toFixed(3), f.meas, q(f.how), f.ras, app.toFixed(0)].join(","))
+          .map(({ f, app, ras, mach }) =>
+            [q(f.title), mach.toFixed(3), f.meas, q(f.how), ras.toFixed(0), app.toFixed(0)].join(","),
+          )
           .join("\n") +
         "\n",
     );
