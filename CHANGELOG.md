@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 287 (2026-11-09)
+
+**Checks against measured data** (no change to the app's results)
+- **Two more rockets the model is checked against, never tuned on**: NACA RM L56G24, a free-flight missile model with small delta fins on a boattail (drag and center of pressure, Mach 1.7–2.8), and NASA TM-2005-213541, a slender missile in NASA's wind tunnels (drag, center of pressure and lift, Mach 0.6–3.95, from the report's own data). VALIDATION.md has the results: with small fins far behind a long body, the app's center of pressure comes out forward and its lift low, and on the second rocket its drag rises too early near Mach 1. Both are listed as open problems in AERODYNAMICS.md.
+- **REFERENCES.md** lists the reports behind the app's physics and what each one is used for.
+
 ## Build 286 (2026-11-09)
 
 **Wind Tunnel**
