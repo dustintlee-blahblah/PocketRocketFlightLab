@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 286 (2026-11-09)
+
+**Wind Tunnel**
+- **Lee-side separation moves forward as the angle of attack grows**: the crossflow on the lee side now breaks away where each slice of the body has moved about one and a half radii sideways (the impulsive-flow analogy, NACA Report 1048), so at 10–12° separation starts partway along the body and by about 20° it starts just behind the nose. Before, it stayed near the tail until very large angles. The picture only; no number changes.
+
+**Rocket tab**
+- **Surface finish help** no longer quotes a fixed altitude effect: it says the finish matters most on fast rockets and that how much depends on how rough the paint really is.
+
 ## Build 285 (2026-11-09)
 
 **Wind Tunnel**
