@@ -130,7 +130,7 @@ export function bldInfo(F) {
       (t
         ? "This part’s surface finish. Rougher finishes add skin-friction drag."
         : "The surface finish for every part. Rougher finishes add skin-friction drag.\n\nAs set on each part keeps the finishes from the design file.") +
-      "\n\nPick the finish the rocket really has: it changes the predicted altitude more than most settings, up to about 8% between polished and regular paint on a fast rocket. Most painted rockets are smooth paint (20 µm) to regular paint (60 µm); choose polished only for a surface that really is polished, and rougher ones for bare cardboard, unfilled tube spirals or fiberglass weave.",
+      "\n\nPick the finish the rocket really has: it can change the predicted altitude more than most settings, most on fast rockets. How much depends on how rough the paint really is, and the roughness values used for paint are estimates, not measurements of hobby finishes. Most painted rockets fall somewhere between smooth paint (20 µm) and regular paint (60 µm); choose polished only for a surface that really is polished, and rougher ones for bare cardboard, unfilled tube spirals or fiberglass weave.",
     known: t
       ? F.p && F.p.knownCalc
         ? "This part’s weight. With Override on, it uses the weight RockSim calculated (kept from the design file); switch Override off to calculate it from the part’s size and material instead."

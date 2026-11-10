@@ -17,8 +17,9 @@
  *   thicknesses from Blasius (5x/√Re_x) and the 1/7-power turbulent layer (0.37x/Re_x^0.2).
  * - Separation behind a rearward step (reattaching about six step heights downstream), on a boattail steeper than 8°
  *   (all of it by 20°, Hoerner's rule, as in the base drag), behind the base (the wake), on the lee side of the body
- *   above about 5° angle of attack (the crossflow separation behind body lift at larger angles), and on the fins as they
- *   stall, from 18° to 35° (the fin stall in the normal-force model).
+ *   from where the crossflow has carried each section about 1.5 radii sideways (the impulsive-flow analogy behind the
+ *   body lift at larger angles), and on the fins as they stall, from 18° to 35° (the fin stall in the normal-force
+ *   model).
  */
 import { smooth01 } from "./aerodynamics.js";
 
@@ -229,10 +230,22 @@ export function flowScene(P, A, o) {
   });
   const rb = P[P.length - 1].r;
   if (rb > 0.03 * R) seps.push({ x0: L, x1: L + 2 * rb * (o.M > 1.05 ? 1 : 1.6), side: 0, kind: "wake", h: rb });
-  if (a > 5) {
-    const s = smooth01((a - 5) / 12),
-      x0 = P[0].x + (L - P[0].x) * Math.max(0.08, 1 - (a - 5) / 25);
-    seps.push({ x0, x1: L, side: lee, kind: "lee", h: R * (0.4 + 1.2 * s), s });
+  /* Lee-side separation by the impulsive-flow analogy (Allen and Perkins, NACA Report 1048): each slice of the body
+     behaves like a cylinder pushed sideways, which by station x has moved x·tan α; its flow leaves the lee side once
+     that is about 1.5 radii. On a cone or ogive nose this means separation from the tip once α passes about the nose's
+     own half-angle, as measured on cones; on the body it moves forward quickly as α grows. Below about 4° the crossflow
+     is too weak to show. */
+  if (a > 4) {
+    const s = smooth01((a - 4) / 12),
+      ta = Math.tan((a * Math.PI) / 180),
+      N = 200;
+    let x0 = null;
+    for (let k = 1; k <= N && x0 == null; k++) {
+      const x = P[0].x + ((L - P[0].x) * k) / N,
+        r = Math.max(rOf(P, x), 1e-6);
+      if (((x - P[0].x) * ta) / r >= 1.5) x0 = x;
+    }
+    if (x0 != null && x0 < L) seps.push({ x0, x1: L, side: lee, kind: "lee", h: R * (0.4 + 1.2 * s), s });
   }
   const st = smooth01((a - 18) / 17);
   if (st > 0)
