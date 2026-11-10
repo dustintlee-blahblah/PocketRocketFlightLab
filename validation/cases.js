@@ -94,7 +94,8 @@ const A53_PTS = [
 ];
 
 /* NACA RM E50D28 (1950): the RM-10 missile in the Lewis 8- by 6-foot tunnel, Mach 1.49 to 1.98. The drag its four
-   60°-swept fins (10% circular-arc sections, taper ratio 1, root chord 8.75 in at the base) add to the body (figure 8(d)
+   60°-swept fins (circular-arc sections 10% thick normal to the leading edge, as NACA Report 1160 gives them, so 5%
+   along the flow; taper ratio 1, root chord 8.75 in at the base) add to the body (figure 8(d)
    minus figure 6), less the fins' measured base-pressure increase (figure 9), on the body's maximum cross-section. The
    body is modeled as a 6 in ogive and cylinder of the same length: only the fins' increment is compared. Reynolds
    number 4.5 million per foot. */
@@ -108,7 +109,7 @@ const RM10 = (fins) => ({
   ct: fins ? 8.75 : 0.01,
   sw: fins ? 9.07 : 0,
   s: fins ? 9.07 / Math.tan((60 * Math.PI) / 180) : 0.001,
-  t: fins ? 0.875 : 0.0001,
+  t: fins ? 0.4375 : 0.0001,
   edge: "airfoil",
 });
 // [Mach, fin increment: body + 4 fins minus body alone, less the fins' base-pressure increase]

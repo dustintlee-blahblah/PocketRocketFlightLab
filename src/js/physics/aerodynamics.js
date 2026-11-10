@@ -1520,13 +1520,26 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
       base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;
+    } else if (tm) {
+      /* The test drag model: wave drag of sharp-edged fins by thin-airfoil theory on the free stream, K·(t/c)²/β on
+         the fin's area (K from the section: finK). While the leading edge is swept behind the Mach line (β < tan Λ)
+         the drag stays at the value it has when the Mach line reaches the edge, K·(t/c)²·cot Λ, and β is never taken
+         under 0.4, where linear theory overshoots (the released model's floor). It rises from the section's
+         drag-divergence Mach number to Mach 1.05, where Missile DATCOM's fin method also puts the full value. There
+         is no separate transonic bump. Checked against the measured pressure drag of 45° untapered fins 2.8% thick
+         (NASA TR R-100 figure 5: 0.0037 on the fin area from Mach 1.05 to 3; this gives 0.0046 falling to 0.0016)
+         and the RM-10's 60° fins (NACA RM E50D28). */
+      const tanL = Math.sqrt(Math.max(1 - c2, 0)) / Math.max(f.cosL, 1e-6),
+        bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), tanL, 0.4),
+        rise = smooth01((M - Mdd) / (1.05 - Mdd));
+      pressure += (((rise * finK(f, Math.max(M, 1.05), bEff, cb2) * f.tc * f.tc) / bEff) * f.n * f.area) / S;
     } else {
       const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
         kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),
         subLE = kS + (1 - kS) * smooth01((Mn - 1) / 0.1); // a subsonic leading edge weakens it (see finTransonicCd)
       pressure += (((trF * subLE * finK(f, Mn, beta, cb2) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
     }
-    if (!finBlunt(f.edge)) pressure += (finTransonicCd(M, f.tc, f.cosL) * f.n * f.area) / S;
+    if (!tm && !finBlunt(f.edge)) pressure += (finTransonicCd(M, f.tc, f.cosL) * f.n * f.area) / S;
   }
   // pods and side boosters: each copy's skin friction (with its own form factor), nose and transition pressure drag, and base
   for (const pd of A.pods || []) {

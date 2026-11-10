@@ -14,7 +14,7 @@
  *    (tangent-ogive nose, four trapezoidal fins swept 72° with 4% sections), Mach 0.6 to 10. Points from figure 11
  *    and table I; Reynolds number on the model length. Coefficients on the body's cross-section area.
  *  - NACA RM E50D28 (1950): RM-10 missile in the Lewis 8- by 6-foot tunnel, Mach 1.49 to 1.98: the drag the four
- *    60°-swept fins (10% circular-arc sections, taper ratio 1) add to the body (figure 8(d) minus figure 6), less the
+ *    60°-swept fins (circular-arc sections, 10% thick normal to the leading edge, taper ratio 1) add to the body (figure 8(d) minus figure 6), less the
  *    fins' measured base-pressure increase (figure 9). On the body's maximum cross-section area.
  */
 "use strict";
