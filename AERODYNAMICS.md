@@ -174,7 +174,7 @@ the warm-day altimeter flights.
 - _A design with a protuberance opens in OpenRocket 24.12_ with its weight and position kept and a warning for each
   of the three tags it does not know.
 
-**RASAero II on the same drag cases.** Each body was written as a RASAero II design file, opened in RASAero II 1.0
+**RASAero II on the same drag cases.** Each body was written as a RASAero II design file, opened in RASAero II
 on Windows, and its drag table exported (Aero Plots, Export to CSV). Mean error against the same measured points:
 
 | Case | Released | Test | RASAero II | RASAero II settings |
