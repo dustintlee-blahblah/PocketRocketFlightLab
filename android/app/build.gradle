@@ -46,6 +46,15 @@ android {
             minifyEnabled false
             if (keystoreFile.exists()) signingConfig signingConfigs.release
         }
+        // "Pocket Rocket drag test": the same app with the test drag model on by default (Settings can switch it
+        // back), under its own name and application ID so it installs beside the released app. Debug-signed.
+        // ./gradlew assembleDragtest
+        dragtest {
+            initWith debug
+            applicationIdSuffix ".dragtest"
+            versionNameSuffix "-dragtest"
+            matchingFallbacks = ["debug"]
+        }
     }
 
     compileOptions {
@@ -64,6 +73,9 @@ tasks.register("generateWebAsset") {
     def page = rootProject.file("../web/pocket-rocket-flight-lab.html")
     def fontCss = file("src/main/fontface.css")
     def out = file("$buildDir/generated/webAsset/index.html")
+    // the drag-test app starts on the test drag model (ui/settings.js reads PR_DRAG_DEFAULT)
+    def dragTest = gradle.startParameter.taskNames.any { it.toLowerCase().contains("dragtest") }
+    inputs.property("dragTest", dragTest)
     inputs.files(page, fontCss)
     outputs.file(out)
     doLast {
@@ -77,7 +89,8 @@ tasks.register("generateWebAsset") {
         rest = rest.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>',
                             '<script src="jspdf.umd.min.js"></script>')
         def pre = '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n' +
-                  '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+                  '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n' +
+                  (dragTest ? '<script>window.PR_DRAG_DEFAULT = "test";</script>\n' : "")
         def html = pre + head + "<style>" + fontCss.getText("UTF-8") + rest
         if (html.contains("fonts.googleapis") || (html =~ /<script src="https?:\/\//).find())
             throw new GradleException("The app page still loads something from the internet at startup")

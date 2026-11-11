@@ -15,6 +15,9 @@ import { renderResults } from "./results.js";
 import { renderRSO } from "./rso-checklist.js";
 import { wtRefresh } from "./wind-tunnel.js";
 let rt = null;
+/* The drag model a fresh install starts on: the released one, or the test model in the "Pocket Rocket drag test"
+   build of the Android app, whose page sets PR_DRAG_DEFAULT (android/app/build.gradle). Settings can switch either. */
+const dragDefault = typeof window !== "undefined" && window.PR_DRAG_DEFAULT === "test" ? "test" : "released";
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
  */
@@ -231,12 +234,12 @@ export function start() {
       document.getElementById("s-imp").setAttribute("aria-pressed", units === "imp");
       document.getElementById("s-met").setAttribute("aria-pressed", units === "met");
       sw.checked = store.get("rfs-swipe", true) !== false;
-      const dm = store.get("rfs-dragmodel", "released") === "test" ? "test" : "released";
+      const dm = store.get("rfs-dragmodel", dragDefault) === "test" ? "test" : "released";
       menu.querySelectorAll("[data-drag-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.dragSet === dm));
       document.getElementById("s-dragnote").hidden = dm !== "test";
     }
     applyTheme(store.get("rfs-theme", "auto"));
-    setDragModel(store.get("rfs-dragmodel", "released"));
+    setDragModel(store.get("rfs-dragmodel", dragDefault));
     sync();
   })();
   window.addEventListener("resize", () => {
