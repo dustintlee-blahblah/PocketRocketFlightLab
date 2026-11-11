@@ -174,6 +174,27 @@ the warm-day altimeter flights.
 - _A design with a protuberance opens in OpenRocket 24.12_ with its weight and position kept and a warning for each
   of the three tags it does not know.
 
+**RASAero II on the same drag cases.** Each body was written as a RASAero II design file, opened in RASAero II 1.0
+on Windows, and its drag table exported (Aero Plots, Export to CSV). Mean error against the same measured points:
+
+| Case | Released | Test | RASAero II | RASAero II settings |
+|---|---|---|---|---|
+| RM A53D02 | 14.4% | 6.2% | 7.0% | all turbulent flow, as the app assumes (16.6% low with its default transition) |
+| RM L55G28a | 8.4% | 2.7% | 9.4% to 15.1%, low | Rough Camouflage Paint to Camouflage Paint, which bracket the app's 20 µm (20.1% with zero roughness) |
+| Arcas short model | 25.4% | 7.2% | 19.1% | zero roughness; low by 21–41% from Mach 0.9 to 1.1 |
+| TR R-100 configuration 11 | 16.7% | 6.9% | 6.5% | zero roughness |
+| TR R-100 configuration 36 | 24.0% | 13.8% | 11.7% | zero roughness, tangent ogive nose |
+| Aerobee coasting | 4.9% | 9.3% | 4.2% to 7.4% | Rough Camouflage Paint to Camouflage Paint |
+| Aerobee thrusting | 6.9% | 7.9% | 6.3% to 6.4% | the same, with the nozzle exit entered |
+| Aerobee, what the exhaust removes | 0.002 Cd | 0.002 Cd | 0.003 Cd | |
+
+Limits: the Arcas case was used to size two of the test model's terms, so its 7.2% is not an independent score.
+RASAero II has no power-series nose and no fin anchors were entered for the Arcas (Rogers adds them as rail
+guides). Its fin sections were the nearest it offers (Biconvex for the app's airfoil, Hexagonal with the same
+bevel lengths). A Mach-altitude table was entered to match each case's Reynolds numbers; RASAero II's exported
+Reynolds numbers follow it within 10% on the TR R-100 cases, partly on the Arcas and A53D02, and not at all on
+L55G28a, which ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag).
+
 **The missing coast drag is not spread evenly.** Scaling each flight's drag until its apogee matches gives the factor
 that rocket needs. Eleven of the 23 need 0.97–1.12 (1.04 on average): the university and research rockets with
 beveled fins, and Blister. The other twelve need 1.13–1.63: nine are rockets whose fins are entered as rounded
