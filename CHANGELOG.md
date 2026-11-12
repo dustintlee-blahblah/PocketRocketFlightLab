@@ -4,6 +4,19 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 290 (2026-11-11)
+
+**Rocket builder**
+- **Protuberance: a new shape, "Long box, sloped front"**: a long box whose front face ramps up to its full height and whose back end is square, such as a camera housing with a ramped front. Its drag is about half the long blunt box's below Mach 1 (0.39 on its frontal area), worked out from Hoerner's long box and his measurements of square and beveled steps on a wall; above Mach 1 it stays a share of the long blunt box. Drawn with its ramp in the side view.
+- **Rail buttons now have a weight.** They had none: the Weight field showed 0 and they added nothing to the rocket. They now weigh what their shape and material give (about 1.2 g for a pair of 1010 buttons, as OpenRocket works it out), so a design with rail buttons comes out that much heavier.
+- **Override can be switched on for a part whose calculated value is 0.** The switch used to turn itself straight back off, leaving the box locked; now the box opens empty for your value.
+
+**Flight animation**
+- **The countdown no longer ends with "Liftoff!"**: it runs 3, 2, 1 and the rocket goes.
+
+**Reference library**
+- **Every report in the library was checked for public release**: NACA and NASA reports against NASA's report server (distribution Public, no export control), Air Force and Army reports by the release statement on the document. Two whose release could not be confirmed (the Aerobee 150A performance summary and the 1970 Space Handbook) were taken out and are cited only, leaving 20.
+
 ## Build 289 (2026-11-11)
 
 **Reference library** (no change to the app)
