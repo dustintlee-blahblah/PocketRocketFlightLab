@@ -3,10 +3,12 @@
 The reports and papers behind the app's physics. Report numbers are the citations used in the code and in
 [AERODYNAMICS.md](AERODYNAMICS.md) and [VALIDATION.md](VALIDATION.md).
 
-The U.S. government reports (NACA, NASA, Air Force and Army, all cleared for public release) are kept, as PDFs, in a
-separate repository, [PocketRocketFlightLab-references](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references),
-linked from each row below; they are not part of the app or its builds. Copyrighted papers, articles and books are
-only cited here.
+The U.S. government reports that are confirmed as publicly released are kept, as PDFs, in a separate repository,
+[PocketRocketFlightLab-references](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references), linked
+from each row below; they are not part of the app or its builds. Confirmed means: NACA and NASA reports listed on
+the NASA Technical Reports Server as distribution "Public" with no export control, and Air Force and Army reports
+marked "Approved for public release; distribution unlimited" on the document. Copyrighted papers, articles and
+books, and two reports whose release could not be confirmed, are only cited here.
 
 ## Used by the app now
 
@@ -21,7 +23,7 @@ only cited here.
 | NASA TR R-100 (Stoney, 1961) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NASA-TR-R-100_Stoney_1961_zero-lift-drag-collection.pdf) | Collection of zero-lift drag data on bodies of revolution from free-flight investigations | Nose drag curves from Mach 0.8 to 3.6 |
 | NACA RM A53D02 (James and Carros, 1953) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NACA-RM-A53D02_James-Carros_1953_fin-stabilized-body-M0.6-10.pdf) | Experimental investigation of the zero-lift drag of a fin-stabilized body of fineness ratio 10 at Mach numbers between 0.6 and 10 | Total drag check (`tests/drag-benchmarks.js`) |
 | NACA RM E50D28 (Esenwein, Obery and Schueller, 1950; [NTRS 19930086134](https://ntrs.nasa.gov/citations/19930086134)) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NACA-RM-E50D28_Esenwein_1950_RM-10-M1.49-1.98.pdf) | Aerodynamic characteristics of NACA RM-10 missile in 8- by 6-foot supersonic wind tunnel at Mach numbers from 1.49 to 1.98, II | RM-10 fin drag check |
-| Vought Astronautics AST/E1R-13319 (1961; NASA CR-75752) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NASA-CR-75752_Vought-AST-E1R-13319_1961_Aerobee-150A-performance.pdf) | Performance summary for the Aerobee 150A sounding rocket vehicle | Aerobee 150A drag check (never used for tuning) |
+| Vought Astronautics AST/E1R-13319 (1961; NASA CR-75752; not in the library: its public release could not be confirmed) | Performance summary for the Aerobee 150A sounding rocket vehicle | Aerobee 150A drag check (never used for tuning) |
 | NACA RM L56G24 (Gillespie, 1956; [NTRS 19690093428](https://ntrs.nasa.gov/citations/19690093428)) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NACA-RM-L56G24_Gillespie_1956_ballistic-missile-model-supersonic.pdf) | Supersonic investigation of the lift, drag, static stability, and hinge-moment characteristics of a rocket-powered model of a ballistic-missile configuration | Drag and CP check (`validation/cases.js`) |
 | NASA TM-2005-213541 (Allen, 2005; [NTRS 20050160470](https://ntrs.nasa.gov/citations/20050160470)) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NASA-TM-2005-213541_Allen_2005_strakes-tail-fins-M0.6-4.63.pdf) | Aerodynamics of an axisymmetric missile concept having cruciform strakes and in-line tail fins from Mach 0.60 to 4.63 | Drag, CP and normal-force slope check, from the report's digital data ([NTRS 20050165156](https://ntrs.nasa.gov/citations/20050165156)) (`validation/cases.js`) |
 | AFWAL-TR-86-3091 (Vukelich et al., 1988; [DTIC ADA211086](https://apps.dtic.mil/sti/citations/ADA211086)) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/AFWAL-TR-86-3091_Vukelich_1988_Missile-DATCOM-vol1-final-report.pdf) | Missile DATCOM, Volume I – Final report | Method choices for the drag model (`src/js/physics/drag-model.js`): Van Driest II friction, TR R-100 base pressure, second-order shock-expansion noses |
@@ -42,7 +44,7 @@ only cited here.
 | AFRL-RB-WP-TR-2011-3071 (Rosema et al., 2011) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/AFRL-RB-WP-TR-2011-3071_Rosema_2011_Missile-DATCOM-users-manual-2011.pdf) | Missile DATCOM user's manual – 2011 revision | Earlier edition of the 2014 manual |
 | AFRL-VA-WP-TR-1998-3009 (Blake, 1998) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/AFRL-VA-WP-TR-1998-3009_Blake_1998_Missile-DATCOM-users-manual-1997.pdf) | Missile DATCOM user's manual – 1997 FORTRAN 90 revision | Earlier edition |
 | NACA TN 4370 (Yohner and Hansen, 1958; [NTRS 19930085287](https://ntrs.nasa.gov/citations/19930085287)) — [PDF](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/NACA-TN-4370_Yohner-Hansen_1958_laminar-boundary-layer-similarity-solutions.pdf) | Some numerical solutions of similarity equations for three-dimensional laminar incompressible boundary-layer flows | Laminar boundary layers (the Wind Tunnel's flow picture, transition) |
-| AU-18 (Air University, 1970) — PDF [part 1](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/AU-18_Air-University_1970_Space-Handbook-part-1.pdf), [part 2](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references/blob/main/reports/AU-18_Air-University_1970_Space-Handbook-part-2.pdf) | Space Handbook | Background: rocket performance, trajectories and the atmosphere |
+| AU-18 (Air University, 1970; not in the library: its public release could not be confirmed) | Space Handbook | Background: rocket performance, trajectories and the atmosphere |
 | Rogers, *RASAero II comparisons with ARCAS CP and CD wind tunnel data* (rasaero.com; copyrighted) | — | RASAero II against the same Arcas data the app is checked on |
 | *The RRS 50 statute mile boosted dart* (High Power Rocketry, 1997; copyrighted) | — | A measured high-altitude amateur flight |
 | *Project R* (High Power Rocketry, 1997; copyrighted) | — | A measured amateur flight |
