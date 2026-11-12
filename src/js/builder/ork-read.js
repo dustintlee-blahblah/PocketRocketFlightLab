@@ -591,6 +591,7 @@ export function bldFromOrk(xml, info) {
                   w: num(e, "prflbumpw"),
                   h: num(e, "prflbumph"),
                   len: num(e, "packedlength"),
+                  ang: num(e, "radialdirection"),
                   mass: txt(e, "prflflymass") ? num(e, "prflflymass") : num(e, "mass"),
                 });
                 break;

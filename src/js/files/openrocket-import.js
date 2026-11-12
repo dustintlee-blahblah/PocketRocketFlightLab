@@ -772,8 +772,11 @@ export function parseOrk(xml, opts = {}) {
           w: num(c, "prflbumpw"),
           h: num(c, "prflbumph"),
           shape: txt(c, "prflbump").trim(),
-          // a fly-away rail guide: on the rocket only while it is on the rail, so its weight is kept apart (m is 0 in the file)
-          ...(txt(c, "prflbump").trim() === "flyaway" ? { fly: true, mass: num(c, "prflflymass", 0) } : {}),
+          // its weight and where around the body it sits, for the sideways pull of an item on one side.
+          // A fly-away rail guide is on the rocket only while it is on the rail: its weight is kept apart (m is 0 in the file)
+          mass: txt(c, "prflbump").trim() === "flyaway" ? num(c, "prflflymass", 0) : m,
+          ang: num(c, "radialdirection", 0),
+          ...(txt(c, "prflbump").trim() === "flyaway" ? { fly: true } : {}),
           si: curStage,
         });
     } else if (tag === "parachute") {

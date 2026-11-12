@@ -305,6 +305,7 @@ export function bldFields(p) {
         ["h", "Height above the body", "num", "small"],
         ["len", "Length", "num", "small"],
         ["mass", "Weight", "num", "smass"],
+        ["ang", "Angle around the body", "num", "deg"],
         ...posF,
       ];
     case "raw":

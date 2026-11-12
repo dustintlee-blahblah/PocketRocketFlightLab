@@ -11,6 +11,7 @@
 import { findMotor, flightFirst } from "../motors/clusters.js";
 import {
   aero,
+  bumpSide,
   cdParts,
   cnaPartsM,
   cpAtAoA,
@@ -635,7 +636,8 @@ export function simulate(D, L, m, mb, opts = {}) {
         fy = 0,
         fz = 0,
         Mr2 = 0;
-      if (IMPERF) {
+      const BS = G.bumps && G.bumps.length ? bumpSide(G, vr, atm) : null; // protuberances on one side of the body
+      if (IMPERF || BS) {
         const phi = s[13];
         let e1x = -by,
           e1y = bx,
@@ -681,6 +683,18 @@ export function simulate(D, L, m, mb, opts = {}) {
           iy += cgOffM * T * (bz * qx - bx * qz);
           iz += cgOffM * T * (bx * qy - by * qx);
         } // thrust line passing beside the CG
+        if (BS) {
+          /* a protuberance on one side: (1) its weight pulls the CG off the centerline by e = Σ m·r / M, so the thrust
+             and the rocket's drag, both along the centerline, pass beside the CG: moment e·(T − drag)·(b × u);
+             (2) its own drag acts out at its radius: moment q·Σ CdA·r·(b × u). u is across the body toward the item;
+             d is angle 0 and b × d is 90° */
+          const e0 = (BS.mr[0] / mm) * (T - FA) + q * BS.dr[0],
+            e1 = (BS.mr[1] / mm) * (T - FA) + q * BS.dr[1];
+          // b × d = q-vector, b × (b × d) = −d
+          ix += e0 * qx - e1 * dx;
+          iy += e0 * qy - e1 * dy;
+          iz += e0 * qz - e1 * dz;
+        }
         if (T > 0 && cluFail && !stack(t)) {
           ix += cluOff * T * (by * dz - bz * dy);
           iy += cluOff * T * (bz * dx - bx * dz);

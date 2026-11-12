@@ -750,6 +750,36 @@ export function flyaway(A, v, atm) {
   return { mass, cdA };
 }
 /**
+ * The sideways pull of protuberances that sit on one side of the body. Each is taken as a uniform block: its weight
+ * and its drag act at the middle of its height, at body radius + h/2 from the centerline, at its angle around the body.
+ * Returns the two sums the flight needs, as components along the body's two cross axes (angle 0 and 90°):
+ * mr, weight × distance (kg·m; divided by the rocket's mass it is how far the CG sits off the centerline), and
+ * dr, drag area × distance (m³; times the dynamic pressure it is the drag's turning moment about the centerline).
+ * Items placed evenly around the body cancel. Fly-away rail guides are left out: they are gone in flight.
+ * @param {object} A from aero()
+ * @param {number} v airspeed (m/s)
+ * @param {object} atm from atmosphere()
+ * @returns {{mr:number[], dr:number[]}|null} null when there is nothing off the centerline
+ */
+export function bumpSide(A, v, atm) {
+  let any = false;
+  const mr = [0, 0],
+    dr = [0, 0];
+  for (const b of A.bumps || []) {
+    if (b.fly) continue;
+    any = true;
+    const r = radiusAt(A, b.x) + b.h / 2,
+      c = Math.cos(b.ang || 0),
+      s = Math.sin(b.ang || 0),
+      cdA = bumpCd(b, v / atm.a) * blFactor(b.h, b.x, v, kinVisc(atm)) * b.front;
+    mr[0] += b.mass * r * c;
+    mr[1] += b.mass * r * s;
+    dr[0] += cdA * r * c;
+    dr[1] += cdA * r * s;
+  }
+  return any ? { mr, dr } : null;
+}
+/**
  * Standard rail buttons, by rail size: outer and inner diameter, height, flange and base thickness (m).
  */
 const RAIL_PRESETS = {
@@ -1167,7 +1197,9 @@ export function aero(D) {
       len: b.len || 0,
       front: b.w * b.h,
       shape: BUMP_CD[b.shape] != null ? b.shape : "bluff",
-      ...(b.shape === "flyaway" ? { fly: true, mass: b.mass || 0 } : {}),
+      mass: b.mass || 0,
+      ang: ((b.ang || 0) * Math.PI) / 180,
+      ...(b.shape === "flyaway" ? { fly: true } : {}),
     }));
   const nose = segs[0];
   // tumbling end over end: Allen–Perkins crossflow drag ∝ sin³α, mean over α = 4/(3π); roll-averaged fin projection 2/π per fin

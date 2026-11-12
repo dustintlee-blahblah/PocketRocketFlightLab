@@ -279,6 +279,7 @@ export function bldNew(type, R = 0.0333) {
         type,
         name,
         shape: "bluff",
+        ang: 0,
         w: 0.03,
         h: 0.025,
         len: 0.05,
