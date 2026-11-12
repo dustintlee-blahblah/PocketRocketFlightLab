@@ -48,7 +48,12 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
   for (const f of AE.fins) {
     if (f.xLead < x0 - 1e-9 || f.xLead >= x1 - 1e-9) continue;
     const rf = radiusAt(AE, f.xLead + f.a / 2);
-    fins.push(finOutline(f).map(([px, py]) => [f.xLead - x0 + px, rf + py]));
+    // each fin's outline as [x, distance from the axis]; the set's fins are spread evenly around the body, an odd
+    // number starting a quarter turn round so the rail buttons (underneath) sit between two fins
+    fins.push({
+      pts: finOutline(f).map(([px, py]) => [f.xLead - x0 + px, rf + py]),
+      n: Math.max(1, Math.round(f.n || 3)),
+    });
   }
   // what stands out from the body: rail buttons and launch lugs (drawn on the underside, as in the builder) and
   // protuberances (above or below by their angle around the body). A fly-away rail guide is marked: it is drawn only on the rail
@@ -56,10 +61,10 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
     inPart = (x) => x >= x0 - 1e-9 && x < x1 - 1e-9;
   for (const b of AE.buttons || [])
     if (b.od > 0 && inPart(b.x))
-      outs.push({ x: b.x - b.od / 2 - x0, len: b.od, r: radiusAt(AE, b.x), h: b.h, side: -1 });
+      outs.push({ x: b.x - b.od / 2 - x0, len: b.od, r: radiusAt(AE, b.x), h: b.h, ang: Math.PI });
   for (const l of AE.lugs || [])
     if (l.len > 0 && inPart(l.x))
-      outs.push({ x: l.x - x0, len: l.len, r: radiusAt(AE, l.x), h: 2 * (l.ro || 0.003), side: -1 });
+      outs.push({ x: l.x - x0, len: l.len, r: radiusAt(AE, l.x), h: 2 * (l.ro || 0.003), ang: Math.PI });
   for (const b of AE.bumps || [])
     if (inPart(b.x))
       outs.push({
@@ -67,7 +72,7 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
         len: b.len || b.h,
         r: radiusAt(AE, b.x),
         h: b.h,
-        side: Math.cos(b.ang || 0) >= -1e-9 ? 1 : -1,
+        ang: b.ang || 0,
         shape: b.shape,
         fly: !!b.fly,
       });
@@ -90,6 +95,17 @@ export function animOpen() {
   ANIM.sus = two ? animShape(SD, 0, RD.length) : ANIM.shape;
   ANIM.boo = two ? animShape(SD, RD.length, three ? L2 : Infinity) : null;
   ANIM.first = three ? animShape(SD, L2) : null;
+  // how far the rocket has rolled by each moment: the roll rate summed over time, up to apogee
+  {
+    const a = [0],
+      tA = st.tApo ?? Infinity;
+    for (let i = 1; i < out.t.length; i++)
+      a.push(
+        a[i - 1] +
+          (out.t[i] <= tA ? (((out.roll[i] || 0) + (out.roll[i - 1] || 0)) / 2) * (out.t[i] - out.t[i - 1]) : 0),
+      );
+    ANIM.rollAng = a;
+  }
   ANIM.tEnd = Math.max(
     st.tLand || out.t[out.t.length - 1],
     out.bt && out.bt.length ? out.bt[out.bt.length - 1] : 0,

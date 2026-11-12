@@ -517,17 +517,64 @@ export function animDraw(target) {
     c.fillStyle = body;
     c.strokeStyle = ink;
     c.lineWidth = 1.3;
+    // the rocket's roll: everything off the axis is seen at its angle around the body. What is at angle a sits at
+    // (distance from the axis) × cos a on the drawing, in front of the body when sin a > 0 and behind it otherwise
+    const phi = ANIM.rollAng ? animAt(out.t, ANIM.rollAng, t) : 0,
+      offT = lastSim && lastSim.st ? lastSim.st.offRailT : null;
+    const finAt = (f, a) => {
+      const k = Math.cos(a);
+      c.beginPath();
+      f.pts.forEach((p, i) => {
+        const [x, y] = P(p);
+        i ? c.lineTo(x, k * y) : c.moveTo(x, k * y);
+      });
+      c.closePath();
+      c.fill();
+      c.stroke();
+    };
+    // rail buttons, lugs and protuberances, in the ink colour and never smaller than a couple of pixels so they show.
+    // A fly-away rail guide (a cage around the body) is there only until the rocket leaves the rail
+    const outAt = (o, a) => {
+      const k = Math.cos(a),
+        w = Math.max(o.len * sc, 2.5),
+        hh = Math.max(o.h * sc, 2),
+        xa = (S.len / 2 - o.x) * sc, // its front end; it runs back from there (toward −x)
+        y0 = k * o.r * sc,
+        d = k * hh;
+      c.beginPath();
+      if (o.fly) c.rect(xa - w, -(o.r * sc + hh), w, 2 * (o.r * sc + hh));
+      else if (o.shape === "ramp") {
+        const rise = Math.min(hh * Math.sqrt(3), w / 2);
+        c.moveTo(xa, y0);
+        c.lineTo(xa - rise, y0 + d);
+        c.lineTo(xa - w, y0 + d);
+        c.lineTo(xa - w, y0);
+      } else if (o.shape === "faired") {
+        // a smooth blister: rounded front, long taper
+        c.moveTo(xa, y0);
+        c.bezierCurveTo(xa, y0 + d * 1.25, xa - w * 0.45, y0 + d * 1.25, xa - w * 0.6, y0 + d * 0.55);
+        c.quadraticCurveTo(xa - w * 0.8, y0 + d * 0.08, xa - w, y0);
+      } else c.rect(xa - w, Math.min(y0, y0 + d), w, Math.max(Math.abs(d), 1));
+      c.closePath();
+      c.fill();
+    };
+    const things = [];
     for (const f of S.fins)
-      for (const sg of [1, -1]) {
-        c.beginPath();
-        f.forEach((p, i) => {
-          const [a, b] = P(p);
-          i ? c.lineTo(a, sg * b) : c.moveTo(a, sg * b);
-        });
-        c.closePath();
-        c.fill();
-        c.stroke();
+      for (let i = 0; i < f.n; i++)
+        things.push({ a: phi + (f.n % 2 ? Math.PI / 2 : 0) + (2 * Math.PI * i) / f.n, draw: finAt, o: f });
+    for (const o of S.outs || []) {
+      if (o.fly && offT != null && t > offT) continue;
+      things.push({ a: phi + o.ang, draw: outAt, o, ink: true });
+    }
+    const pass = (front) => {
+      for (const th of things) {
+        if (th.o.fly ? !front : Math.sin(th.a) > 1e-9 !== front) continue;
+        c.fillStyle = th.ink ? ink : body;
+        th.draw(th.o, th.a);
       }
+    };
+    pass(false); // what is behind the body
+    c.fillStyle = body;
     c.beginPath();
     S.body.forEach((p, i) => {
       const [a, b] = P(p);
@@ -540,37 +587,7 @@ export function animDraw(target) {
     c.closePath();
     c.fill();
     c.stroke();
-    // rail buttons, lugs and protuberances, in the ink colour and never smaller than a couple of pixels so they show.
-    // A fly-away rail guide is there only until the rocket leaves the rail
-    const offT = lastSim && lastSim.st ? lastSim.st.offRailT : null;
-    c.fillStyle = ink;
-    for (const o of S.outs || []) {
-      if (o.fly && offT != null && t > offT) continue;
-      const w = Math.max(o.len * sc, 2.5),
-        hh = Math.max(o.h * sc, 2),
-        xa = (S.len / 2 - o.x) * sc, // its front end; it runs back from there (toward −x)
-        y0 = o.side * o.r * sc,
-        y1 = o.side * (o.r * sc + hh);
-      c.beginPath();
-      if (o.shape === "ramp") {
-        const rise = Math.min(hh * Math.sqrt(3), w / 2);
-        c.moveTo(xa, y0);
-        c.lineTo(xa - rise, y1);
-        c.lineTo(xa - w, y1);
-        c.lineTo(xa - w, y0);
-      } else if (o.shape === "faired") {
-        // a smooth blister: rounded front, long taper
-        const d = o.side * hh;
-        c.moveTo(xa, y0);
-        c.bezierCurveTo(xa, y0 + d * 1.25, xa - w * 0.45, y0 + d * 1.25, xa - w * 0.6, y0 + d * 0.55);
-        c.quadraticCurveTo(xa - w * 0.8, y0 + d * 0.08, xa - w, y0);
-      } else if (o.fly) {
-        // a cage around the body: both sides and across it
-        c.rect(xa - w, -(o.r * sc + hh), w, 2 * (o.r * sc + hh));
-      } else c.rect(xa - w, Math.min(y0, y1), w, hh);
-      c.closePath();
-      c.fill();
-    }
+    pass(true); // what is in front of it
     c.restore();
     return sc;
   };
