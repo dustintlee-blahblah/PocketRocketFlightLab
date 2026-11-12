@@ -4,6 +4,16 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 291 (2026-11-12)
+
+**Rocket builder**
+- **Fly-away rail guide**: a new shape in the Protuberance part's Shape list, for a clamp-on guide that carries the rocket up a rail and falls away as the rocket leaves it. Its weight and its drag (a blunt box's, 1.20 on width × height) count only while the rocket is on the rail; the flight after that carries neither. In the saved file it is written with no weight, so OpenRocket doesn't fly it as part of the rocket.
+- **Choosing a nose or transition shape sets that shape's usual parameter** (1 for an ogive or parabola, 0.5 for a power series, 0 for a Haack), instead of carrying over the last shape's.
+- **Limits on four fields that could stall a run or give nonsense**: shape parameter 0 to 1, fin cant 15° either way, parachute and streamer drag coefficient up to 10, and a nose cone can't have zero length.
+
+**Launch**
+- **Launch warns when the rail guides are missing or don't suit the pad**: no launch lug or rail buttons in the design, buttons on a rod or a lug on a rail, a lug too small for the rod, or buttons of the wrong size for the rail (1010 or 1515). You can open the builder, change the rail type, or launch anyway; it asks once for each problem. A launch tower needs no guides, and neither does a rocket with a fly-away rail guide. The RSO Checklist's rail fit item knows the fly-away guide too.
+
 ## Build 290 (2026-11-11)
 
 **Rocket builder**
