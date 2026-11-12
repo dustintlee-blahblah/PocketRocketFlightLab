@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 293 (2026-11-12)
+
+**Rocket builder**
+- **Rail buttons, launch lugs and protuberances are drawn solid in the side view.** They were drawn in the same faint grey as the parts inside the body and were hard to see.
+
+**Flight animation**
+- **The rocket now shows its rail buttons, launch lugs and protuberances**, each drawn at least a couple of pixels big so it can be seen. A fly-away rail guide is shown on the pad and is gone once the rocket leaves the rail.
+
 ## Build 292 (2026-11-12)
 
 **Flight simulation**
