@@ -469,8 +469,42 @@ export function bldDraw() {
             c.lineTo(x1 + L, Y(rr));
             c.closePath();
             c.fill();
+          } else if (k.shape === "faired") {
+            // a smooth blister: a rounded front rising to full height a third of the way back, then a long taper
+            const L = Math.max(kk.len * sc, 3),
+              h = Math.max(k.h * sc, 2),
+              y0 = Y(rr);
+            c.beginPath();
+            c.moveTo(x1, y0);
+            c.bezierCurveTo(x1, y0 - h * 1.25, x1 + L * 0.45, y0 - h * 1.25, x1 + L * 0.6, y0 - h * 0.55);
+            c.quadraticCurveTo(x1 + L * 0.8, y0 - h * 0.08, x1 + L, y0);
+            c.closePath();
+            c.fill();
+          } else if (k.shape === "round") {
+            // an upright cylinder: a post with a rounded top
+            const w = Math.max(kk.len * sc, 3),
+              h = Math.max(k.h * sc, 2),
+              rd = Math.min(w / 2, h);
+            c.beginPath();
+            c.moveTo(x1, Y(rr));
+            c.lineTo(x1, Y(rr) - h + rd);
+            c.arcTo(x1, Y(rr) - h, x1 + rd, Y(rr) - h, rd);
+            c.arcTo(x1 + w, Y(rr) - h, x1 + w, Y(rr) - h + rd, rd);
+            c.lineTo(x1 + w, Y(rr));
+            c.closePath();
+            c.fill();
+          } else if (k.shape === "flyaway") {
+            // a cage around the body: a block above and below it, joined by bands across the body
+            const L = Math.max(kk.len * sc, 4),
+              h = Math.max(k.h * sc, 3);
+            c.fillRect(x1, Y(rr) - h, L, h);
+            c.fillRect(x1, Yb(rr), L, h);
+            const bw = Math.max(Math.min(L * 0.18, 4), 1.5);
+            c.fillRect(x1, Y(rr), bw, 2 * rr * sc);
+            c.fillRect(x1 + L - bw, Y(rr), bw, 2 * rr * sc);
+            hit = [x1, x1 + L, Y(rr) - h - 2, Yb(rr) + h + 2];
           } else c.fillRect(x1, Y(rr + k.h), Math.max(kk.len * sc, 3), Math.max(k.h * sc, 2));
-          hit = [x1, x2, Y(rr + k.h) - 4, Y(rr) + 2];
+          hit = hit || [x1, x2, Y(rr + k.h) - 4, Y(rr) + 2];
           break;
         }
         case "mass": {

@@ -1190,12 +1190,16 @@ export function aero(D) {
   const lugs = D.railPreset === "custom" ? D.lugs || [] : [];
   // protuberances on the outside of the body: frontal area, height, and where the boundary layer reaches them
   const bumps = (D.bumps || [])
-    .filter((b) => b.w > 0 && b.h > 0)
+    .filter((b) => (b.w > 0 || b.shape === "flyaway") && b.h > 0)
     .map((b) => ({
       x: b.x,
       h: b.h,
       len: b.len || 0,
-      front: b.w * b.h,
+      // a fly-away rail guide is a cage around the body: its front is the ring between the body and its outside
+      front:
+        b.shape === "flyaway"
+          ? Math.PI * ((radiusAtSegs(segs, b.x, R) + b.h) ** 2 - radiusAtSegs(segs, b.x, R) ** 2)
+          : b.w * b.h,
       shape: BUMP_CD[b.shape] != null ? b.shape : "bluff",
       mass: b.mass || 0,
       ang: ((b.ang || 0) * Math.PI) / 180,

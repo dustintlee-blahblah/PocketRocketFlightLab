@@ -301,11 +301,12 @@ export function bldFields(p) {
       return [
         ["name", "Name", "text"],
         ["shape", "Shape", "sel", BLD_BUMPS],
-        ["w", "Width", "num", "small"],
-        ["h", "Height above the body", "num", "small"],
+        // a fly-away rail guide goes all the way around the body, so it has no width or angle
+        ...(p.shape === "flyaway" ? [] : [["w", "Width", "num", "small"]]),
+        ["h", p.shape === "flyaway" ? "Thickness around the body" : "Height above the body", "num", "small"],
         ["len", "Length", "num", "small"],
         ["mass", "Weight", "num", "smass"],
-        ["ang", "Angle around the body", "num", "deg"],
+        ...(p.shape === "flyaway" ? [] : [["ang", "Angle around the body", "num", "deg"]]),
         ...posF,
       ];
     case "raw":

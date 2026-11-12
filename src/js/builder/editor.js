@@ -615,6 +615,15 @@ function bldWire(el, p, mode, si) {
           const usual = { ogive: 1, parabolic: 1, power: 0.5, haack: 0 }[inp.value];
           if (usual != null) p.param = usual;
         }
+        // a fly-away rail guide sits just above the fins: choosing that shape puts it there (on a body with fins)
+        if (key === "shape" && p && p.type === "bump" && inp.value === "flyaway") {
+          const b = bldLayout(BLD).bodies.find((q) => (q.p.kids || []).includes(p)),
+            f = b && b.kids.find((q) => q.k.type === "fins");
+          if (f) {
+            p.ref = "top";
+            p.pos = Math.max(f.x - b.x - (p.len || 0), 0);
+          }
+        }
         // switching fins to free-form starts from the outline they had, so there's a shape to edit
         if (key === "shape" && p && p.type === "fins" && inp.value === "freeform" && !bldPts(p).pts.length) {
           const r = p.root || 0.1,

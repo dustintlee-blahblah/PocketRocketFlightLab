@@ -68,7 +68,7 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
         r: radiusAt(AE, b.x),
         h: b.h,
         side: Math.cos(b.ang || 0) >= -1e-9 ? 1 : -1,
-        ramp: b.shape === "ramp",
+        shape: b.shape,
         fly: !!b.fly,
       });
   const len = Math.max(...body.map((p) => p[0]), 0.01),

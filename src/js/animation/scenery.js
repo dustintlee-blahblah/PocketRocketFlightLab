@@ -552,12 +552,21 @@ export function animDraw(target) {
         y0 = o.side * o.r * sc,
         y1 = o.side * (o.r * sc + hh);
       c.beginPath();
-      if (o.ramp) {
+      if (o.shape === "ramp") {
         const rise = Math.min(hh * Math.sqrt(3), w / 2);
         c.moveTo(xa, y0);
         c.lineTo(xa - rise, y1);
         c.lineTo(xa - w, y1);
         c.lineTo(xa - w, y0);
+      } else if (o.shape === "faired") {
+        // a smooth blister: rounded front, long taper
+        const d = o.side * hh;
+        c.moveTo(xa, y0);
+        c.bezierCurveTo(xa, y0 + d * 1.25, xa - w * 0.45, y0 + d * 1.25, xa - w * 0.6, y0 + d * 0.55);
+        c.quadraticCurveTo(xa - w * 0.8, y0 + d * 0.08, xa - w, y0);
+      } else if (o.fly) {
+        // a cage around the body: both sides and across it
+        c.rect(xa - w, -(o.r * sc + hh), w, 2 * (o.r * sc + hh));
       } else c.rect(xa - w, Math.min(y0, y1), w, hh);
       c.closePath();
       c.fill();
