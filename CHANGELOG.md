@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 292 (2026-11-12)
+
+**Flight simulation**
+- **A protuberance on one side of the body now turns the rocket.** It used to add only weight and straight-back drag, so even a large item on one side flew straight. Now its weight moves the CG off the centerline (so the motor's push and the rocket's drag pass beside it) and its own drag pulls back out at its distance from the centerline. The fins work against both: a small camera gives a slight arc and a landing off to one side, a very large item tumbles the rocket. A spinning rocket averages the push out. Designs without protuberances fly as before; fly-away rail guides are not affected.
+
+**Rocket builder**
+- **Protuberance: Angle around the body.** Where around the body the item sits. Two alike on opposite sides (0° and 180°) balance each other; two on the same side add up. Saved in the .ork file.
+
 ## Build 291 (2026-11-12)
 
 **Rocket builder**
