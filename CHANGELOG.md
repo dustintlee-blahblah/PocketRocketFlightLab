@@ -4,6 +4,23 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 288 (2026-11-11)
+
+**A new drag model**
+- **Drag is now worked out by a new model**, built term by term from public NACA, NASA, Missile DATCOM and US Army handbook sources and checked against more measurements than the one before. What differs: skin friction follows the skin's temperature as the airflow heats it during a flight (Van Driest II); the base drag of a plain body comes from NASA's free-flight measurements (lower below Mach 1 than before); nose wave drag above Mach 2 is by second-order shock-expansion; boattails get a wave drag of their own and a base drag that shrinks with the base; and sharp-edged fins' wave drag is from thin-airfoil theory with a transonic peak that depends on the fin's aspect ratio.
+- **How the two compare with measurements** (mean error): drag of wind-tunnel and free-flight models 10% against 22% below Mach 0.8, 9% against 18% from Mach 0.8 to 1.2, and 7% against 12% from Mach 1.2 to 3; apogee on 23 measured flights 6.0% against 8.3%, and 7.3% against 12.2% on the nine above Mach 1.2. Below Mach 0.8 the flights come out about the same (4.3% against 4.7%), with the new model reading about 2% higher. AERODYNAMICS.md has every case, including the ones where the new model is still behind.
+- **Settings → Drag model** switches between Current and Previous, so you can fly the same rocket on both. With Previous chosen, the Wind Tunnel draws the two together.
+- **A drag calibration belongs to the model it was fitted with.** One made before this build isn't applied to the new model; the flight log says so and offers Refit.
+
+**Results**
+- **What a barometric altimeter would read**: under the predicted apogee, when it differs by 2% or more. A barometric altimeter assumes standard air, so on a warm day it reads low (about 1% for every 3 °C above standard), and the app's apogee is the true height.
+- **RSO Checklist**: a flag for flights above Mach 5, past the measurements the drag model is checked against.
+
+**Rocket builder**
+- **Protuberance**: a new part for cameras, switch boxes, shrouds and other bumps on the body, as a blunt box, long blunt box, upright cylinder or streamlined shape, with drag from Hoerner's measurements of bodies in a boundary layer. Saved in the design file.
+- **Surface finish names** now say what each roughness is: the 5 µm choice is paint sanded smooth, 20 µm is spray paint left as it dried, 60 µm a rough or brushed coat (from Missile DATCOM's roughness table, which puts paint well below the names the list had).
+- **Square fin edges** below the transonic drag rise: the blunt leading edge's drag is 0.4 of stagnation pressure instead of 0.8 (Hoerner), in the new model.
+
 ## Build 287 (2026-11-09)
 
 **Checks against measured data** (no change to the app's results)

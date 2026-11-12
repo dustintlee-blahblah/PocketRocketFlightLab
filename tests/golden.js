@@ -15,6 +15,10 @@
  * Design files (.ork, .rkt) are read from the fixture folders (default: $PR_FIXTURES), plus the app's built-in examples.
  * --no-fixtures flies the built-in examples only.
  *
+ * The flights use the previous drag model (Settings, Drag model: Previous), the one the committed snapshot was recorded
+ * with, so the snapshot keeps proving that model's results haven't moved; the current drag model is checked against
+ * measurements instead (tests/drag-benchmarks.js, validation/).
+ *
  * tests/golden-snapshot.json is the committed snapshot of the built-in examples; `npm test` checks it, and
  * `npm run test:record` records it again after a change that is meant to alter results (say which in the commit).
  * Larger local snapshots with your own design files stay out of the repository.
@@ -51,7 +55,7 @@ for (const d of fixtureDirs)
 
 /* ---- runs inside the page ---- */
 // a deterministic page: seeded random numbers, a fixed clock and ids, so two runs give identical output
-const INIT = `(()=>{window.PR_EXPOSE=true;let s=123456789;Math.random=()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};
+const INIT = `(()=>{window.PR_EXPOSE=true;window.PR_DRAG_DEFAULT="released";let s=123456789;Math.random=()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};
   const T0=Date.UTC(2026,10,1,18,0,0);const RD=Date;let tick=0;
   class FD extends RD{constructor(...a){if(a.length)super(...a);else super(T0+(tick++));}static now(){return T0+(tick++);}}
   window.Date=FD;let n=0;if(window.crypto)try{crypto.randomUUID=()=>"00000000-0000-4000-8000-"+String(++n).padStart(12,"0");}catch(e){}

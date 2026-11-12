@@ -103,11 +103,7 @@ export function renderResults() {
       if (b) b.disabled = !SOURCE;
     }
   }
-  // a run flown with the test drag model says so, so it can't be mistaken for the released model's prediction
-  document.getElementById("apoeyebrow").textContent =
-    lastSim && lastSim.dragModel === "test"
-      ? "Predicted apogee, above ground · TEST drag model"
-      : "Predicted apogee, above ground";
+  document.getElementById("apoeyebrow").textContent = "Predicted apogee, above ground";
   if (!lastSim) {
     document.getElementById("mchip").textContent = flightMotor().cn || flightMotor().name;
     document.getElementById("stats").hidden = true;

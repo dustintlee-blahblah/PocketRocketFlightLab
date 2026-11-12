@@ -26,7 +26,7 @@ const html = path.resolve(opt("--html") || path.join(__dirname, "..", "web", "po
 const csvOut = opt("--csv");
 const verbose = args.includes("--verbose");
 const geometric = args.includes("--geometric"); // compare true heights even where a barometric altimeter measured
-const model = opt("--model"); // "test": fly the drag model in development (Settings, Drag model)
+const model = opt("--model"); // "released": fly the previous drag model (Settings, Drag model: Previous)
 const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
 
 (async () => {

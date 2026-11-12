@@ -83,17 +83,6 @@ jobs:
           name: app-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-      # "Pocket Rocket drag test": the app with the test drag model on by default, installable beside the released one
-      - name: Build the drag-test app
-        working-directory: android
-        run: ./gradlew --no-daemon assembleDragtest
-
-      - name: Keep the drag-test APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: pocket-rocket-drag-test-apk
-          path: android/app/build/outputs/apk/dragtest/app-dragtest.apk
-
       # only where the signing secrets exist (this repository, not forks or pull requests from them): catches signing
       # problems before a release does
       - name: Build the signed release APK

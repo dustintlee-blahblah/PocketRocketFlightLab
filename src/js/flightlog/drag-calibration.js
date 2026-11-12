@@ -5,6 +5,7 @@ import { store } from "../core/storage.js";
 import { D } from "../design/defaults.js";
 import { SOURCE } from "../files/save.js";
 import { flKey } from "./flight-log.js";
+import { dragModel } from "../physics/drag-model.js";
 import { simulate } from "../physics/simulate.js";
 import { lastSim } from "../ui/results.js";
 /* ---------- drag calibration ----------
@@ -59,11 +60,22 @@ export function calSet(v) {
   store.set(CAL_STORE, m);
 }
 /**
- * Sets the design's drag multiplier from its calibration (1 without one).
+ * Whether a calibration was fitted with the other drag model (Settings, Drag model), so it doesn't apply: the
+ * multiplier makes one model's drag match a flight, and the other model's drag differs. A calibration says which
+ * model it belongs to only when that is the current one ("test"); one that doesn't say is from the previous model
+ * (every calibration made before build 288).
+ * @param {{k:number, dm?:string}|null} c
+ * @returns {boolean}
+ */
+export function calStale(c) {
+  return !!c && c.k > 0 && (c.dm || "released") !== dragModel;
+}
+/**
+ * Sets the design's drag multiplier from its calibration (1 without one, or with one fitted to the other drag model).
  */
 export function applyCal() {
   const c = calGet();
-  D.dragScale = c && c.k > 0 ? c.k : 1;
+  D.dragScale = c && c.k > 0 && !calStale(c) ? c.k : 1;
 }
 /**
  * The drag multiplier (0.5–2) that makes a run reach a measured apogee (apogee falls as drag rises, so bisect).

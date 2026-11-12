@@ -2,7 +2,7 @@
 /*
  * How accurate the aerodynamic model is against every measured rocket in validation/cases.js, by speed band:
  *
- *   node build.js && node validation/accuracy.js [--model test] [--verbose] [--skin cold]
+ *   node build.js && node validation/accuracy.js [--model released] [--verbose] [--skin cold]
  *
  * For each case the app's model is built from the case's geometry and compared point by point: drag as a relative
  * error, the fins' added drag as a difference in Cd, the center of pressure as a difference in % of body length, the
@@ -20,7 +20,7 @@ const { chromium } = require("playwright");
 const { CASES } = require("./cases.js");
 
 const verbose = process.argv.includes("--verbose");
-// --model test scores the drag model in development (Settings, Drag model) instead of the released one
+// --model released scores the previous drag model (Settings, Drag model: Previous) instead of the current one
 const model = process.argv.includes("--model") ? process.argv[process.argv.indexOf("--model") + 1] : "";
 const BANDS = [
   ["subsonic", 0, 0.8],

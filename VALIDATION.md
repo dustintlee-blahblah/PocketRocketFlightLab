@@ -5,6 +5,13 @@ Rocket Flight Lab's physics, what they found (including where the app is weaker)
 Everything here can be reproduced from this repository; the scripts are in `validation/` and `tests/`. [AERODYNAMICS.md](AERODYNAMICS.md) maps
 each part of the model to its source and to these checks.
 
+**Build 288 changed the drag model.** The drag and apogee figures on this page were worked out with the model before
+it (Settings → Drag model → Previous) and have not all been redone. For the current model against the same
+measurements, case by case and beside the previous one, see "The current drag model and the previous one" in
+[AERODYNAMICS.md](AERODYNAMICS.md); in brief, its drag error on the wind-tunnel and free-flight models is about half
+the previous model's below Mach 3, and its apogee error on the 23 measured flights is 6.0% against 8.3%. The scripts
+below score the current model; add `--model released` for the previous one. The stability figures are unaffected.
+
 In short:
 
 | Check | Against | Result |

@@ -35,7 +35,7 @@ import { prHash, prStateRead } from "./saved-simulation.js";
 import { isDirty, markClean, setActive } from "./unsaved-changes.js";
 import { unzipEntries, unzipOrk } from "./unzip.js";
 import { zipOthers } from "./zip.js";
-import { applyCal, calGet, calSet } from "../flightlog/drag-calibration.js";
+import { applyCal, calGet, calSet, calStale } from "../flightlog/drag-calibration.js";
 import { flDeleted, flList, flPut, setFlNow } from "../flightlog/flight-log.js";
 import { zipData, zipEntries } from "../flightlog/xlsx.js";
 import { classifyUser, dupMotor } from "../motors/catalog-lookup.js";
@@ -580,6 +580,13 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         ?.insertAdjacentHTML(
           "beforeend",
           `<div class="note" style="margin-top:6px">Drag is calibrated to your flight of this rocket (×${D.dragScale.toFixed(2)}). See Results to change it.</div>`,
+        );
+    else if (calStale(calGet()))
+      rep
+        .querySelector(".report")
+        ?.insertAdjacentHTML(
+          "beforeend",
+          `<div class="note" style="margin-top:6px">This rocket’s drag calibration was fitted with a different drag model, so it isn’t being used. Refit it from the flight log on the Results tab.</div>`,
         );
     setMotorTarget("sustainer");
     mountFilter();

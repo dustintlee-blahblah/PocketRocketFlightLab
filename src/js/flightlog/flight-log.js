@@ -6,10 +6,11 @@ import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { D, series, setSeries } from "../design/defaults.js";
 import { SOURCE } from "../files/save.js";
-import { applyCal, calGet, calKeyOld, calSet, solveDragScale } from "./drag-calibration.js";
+import { applyCal, calGet, calKeyOld, calSet, calStale, solveDragScale } from "./drag-calibration.js";
 import { altOpenFile, prIncomingGo, prPendingAlt } from "./xlsx.js";
 import { findMotor, flightFirst } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
+import { dragModel } from "../physics/drag-model.js";
 import { lastMC, MC_K68, MC_K95 } from "../physics/monte-carlo.js";
 import { simulate } from "../physics/simulate.js";
 import { isThree } from "../physics/staging.js";
@@ -627,7 +628,15 @@ async function flFit() {
         return r ? r.maxAlt / x.f.apo - 1 : 0;
       }),
       rms = Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) * 100;
-    calSet({ k, flights: use.map((x) => x.f.id), n: use.length, rms, skipped: skip, date: flToday() });
+    calSet({
+      k,
+      flights: use.map((x) => x.f.id),
+      n: use.length,
+      rms,
+      skipped: skip,
+      date: flToday(),
+      ...(dragModel === "released" ? {} : { dm: dragModel }), // which drag model it was fitted with (see calStale)
+    });
     flFitMsg = "";
     applyCal();
     store.set("rfs-design", D);
@@ -673,10 +682,16 @@ function renderFlCal(list) {
     }
   }
   const k = c && c.k > 0 ? c.k : null,
+    stale = calStale(c), // fitted with the other drag model: kept, but not in use until it is refitted
     pct = k ? (k - 1) * 100 : 0,
     busy = flFitBusy || /^Calibrating/.test(flFitMsg);
   let h = "";
-  if (k && c.flights)
+  if (k && stale)
+    h =
+      `<span id="flcalst"><b>Calibration not in use.</b> This rocket’s drag calibration (×${k.toFixed(2)}) was fitted with the ${dragModel === "released" ? "current" : "previous"} drag model, and the drag model has changed since, so flights run without it. ${c.flights ? "Refit it to use your logged flights with this model." : "Remove it, then tick “Use for calibration” on a logged flight to fit a new one."}</span>` +
+      (c.flights ? `<button class="btn ghost" type="button" id="flrefit">Refit</button>` : "") +
+      `<button class="btn ghost" type="button" id="flcalrm">Remove</button>`;
+  else if (k && c.flights)
     h =
       `<span id="flcalst">Drag calibrated <b>×${k.toFixed(2)}</b> (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%) from ${c.n > 1 ? `${c.n} flights, which fit within ±${(c.rms || 0).toFixed(1)}%` : "1 flight"}${c.skipped ? ` (${c.skipped} ticked flight${c.skipped > 1 ? "s" : ""} skipped: motor not on this device)` : ""}.</span>` +
       `<button class="btn ghost" type="button" id="flrefit">Refit</button><button class="btn ghost" type="button" id="flcalrm">Remove</button>`;

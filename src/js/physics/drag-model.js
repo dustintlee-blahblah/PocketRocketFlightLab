@@ -1,10 +1,12 @@
 /**
- * The drag model switch: "released" (the model every build so far has shipped) or "test" (a second model, built term
- * by term from public sources so the two can be compared on the same rocket, motor and air).
+ * The drag model: "test", the app's drag model from build 288, or "released", the model builds up to 287 flew, kept
+ * in Settings as "Previous" so the two can be compared on the same rocket, motor and air. (The names are from when
+ * the first was being built beside the second; they are also the values kept in settings and files.)
  *
- * The test model follows the method choices recorded in the Missile DATCOM final report (Vukelich et al., AFWAL-TR-86-3091
- * Volume I, 1988; approved for public release) and the NACA and NASA reports it relies on. Terms move over one at a
- * time; any term not yet moved is computed exactly as the released model computes it. The terms moved so far:
+ * The current model follows the method choices recorded in the Missile DATCOM final report (Vukelich et al.,
+ * AFWAL-TR-86-3091 Volume I, 1988; approved for public release) and the NACA and NASA reports it relies on. It was
+ * built from the previous model one term at a time; any term not listed is computed exactly as the previous model
+ * computes it. The terms that differ:
  *
  *   1. Skin friction compressibility: Van Driest II (below), in place of the released (1 + 0.144 M²)^−0.65, at the
  *      skin's own temperature. A flight follows the skin as it heats (skinStep below); with no flight history (the
@@ -28,14 +30,14 @@
  * cdParts() in aerodynamics.js reads the setting; the Wind Tunnel asks for both models by name to draw them together.
  */
 
-/** The drag model the flight uses: "released" or "test". */
-export let dragModel = "released";
+/** The drag model the flight uses: "test" (the current one) or "released" (the previous one). */
+export let dragModel = "test";
 /**
  * Chooses the drag model.
- * @param {string} m "released" or "test"; anything else means "released"
+ * @param {string} m "test" (current) or "released" (previous); anything else means "test"
  */
 export function setDragModel(m) {
-  dragModel = m === "test" ? "test" : "released";
+  dragModel = m === "released" ? "released" : "test";
 }
 
 /* ---------- Van Driest II: compressible turbulent skin friction ----------
