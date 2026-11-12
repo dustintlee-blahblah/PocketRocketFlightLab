@@ -608,6 +608,13 @@ function bldWire(el, p, mode, si) {
       } else if (kind === "sel") {
         O[k] = inp.value;
         full = ["shape", "deploy", "size", "cluster", "ign", "edge"].includes(key); // "edge": beveled fins show their bevel lengths
+        // a nose or transition takes its new shape's usual parameter (as OpenRocket does): a tangent ogive, a full
+        // parabola, a half-power series, a von Kármán. Kept from the old shape it can mean a plain cone (an ogive or
+        // parabola at 0, a power series at 1), so the new shape would look like nothing had changed.
+        if (key === "shape" && p && (p.type === "nose" || p.type === "transition")) {
+          const usual = { ogive: 1, parabolic: 1, power: 0.5, haack: 0 }[inp.value];
+          if (usual != null) p.param = usual;
+        }
         // switching fins to free-form starts from the outline they had, so there's a shape to edit
         if (key === "shape" && p && p.type === "fins" && inp.value === "freeform" && !bldPts(p).pts.length) {
           const r = p.root || 0.1,
@@ -726,6 +733,13 @@ function bldWire(el, p, mode, si) {
             O[k] = val;
             if (k === "packLen" || k === "packR" || k === "len") delete O.packAuto;
             if (kind === "num" && !["pos", "param", "cant", "knownCg"].includes(key) && O[k] < 0) O[k] = 0;
+            // values no rocket has, which a slip of the finger can type and which break or freeze the flight:
+            // a shape parameter outside 0 to 1, fins canted more than 15° (OpenRocket's limit too), a canopy drag
+            // coefficient above 10, a nose with no length (the flight comes out as not a number)
+            if (key === "param") O[k] = Math.min(Math.max(O[k], 0), 1);
+            else if (key === "cant") O[k] = Math.min(Math.max(O[k], -15), 15);
+            else if (key === "cd" && p && (p.type === "chute" || p.type === "streamer")) O[k] = Math.min(O[k], 10);
+            else if (key === "len" && p && p.type === "nose" && !(O[k] > 0)) O[k] = 0.001;
           }
         }
       }

@@ -159,7 +159,7 @@ export function bldInfo(F) {
           ? "Trapezoid fins are set by root chord, tip chord, span and sweep; elliptical fins by root chord and span; free-form fins by a list of outline points."
           : "The profile shape. Ogive and Haack (von Kármán) shapes have the lowest drag at most speeds; a cone does well above Mach 1. The Shape parameter, where shown, fine-tunes the shape.",
     param:
-      "Fine-tunes the shape.\n\nOgive: 1 is a tangent ogive, 0 is a cone.\nPower series: 1 is a cone; smaller values are blunter.\nParabolic: 0 is a cone, 1 is a full parabola.\nHaack series: 0 is von Kármán (LD-Haack), 1/3 is LV-Haack.",
+      "Fine-tunes the shape. Choosing a shape sets it to that shape’s usual value (ogive 1, parabolic 1, power series 0.5, Haack 0); change it here if yours differs.\n\nOgive: 1 is a tangent ogive, 0 is a cone.\nPower series: 1 is a cone; smaller values are blunter.\nParabolic: 0 is a cone, 1 is a full parabola.\nHaack series: 0 is von Kármán (LD-Haack), 1/3 is LV-Haack.",
     len:
       {
         nose: "Length of the nose cone, not including its shoulder.",
@@ -235,7 +235,7 @@ export function bldInfo(F) {
       "How far back from the leading edge the bevel runs, measured along the chord (the length of the tapered part, not its angle). Leave it at 0 for the usual bevel, a fifth of the chord.\n\nIt matters above about Mach 1: a short, steep bevel pushes the shock harder and adds wave drag (Ackeret's thin-airfoil theory), up to about what a square edge of the same thickness would cost. Below the speed of sound it changes nothing.\n\nOpenRocket and RockSim files have no place for it, so it's saved in this app's own data inside the file.",
     bevTE:
       "How far forward from the trailing edge the bevel runs, measured along the chord. Leave it at 0 for the usual bevel, a fifth of the chord.\n\nLike the leading-edge bevel, it matters above about Mach 1: a shorter bevel adds wave drag, up to about what a blunt trailing edge of the same thickness would cost.\n\nOpenRocket and RockSim files have no place for it, so it's saved in this app's own data inside the file.",
-    cant: "Angle each fin is twisted to spin the rocket, in degrees. 0 for straight fins.",
+    cant: "Angle each fin is twisted to spin the rocket, in degrees. 0 for straight fins; the most it takes is 15° either way.",
     pts: `The fin outline as x, y pairs in ${LU}, one pair per line. x runs aft along the root and y outward from the body; the root lies along y = 0.\n\nStart at the root’s leading edge (0, 0) and go round the outline.`,
     pos: `Where this part sits, measured from the front or the aft end of ${F.parent ? "the " + F.parent.name : "the body"}. Choose which end in the box on the left.`,
     size: "Standard motor diameter this mount holds. It sets the mount tube’s inside size.",
