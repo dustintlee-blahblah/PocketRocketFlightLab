@@ -67,6 +67,17 @@ function tipCapCd(M) {
  * Base drag coefficient on the base area at Mach M (Fleeman's correlation). Kept for protuberances in crossflow
  * (rail buttons); the rocket's own bases use the TN 3819 curves below.
  */
+/* Transonic peak of a fin's wave drag over (t/c)^(5/3), against aspect ratio × (t/c)^(1/3): MIL-HDBK-762 figure 5-130
+   (rectangular fins), the highest point of each curve. Used for its trend only (see the fins in cdParts). */
+const FIN_PEAK_AR = [
+  [0, 0],
+  [0.25, 0.55],
+  [0.5, 1.15],
+  [1, 2.1],
+  [1.5, 2.65],
+  [2, 3.0],
+  [3, 3.25],
+];
 const fleemanBase = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M);
 /* ---------- base pressure: NACA TN 3819 (Love, 1957) above Mach 1, Fleeman below ----------
    Body base (no fins, no boattail): the "basic curve of present analysis" of fig. 18, digitized, as −Cp,base.
@@ -1545,18 +1556,31 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
      15°; the report warns against using it below Mach 1, so it fades in through the transonic drag rise, from Mach
      0.88 to 1 (the Arcas model's 15° boattail, NASA TN D-4013 with its fins off, gains about 0.15 of pressure drag
      over that range and holds it to Mach 1.2; this gives 0.14 at Mach 1 and 0.12 at 1.2). Only the attached share
-     of a steeper cone counts (the rest is already base area, above). The released model has no such term. */
+     of a steeper cone counts (the rest is already base area, above). The released model has no such term.
+     The report's flight data stop near Mach 2. From Mach 2.5 the drag is taken from wind-tunnel measurements of
+     conical boattails behind a cylinder at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, US Army Missile Command
+     RD-TR-70-5, as MIL-HDBK-762 figure 5-144 gives them: slopes of 4.3° to 9.5°, bases 0.73 and 0.82 of the
+     diameter), which run two to five times equation 1 there. They follow linear theory's 2·tan θ/β acting on the
+     area the boattail takes away, 1 − (base radius / maximum radius)², less a share that grows with the slope:
+     × (1.15 − 0.058·θ), 0.90 at 4.3° and 0.60 at 9.5°, within 0.004 of all eight measurements (the handbook's own
+     theory chart, figure 5-122, is this without the reduction, up to 1.5 times the measurements; TR R-100 also
+     found theory overestimating as slopes near 15°). The two are blended from Mach 2 to 2.5, so each is used where
+     it was measured. */
   if (tm && M > 0.88 && A.baseB && A.baseB.attT > 0) {
     const B = A.baseB,
       th = Math.min(B.btDeg, 15),
-      h = Math.min(Math.max(B.hD, 0), 1);
-    pressure +=
-      (((B.attT * smooth01((M - 0.88) / 0.12) * (0.001 * th + 0.00071 * th * th)) / Math.max(M, 1)) *
-        (1 - Math.pow(h, M < 3.5 ? 4 : 3)) *
-        Math.PI *
-        A.R *
-        A.R) /
-      S;
+      h = Math.min(Math.max(B.hD, 0), 1),
+      eq1 =
+        ((smooth01((M - 0.88) / 0.12) * (0.001 * th + 0.00071 * th * th)) / Math.max(M, 1)) *
+        (1 - Math.pow(h, M < 3.5 ? 4 : 3)),
+      wHi = smooth01((M - 2) / 0.5),
+      lin =
+        wHi > 0
+          ? ((2 * Math.tan((th * Math.PI) / 180)) / Math.sqrt(M * M - 1)) *
+            (1 - h * h) *
+            Math.min(Math.max(1.15 - 0.058 * th, 0.3), 1)
+          : 0;
+    pressure += (B.attT * mix(eq1, lin, wHi) * Math.PI * A.R * A.R) / S;
   }
   for (const f of A.fins) {
     if (f.cdo > 0) continue;
@@ -1593,12 +1617,20 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
          goes as (t/c)^(5/3). The peak is 5.7·(t/c)^(5/3) times the fifth power of cos Λ / cos 30° (the released
          model's sweep rule), from the drag the Arcas model's 30° fins add (NASA TN D-4013, fins on minus fins off,
          less their friction: 0.03 on the fin area from Mach 0.95 to 1.05, back to the linear value by Mach 1.2);
-         the 45° fins of TR R-100 figure 5 peak at 0.0055, and this gives 0.0053. Sweep past 30° also delays the
-         rise (those 45° fins show none below Mach 0.97). The larger of the two terms is used. */
+         the 45° fins of TR R-100 figure 5 peak at 0.0055, and this gives 0.0057. Sweep past 30° also delays the
+         rise (those 45° fins show none below Mach 0.97). The larger of the two terms is used.
+         Both of those fins have about the same slenderness, aspect ratio × (t/c)^(1/3) = 0.54 and 0.61 (aspect
+         ratio of two panels joined at the root, 2·span²/area). Transonic similarity theory makes the peak depend on
+         that number: MIL-HDBK-762 figure 5-130 (rectangular fins) has peaks of 0.55, 1.15, 2.1, 2.65, 3.0 and 3.25
+         times (t/c)^(5/3) at 0.25, 0.5, 1, 1.5, 2 and 3. The measurements run several times the chart's level, so
+         only its trend is used: the peak is scaled by the chart's value over its value at 0.55, where it was
+         measured. A stubby fin (aspect ratio 0.8, 3% thick) gets 0.4 of the peak, a long one (3, 5% thick) 1.7. */
       const lin = (rise * finK(f, Math.max(M, 1.05), bEff, cb2) * f.tc * f.tc) / bEff,
         peak =
           5.7 *
           Math.pow(Math.min(f.tc, 0.12), 5 / 3) *
+          (tblAt(FIN_PEAK_AR, Math.min(((2 * f.s * f.s) / f.area) * Math.cbrt(Math.min(f.tc, 0.12)), 3)) /
+            tblAt(FIN_PEAK_AR, 0.55)) *
           Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N) *
           smooth01((M - Math.min((Mdd - 0.03) / Math.sqrt(finSweepRatio(f.cosL)), 0.98)) / 0.09) *
           (M > 1.05 ? Math.exp(-(M - 1.05) / 0.2) : 1);

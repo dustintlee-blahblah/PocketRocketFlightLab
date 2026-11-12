@@ -35,7 +35,7 @@ the Results tab marks the run "TEST drag model". The code is in `src/js/physics/
 
 | Term | Test model | Released model |
 |---|---|---|
-| Skin friction compressibility | Van Driest II (J. Aero. Sci., March 1951) at the skin's own temperature, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
+| Skin friction compressibility | Van Driest II (Aero. Eng. Review, October 1956; Hopkins and Inouye, AIAA J., 1971) at the skin's own temperature, as a ratio to the incompressible value | (1 + 0.144 M²)^−0.65, adiabatic wall |
 | Skin temperature | In a flight, followed from the pad's air temperature as the boundary layer heats the skin (below). With no flight history (the Wind Tunnel, the drag cases) the skin is fully heated, as on a wind tunnel model. | not used |
 | Body base pressure | NASA TR R-100 (Stoney, 1961), fig. 3: the flight-measured curve for a cylindrical afterbody, Mach 0.5 to 2 (the middle of its band: 0.136 below Mach 0.9, a peak of 0.214 at Mach 1.05, meeting TN 3819 at Mach 2). Missile DATCOM takes cylinder base drag from this report. TN 3819 above Mach 2, and its boattail and fin corrections above Mach 1, as released. | Fleeman below 0.95 (0.12 + 0.13 M²: 0.17 at Mach 0.6, 0.24 at 0.95), blended into TN 3819's basic curve by Mach 1.2 |
 | Nose wave drag above Mach 2 | Second-order shock-expansion (Syvertson and Dennis, NACA Report 1328) from the exact Taylor–Maccoll cone solution at the tip, summed over the nose (the routine behind the Wind Tunnel's flow picture), taking over from the TR R-100 curves between Mach 2 and 2.5. Missile DATCOM's choice; its report found the method about 20% high below Mach 2. Pointed noses only. | TR R-100 curves to Mach 3.6, then Bonney or the nearest shape's trend, blended into modified Newtonian theory from Mach 4 to 6 |
@@ -173,6 +173,63 @@ the warm-day altimeter flights.
 - _Above Mach 5_ nothing checks the drag. The app now says so on any flight that gets there.
 - _A design with a protuberance opens in OpenRocket 24.12_ with its weight and position kept and a warning for each
   of the three tags it does not know.
+
+**A second round of sources: MIL-HDBK-762 and the Arcas at Mach 1.5 to 4.63.** Two more public documents were
+checked against the test model: the US Army handbook *Design of Aerodynamically Stabilized Free Rockets*
+(MIL-HDBK-762, 1990, the successor of AMCP 706-280 that Missile DATCOM takes its boattail and flare methods from) and
+the supersonic half of the Arcas wind-tunnel tests (NASA TN D-4014), whose drag had not been used. Four things changed
+and one was confirmed.
+
+- *Confirmed: the base below Mach 1.* The handbook's base-pressure data (figure 5-140) scatter from 0.06 to 0.13
+  below Mach 0.8, against the test model's 0.136 and the released model's 0.20 at Mach 0.8. Its chart of total drag
+  against boattail size (figure 5-120, from the Navy's NSWC TR 81-156, itself a prediction) reads 0.23, 0.195, 0.17,
+  0.13 and 0.11 at Mach 0.8 for bases 1.0, 0.9, 0.8, 0.6 and 0.4 of the diameter; the test model gives 0.239, 0.201,
+  0.171, 0.130 and 0.108, the released model 0.305 to 0.162.
+- *Friction.* The formula coded as Van Driest II was Van Driest's earlier one (1951), which has a larger
+  wall-temperature term: the same on a cold skin, 7% more friction at Mach 3 and 17% more at Mach 4.6 on a fully
+  heated one. The Arcas model at Mach 3 to 4.63 (a heated wall) came out 9–20% high, nearly all of it friction, and
+  the handbook's friction chart (figure 5-134) puts Mach 5 at about 0.38 of the low-speed value where the old form
+  gave 0.5. Now Van Driest II proper (0.43; the released factor gives 0.37).
+- *Boattail wave drag above Mach 2.* TR R-100's equation 1 rests on flight data up to about Mach 2. Wind-tunnel
+  pressure measurements on four conical boattails at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, in the
+  handbook's figure 5-144) run two to five times it. They follow linear theory, 2·tan θ/β on the area the boattail
+  removes, times (1.15 − 0.058·θ°): 0.90 at 4.3°, 0.60 at 9.5°, within 0.004 of all eight points. Used from Mach
+  2.5, blended with equation 1 from Mach 2. The base half of the same figure agrees with the test model's
+  base-radius rule within 0.01.
+- *Transonic fin peak.* The peak near Mach 1 was a fixed 5.7·(t/c)^(5/3), from two fin sets of nearly the same
+  slenderness. Transonic similarity (the handbook's figure 5-130) makes it depend on aspect ratio × (t/c)^(1/3); the
+  chart's trend is now applied about the measured point, so a stubby fin (aspect ratio 0.8, 3% thick) gets 0.4 of
+  the peak and a long one (3, 5% thick) 1.7. The chart's own level is several times under the measurements and was
+  not used.
+- *Finish labels.* Missile DATCOM's roughness table puts carefully applied smooth paint at 6 µm, average paint at
+  10 µm and production spray paint at 30 µm. OpenRocket's names for 20 and 60 µm ("smooth paint", "regular paint")
+  suggest something smoother than they are, so the builder's list now says what each height corresponds to.
+
+| Case (mean absolute error) | Released | Test before | Test now |
+|---|---|---|---|
+| Arcas, Mach 1.5–4.63, total drag, wind tunnel (new) | 2.5% | 9.4%, high | 4.1% |
+| Arcas, Mach 1.5–4.63, without fins (new) | 4.3% | 11.4%, high | 4.9% |
+| Arcas, Mach 1.5–4.63, what the fins add (new) | 0.004 Cd | 0.019 Cd, low | 0.019 Cd, low |
+| Boattail pressure drag, Mach 2.5 and 3.5, four boattails (new; tuned) | none in the model | 0.018 Cd, low | 0.002 Cd |
+| Arcas, Mach 0.6–1.2 | 25.4% | 7.2% | 7.8% |
+| TR R-100 configuration 11 | 16.7% | 6.9% | 6.2% |
+| TR R-100 configuration 36 | 24.0% | 13.8% | 12.6% |
+| Aerobee coasting | 4.9% | 9.3% | 4.8% |
+| Aerobee thrusting | 6.9% | 7.9% | 5.9% |
+| RM A53D02 (free flight) | 14.4% | 6.2% | 7.7% (5.0% with a cold skin) |
+| RM L55G28a (free flight) | 8.4% | 2.7% | 5.2% (12.3% with a cold skin) |
+| 23 flights, as the altimeter reads | 8.3% (+3.9%) | 5.8% (+1.7%) | 6.0% (+2.2%) |
+
+The wind-tunnel cases improve and the two free-flight cases lose a little. Those are scored with the skin fully
+heated, like every drag case; a model boosted to speed in seconds is somewhere between that and a cold skin, and
+`validation/accuracy.js --skin cold` gives the other bound. The two cases pull opposite ways (one wants the cold
+skin, the other more heat than there is), so the skin's temperature does not explain what is left of either.
+
+Left open by this round: the Arcas fins add 0.065 more drag at Mach 1.5 and 0.03 more at Mach 1.8 than the test model
+gives (the released model's bump matches them). Those fins sit on a 15° boattail and carry grit strips on both faces,
+so the increment is not the fins' wave drag alone, and the two fin sets the term was built on have neither; it was
+left as it is. The handbook's chart of base pressure with the motor burning (figure 5-150) has lost its thrust scale
+in the copy to hand, and its section on protuberances gives no numbers.
 
 **RASAero II on the same drag cases.** Each body was written as a RASAero II design file, opened in RASAero II
 on Windows, and its drag table exported (Aero Plots, Export to CSV). Mean error against the same measured points:

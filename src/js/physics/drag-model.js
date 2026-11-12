@@ -17,11 +17,13 @@
  *   4. Boattails above Mach 1: TR R-100's equation 1, a wave drag term the released model doesn't have and its
  *      base-diameter-ratio rule for the base pressure (at every speed), in place of TN 3819's boattail correction.
  *      The flow stays on boattails up to 15°, and the wave drag fades in from Mach 0.88 to 1 (NASA TN D-4013).
+ *      From Mach 2.5 the wave drag is from wind-tunnel measurements instead (MIL-HDBK-762 figure 5-144).
  *   5. Wave drag of sharp-edged fins: thin-airfoil theory on the free-stream Mach number, held at its value where the
  *      Mach line reaches the leading edge while the edge is swept behind it, in place of the released model's
  *      normal-Mach form with a fitted sweep factor and transonic bump. Checked against the measured fin pressure
  *      drag of NASA TR R-100 figure 5 and NACA RM E50D28. Near Mach 1 a transonic peak, 5.7·(t/c)^(5/3) with the
- *      released sweep factor, from the Arcas fins' measured drag (NASA TN D-4013), where it is the larger.
+ *      released sweep factor, from the Arcas fins' measured drag (NASA TN D-4013), where it is the larger, scaled
+ *      for the fin's aspect ratio by the trend of transonic similarity theory (MIL-HDBK-762 figure 5-130).
  *
  * cdParts() in aerodynamics.js reads the setting; the Wind Tunnel asks for both models by name to draw them together.
  */
@@ -37,13 +39,19 @@ export function setDragModel(m) {
 }
 
 /* ---------- Van Driest II: compressible turbulent skin friction ----------
-   Van Driest, E. R., "Turbulent Boundary Layer in Compressible Fluids", J. Aeronautical Sciences 18 (March 1951),
-   pp. 145–160, in the mean-friction form built on the Kármán–Schoenherr law (0.242/√Cf = log10(Re·Cf) when
-   incompressible):
-     0.242 (sin⁻¹α + sin⁻¹β) / (A √(Cf·Tw/Te)) = log10(Re·Cf) − ((1 + 2n)/2) log10(Tw/Te)
+   Van Driest, E. R., "The Problem of Aerodynamic Heating", Aeronautical Engineering Review 15 (October 1956),
+   pp. 26–41, as a transformation of the incompressible law (Hopkins and Inouye, AIAA Journal 9, 1971, who found it
+   the most reliable of the theories they tested; Hopkins, NASA TN D-6945): the compressible Cf times Fc, at the
+   Reynolds number times Fθ/Fc, obeys the incompressible law, with Fc = r·m/(sin⁻¹α + sin⁻¹β)² and Fθ = μe/μw. On the
+   Kármán–Schoenherr mean-friction law (0.242/√Cf = log10(Re·Cf) when incompressible) and a power-law viscosity:
+     0.242 (sin⁻¹α + sin⁻¹β) / (A √(Cf·Tw/Te)) = log10(Re·Cf) − n·log10(Tw/Te)
    with m = (γ − 1)/2·M², A = √(r·m·Te/Tw), B = (1 + r·m − Tw/Te)·Te/Tw, α = (2A² − B)/√(B² + 4A²), β = B/√(B² + 4A²),
    recovery factor r = 0.89, viscosity exponent n = 0.76. Tw is the wall (skin) temperature, Te the air's.
-   The Missile DATCOM final report (section 3.1.1.1) chose this method for turbulent boundary layers at all speeds
+   (Van Driest's earlier form, J. Aeronautical Sciences 18, 1951, has (1 + 2n)/2 in place of n on the right. The two
+   agree on a cold wall; on a fully heated one the earlier form gives 7% more friction at Mach 3 and 17% more at Mach
+   4.6. This file used the earlier form until the Arcas wind-tunnel drag at Mach 3 to 4.6 (NASA TN D-4014) and the
+   friction chart of MIL-HDBK-762, figure 5-134, both showed it too high.)
+   The Missile DATCOM final report (section 3.1.1.1) chose Van Driest II for turbulent boundary layers at all speeds
    because it "includes the effects of wall temperature, Mach number, Reynolds number, and surface roughness".
    Only the ratio to the incompressible value is used here, applied to the released model's smooth and rough
    flat-plate friction, so this term changes the Mach number and wall temperature effects and nothing else.
@@ -70,7 +78,7 @@ function vanDriestCf(M, Re, F) {
       B = (1 + VD_R * m - F) / F,
       den = Math.sqrt(B * B + 4 * A * A),
       S = Math.asin((2 * A * A - B) / den) + Math.asin(B / den),
-      tw = ((1 + 2 * VD_N) / 2) * Math.log10(F);
+      tw = VD_N * Math.log10(F);
     f = (cf) => (0.242 * S) / (A * Math.sqrt(cf * F)) - Math.log10(Re * cf) + tw;
   }
   let lo = 1e-5,

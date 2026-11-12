@@ -46,14 +46,15 @@ function finnedOrk(o) {
  * coordinates: ogive, shape parameter 0.75), a 2.25 in body, four trapezoidal fins and a conical boattail.
  * @param {number} tubeLen body tube length, in
  * @param {number} finOffset fins' leading edge from the tube's front, in
+ * @param {boolean} [fins] false for the body alone (the fins shrunk to nothing: a design needs a fin set)
  * @returns {string} XML
  */
-function arcasOrk(tubeLen, finOffset) {
+function arcasOrk(tubeLen, finOffset, fins = true) {
   return `<?xml version="1.0" encoding="utf-8"?>
 <openrocket version="1.9" creator="Pocket Rocket Flight Lab validation"><rocket><name>Arcas</name><subcomponents><stage><name>Stage</name><subcomponents>
 <nosecone><name>Nose</name><finish>smooth</finish><material type="bulk" density="2700">Aluminum</material><length>${9.375 * IN}</length><thickness>0.002</thickness><shape>ogive</shape><shapeclipped>false</shapeclipped><shapeparameter>0.75</shapeparameter><aftradius>${1.125 * IN}</aftradius><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></nosecone>
 <bodytube><name>Body</name><finish>smooth</finish><material type="bulk" density="2700">Aluminum</material><length>${tubeLen * IN}</length><thickness>0.002</thickness><radius>${1.125 * IN}</radius><subcomponents>
-<trapezoidfinset><name>Fins</name><axialoffset method="top">${finOffset * IN}</axialoffset><finish>smooth</finish><material type="bulk" density="2700">Aluminum</material><fincount>4</fincount><rotation>0</rotation><thickness>${0.12 * IN}</thickness><crosssection>airfoil</crosssection><cant>0</cant><tabheight>0</tabheight><tablength>0</tablength><tabposition relativeto="front">0</tabposition><rootchord>${3.38 * IN}</rootchord><tipchord>${2.165 * IN}</tipchord><sweeplength>${1.214 * IN}</sweeplength><height>${2.103 * IN}</height></trapezoidfinset>
+<trapezoidfinset><name>Fins</name><axialoffset method="top">${finOffset * IN}</axialoffset><finish>smooth</finish><material type="bulk" density="2700">Aluminum</material><fincount>4</fincount><rotation>0</rotation><thickness>${(fins ? 0.12 : 0.0001) * IN}</thickness><crosssection>airfoil</crosssection><cant>0</cant><tabheight>0</tabheight><tablength>0</tablength><tabposition relativeto="front">0</tabposition><rootchord>${(fins ? 3.38 : 0.01) * IN}</rootchord><tipchord>${(fins ? 2.165 : 0.01) * IN}</tipchord><sweeplength>${(fins ? 1.214 : 0) * IN}</sweeplength><height>${(fins ? 2.103 : 0.001) * IN}</height></trapezoidfinset>
 </subcomponents></bodytube>
 <transition><name>Boattail</name><finish>smooth</finish><material type="bulk" density="2700">Aluminum</material><length>${1.46 * IN}</length><thickness>0.002</thickness><shape>conical</shape><shapeclipped>false</shapeclipped><shapeparameter>0</shapeparameter><foreradius>${1.125 * IN}</foreradius><aftradius>${0.735 * IN}</aftradius><foreshoulderradius>0</foreshoulderradius><foreshoulderlength>0</foreshoulderlength><foreshoulderthickness>0</foreshoulderthickness><foreshouldercapped>false</foreshouldercapped><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></transition>
 </subcomponents></stage></subcomponents></rocket></openrocket>`;
@@ -162,6 +163,23 @@ const ARCAS_CA = [
   [1.2, 0.593, 0.041],
 ];
 const ARCAS_RE = (3e6 * 40.95) / 12;
+/* The same model from Mach 1.5 to 4.63: NASA TN D-4014 figure 5, the axial force at zero angle of attack with the fins
+   off (a) and on, undeflected (b), read off the plots (about ±0.005). The report did not correct these to free-stream
+   pressure at the base, so they are the whole drag; 3 million per foot, with grit strips behind the nose tip and the
+   fins' leading edges to make the boundary layer turbulent. The fins (figure 1(b): double wedges of 2.72° half-angle,
+   0.150 in thick at the root and 0.096 at the tip) sit on the 15° boattail, and each carries a strip of No. 60 grit
+   (about 0.01 in high) on both faces, so what they add includes the grit's own drag, perhaps 0.03 at Mach 1.5, and
+   their effect on the boattail. The test model's fin drag is low by 0.065 at Mach 1.5 and 0.03 at Mach 1.8 here and
+   was left alone: the two fin sets it was built on (TR R-100 figure 5, the RM-10) have no grit and no boattail.
+   [Mach, C_A fins on, C_A fins off] */
+const ARCAS_CA_SUP = [
+  [1.5, 0.535, 0.349],
+  [1.8, 0.47, 0.337],
+  [2.3, 0.382, 0.293],
+  [2.96, 0.305, 0.241],
+  [3.96, 0.234, 0.186],
+  [4.63, 0.202, 0.157],
+];
 
 /* Aerobee 150A sounding rocket, sustainer (the vehicle without its booster), Aerojet-General / Space-General.
    Geometry (in): 87.8 tangent-ogive nose, 15 diameter, 201.2 body (288.97 from the nose to the base, as both sources
@@ -387,6 +405,36 @@ const R100_36_BARE = {
     p.fins ? { ...p, fins: { n: 3, cr: 0.3, ct: 0.3, s: 0.2, sw: 0, t: 0.02, loc: 1, edge: "square" } } : p,
   ),
 };
+/* Conical boattails behind a cylinder: the pressure (wave) drag on the boattail's own surface, on the body's
+   cross-section, from wind-tunnel pressure measurements at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, The Effects
+   of Jet Plume and Boattail Geometry on Base and Afterbody Pressures of a Body of Revolution at Mach Numbers of 2.0 to
+   3.5, US Army Missile Command RD-TR-70-5, 1970, read off MIL-HDBK-762 figure 5-144, about ±0.004). Four boattails,
+   named by length and base diameter over the body's diameter; the forebody (not given in the handbook) is taken as
+   a fineness-3 ogive and six diameters of cylinder, and the same body without the boattail is taken off.
+   [length/d, base d/d, [Mach, drag]...] */
+const BT144 = [
+  [0.818, 0.818, [2.5, 0.027], [3.5, 0.016]],
+  [0.818, 0.727, [2.5, 0.045], [3.5, 0.029]],
+  [1.2, 0.818, [2.5, 0.02], [3.5, 0.014]],
+  [1.2, 0.727, [2.5, 0.038], [3.5, 0.026]],
+];
+const bt144 = (len, ratio) => ({
+  title: "boattail",
+  finish: "polished",
+  nose: { shape: "ogive", len: 15 },
+  parts: [
+    {
+      t: "tube",
+      len: 30,
+      d: 5,
+      fins: { n: 3, cr: 0.3, ct: 0.3, s: 0.2, sw: 0, t: 0.02, loc: 1, edge: "square" },
+    },
+    ratio < 1 ? { t: "tail", len: 5 * len, d0: 5, d1: 5 * ratio } : { t: "tube", len: 5 * len, d: 5 },
+  ],
+  rail: null,
+  w: 50,
+  cg: 28,
+});
 const R100_FIN_A_PTS = [0.9, 1.1, 1.2, 1.3, 1.5, 1.7, 2.0, 2.5, 3.0].map((M) => [
   M,
   M < 1 ? 0 : (0.0037 * 3 * 9 * 9) / (Math.PI * 2.5 * 2.5),
@@ -451,6 +499,35 @@ const CASES = [
     pts: ARCAS_CA.map(([M, corr, b]) => [M, corr + b, ARCAS_RE]),
   },
   {
+    id: "arcas-short-cd-sup",
+    title: "NASA TN D-4014, Arcas short model, Mach 1.5–4.63: total drag",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cd",
+    xml: ARCAS.short.xml,
+    pts: ARCAS_CA_SUP.map(([M, on]) => [M, on, ARCAS_RE]),
+  },
+  {
+    id: "arcas-short-body-sup",
+    title: "NASA TN D-4014, Arcas short model without fins, Mach 1.5–4.63: total drag",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cd",
+    xml: arcasOrk(30.115, 27.925, false),
+    pts: ARCAS_CA_SUP.map(([M, , off]) => [M, off, ARCAS_RE]),
+  },
+  {
+    id: "arcas-short-fins-sup",
+    title: "NASA TN D-4014, Arcas short model, Mach 1.5–4.63: drag its four fins add",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFins",
+    xml: ARCAS.short.xml,
+    xmlBody: arcasOrk(30.115, 27.925, false),
+    rePerM: 3e6 / 0.3048,
+    pts: ARCAS_CA_SUP.map(([M, on, off]) => [M, on - off]),
+  },
+  {
     id: "r100-11-cd",
     title: "NASA TR R-100 configuration 11, ogive body with an 8° boattail: total drag",
     tier: "free flight",
@@ -471,6 +548,62 @@ const CASES = [
       return flightOrk(R100_36, NO_MOTOR);
     },
     pts: R100_36_PTS,
+  },
+  {
+    id: "boattail-1",
+    title: "MIL-HDBK-762 figure 5-144, 6.4° boattail to 0.82 of the diameter: its pressure drag",
+    tier: "wind tunnel",
+    role: "tuned",
+    quantity: "cdAftPressure",
+    get xml() {
+      return flightOrk(bt144(BT144[0][0], BT144[0][1]), NO_MOTOR);
+    },
+    get xmlBody() {
+      return flightOrk(bt144(BT144[0][0], 1), NO_MOTOR);
+    },
+    pts: BT144[0].slice(2),
+  },
+  {
+    id: "boattail-2",
+    title: "MIL-HDBK-762 figure 5-144, 9.5° boattail to 0.73 of the diameter: its pressure drag",
+    tier: "wind tunnel",
+    role: "tuned",
+    quantity: "cdAftPressure",
+    get xml() {
+      return flightOrk(bt144(BT144[1][0], BT144[1][1]), NO_MOTOR);
+    },
+    get xmlBody() {
+      return flightOrk(bt144(BT144[1][0], 1), NO_MOTOR);
+    },
+    pts: BT144[1].slice(2),
+  },
+  {
+    id: "boattail-3",
+    title: "MIL-HDBK-762 figure 5-144, 4.3° boattail to 0.82 of the diameter: its pressure drag",
+    tier: "wind tunnel",
+    role: "tuned",
+    quantity: "cdAftPressure",
+    get xml() {
+      return flightOrk(bt144(BT144[2][0], BT144[2][1]), NO_MOTOR);
+    },
+    get xmlBody() {
+      return flightOrk(bt144(BT144[2][0], 1), NO_MOTOR);
+    },
+    pts: BT144[2].slice(2),
+  },
+  {
+    id: "boattail-4",
+    title: "MIL-HDBK-762 figure 5-144, 6.5° boattail to 0.73 of the diameter: its pressure drag",
+    tier: "wind tunnel",
+    role: "tuned",
+    quantity: "cdAftPressure",
+    get xml() {
+      return flightOrk(bt144(BT144[3][0], BT144[3][1]), NO_MOTOR);
+    },
+    get xmlBody() {
+      return flightOrk(bt144(BT144[3][0], 1), NO_MOTOR);
+    },
+    pts: BT144[3].slice(2),
   },
   {
     id: "r100-fin-a",
@@ -1754,6 +1887,7 @@ module.exports = {
   RM10,
   RM10_PTS,
   ARCAS_CA,
+  ARCAS_CA_SUP,
   ARCAS,
   CASES,
   FLIGHTS,
