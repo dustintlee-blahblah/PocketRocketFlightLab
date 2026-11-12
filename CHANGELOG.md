@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 289 (2026-11-11)
+
+**Reference library** (no change to the app)
+- **The public reports behind the app's physics are now in their own repository**, [PocketRocketFlightLab-references](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references): 23 NACA, NASA, Air Force and Army reports cleared for public release, from the Missile DATCOM final report and manuals and MIL-HDBK-762 to the wind-tunnel and free-flight reports the drag model is checked against. REFERENCES.md links each one; copyrighted sources are cited there but not stored.
+
 ## Build 288 (2026-11-11)
 
 **A new drag model**
