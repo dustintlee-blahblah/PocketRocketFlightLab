@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 295 (2026-11-12)
+
+**Flight animation**
+- **The rocket rolls.** The animation follows the simulated roll (from canted fins or a crooked fin): each fin is drawn at its own angle around the body, widening, narrowing and passing in front of and behind it, and the rail buttons, lugs and protuberances travel around with it. A rocket that doesn't roll looks steady; a three-fin rocket is now drawn as a true three-fin view (one fin toward you, two to the sides). The roll is held after apogee.
+
 ## Build 294 (2026-11-12)
 
 **Rocket builder**
