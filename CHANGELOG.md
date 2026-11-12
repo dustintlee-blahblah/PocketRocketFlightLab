@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 294 (2026-11-12)
+
+**Rocket builder**
+- **A fly-away rail guide is now a cage around the body.** It was drawn, and its drag worked out, as a single block on one side. It now wraps the body in the side view and the animation, and choosing the shape puts it just above the fins. It has a thickness around the body in place of a width and an angle, and its drag on the rail is that of the ring between the body and its outside (it was width × height).
+- **A streamlined protuberance is drawn as a smooth bump** with a rounded front and a long taper, and an upright cylinder as a round-topped post, in place of plain blocks. The animation draws the streamlined one the same way.
+
 ## Build 293 (2026-11-12)
 
 **Rocket builder**
