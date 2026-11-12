@@ -540,6 +540,28 @@ export function animDraw(target) {
     c.closePath();
     c.fill();
     c.stroke();
+    // rail buttons, lugs and protuberances, in the ink colour and never smaller than a couple of pixels so they show.
+    // A fly-away rail guide is there only until the rocket leaves the rail
+    const offT = lastSim && lastSim.st ? lastSim.st.offRailT : null;
+    c.fillStyle = ink;
+    for (const o of S.outs || []) {
+      if (o.fly && offT != null && t > offT) continue;
+      const w = Math.max(o.len * sc, 2.5),
+        hh = Math.max(o.h * sc, 2),
+        xa = (S.len / 2 - o.x) * sc, // its front end; it runs back from there (toward −x)
+        y0 = o.side * o.r * sc,
+        y1 = o.side * (o.r * sc + hh);
+      c.beginPath();
+      if (o.ramp) {
+        const rise = Math.min(hh * Math.sqrt(3), w / 2);
+        c.moveTo(xa, y0);
+        c.lineTo(xa - rise, y1);
+        c.lineTo(xa - w, y1);
+        c.lineTo(xa - w, y0);
+      } else c.rect(xa - w, Math.min(y0, y1), w, hh);
+      c.closePath();
+      c.fill();
+    }
     c.restore();
     return sc;
   };

@@ -369,7 +369,9 @@ export function bldDraw() {
         rr = rAt(b, Math.min(Math.max(kk.x, b.x), b.x + b.len)),
         ri = Math.max(rr - (b.p.wall || 0), 0.001);
       c.strokeStyle = on ? acc : mut;
-      c.fillStyle = on ? acc + "44" : mut + "33";
+      // what is inside the body is drawn faint; what stands outside it (lugs, rail buttons, protuberances) is drawn solid
+      const outside = k.type === "lug" || k.type === "buttons" || k.type === "bump";
+      c.fillStyle = outside ? (on ? acc : ink) : on ? acc + "44" : mut + "33";
       c.lineWidth = on ? 2 : 1;
       let hit = null;
       switch (k.type) {

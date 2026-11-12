@@ -27,7 +27,8 @@ export const ANIM = {
  * @param {object} DD design (or stack)
  * @param {number} [x0=0] start of the part to outline, m from the nose tip
  * @param {number} [x1=Infinity] end of it
- * @returns {{body:number[][], fins:object[], len:number, R:number}} body outline points, fin outlines, length and
+ * @returns {{body:number[][], fins:object[], outs:object[], len:number, R:number}} body outline points, fin outlines, the
+ *   items standing out from the body (rail buttons, lugs, protuberances), length and
  *   radius, m
  *
  * the rocket's outline in its own frame: x from the nose tip, r out from the axis
@@ -49,9 +50,30 @@ function animShape(DD, x0 = 0, x1 = Infinity) {
     const rf = radiusAt(AE, f.xLead + f.a / 2);
     fins.push(finOutline(f).map(([px, py]) => [f.xLead - x0 + px, rf + py]));
   }
+  // what stands out from the body: rail buttons and launch lugs (drawn on the underside, as in the builder) and
+  // protuberances (above or below by their angle around the body). A fly-away rail guide is marked: it is drawn only on the rail
+  const outs = [],
+    inPart = (x) => x >= x0 - 1e-9 && x < x1 - 1e-9;
+  for (const b of AE.buttons || [])
+    if (b.od > 0 && inPart(b.x))
+      outs.push({ x: b.x - b.od / 2 - x0, len: b.od, r: radiusAt(AE, b.x), h: b.h, side: -1 });
+  for (const l of AE.lugs || [])
+    if (l.len > 0 && inPart(l.x))
+      outs.push({ x: l.x - x0, len: l.len, r: radiusAt(AE, l.x), h: 2 * (l.ro || 0.003), side: -1 });
+  for (const b of AE.bumps || [])
+    if (inPart(b.x))
+      outs.push({
+        x: b.x - x0,
+        len: b.len || b.h,
+        r: radiusAt(AE, b.x),
+        h: b.h,
+        side: Math.cos(b.ang || 0) >= -1e-9 ? 1 : -1,
+        ramp: b.shape === "ramp",
+        fly: !!b.fly,
+      });
   const len = Math.max(...body.map((p) => p[0]), 0.01),
     R = Math.max(...body.map((p) => p[1]), 0.005);
-  return { body, fins, len, R };
+  return { body, fins, outs, len, R };
 }
 /**
  * Opens the animation for the last run: the shapes of each stage, the time span and the camera.
