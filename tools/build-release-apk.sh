@@ -34,8 +34,9 @@ fi
   echo "keyAlias=$KEY_ALIAS"
   echo "keyPassword=$KEY_PASSWORD"
 } > keystore.properties
-./gradlew --no-daemon assembleRelease
-APK=app/build/outputs/apk/release/app-release.apk
+# GRADLE_TASK and APK choose another build type signed the same way (the drag-test app: .github/workflows/dragtest.yml)
+./gradlew --no-daemon "${GRADLE_TASK:-assembleRelease}"
+APK=${APK:-app/build/outputs/apk/release/app-release.apk}
 SIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
 "$SIGNER" verify --print-certs "$APK" > "$tmp/certs.txt"
 cat "$tmp/certs.txt"
@@ -43,4 +44,4 @@ grep -qi "certificate SHA-256 digest: $RELEASE_CERT_SHA256" "$tmp/certs.txt" || 
   echo "The APK isn't signed with the release key ($RELEASE_CERT_SHA256)" >&2
   exit 1
 }
-echo "Signed release APK: android/$APK"
+echo "Signed APK: android/$APK"

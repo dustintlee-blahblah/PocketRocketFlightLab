@@ -25,7 +25,7 @@ android {
         applicationId "com.dustinlee.pocketrocketpro"
         minSdk 24
         targetSdk 34
-        versionCode 286
+        versionCode 287
         versionName "1.0"
     }
 
@@ -47,13 +47,15 @@ android {
             if (keystoreFile.exists()) signingConfig signingConfigs.release
         }
         // "Pocket Rocket drag test": the same app with the test drag model on by default (Settings can switch it
-        // back), under its own name and application ID so it installs beside the released app. Debug-signed.
+        // back), under its own name and application ID so it installs beside the released app. Signed with the
+        // release key when there is one (so each new test build installs over the last), debug-signed otherwise.
         // ./gradlew assembleDragtest
         dragtest {
             initWith debug
             applicationIdSuffix ".dragtest"
             versionNameSuffix "-dragtest"
             matchingFallbacks = ["debug"]
+            if (keystoreFile.exists()) signingConfig signingConfigs.release
         }
     }
 

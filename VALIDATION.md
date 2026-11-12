@@ -98,7 +98,7 @@ for that rocket.
 ## Rockets the model was never tuned on
 
 Every check above was used, at some point, to set or confirm a model constant, so agreeing with them is partly by
-construction. The two rockets here are kept back purely for checking.
+construction. The four rockets here are kept back purely for checking.
 
 **Aerobee 150A.** The sounding rocket's drag, center of
 pressure and lift-curve slope from Mach 0.1 to 5 are the manufacturer's, from Aerojet's wind-tunnel tests, as given in
@@ -128,10 +128,43 @@ followed NACA TN 3819): low in the same way as RM A53D02. These fins, like the A
 a blunt trailing edge, which the app can't describe yet (its "beveled" section is sharp at both ends), so their
 trailing-edge base drag is still missing.
 
+**NACA RM L56G24.** A rocket-powered free-flight model of a ballistic missile (Gillespie, 1956): a 7-inch body 118
+inches long (fineness 16.9) ending in a 2° boattail, with four small 60° delta fins on the boattail, flown from Wallops
+Island at Mach 1.6 to 2.8. Its coasting drag and its CP (from the pitching moment, Mach 1.7–2.1) were measured.
+
+| | Mach 1.7–2.1 | Mach 2.6–2.8 |
+|---|---|---|
+| Drag, mean error | 11.9% low | 13.4% low |
+| CP, mean error | 6.0% of length (app forward) | |
+
+The drag gap is about 0.04 in Cd, roughly what the model's two accelerometer fairings near the CG (0.9 inch high and 14.5
+inches long, top and bottom) and its nose probe would add; the app's design has neither, so this drag isn't a clean
+check either way. The CP is another matter: the fairings sit at the CG, where they barely move it.
+
+**NASA TM-2005-213541, configuration 3.** A slender missile model (Allen, 2005) in the Langley 8-Foot Transonic Pressure
+Tunnel and Unitary Plan Wind Tunnel: a small ogive nose, a cone flaring to a 3.15-inch body 42.5 inches long, a short
+boattail, and four small swept fins at the tail, Mach 0.6 to 3.95, the boundary layer tripped. The numbers come from the
+report's own digital data (NTRS 20050165156), over ±2° as the app measures them. The axial force has the base pressure
+taken out, so it is compared with the app's drag without its base drag.
+
+| | Mach 0.6 | Mach 0.9–1.2 | Mach 1.7–2.9 | Mach 3.95 |
+|---|---|---|---|---|
+| Drag less base, mean error | 9.9% high | 49% high | 8.8% high | 13.5% high |
+| CP, mean error | 7.6% of length (app forward) | 9.7% forward | 4.7% forward | 4.0% forward |
+| CNα, mean error | 3.8% low | 14.5% low | 17.0% low | 25.5% low |
+
+Two things stand out. Through Mach 1 the app's drag rises far too early and too much on this body (+37% at Mach 0.9,
+where the tunnel measured no rise yet, and +60% at 1.19); its short nose and the cone behind it are what the app's
+transonic drag works from, so that is where to look. And with the Aerobee and RM L56G24, this is the third rocket where
+the app's CP is forward and its normal-force slope low, all three with small fins far behind a long body: the fins
+seem to carry more lift than the app gives them, or the body less. Both are open (AERODYNAMICS.md, gaps 4, 7 and 12); neither has
+been changed to fit these cases.
+
 `node validation/accuracy.js --verbose` runs every case and prints these tables, keeping the tuned cases apart from the
 check cases. The cases themselves, with their sources and geometry, are in `validation/cases.js`; a new measured
-rocket is added there. With both check rockets, the drag error by speed band is 6.2% subsonic, 9.0% transonic, 8.3%
-supersonic and 5.2% from Mach 3 to 5.
+rocket is added there. Across the check cases the drag error by speed band is 6.2% subsonic, 9.0% transonic, 9.8%
+supersonic and 5.2% from Mach 3 to 5 (total drag), the CP error 2.4%, 3.5%, 3.8% and 1.0% of the length, and the
+normal-force slope 13–18% low throughout.
 
 ## Apogee against measured flights
 

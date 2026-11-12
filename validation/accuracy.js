@@ -6,7 +6,8 @@
  *
  * For each case the app's model is built from the case's geometry and compared point by point: drag as a relative
  * error, the fins' added drag as a difference in Cd, the center of pressure as a difference in % of body length, the
- * normal-force slope as a relative error. The CP and slope are found the way a wind-tunnel balance finds them, from the
+ * normal-force slope as a relative error. "Drag less base" is the drag without the body's base drag, for wind-tunnel
+ * models whose base pressure was corrected to free-stream pressure. The CP and slope are found the way a wind-tunnel balance finds them, from the
  * normal force and pitching moment over ±2° with the body's own lift included (as validation/arcas.js).
  *
  * The summary keeps "tuned" cases (a model constant was set while looking at them) apart from "check" cases (never
@@ -29,6 +30,7 @@ const BANDS = [
 ];
 const KIND = {
   cd: { label: "drag", unit: "%", err: (a, m) => (100 * (a - m)) / m },
+  cdFore: { label: "drag less base", unit: "%", err: (a, m) => (100 * (a - m)) / m },
   cdFins: { label: "fin drag", unit: " Cd", err: (a, m) => a - m },
   cdJet: { label: "drag the exhaust removes", unit: " Cd", err: (a, m) => a - m },
   cdFinsPressure: { label: "fin pressure drag", unit: " Cd", err: (a, m) => a - m },
@@ -49,8 +51,8 @@ const KIND = {
     ([cases, coldSkin]) => {
       const air = atmosphere({ ...defaultLaunch(), elev: 0, tempC: 15, pressure: 0, humidity: 0 }, 0),
         mu = (1.458e-6 * Math.pow(air.T, 1.5)) / (air.T + 110.4);
-      const build = (xml) => {
-        const D = Object.assign(defaultDesign(), parseOrk(xml).design);
+      const build = (xml, over) => {
+        const D = Object.assign(defaultDesign(), parseOrk(xml).design, over || {});
         return { D, A: aero(D) };
       };
       // drag at a Mach number; with a Reynolds number given (on a length), the air's density is set to give it
@@ -61,10 +63,17 @@ const KIND = {
        free-flight cases with the skin at the air's temperature (the convention Missile DATCOM's code uses), which
        bounds the effect: it adds up to 20% to the friction at Mach 2.3. */
       let skinT = 0;
-      const cd = (m, M, Re, len, noz) => {
+      const cd = (m, M, Re, len, noz, noBase) => {
         const v = M * air.a,
           atm = Re ? { ...air, rho: (mu * Re) / (v * len) } : air;
-        return cdParts(m.A, v, atm, noz ? Math.PI * (noz / 2) ** 2 : 0, undefined, skinT).cd;
+        return cdParts(
+          noBase ? { ...m.A, baseArea: 0 } : m.A,
+          v,
+          atm,
+          noz ? Math.PI * (noz / 2) ** 2 : 0,
+          undefined,
+          skinT,
+        ).cd;
       };
       // CP (share of length) and normal-force slope as a balance measures them, over ±2°
       const balance = (A, M) => {
@@ -83,11 +92,12 @@ const KIND = {
         return { cp: sM / sN / A.L, cna: sN / sA };
       };
       return cases.map((c) => {
-        const m = build(c.xml),
+        const m = build(c.xml, c.design),
           b = c.xmlBody ? build(c.xmlBody) : null;
         skinT = coldSkin && c.tier === "free flight" ? air.T : 0;
         const app = c.pts.map(([M, , Re]) => {
           if (c.quantity === "cd") return cd(m, M, Re, m.D.length, c.nozzleDia);
+          if (c.quantity === "cdFore") return cd(m, M, Re, m.D.length, 0, true);
           if (c.quantity === "cdFins") return cd(m, M, c.rePerM, 1) - cd(b, M, c.rePerM, 1);
           // what the motor's exhaust takes off the drag: coasting less thrusting
           if (c.quantity === "cdJet") return cd(m, M, Re, m.D.length, 0) - cd(m, M, Re, m.D.length, c.nozzleDia);

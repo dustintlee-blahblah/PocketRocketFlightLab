@@ -1,0 +1,67 @@
+# Publishes the "Pocket Rocket drag test" app (the app with the test drag model on by default, under its own name and
+# application ID: android/app/build.gradle, build type dragtest) as a GitHub pre-release.
+#
+#   git tag dragtest-v<version>-build<N>-<revision> && git push origin <that tag>
+#
+# N is the build of the released app the test build is made from; the revision counts test builds. The pre-release is
+# never marked latest, so .../releases/latest still gets the released app. The APK is signed with the release key
+# (the same four secrets as release.yml), so each test build installs over the one before.
+
+name: Drag test
+
+on:
+  push:
+    tags: ["dragtest-*"]
+
+permissions:
+  contents: write
+
+jobs:
+  dragtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the page
+        run: |
+          npm ci
+          node build.js
+
+      - name: Build the signed drag-test APK
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          GRADLE_TASK: assembleDragtest
+          APK: app/build/outputs/apk/dragtest/app-dragtest.apk
+        run: tools/build-release-apk.sh
+
+      - name: Publish the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          NAME="PocketRocketDragTest-${TAG#dragtest-}.apk"
+          mkdir out
+          cp android/app/build/outputs/apk/dragtest/app-dragtest.apk "out/$NAME"
+          {
+            echo "A test build of Pocket Rocket Flight Lab that starts on the **test drag model** (Settings can switch it"
+            echo "back to the released one). It installs beside the released app as \"Pocket Rocket drag test\" and keeps its"
+            echo "own saved data. The test model is still being checked against measurements: see AERODYNAMICS.md on the"
+            echo "drag-model-test branch. For the released app, use the latest release."
+          } > notes.md
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --latest=false \
+            --title "Pocket Rocket drag test (${TAG#dragtest-})" --notes-file notes.md out/*

@@ -42,6 +42,37 @@ function finnedOrk(o) {
 }
 
 /**
+ * An OpenRocket design built from a list of body parts (sizes in inches): a nose, then tubes ("tube": len, d) and
+ * conical transitions ("tail": len, d0, d1), any of which can carry a set of trapezoidal fins
+ * ({n, cr, ct, s, sw, t, edge, le?, te?, aft}: aft is the root trailing edge's distance ahead of the part's aft end).
+ * No masses: for drag and CP only.
+ * @param {object} o {name, finish, nose: {len, shape, param?}, parts}
+ * @returns {string} XML
+ */
+function partsOrk(o) {
+  const m = '<material type="bulk" density="2800">Aluminum</material>',
+    fin = `<finish>${o.finish}</finish>${m}`,
+    sh0 =
+      "<aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped>",
+    fins = (F) =>
+      F
+        ? `<subcomponents><trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.aft || 0) * IN}</axialoffset>${fin}<fincount>${F.n || 4}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection><cant>0</cant>${F.le > 0 || F.te > 0 ? `<prflbevelle>${(F.le || 0) * IN}</prflbevelle><prflbevelte>${(F.te || 0) * IN}</prflbevelte>` : ""}<rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset></subcomponents>`
+        : "",
+    part = (p, i) =>
+      p.t === "tail"
+        ? `<transition><name>t${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><shape>conical</shape><shapeclipped>false</shapeclipped><shapeparameter>0</shapeparameter><foreradius>${(p.d0 / 2) * IN}</foreradius><aftradius>${(p.d1 / 2) * IN}</aftradius><foreshoulderradius>0</foreshoulderradius><foreshoulderlength>0</foreshoulderlength><foreshoulderthickness>0</foreshoulderthickness><foreshouldercapped>false</foreshouldercapped>${sh0}${fins(p.fins)}</transition>`
+        : `<bodytube><name>b${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><radius>${(p.d / 2) * IN}</radius>${fins(p.fins)}</bodytube>`;
+  const d0 = o.parts[0].d ?? o.parts[0].d0;
+  return `<?xml version='1.0' encoding='utf-8'?>
+<openrocket version="1.9" creator="validation"><rocket><name>${o.name}</name>
+<motorconfiguration configid="c" default="true"><stage number="0" active="true"/></motorconfiguration>
+<referencetype>maximum</referencetype><subcomponents><stage><name>Stage</name><subcomponents>
+<nosecone><name>nose</name>${fin}<length>${o.nose.len * IN}</length><thickness>0.002</thickness><shape>${o.nose.shape}</shape><shapeclipped>false</shapeclipped><shapeparameter>${o.nose.param ?? 1}</shapeparameter><aftradius>${(d0 / 2) * IN}</aftradius>${sh0}</nosecone>
+${o.parts.map(part).join("\n")}
+</subcomponents></stage></subcomponents></rocket></openrocket>`;
+}
+
+/**
  * The Arcas sounding rocket as NASA tested it (TN D-4013/4014): a 9.375 in ogive-like nose (fitted to the reports'
  * coordinates: ogive, shape parameter 0.75), a 2.25 in body, four trapezoidal fins and a conical boattail.
  * @param {number} tubeLen body tube length, in
@@ -440,6 +471,98 @@ const R100_FIN_A_PTS = [0.9, 1.1, 1.2, 1.3, 1.5, 1.7, 2.0, 2.5, 3.0].map((M) => 
   M < 1 ? 0 : (0.0037 * 3 * 9 * 9) / (Math.PI * 2.5 * 2.5),
 ]);
 
+/* NACA RM L56G24 (Gillespie, 1956): a rocket-powered free-flight model of a ballistic missile flown from Wallops
+   Island, Mach 1.6 to 2.8. Figure 2 and table I: a 25 in nose (close to a tangent ogive, with a 0.17 in tip radius) on a
+   7.00 in body 118.25 in long, the aft end a 2° (half-angle) boattail to 5.00 in at the base, so 28.64 in long. Four
+   60° delta fins on the boattail, the horizontal pair's root chord 9.02 in with its trailing edge 9.05 in ahead of the
+   base, tip chord 0.392 in, 16.15 in tip to tip (the exposed span here is taken from the body's radius at the fin's
+   mid-root, 2.97 in, giving 5.1 in: 24.0 in² a fin against the report's 0.18 ft², 25.9 in²). Sections: flat plates 4%
+   thick (here 0.24 in, 4% of the mean chord) with a 5°51' leading-edge bevel and an 8° trailing-edge bevel (bevel
+   lengths 1.17 and 0.85 in). Not modeled: the two accelerometer fairings near the CG (0.88 in high, 14.5 in long), the
+   nose probe, and the vertical fins' trailing-edge extension (0.47 in).
+   Drag (figure 8, on the 7 in body's area), coasting: Mach 1.7–2.08, the line the report extrapolated to zero lift
+   from its drag polars; Mach 2.6–2.8, the second coast's measured points (at α ≈ 0 with sideslip up to about 7°, which
+   in the first coast added about 0.007). Reynolds numbers from figure 6(a), on the body length (9.85 ft). Read to about
+   ±0.004; the report gives ±0.015 for its axial force.
+   CP from figure 15 (dCm/dCN at zero angle of attack, in body diameters, about a CG at 54.4 in), first coast. */
+const L56 = {
+  name: "RM L56G24",
+  finish: "smooth",
+  nose: { len: 25, shape: "ogive" },
+  parts: [
+    { t: "tube", len: 64.61, d: 7 },
+    {
+      t: "tail",
+      len: 28.64,
+      d0: 7,
+      d1: 5,
+      fins: { n: 4, cr: 9.02, ct: 0.392, s: 5.1, sw: 8.83, t: 0.24, edge: "beveled", le: 1.17, te: 0.85, aft: 9.05 },
+    },
+  ],
+};
+const L56_LEN = 9.854; // ft
+// [Mach, Cd, Reynolds number on the body length]
+const L56_CD = [
+  [1.7, 0.358, 9.5e6 * L56_LEN],
+  [1.8, 0.351, 11.0e6 * L56_LEN],
+  [1.9, 0.343, 12.2e6 * L56_LEN],
+  [2.0, 0.335, 13.2e6 * L56_LEN],
+  [2.08, 0.329, 14.0e6 * L56_LEN],
+  [2.6, 0.302, 8.2e6 * L56_LEN],
+  [2.7, 0.293, 9.2e6 * L56_LEN],
+  [2.8, 0.284, 10.2e6 * L56_LEN],
+];
+// [Mach, dCm/dCN in diameters about the CG at 54.4 in] → CP as a share of the 118.25 in length
+const L56_CP = [
+  [1.71, -3.0],
+  [1.75, -2.9],
+  [1.9, -2.75],
+  [2.01, -2.42],
+  [2.08, -2.14],
+].map(([M, s]) => [M, (54.4 - 7 * s) / 118.25]);
+
+/* NASA TM-2005-213541 (Allen, 2005): a slender missile in the Langley 8-Foot Transonic Pressure Tunnel and Unitary
+   Plan Wind Tunnel, Mach 0.6 to 3.95, 1.5 million per foot, boundary layer tripped near the nose and the fins'
+   leading edges. Configuration 3 (small nose, no strakes, four tail fins), from figures 6 and 9: a 6.293 in nose
+   (taken as a tangent ogive) on a 2.694 in body 7.41 in long, a 3.875 in cone out to 3.150 in, 23.579 in at 3.150 in,
+   then a 1.371 in boattail to 3.040 in at the base (42.528 in overall). Fins: root chord 1.992 in from 39.165 in, tip
+   chord 1.213 in, span 1.953 in, trailing edge unswept and ending where the boattail starts, 0.110 in thick, hexagonal
+   section (the root's bevels 0.78 and 0.58 in; here 0.63 and 0.47, scaled to the mean chord).
+   The numbers are from the report's digital data (NTRS 20050165156, the CD-ROM's ASCII tables): roll angle 0, fins
+   undeflected, runs 1412, 1392, 1372, 655, 666, 677 and 251, the points within ±2.1° of zero (as the app's ±2°
+   balance; wider spans pick up the body's nonlinear lift). CNα is the slope of the
+   normal force over those points (per radian, on the 3.15 in body's area), the CP is the moment reference (23.387 in)
+   less dCm/dCN in diameters, and the axial force is at zero angle of attack. The axial force has the base pressure
+   taken out (the report corrects it to free-stream pressure in the base), so it is compared with the app's drag
+   without its base drag. */
+const ALLEN = {
+  name: "TM-2005-213541 configuration 3",
+  finish: "polished",
+  nose: { len: 6.293, shape: "ogive" },
+  parts: [
+    { t: "tube", len: 7.41, d: 2.694 },
+    { t: "tail", len: 3.875, d0: 2.694, d1: 3.15 },
+    {
+      t: "tube",
+      len: 23.579,
+      d: 3.15,
+      fins: { n: 4, cr: 1.992, ct: 1.213, s: 1.953, sw: 0.779, t: 0.11, edge: "beveled", le: 0.63, te: 0.47, aft: 0 },
+    },
+    { t: "tail", len: 1.371, d0: 3.15, d1: 3.04 },
+  ],
+};
+const ALLEN_RE = 1.5e6 * (42.528 / 12); // on the body length
+// [Mach, CA at zero angle of attack without base, CP share of length, CNα per radian]
+const ALLEN_PTS = [
+  [0.6, 0.1687, 30.63, 6.25],
+  [0.9, 0.1747, 31.04, 6.57],
+  [1.19, 0.2967, 33.21, 8.43],
+  [1.7, 0.3009, 28.52, 6.13],
+  [2.36, 0.2621, 24.17, 5.16],
+  [2.86, 0.2293, 22.41, 4.83],
+  [3.95, 0.1854, 20.09, 4.66],
+];
+
 /** Every case, for validation/accuracy.js. */
 const CASES = [
   {
@@ -666,6 +789,53 @@ const CASES = [
     quantity: "cna",
     xml: finnedOrk(AEROBEE),
     pts: AEROBEE_CNA_DEG.map(([M, v]) => [M, (v * 180) / Math.PI]),
+  },
+  {
+    id: "l56g24-cd",
+    title: "NACA RM L56G24, fineness-16.9 missile with 60° delta fins: drag coasting",
+    tier: "free flight",
+    role: "check",
+    quantity: "cd",
+    xml: partsOrk(L56),
+    design: { noseTip: 0.17 * IN },
+    pts: L56_CD,
+  },
+  {
+    id: "l56g24-cp",
+    title: "NACA RM L56G24, fineness-16.9 missile with 60° delta fins: CP",
+    tier: "free flight",
+    role: "check",
+    quantity: "cp",
+    xml: partsOrk(L56),
+    design: { noseTip: 0.17 * IN },
+    pts: L56_CP,
+  },
+  {
+    id: "tm2005-cdfore",
+    title: "NASA TM-2005-213541, configuration 3: drag without the base",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFore",
+    xml: partsOrk(ALLEN),
+    pts: ALLEN_PTS.map(([M, ca]) => [M, ca, ALLEN_RE]),
+  },
+  {
+    id: "tm2005-cp",
+    title: "NASA TM-2005-213541, configuration 3: CP",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cp",
+    xml: partsOrk(ALLEN),
+    pts: ALLEN_PTS.map(([M, , x]) => [M, x / 42.528]),
+  },
+  {
+    id: "tm2005-cna",
+    title: "NASA TM-2005-213541, configuration 3: normal-force slope",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cna",
+    xml: partsOrk(ALLEN),
+    pts: ALLEN_PTS.map(([M, , , c]) => [M, c]),
   },
 ];
 
@@ -1880,6 +2050,7 @@ module.exports = {
   FT,
   MPH,
   finnedOrk,
+  partsOrk,
   arcasOrk,
   flightOrk,
   A53,
