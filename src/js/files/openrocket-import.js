@@ -663,6 +663,10 @@ export function parseOrk(xml, opts = {}) {
         bs = num(c, "baseheight", 0.002);
       const cnt = Math.max(1, num(c, "instancecount", 1)),
         sep = num(c, "instanceseparation", 0);
+      // weight as OpenRocket works it out: the base and flange discs at the outside diameter and the waist at the
+      // inside diameter, in the button's material (Delrin when the file names none)
+      m = (rho || 1150) * Math.PI * ((od / 2) ** 2 * (bs + fl) + (id / 2) ** 2 * Math.max(h - fl - bs, 0)) * cnt;
+      cg = x + od / 2 + ((cnt - 1) * sep) / 2;
       for (let i = 0; i < cnt; i++)
         buttons.push({
           x: x + i * sep,
@@ -882,6 +886,7 @@ export function parseOrk(xml, opts = {}) {
       k2 = (num(c, "thickness", 0) >= ro * 0.999 || txt(c, "filled") === "true" ? 0.3 : 0.5) * ro * ro;
     else if (tag === "transition") k2 = 0.5 * ro * ro;
     else if (tag === "launchlug" || tag === "tubefinset") k2 = (pr + ro) ** 2;
+    else if (tag === "railbutton") k2 = (pr + num(c, "height", 0.0097) / 2) ** 2;
     else if (["bodytube", "innertube", "tubecoupler", "centeringring", "bulkhead", "engineblock"].includes(tag))
       k2 = (ro * ro + ri * ri) / 2;
     else if (/finset$/.test(tag)) {

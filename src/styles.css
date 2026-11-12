@@ -2437,10 +2437,6 @@ html.typing .runbar {
     0 2px 18px rgba(0, 0, 0, 0.55),
     0 0 2px rgba(0, 0, 0, 0.6);
 }
-.animcount.go {
-  font-size: clamp(2.6rem, 11vmin, 5.5rem);
-  letter-spacing: 0.04em;
-}
 .animcount span {
   animation: animcount 1s ease-out both;
 }

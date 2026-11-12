@@ -316,6 +316,7 @@ export function bldRenderEdit() {
           dim,
           opts,
           on: kind === "ovr" ? bldOvOn(O, key) : undefined,
+          armed: kind === "ovr" && O[key + "On"] === true,
           calc: kind === "ovr" ? bldCalcOv(key, 0) : undefined,
         },
         O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : undefined),
@@ -336,6 +337,7 @@ export function bldRenderEdit() {
           kind,
           dim,
           on: kind === "ovr" ? bldOvOn(obj || st, obj ? alias : key) : undefined,
+          armed: kind === "ovr" && (obj || st)[(obj ? alias : key) + "On"] === true,
           calc: kind === "ovr" ? bldCalcOv(obj ? alias : key, f.si) : undefined,
         },
         obj ? obj[alias] : st[key],
@@ -382,6 +384,7 @@ export function bldRenderEdit() {
         p,
         parent: f.parent,
         on: kind === "ovr" ? bldOvOn(p, key) : undefined,
+        armed: kind === "ovr" && p[key + "On"] === true,
         calc: kind === "ovr" && key === "known" ? bldCalcPartMass(p.id) : undefined,
       },
       val,
@@ -480,16 +483,20 @@ function bldFieldHtml(F, val) {
       inp = `<label class="chk"><input id="${id}" type="checkbox" ${val ? "checked" : ""}> <span>${esc(F.label)}</span></label>`;
       break;
     case "ovr": {
-      // a value worked out from the design, or your own when the Override switch is on
+      // a value worked out from the design, or your own when the Override switch is on. Switched on with nothing to
+      // start from (a calculated weight of 0), the box opens empty for your value.
       const dim = F.dim || "none",
         hasCalc = F.calc != null && isFinite(F.calc),
-        shown = F.on ? num(val, dim) : hasCalc ? num(F.calc, dim) : "";
-      inp = `<div class="ovrow"><div class="in"><input id="${id}" type="number" inputmode="decimal" step="any" value="${shown}" ${F.on ? "" : "disabled"} placeholder="${F.on ? "" : "calculated"}">${uname(dim) ? `<span class="u">${uname(dim)}</span>` : ""}</div><label class="ovsw"><input id="bfo-${F.key}" type="checkbox" ${F.on ? "checked" : ""}><span class="ovtrack" aria-hidden="true"></span><span>Override</span></label></div>`;
+        open = F.on || F.armed,
+        shown = F.on ? num(val, dim) : F.armed ? "" : hasCalc ? num(F.calc, dim) : "";
+      inp = `<div class="ovrow"><div class="in"><input id="${id}" type="number" inputmode="decimal" step="any" value="${shown}" ${open ? "" : "disabled"} placeholder="${F.on ? "" : F.armed ? "your value" : "calculated"}">${uname(dim) ? `<span class="u">${uname(dim)}</span>` : ""}</div><label class="ovsw"><input id="bfo-${F.key}" type="checkbox" ${open ? "checked" : ""}><span class="ovtrack" aria-hidden="true"></span><span>Override</span></label></div>`;
       const rs = F.p && F.p.knownCalc && F.key === "known",
         calcTxt = hasCalc ? ` This app calculates ${num(F.calc, dim)} ${esc(uname(dim))}.` : "";
       const note = F.on
         ? (rs ? "RockSim’s calculated weight, from the design file." : "Your value.") + calcTxt
-        : "Calculated from the design.";
+        : F.armed
+          ? "Enter your value." + calcTxt
+          : "Calculated from the design.";
       inp += `<div class="note fldnote">${note}</div>`;
       break;
     }

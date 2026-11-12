@@ -124,7 +124,7 @@ export function animPlay(on) {
 }
 /**
  * Shows the countdown over the animation, or hides it.
- * @param {string|null} text "3", "2", "1" or "Liftoff!"; null hides it and stops a countdown
+ * @param {string|null} text "3", "2" or "1"; null hides it and stops a countdown
  * @param {number} [ms] hide it after this long
  */
 export function animCount(text, ms) {
@@ -138,7 +138,6 @@ export function animCount(text, ms) {
   }
   if (el.dataset.n !== text || el.hidden) {
     el.dataset.n = text;
-    el.className = "animcount" + (/\d/.test(text) ? "" : " go");
     el.innerHTML = `<span>${esc(text)}</span>`;
     el.hidden = false;
   }
@@ -161,8 +160,8 @@ function animTick(now) {
   if (ANIM.playing && ANIM.countEnd) {
     if (now < ANIM.countEnd) animCount(String(Math.ceil((ANIM.countEnd - now) / 1000)));
     else {
-      ANIM.countEnd = 0;
-      animCount("Liftoff!", 900);
+      // the countdown ends and the rocket goes, with no word over it
+      animCount(null);
     }
     ANIM.last = now;
   } else if (ANIM.playing) {
