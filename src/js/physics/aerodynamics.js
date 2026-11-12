@@ -28,7 +28,7 @@ import { noseR, noseSpec, noseTip } from "./geometry.js";
    Rail buttons and lugs: Hoerner protuberance drag (Newtonian cylinder above Mach 1), scaled by the 1/7-power turbulent
      boundary-layer profile.
    Other protuberances (cameras, switch boxes, shrouds): Hoerner's coefficients for three-dimensional protuberances
-     (ch. 5, figure 13), scaled the same way.
+     (ch. 5, figure 13; a sloped-front box from his steps on a wall, figure 10), scaled the same way.
    Tumbling: Allen–Perkins crossflow drag averaged over all pitch angles.
    Air viscosity: Sutherland's law. */
 /**
@@ -696,8 +696,13 @@ function blFactor(h, x, v, nu) {
  * protuberances). bluff: a box or plate about as long as it is tall (a, 1.20; the text gives 1.0 to 1.3 for square
  * plates). long: a box more than twice as long as tall (b, 0.74). round: an upright cylinder or bolt (e and f, 0.80 and
  * 0.76). faired: a streamlined blister (g, 0.07).
+ * ramp: a long box with its front face sloped and its back square. Hoerner has no such box measured; it is built from
+ * his long blunt box (b, 0.74) and his steps on a wall (ch. V, figure 10: a square step facing the flow 0.40, the same
+ * step beveled at 60°, about 30° to the surface, 0.11, and a square step facing away from the flow 0.22). The box's
+ * drag is taken as split between its front and back as the two square steps split it, and the sloped front keeps
+ * 0.11/0.40 of its share: 0.74 × (0.11 + 0.22) / (0.40 + 0.22) = 0.39.
  */
-const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07 };
+const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07, ramp: 0.39 };
 /**
  * Drag coefficient of a protuberance, on its frontal area, before the boundary-layer factor (blFactor: Hoerner's
  * effective dynamic pressure, 0.75·(h/δ)^(1/3), is the same thing within a few percent). Below Mach 1 Hoerner's
@@ -705,13 +710,22 @@ const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07 };
  * modified Newtonian: about 1.3 at Mach 1.5 for the blunt box), which Hoerner's free-flight values at Mach 1 to 2
  * bracket (ch. XX, p. 20-14: 0.75 for a forward-facing step plus 0.45 for a rear-facing one, 0.8 for blunt rings,
  * 2.0 for round rivet heads, which he calls high). There is no such data for a faired one: it takes the larger of that and the Newtonian pressure on a front
- * face that climbs to its height over half its length, 2·sin²θ.
+ * face that climbs to its height over half its length, 2·sin²θ. A sloped-front box stays a share of the long blunt
+ * box at every speed: 0.39/0.74 below Mach 1, and above it the share Hoerner's free-flight steps give, a rear-facing
+ * step (0.45) plus modified Newtonian pressure on a 30° front (Cp,max·sin²30°) against a forward-facing step (0.75)
+ * plus the same rear one (0.70 of the long box at Mach 1.5), blended over Mach 1 to 1.3.
  * @param {{shape:string, h:number, len:number}} b protuberance
  * @param {number} M Mach number
  * @returns {number}
  */
 function bumpCd(b, M) {
   const c = (BUMP_CD[b.shape] * cylinderCd(M)) / 1.2;
+  if (b.shape === "ramp") {
+    const sub = BUMP_CD.ramp / BUMP_CD.long,
+      sup = (0.45 + stagCp(M) * 0.25) / (0.75 + 0.45),
+      t = M > 1 ? smooth01((M - 1) / 0.3) : 0;
+    return ((BUMP_CD.long * cylinderCd(M)) / 1.2) * ((1 - t) * sub + t * sup);
+  }
   if (b.shape !== "faired" || M <= 1) return c;
   const s = Math.sin(Math.atan2(b.h, Math.max(b.len / 2, 1e-6)));
   return Math.max(c, smooth01((M - 1) / 0.3) * 2 * s * s);

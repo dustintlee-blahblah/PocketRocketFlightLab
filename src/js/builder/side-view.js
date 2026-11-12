@@ -456,7 +456,18 @@ export function bldDraw() {
           break;
         }
         case "bump": {
-          c.fillRect(x1, Y(rr + k.h), Math.max(kk.len * sc, 3), Math.max(k.h * sc, 2));
+          if (k.shape === "ramp") {
+            // the front face climbs at about 30° (or over half the length, if shorter), the back end is square
+            const L = Math.max(kk.len * sc, 3),
+              rise = Math.min(k.h * sc * Math.sqrt(3), L / 2);
+            c.beginPath();
+            c.moveTo(x1, Y(rr));
+            c.lineTo(x1 + rise, Y(rr + k.h));
+            c.lineTo(x1 + L, Y(rr + k.h));
+            c.lineTo(x1 + L, Y(rr));
+            c.closePath();
+            c.fill();
+          } else c.fillRect(x1, Y(rr + k.h), Math.max(kk.len * sc, 3), Math.max(k.h * sc, 2));
           hit = [x1, x2, Y(rr + k.h) - 4, Y(rr) + 2];
           break;
         }

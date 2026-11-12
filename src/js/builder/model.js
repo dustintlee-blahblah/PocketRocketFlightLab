@@ -74,6 +74,7 @@ export const BLD_NAMES = {
 export const BLD_BUMPS = [
   ["bluff", "Blunt box"],
   ["long", "Long blunt box"],
+  ["ramp", "Long box, sloped front"],
   ["round", "Upright cylinder"],
   ["faired", "Streamlined"],
 ];
