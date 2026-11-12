@@ -55,6 +55,35 @@ export function showMountWarn(tb, stage, booster) {
   fx.focus();
 }
 /**
+ * The warning shown before a run when the rocket's launch lugs or rail buttons are missing or don't suit the pad's rod
+ * or rail. The flight can still be run.
+ * @param {string} why what is wrong
+ * @param {Function} go runs the flight anyway
+ */
+export function showGuideWarn(why, go) {
+  const box = document.getElementById("guidewarn");
+  document.getElementById("guidewarntxt").textContent = why;
+  document.getElementById("guidego").onclick = () => {
+    box.hidden = true;
+    go();
+  };
+  document.getElementById("guidefix").onclick = () => {
+    box.hidden = true;
+    showTab("rocket");
+  };
+  document.getElementById("guiderail").onclick = () => {
+    box.hidden = true;
+    showTab("flight");
+    const f = document.getElementById("f-railType");
+    if (f) {
+      f.scrollIntoView({ block: "center" });
+      f.focus();
+    }
+  };
+  box.hidden = false;
+  document.getElementById("guidefix").focus();
+}
+/**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
  */
 export function start() {
@@ -75,7 +104,7 @@ export function start() {
     }
   };
   // pop-up dialogs close on a tap outside the box or the Escape key
-  for (const id of ["resetconfirm", "openconfirm", "railwarn", "fitwarn"]) {
+  for (const id of ["resetconfirm", "openconfirm", "railwarn", "fitwarn", "guidewarn"]) {
     const m = document.getElementById(id);
     m.addEventListener("click", (e) => {
       if (e.target === m) m.hidden = true;
@@ -83,7 +112,7 @@ export function start() {
   }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape")
-      for (const id of ["resetconfirm", "openconfirm", "railwarn", "fitwarn"])
+      for (const id of ["resetconfirm", "openconfirm", "railwarn", "fitwarn", "guidewarn"])
         document.getElementById(id).hidden = true;
   });
 }

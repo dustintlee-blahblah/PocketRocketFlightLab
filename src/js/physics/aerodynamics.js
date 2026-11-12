@@ -702,7 +702,7 @@ function blFactor(h, x, v, nu) {
  * drag is taken as split between its front and back as the two square steps split it, and the sloped front keeps
  * 0.11/0.40 of its share: 0.74 × (0.11 + 0.22) / (0.40 + 0.22) = 0.39.
  */
-const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07, ramp: 0.39 };
+const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07, ramp: 0.39, flyaway: 1.2 }; // a fly-away rail guide: a blunt block, there only on the rail
 /**
  * Drag coefficient of a protuberance, on its frontal area, before the boundary-layer factor (blFactor: Hoerner's
  * effective dynamic pressure, 0.75·(h/δ)^(1/3), is the same thing within a few percent). Below Mach 1 Hoerner's
@@ -729,6 +729,25 @@ function bumpCd(b, M) {
   if (b.shape !== "faired" || M <= 1) return c;
   const s = Math.sin(Math.atan2(b.h, Math.max(b.len / 2, 1e-6)));
   return Math.max(c, smooth01((M - 1) / 0.3) * 2 * s * s);
+}
+/**
+ * A fly-away rail guide's weight and drag while the rocket is on the rail (it lets go as the rocket leaves, so the
+ * flight carries neither): the guides' total weight, and their drag area at this airspeed (the blunt box's
+ * coefficient on width × height, in the boundary layer where they sit).
+ * @param {object} A from aero()
+ * @param {number} v airspeed (m/s)
+ * @param {object} atm from atmosphere()
+ * @returns {{mass:number, cdA:number}} kg, m²
+ */
+export function flyaway(A, v, atm) {
+  let mass = 0,
+    cdA = 0;
+  for (const b of A.bumps || [])
+    if (b.fly) {
+      mass += b.mass || 0;
+      cdA += bumpCd(b, v / atm.a) * blFactor(b.h, b.x, v, kinVisc(atm)) * b.front;
+    }
+  return { mass, cdA };
 }
 /**
  * Standard rail buttons, by rail size: outer and inner diameter, height, flange and base thickness (m).
@@ -1148,6 +1167,7 @@ export function aero(D) {
       len: b.len || 0,
       front: b.w * b.h,
       shape: BUMP_CD[b.shape] != null ? b.shape : "bluff",
+      ...(b.shape === "flyaway" ? { fly: true, mass: b.mass || 0 } : {}),
     }));
   const nose = segs[0];
   // tumbling end over end: Allen–Perkins crossflow drag ∝ sin³α, mean over α = 4/(3π); roll-averaged fin projection 2/π per fin
@@ -1697,7 +1717,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
   for (const bt of A.buttons)
     if (bt.cdo > 0) ovr += bt.cdo;
     else pressure += (cylinderCd(M) * blFactor(bt.h, bt.x, v, nu) * bt.front) / S;
-  for (const b of A.bumps || []) pressure += (bumpCd(b, M) * blFactor(b.h, b.x, v, nu) * b.front) / S;
+  for (const b of A.bumps || []) if (!b.fly) pressure += (bumpCd(b, M) * blFactor(b.h, b.x, v, nu) * b.front) / S; // a fly-away guide is gone in flight
   for (const lg of A.lugs) {
     if (lg.cdo > 0) {
       ovr += lg.cdo;

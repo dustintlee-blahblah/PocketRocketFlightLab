@@ -78,20 +78,30 @@ function cloudBelow(LL, z) {
   return { ...best, from: "bands" };
 }
 /**
- * Whether the rocket's lugs or buttons suit the pad's rod or rail.
+ * Whether the rocket's lugs or buttons suit the pad's rod or rail. A launch tower needs none, and neither does a
+ * rocket with a fly-away rail guide (a protuberance of that shape), which rides a rail and lets go at its end.
  * @param {string} rt rail type
- * @returns {Array|null} [status, label, why]
+ * @param {boolean} [launch] for the Launch button: also say so when no rail type is set and the design has no guides at all
+ * @returns {Array|null} [status, label, why]; null when there is nothing to say
  *
  * whether the rocket's guides suit the pad: lugs over a rod (inside diameter at least the rod's), buttons of the rail's size
  */
-function padGuideCheck(rt) {
-  if (!rt || rt === "other" || rt === "tower" || typeof BLD === "undefined" || !BLD)
-    return rt === "tower"
-      ? ["good", "Launch tower", "No lugs or buttons needed in a tower; the fins must clear its rails."]
-      : null;
+export function padGuideCheck(rt, launch) {
+  if (rt === "tower")
+    return ["good", "Launch tower", "No lugs or buttons needed in a tower; the fins must clear its rails."];
+  if (typeof BLD === "undefined" || !BLD) return null;
   const kids = BLD.stages.flatMap((st) => st.parts.flatMap((p) => p.kids || [])),
     lugs = kids.filter((k) => k.type === "lug"),
-    btns = kids.filter((k) => k.type === "buttons");
+    btns = kids.filter((k) => k.type === "buttons"),
+    fly = kids.some((k) => k.type === "bump" && k.shape === "flyaway");
+  if (!rt || rt === "other")
+    return !launch || lugs.length || btns.length || fly
+      ? null
+      : [
+          "bad",
+          "No rail guides",
+          "The design has no launch lug, rail buttons or fly-away rail guide. Add the ones the rocket has in the builder, or set the rail type to Launch tower.",
+        ];
   const pad = {
     rod18: ["1/8 in rod", 0.003175],
     rod316: ["3/16 in rod", 0.0047625],
@@ -99,6 +109,14 @@ function padGuideCheck(rt) {
     r1515: ["1515 rail", "1515"],
   }[rt];
   if (!pad) return null;
+  if (fly)
+    return rt.startsWith("rod")
+      ? [
+          "bad",
+          pad[0],
+          "A fly-away rail guide rides a rail, not a rod. Use a rail, or give the rocket a launch lug in place of the guide.",
+        ]
+      : ["good", pad[0], "The fly-away rail guide carries the rocket up the rail, so it needs no rail buttons."];
   if (rt.startsWith("rod")) {
     const d = pad[1];
     if (!lugs.length)

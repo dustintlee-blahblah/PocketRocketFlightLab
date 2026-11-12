@@ -186,8 +186,9 @@ export function bldToOrk(model, L, opts = {}) {
       case "mass":
         return `<masscomponent>${head(k)}<packedlength>${n(k.len)}</packedlength><packedradius>${k.packAuto ? "auto " : ""}${n(k.packR > 0 ? k.packR : pr * 0.6)}</packedradius><radialposition>${n(k.radPos || 0)}</radialposition><radialdirection>0.0</radialdirection><mass>${n(k.mass)}</mass><masscomponenttype>${e(k.massType || "masscomponent")}</masscomponenttype></masscomponent>`;
       case "bump":
-        // OpenRocket reads it as a mass; the prflbump tags carry its outside shape and size for this app
-        return `<masscomponent>${head(k)}<packedlength>${n(k.len)}</packedlength><packedradius>${k.packAuto ? "auto " : ""}${n(k.packR > 0 ? k.packR : pr * 0.6)}</packedradius><radialposition>${n(k.radPos || 0)}</radialposition><radialdirection>0.0</radialdirection><mass>${n(k.mass)}</mass><masscomponenttype>masscomponent</masscomponenttype><prflbump>${e(k.shape || "bluff")}</prflbump><prflbumpw>${n(k.w)}</prflbumpw><prflbumph>${n(k.h)}</prflbumph></masscomponent>`;
+        // OpenRocket reads it as a mass; the prflbump tags carry its outside shape and size for this app. A fly-away rail
+        // guide is written with no weight (it is not on the rocket in flight); prflflymass carries its weight on the rail
+        return `<masscomponent>${head(k)}<packedlength>${n(k.len)}</packedlength><packedradius>${k.packAuto ? "auto " : ""}${n(k.packR > 0 ? k.packR : pr * 0.6)}</packedradius><radialposition>${n(k.radPos || 0)}</radialposition><radialdirection>0.0</radialdirection><mass>${n(k.shape === "flyaway" ? 0 : k.mass)}</mass><masscomponenttype>masscomponent</masscomponenttype>${k.shape === "flyaway" ? `<prflflymass>${n(k.mass)}</prflflymass>` : ""}<prflbump>${e(k.shape || "bluff")}</prflbump><prflbumpw>${n(k.w)}</prflbumpw><prflbumph>${n(k.h)}</prflbumph></masscomponent>`;
       case "raw":
         return String(k.xml || "").replace(/^(<[a-z]+[^>]*>)/i, `$1${pos(k)}`);
     }

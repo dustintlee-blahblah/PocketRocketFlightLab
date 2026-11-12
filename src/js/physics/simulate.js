@@ -19,6 +19,7 @@ import {
   CROSS_K,
   finLiftRatio,
   finSetsOf,
+  flyaway,
   pitchDamping,
   radiusAt,
   rollPartsM,
@@ -476,24 +477,28 @@ export function simulate(D, L, m, mb, opts = {}) {
         cy = Wr[1] - wa * ry,
         cz = -wa * rz,
         cm = Math.hypot(cx, cy, cz);
+      // a fly-away rail guide rides along until the rail ends: its weight and its drag count here and nowhere else
+      const FL = flyaway(G, Math.abs(va), atm),
+        mR = mm + FL.mass;
       const Fd =
         0.5 *
-        atm.rho *
-        va *
-        Math.abs(va) *
-        cdParts(G, Math.abs(va), atm, T > 0 ? An_ : 0, undefined, skin ? skin.T : 0).cd *
-        G.Aref;
+          atm.rho *
+          va *
+          Math.abs(va) *
+          cdParts(G, Math.abs(va), atm, T > 0 ? An_ : 0, undefined, skin ? skin.T : 0).cd *
+          G.Aref +
+        0.5 * atm.rho * va * Math.abs(va) * FL.cdA;
       /* rail-guide friction: coefficient 0.2 times the force on each guide. The guides carry the weight across a leaning
          rail and the crosswind's side force; each force is shared between the front and aft guide by where it acts
          (a force behind the aft guide loads the front guide the other way, as a lever). */
       let fr = 0;
-      if (v > 0 || T > mm * g * rz) {
+      if (v > 0 || T > mR * g * rz) {
         const J = inertia(t),
           cg = J.cg,
           xa = GUIDES.aft,
           xf = GUIDES.aft - GUIDES.gap,
           gap = GUIDES.gap;
-        const gw = [mm * g * rz * rx, mm * g * rz * ry, -mm * g + mm * g * rz * rz]; // the weight's part across the rail, at the CG
+        const gw = [mR * g * rz * rx, mR * g * rz * ry, -mR * g + mR * g * rz * rz]; // the weight's part across the rail, at the CG
         let fw = [0, 0, 0],
           xN = cg;
         if (cm > 1e-3) {
@@ -519,9 +524,9 @@ export function simulate(D, L, m, mb, opts = {}) {
         } else fr = 0.2 * Math.hypot(gw[0] + fw[0], gw[1] + fw[1], gw[2] + fw[2]);
         st.railFric = Math.max(st.railFric || 0, fr);
       }
-      let a = (T - Fd - fr) / mm - g * rz;
+      let a = (T - Fd - fr) / mR - g * rz;
       if (v <= 0 && a < 0) a = 0;
-      return [v * rx, v * rz, a * rx, a * rz, v * ry, a * ry, 0, 0, 0, 0, 0, 0, 0, 0, (T - Fd) / mm]; // the rail holds it from rolling
+      return [v * rx, v * rz, a * rx, a * rz, v * ry, a * ry, 0, 0, 0, 0, 0, 0, 0, 0, (T - Fd) / mR]; // the rail holds it from rolling
     }
     const W = windVec(z, t),
       vrx = vx - W[0],

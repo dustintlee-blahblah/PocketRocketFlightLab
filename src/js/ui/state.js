@@ -17,9 +17,10 @@ import { supNote } from "./donate.js";
 import { showTab } from "./events.js";
 import { FIELDS } from "./forms.js";
 import { siteRender } from "./launch-sites.js";
-import { showFitWarn, showMountWarn, showRailWarn } from "./launch-warnings.js";
+import { showFitWarn, showGuideWarn, showMountWarn, showRailWarn } from "./launch-warnings.js";
 import { motorFit, mountTooBig, s1View } from "./motor-tab.js";
 import { lastSim, renderResults, runAll, setLastSim } from "./results.js";
+import { padGuideCheck } from "./rso-checklist.js";
 import { fmt, fromDisp, uname } from "./units.js";
 import { wtRefresh } from "./wind-tunnel.js";
 /**
@@ -215,11 +216,13 @@ export function readFields() {
   store.set("rfs-design", D);
   store.set("rfs-launch", L);
 }
+let guideWarned = ""; // the rail-guide warning already answered with "Launch anyway"
 /**
- * The Launch button: reads the fields, checks the rail length, that every stage has a motor that lights and that
- * each motor fits its mount, then runs the simulation and shows the results.
+ * The Launch button: reads the fields, checks the rail length, that every stage has a motor that lights, that
+ * each motor fits its mount and that the rocket has rail guides that suit the pad, then runs the simulation and shows the results.
  */
-export function runNow() {
+export function runNow(ev) {
+  const anyway = ev === "anyway"; // from the rail-guide warning's "Launch anyway"
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   if (document.documentElement.classList.contains("nodesign")) {
     showTab("rocket");
@@ -269,6 +272,18 @@ export function runNow() {
     const fit = motorFit(mm, Dx, b);
     if (fit && fit.status === "big") {
       showFitWarn(mm, fit, D.twoStage ? stg : null);
+      return;
+    }
+  }
+  // launch lugs or rail buttons missing, or not the pad's kind: a warning, and the flight can still be run. A launch
+  // tower and a fly-away rail guide need neither. Asked once for each problem, not at every launch.
+  if (!anyway && !window.PR_NO_ASK) {
+    const g = padGuideCheck(L.railType || "", true);
+    if (g && g[0] === "bad" && guideWarned !== g[2]) {
+      showGuideWarn(g[2], () => {
+        guideWarned = g[2];
+        runNow("anyway");
+      });
       return;
     }
   }
