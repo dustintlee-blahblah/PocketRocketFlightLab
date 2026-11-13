@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 298 (2026-11-12)
+
+**Rocket builder**
+- **Lug types shortened and the rod split by size**: 1/8 Rod, 3/16 Rod, 1010 Rail and 1515 Rail. A rod lug flies only from its own rod (and its inside diameter must clear it); choosing a rod type gives the lug the usual size for that rod when it is too small for it (or, for 1/8, loose on it). A rail lug's height above the body and width can now be set; they start as the rail's button's.
+- **Files that don't say a lug's type** (OpenRocket and RockSim designs, designs saved before lug types, and a rail lug re-saved in OpenRocket, which drops the app's tag): the type is read from the lug's size for the pad checks — a solid lug as a 1010 or 1515 rail guide by its height, any other as a 3/16 Rod lug if it clears that rod, otherwise 1/8 — and the lug keeps the file's shape and drag. Designs open, fly and save exactly as before.
+
 ## Build 297 (2026-11-12)
 
 **Rocket builder**
