@@ -1,27 +1,60 @@
 #!/usr/bin/env python3
 """
-Builds src/data/motor-catalog.js (the app's built-in motors) from the OpenRocket motor database.
+Builds src/data/motor-catalog.js (the app's built-in motors) from OpenRocket's motor database: every motor in it.
 
-    git clone https://github.com/openrocket/motor-database
-    python3 tools/motor-catalog/build_catalog.py path/to/motor-database [--out src/data/motor-catalog.js]
-    python3 tools/motor-catalog/build_catalog.py path/to/motor-database --compare   # report changes, write nothing
+    git clone --depth 1 -b gh-pages https://github.com/openrocket/motor-database ordb   # motors.db.gz, metadata.json
+    python3 tools/motor-catalog/build_catalog.py ordb/motors.db.gz --compare   # what would change; writes nothing
+    python3 tools/motor-catalog/build_catalog.py ordb/motors.db.gz             # write the catalog and the id map
 
-The motor database collects ThrustCurve.org's data: motors_metadata.json (each motor's certified figures, case,
-propellant and delays), simfile_to_motor.json (which data files belong to which motor, and their source:
-certification, manufacturer or user) and the data files themselves (.eng/.rasp text, .rse XML).
+motors.db.gz is the SQLite database OpenRocket downloads and flies (openrocket/motor-database, published weekly):
+ThrustCurve.org's motors with their data files, plus the RASAero motor list (mostly older and out-of-production
+motors) and a few added by hand. The one entry that isn't a motor (NoThrust, a zero-thrust placeholder) is left out.
 
-For each AeroTech, Cesaroni, Loki Research and Estes motor:
-  - the thrust curve is the data file closest to the motor's certified total impulse and burn time, with
-    certification files preferred over manufacturer's and user-submitted ones (see score());
-  - the id is "a-" + a data file id, chosen the same way every time (certification file first, then manufacturer's,
-    then the most points, then the lowest id), so ids stay put when a closer curve turns up;
-  - propellant and total mass come from the chosen file's header, as OpenRocket reads them, or the metadata.
-Motors whose ids change between catalogs keep working through src/data/old-motor-ids.js; --compare lists them.
+For each motor:
+  - one thrust curve: of its curves, the one closest to the motor's certified total impulse and burn time, with
+    certification files preferred over the manufacturer's and users' (see score());
+  - the id is "a-" + a ThrustCurve.org data file id, chosen the same way every time (certification file first, then
+    manufacturer's, then the most points, then the lowest id), so ids stay put when a closer curve turns up. A motor
+    with no ThrustCurve.org file (the RASAero and hand-added ones) gets "r-" + its maker, name and diameter;
+  - brand: a short maker name (the one uploaded motor files are filed under, motors/catalog-lookup.js), and the motor
+    system from its type and case (see system()).
+Motors in the previous catalog that are here under another id are mapped in src/data/old-motor-ids.js, so saved
+designs keep their motor; --compare lists any that aren't here at all.
 """
-import argparse, collections, glob, json, os, re, sys
-import xml.etree.ElementTree as ET
+import argparse, collections, gzip, json, os, re, sqlite3, sys, tempfile
 
-BRANDS = {"AeroTech": "AeroTech", "Cesaroni Technology": "Cesaroni", "Loki Research": "Loki", "Estes Industries": "Estes"}
+# the database's maker names, to the brand the app shows and files uploads under
+BRANDS = {
+    "AeroTech": "AeroTech",
+    "Cesaroni Technology": "Cesaroni",
+    "Animal Motor Works": "AMW",
+    "AMW ProX": "AMW",
+    "Hypertek": "Hypertek",
+    "Loki Research": "Loki",
+    "Contrail Rockets": "Contrail",
+    "Gorilla Rocket Motors": "Gorilla",
+    "Sky Ripper Systems": "Sky Ripper",
+    "Kosdon by AeroTech": "Kosdon",
+    "Kosdon TRM": "Kosdon",
+    "Ellis Mountain": "Ellis Mountain",
+    "Estes Industries": "Estes",
+    "Quest Aerospace": "Quest",
+    "Apogee Components": "Apogee",
+    "R.A.T.T. Works": "RATT Works",
+    "Raketenmodellbau Klima": "Klima",
+    "Roadrunner Rocketry": "Roadrunner",
+    "West Coast Hybrids": "West Coast Hybrids",
+    "Rocketvision Flight-Star": "Rocketvision",
+    "Piotr Tendera Rocket Motors": "Tendera",
+    "Historical": "Historical",
+    "Propulsion Polymers": "Propulsion Polymers",
+    "Public Missiles, Ltd.": "Public Missiles",
+    "Southern Cross Rocketry": "Southern Cross",
+    "Alpha Hybrids": "Alpha Hybrids",
+    "Derek Deville DEAP EX": "DEAP EX",
+    "ZEVETA Bojkovice, a.s.": "Zeveta",
+}
+SKIP = {"NoThrust"}  # a zero-thrust placeholder, not a motor
 SOURCE_RANK = {"cert": 0, "mfr": 1, "user": 2}
 SOURCE_PENALTY = {"cert": 0.0, "mfr": 0.02, "user": 0.05}
 HEADER = """/**
@@ -29,146 +62,177 @@ HEADER = """/**
  * id, n (name), cn (common name), b (brand), mf (manufacturer), d and l (diameter and length, mm), pw and tw
  * (propellant and total mass, g), dl (delays, "P" = plugged), cs (case), pr (propellant), sy (motor system),
  * sp (sparky), t and f (thrust curve: times s, thrust N). Unpacked into motor objects in motors/catalog-lookup.js.
- * Generated by tools/motor-catalog/build_catalog.py from the OpenRocket motor database (%s); don't edit by hand.
+ * Generated by tools/motor-catalog/build_catalog.py from OpenRocket's motor database (%s); don't edit by hand.
  */
-/* ---------- AeroTech, Cesaroni, Loki Research and Estes catalog: thrust curves from the OpenRocket motor database (openrocket/motor-database, from ThrustCurve.org); one curve per motor: where ThrustCurve.org has several data files, the one closest to the motor's certified total impulse and burn time (certification files first) ---------- */
+/* ---------- Every motor in OpenRocket's motor database (openrocket/motor-database: ThrustCurve.org's motors, the RASAero motor list and a few added by hand); one curve per motor: where there are several, the one closest to the motor's certified total impulse and burn time (certification files first) ---------- */
 """
-
-
-def parse_curve(path):
-    """(times, thrusts, header) from a data file, starting and ending at zero thrust; None if unusable."""
-    txt = open(path, errors="ignore").read()
-    head = None
-    if path.endswith(".rse"):
-        try:
-            root = ET.fromstring(txt[txt.index("<") :])
-        except Exception:
-            return None
-        eng = root.find(".//engine")
-        if eng is None:
-            return None
-        pts = [(float(d.get("t")), float(d.get("f"))) for d in eng.iter("eng-data")]
-        head = {"pw": eng.get("propWt"), "tw": eng.get("initWt"), "dl": eng.get("delays")}
-    else:
-        pts = []
-        for line in txt.splitlines():
-            line = line.split(";")[0].strip()
-            if not line:
-                continue
-            if head is None:
-                x = line.split()
-                head = {"dl": x[3] if len(x) > 3 else None}
-                try:
-                    head["pw"], head["tw"] = float(x[4]) * 1000, float(x[5]) * 1000
-                except Exception:
-                    pass
-                continue
-            try:
-                a, b = line.split()[:2]
-                pts.append((float(a), float(b)))
-            except Exception:
-                pass
-    if len(pts) < 3:
-        return None
-    if pts[0][0] > 0:
-        pts = [(0.0, 0.0)] + pts
-    if pts[-1][1] != 0:
-        pts.append((pts[-1][0] + 0.001, 0.0))
-    t, f = [p[0] for p in pts], [p[1] for p in pts]
-    if any(t[i + 1] < t[i] for i in range(len(t) - 1)):
-        return None
-    return t, f, head or {}
 
 
 def impulse(t, f):
     return sum((t[i + 1] - t[i]) * (f[i] + f[i + 1]) / 2 for i in range(len(t) - 1))
 
 
-def score(t, f, meta, source):
+def score(t, f, m, source):
     """How far a curve is from the certified figures (0 = exact), plus a small penalty for non-certification files."""
     s = 0.0
-    if meta.get("totImpulseNs"):
-        s += abs(impulse(t, f) / meta["totImpulseNs"] - 1)
-    if meta.get("burnTimeS"):
-        s += 0.5 * abs(t[-1] / meta["burnTimeS"] - 1)
+    if m["total_impulse"]:
+        s += abs(impulse(t, f) / m["total_impulse"] - 1)
+    if m["burn_time"]:
+        s += 0.5 * abs(t[-1] / m["burn_time"] - 1)
     return s + SOURCE_PENALTY.get(source, 0.05)
 
 
-def num(v):
-    try:
-        return float(v)
-    except (TypeError, ValueError):
+def curve(pts):
+    """(times, thrusts) starting and ending at zero thrust; None if unusable."""
+    if len(pts) < 3:
         return None
+    if pts[0][0] > 0:
+        pts = [(0.0, 0.0)] + pts
+    if pts[-1][1] != 0:
+        pts = pts + [(pts[-1][0] + 0.001, 0.0)]
+    # a point out of time order is a typo in the data file (one AMW I315 file has 0.12 s before 0.084 s): put it in order
+    pts = sorted(pts, key=lambda p: p[0])
+    t, f = [p[0] for p in pts], [p[1] for p in pts]
+    # two points at the same time (a step: Contrail's I747 file starts 0 N and 1917 N at 0 s): 0.1 ms apart
+    for i in range(1, len(t)):
+        if t[i] <= t[i - 1]:
+            t[i] = round(t[i - 1] + 0.0001, 4)
+    return t, f
 
 
-def system(brand, meta, case):
-    typ = (meta.get("type") or "").lower()
+def system(brand, m, case):
+    """The motor system: RMS, DMS, SU, Hybrid, ProX, ProXL, Loki, Kosdon, Reload, or Legacy (older data)."""
+    typ = (m["type"] or "").lower()
+    if typ == "hybrid":
+        return "Hybrid"
+    if m["source"] == "RASAero":
+        return "Legacy"  # the RASAero list: mostly older and out-of-production motors, typed only as single-use
     if brand == "AeroTech":
-        return "Hybrid" if typ == "hybrid" else "DMS" if case.startswith("DMS") else "SU" if typ == "su" else "RMS"
+        return "DMS" if case.startswith("DMS") else "SU" if typ == "su" else "RMS"
     if brand == "Cesaroni":
-        return "Legacy" if typ == "su" else "ProXL" if "XL" in case else "ProX"
+        return "SU" if typ == "su" else "ProXL" if "XL" in case else "ProX"
     if brand == "Loki":
         return "SU" if typ == "su" else "Loki"
-    return "SU"
+    if brand == "Kosdon":
+        return "Kosdon"
+    return "Reload" if typ == "reload" else "SU"
 
 
-def build(db):
-    tc = os.path.join(db, "data", "thrustcurve.org")
-    meta = json.load(open(os.path.join(tc, "motors_metadata.json")))["motors"]
-    simfiles = json.load(open(os.path.join(tc, "simfile_to_motor.json")))
-    paths = collections.defaultdict(list)
-    for p in glob.glob(os.path.join(tc, "*", "*")):
-        m = re.search(r"_([0-9a-f]{24})\.(eng|rasp|rse)$", p)
-        if m:
-            paths[m.group(1)].append(p)
-    by_motor = collections.defaultdict(list)
-    for sid, s in simfiles.items():
-        m = meta.get(s["motorId"])
-        if m and m["manufacturer"] in BRANDS:
-            # the text formats first: they're what OpenRocket loads
-            for p in sorted(paths.get(sid, []), key=lambda p: (p.endswith(".rse"), p)):
-                c = parse_curve(p)
-                if c:
-                    by_motor[s["motorId"]].append((sid, s.get("source") or "user", c))
-                    break
-    rows = []
-    for mid, cands in by_motor.items():
-        m = meta[mid]
-        brand = BRANDS[m["manufacturer"]]
-        idf = min(cands, key=lambda c: (SOURCE_RANK.get(c[1], 3), -len(c[2][0]), c[0]))
-        best = min(cands, key=lambda c: (round(score(c[2][0], c[2][1], m, c[1]), 9), SOURCE_RANK.get(c[1], 3), c[0]))
-        t, f, head = best[2]
-        d, l = float(m["diameter"]), float(m.get("length") or 0)
-        pw, tw = num(head.get("pw")), num(head.get("tw"))
-        if not (pw and tw and tw > pw):
-            pw, tw = num(m.get("propWeightG")), num(m.get("totalWeightG"))
-        delays = head.get("dl") or m.get("delays") or ""
-        case = m.get("caseInfo") or f"SU {d}x{l}"
+def delays(s):
+    """The delay list, "P" for plugged: the database's 1000 (and 100) are plugged placeholders."""
+    out, plug = [], False
+    for x in (s or "").replace("-", ",").split(","):
+        x = x.strip()
+        if not x:
+            continue
+        if x.upper() == "P":
+            plug = True
+            continue
+        try:
+            v = float(x)
+        except ValueError:
+            continue
+        if v >= 100:
+            plug = True
+        elif x not in out:
+            out.append(x)
+    if plug or not out:
+        out.append("P")
+    return ",".join(out)
+
+
+def slug(s):
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
+def open_db(path):
+    if path.endswith(".gz"):
+        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        tmp.write(gzip.open(path).read())
+        tmp.close()
+        path = tmp.name
+    c = sqlite3.connect(path)
+    c.row_factory = sqlite3.Row
+    return c
+
+
+def build(path):
+    c = open_db(path)
+    meta = {r["key"]: r["value"] for r in c.execute("select key, value from meta")}
+    pts = collections.defaultdict(list)
+    for r in c.execute("select curve_id, time_seconds, force_newtons from thrust_data order by curve_id, id"):
+        pts[r[0]].append((r[1], r[2]))
+    curves = collections.defaultdict(list)
+    for r in c.execute("select id, motor_id, tc_simfile_id, source from thrust_curves"):
+        cv = curve(pts.get(r["id"], []))
+        if cv:
+            curves[r["motor_id"]].append((r["tc_simfile_id"], r["source"] or "", cv))
+    rows, skipped = [], []
+    q = """select mo.*, mf.name as maker, mf.abbrev from motors mo join manufacturers mf on mf.id = mo.manufacturer_id"""
+    for m in c.execute(q):
+        if m["abbrev"] in SKIP or m["maker"] in SKIP:
+            continue
+        cands = curves.get(m["id"])
+        if not cands:
+            skipped.append(f'{m["maker"]} {m["designation"]}')
+            continue
+        brand = BRANDS.get(m["maker"], m["abbrev"] or m["maker"])
+        best = min(cands, key=lambda x: (round(score(x[2][0], x[2][1], m, x[1]), 9), SOURCE_RANK.get(x[1], 3), x[0] or ""))
+        tc = [x for x in cands if x[0]]
+        if tc:
+            idf = min(tc, key=lambda x: (SOURCE_RANK.get(x[1], 3), -len(x[2][0]), x[0]))
+            mid = "a-" + idf[0]
+        else:
+            mid = "r-" + slug(f'{brand} {m["designation"]} {round(m["diameter"] or 0)}')
+        t, f = best[2]
+        d, l = float(m["diameter"] or 0), float(m["length"] or 0)
+        case = m["case_info"] or f"SU {d}x{l}"
         rows.append(
             dict(
-                id="a-" + idf[0],
+                id=mid,
                 n=m["designation"],
-                cn=m.get("commonName") or m["designation"],
+                cn=m["common_name"] or m["designation"],
                 b=brand,
-                mf=brand,
+                mf=m["maker"],
                 d=d,
                 l=l,
-                pw=round(pw or 0, 2),
-                tw=round(tw or 0, 2),
-                dl=delays.replace("-", ","),
+                pw=round(m["propellant_weight"] or 0, 2),
+                tw=round(m["total_weight"] or 0, 2),
+                dl=delays(m["delays"]),
                 cs=case,
-                pr=m.get("propInfo") or "",
+                pr=m["prop_info"] or "",
                 sy=system(brand, m, case),
-                sp=1 if m.get("sparky") else 0,
+                sp=1 if m["sparky"] else 0,
                 t=[round(x, 4) for x in t],
                 f=[round(x, 4) for x in f],
                 _I=impulse(t, f),
             )
         )
+    # the RASAero list repeats most ThrustCurve.org motors under other names ("I205-300CC125J" for "300CC125J-I205"): an
+    # entry with no ThrustCurve.org file that matches one that has (same brand, diameter and common name, total
+    # impulse within 2%) is the same motor, and the ThrustCurve.org one (certified curve, current name) is kept
+    norm = lambda x: re.sub(r"[^A-Z0-9]", "", (x or "").upper())
+    keep = collections.defaultdict(list)
+    for r in rows:
+        if r["id"].startswith("a-"):
+            keep[(r["b"], round(r["d"]), norm(r["cn"]))].append(r["_I"])
+    dups = [
+        r
+        for r in rows
+        if not r["id"].startswith("a-")
+        and any(abs(i - r["_I"]) <= 0.02 * r["_I"] for i in keep.get((r["b"], round(r["d"]), norm(r["cn"])), []))
+    ]
+    rows = [r for r in rows if r not in dups]
+    # an id is unique: a second motor that would take the same one gets its name added
+    seen = collections.Counter()
+    for r in rows:
+        seen[r["id"]] += 1
+        if seen[r["id"]] > 1:
+            r["id"] += "-" + slug(r["n"])
     rows.sort(key=lambda r: (r["b"], r["_I"], r["id"]))
     for r in rows:
         del r["_I"]
-    return rows
+    return rows, meta, skipped, dups
 
 
 def read_catalog(path):
@@ -176,31 +240,82 @@ def read_catalog(path):
     return json.loads(line.split("const MOTOR_DB=", 1)[1].rstrip(";"))
 
 
+def read_old_ids(path):
+    s = open(path).read()
+    m = re.search(r"OLD_MOTOR_IDS=(\{.*?\});", s, re.S)
+    return json.loads(m.group(1)) if m else {}
+
+
+def norm(s):
+    return re.sub(r"[^A-Z0-9]", "", (s or "").upper())
+
+
+def map_old(old, rows):
+    """Each previous catalog id that isn't in the new one, to the same motor's new id: same brand, diameter and name
+    (or common name), and total impulse within 3%. Returns (map, ids with no match)."""
+    by = collections.defaultdict(list)
+    for r in rows:
+        by[(r["b"], round(r["d"]))].append(r)
+    new_ids = {r["id"] for r in rows}
+    out, lost = {}, []
+    for o in old:
+        if o["id"] in new_ids:
+            continue
+        I = impulse(o["t"], o["f"])
+        pool = by.get((o["b"], round(o["d"])), [])
+        same = lambda r: abs(impulse(r["t"], r["f"]) - I) <= max(0.5, 0.03 * I)
+        close = lambda r: abs(impulse(r["t"], r["f"]) - I) <= max(0.5, 0.02 * I)
+        hit = (
+            [r for r in pool if norm(r["n"]) == norm(o["n"]) and same(r)]
+            or [r for r in pool if norm(r["cn"]) == norm(o["cn"]) and norm(r["n"])[: len(norm(o["cn"]))] == norm(o["cn"]) and same(r)]
+            # the same motor written another way (the RASAero list's "K610-SK" for ThrustCurve.org's "1531K610"):
+            # same common name and total impulse within 2%
+            or [r for r in pool if norm(r["cn"]) == norm(o["cn"]) and close(r)]
+        )
+        if hit:
+            out[o["id"]] = min(hit, key=lambda r: abs(impulse(r["t"], r["f"]) - I))["id"]
+        else:
+            lost.append(o)
+    return out, lost
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("motor_database", help="a checkout of github.com/openrocket/motor-database")
+    ap.add_argument("database", help="OpenRocket's motors.db.gz (or motors.db), from openrocket/motor-database's gh-pages")
     here = os.path.dirname(os.path.abspath(__file__))
     ap.add_argument("--out", default=os.path.join(here, "..", "..", "src", "data", "motor-catalog.js"))
+    ap.add_argument("--ids", default=os.path.join(here, "..", "..", "src", "data", "old-motor-ids.js"))
     ap.add_argument("--compare", action="store_true", help="report what would change; write nothing")
     a = ap.parse_args()
-    rows = build(a.motor_database)
-    try:
-        rev = os.popen(f'git -C "{a.motor_database}" rev-parse --short HEAD 2>/dev/null').read().strip() or "unknown commit"
-    except Exception:
-        rev = "unknown commit"
+    rows, meta, skipped, dups = build(a.database)
+    old = read_catalog(a.out)
+    new_map, lost = map_old(old, rows)
+    by_brand = collections.Counter(r["b"] for r in rows)
+    print(f"{len(rows)} motors from database version {meta.get('database_version')} ({meta.get('motor_count')} entries)")
+    print("  " + ", ".join(f"{b} {n}" for b, n in by_brand.most_common()))
+    print(f"previous catalog: {len(old)} motors; {sum(1 for o in old if o['id'] in {r['id'] for r in rows})} keep their id, "
+          f"{len(new_map)} found under a new id, {len(lost)} not in OpenRocket's database")
+    for o in lost:
+        print(f"    not found: {o['b']} {o['n']} ({o['d']:.0f} mm, {impulse(o['t'], o['f']):.1f} Ns)")
+    print(f"  {len(dups)} entries from the RASAero list left out: the same motor as a ThrustCurve.org entry")
+    if skipped:
+        print("  no usable curve: " + ", ".join(skipped))
     if a.compare:
-        old = {r["id"]: r for r in read_catalog(a.out)}
-        new = {r["id"]: r for r in rows}
-        same = sum(1 for k in new if k in old and old[k] == new[k])
-        curve = sum(1 for k in new if k in old and (old[k]["t"], old[k]["f"]) != (new[k]["t"], new[k]["f"]))
-        other = sum(1 for k in new if k in old and old[k] != new[k]) - curve
-        print(f"{len(old)} motors now, {len(new)} generated: {same} identical, {curve} with a different curve, "
-              f"{other} with other fields changed, {len(new.keys() - old.keys())} new ids, "
-              f"{len(old.keys() - new.keys())} ids gone")
         return
     js = "export const MOTOR_DB=" + json.dumps(rows, separators=(",", ":")) + ";\n"
-    open(a.out, "w").write(HEADER % ("openrocket/motor-database " + rev) + js)
-    print(f"wrote {len(rows)} motors to {os.path.relpath(a.out)}")
+    open(a.out, "w").write(HEADER % f"database version {meta.get('database_version')}, {meta.get('generated_at', '')[:10]}" + js)
+    # the id map: earlier maps followed through to today's ids, plus this catalog's changes
+    ids = read_old_ids(a.ids)
+    final = {r["id"] for r in rows}
+    merged = {}
+    for k, v in list(ids.items()) + list(new_map.items()):
+        v = new_map.get(v, v)
+        if v in final and k not in final:
+            merged[k] = v
+    s = open(a.ids).read()
+    s = re.sub(r"OLD_MOTOR_IDS=\{.*?\};", "OLD_MOTOR_IDS=" + json.dumps(merged, separators=(",", ":")) + ";", s, flags=re.S)
+    open(a.ids, "w").write(s)
+    print(f"wrote {len(rows)} motors to {os.path.relpath(a.out)} and {len(merged)} old ids to {os.path.relpath(a.ids)}")
 
 
 if __name__ == "__main__":

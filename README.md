@@ -196,9 +196,10 @@ A build signed with a different key can't update an installed copy of the offici
 
 ## Data sources
 
-- **Motors:** the built-in AeroTech, Cesaroni, Loki Research and Estes thrust curves come from the
-  [OpenRocket motor database](https://github.com/openrocket/motor-database), which collects curves published on
-  [ThrustCurve.org](https://www.thrustcurve.org/); one curve per motor, the certification curve where there is one.
+- **Motors:** every motor in the [OpenRocket motor database](https://github.com/openrocket/motor-database) (1,127
+  motors from 27 makers), which collects the curves published on [ThrustCurve.org](https://www.thrustcurve.org/) and
+  the older motors in the RASAero motor list; one curve per motor, the one closest to the certified figures,
+  certification curves first.
   Other motors can be loaded from `.eng`, `.rse` or `.zip` files.
 - **Weather:** NOAA GFS forecasts through [Open-Meteo](https://open-meteo.com/), data under CC BY 4.0.
   Open-Meteo's free API is for non-commercial use; a commercial version of this app would need an

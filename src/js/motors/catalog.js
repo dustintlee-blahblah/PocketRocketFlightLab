@@ -8,6 +8,7 @@ export const SYS_LABEL = {
   RMS: "RMS reload",
   DMS: "DMS",
   SU: "Single-use",
+  Reload: "Reload",
   Hybrid: "Hybrid",
   Kosdon: "Kosdon by AeroTech",
   ProX: "Pro-X reload",

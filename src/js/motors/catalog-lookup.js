@@ -9,34 +9,49 @@ import { motorStats } from "./motor-files.js";
 /**
  * The order motor systems are listed in.
  */
-export const SYS_ORDER = ["RMS", "DMS", "SU", "Hybrid", "Kosdon", "ProX", "ProXL", "Loki", "Legacy"];
+export const SYS_ORDER = ["RMS", "DMS", "SU", "Reload", "Hybrid", "Kosdon", "ProX", "ProXL", "Loki", "Legacy"];
 /**
  * For each catalog brand, the motor systems it has, in SYS_ORDER.
  */
 export const BRAND_SYS = {};
-export const BUILTIN_BRANDS = Object.keys(BRAND_SYS);
+/**
+ * The catalog's brands, the makers with the most motors first (filled at start-up, when the catalog is unpacked).
+ */
+export const BUILTIN_BRANDS = [];
 /**
  * The catalog (MOTOR_DB's compact rows) unpacked into motor objects, with sizes in meters and masses in kg.
  */
 export let BUILTIN;
 // an uploaded motor is filed under its manufacturer, and under the same motor system as the matching catalog motor
+// the short codes are OpenRocket's (older .ork and RASP files name makers by them: "A" AeroTech, "E" Estes, "Q" Quest...)
 const MFR_ALIAS = [
-  [/^(at|aerotech|aerotech\/rcs|rcs|isp|aerot)/, "AeroTech"],
-  [/^(cti|cesaroni|ces)/, "Cesaroni"],
-  [/^loki/, "Loki"],
-  [/^(es|estes)\b/, "Estes"],
-  [/^(q|quest)\b/, "Quest"],
-  [/^(apogee|a)\b/, "Apogee"],
+  [/^(a|at|aet|aero|aerotech|aerotech\/rcs|rcs|isp|aerot)\b/, "AeroTech"],
+  [/^(aerotech)/, "AeroTech"],
+  [/^(cti|cesaroni|ces|cs|csr)\b/, "Cesaroni"],
+  [/^(cesaroni)/, "Cesaroni"],
+  [/^(loki|lr)\b/, "Loki"],
+  [/^(e|es|estes)\b/, "Estes"],
+  [/^(q|qu|quest)\b/, "Quest"],
+  [/^(ap|apog|apogee)\b/, "Apogee"],
   [/^(amw|animal)/, "AMW"],
-  [/^(ht|hypertek)/, "Hypertek"],
-  [/^(gm|gorilla)/, "Gorilla"],
-  [/^klima/, "Klima"],
-  [/^(em|ellis)/, "Ellis Mountain"],
-  [/^(pml|public missiles)/, "Public Missiles"],
-  [/^(ka|kosdon)/, "Kosdon"],
+  [/^(h|ht|hyper|hypertek)\b/, "Hypertek"],
+  [/^(gr|gm|gorilla)\b/, "Gorilla"],
+  [/^(klima|raketenmodellbau klima)/, "Klima"],
+  [/^(em|ellis)\b/, "Ellis Mountain"],
+  [/^(pm|pml|public missiles)\b/, "Public Missiles"],
+  [/^(k|ka|kba|k-at|kos|kosdon)\b/, "Kosdon"],
   [/^contrail/, "Contrail"],
-  [/^(sf|skyr)/, "Sky Ripper"],
-  [/^(wcoast|west coast)/, "West Coast Hybrids"],
+  [/^(sr|srs|sf|skyr|skyripper|sky ripper)\b/, "Sky Ripper"],
+  [/^(wcoast|west coast|wch|wcr)\b/, "West Coast Hybrids"],
+  [/^(ratt|rt|rtw|r\.a\.t\.t)\b/, "RATT Works"],
+  [/^(roadrunner|rr)\b/, "Roadrunner"],
+  [/^(rocketvision|rocket vision|rv)\b/, "Rocketvision"],
+  [/^(tendera|tsp|piotr tendera)\b/, "Tendera"],
+  [/^(propulsion polymers|pp|prop)\b/, "Propulsion Polymers"],
+  [/^(southern cross|scr)\b/, "Southern Cross"],
+  [/^alpha/, "Alpha Hybrids"],
+  [/^zeveta/, "Zeveta"],
+  [/^(deap|derek deville)/, "DEAP EX"],
 ];
 /**
  * The brand an uploaded motor is filed under, from the manufacturer field of its file.
@@ -113,6 +128,12 @@ export let DEFAULT_MOTOR;
 export function start() {
   for (const r of MOTOR_DB) (BRAND_SYS[r.b] = BRAND_SYS[r.b] || new Set()).add(r.sy);
   for (const b in BRAND_SYS) BRAND_SYS[b] = SYS_ORDER.filter((y) => BRAND_SYS[b].has(y));
+  // the brand list is filled here, not when the module loads (BRAND_SYS was still empty then, which left the Motor
+  // tab's manufacturer filter with no brands)
+  const count = {};
+  for (const r of MOTOR_DB) count[r.b] = (count[r.b] || 0) + 1;
+  BUILTIN_BRANDS.length = 0;
+  BUILTIN_BRANDS.push(...Object.keys(BRAND_SYS).sort((a, b) => count[b] - count[a] || a.localeCompare(b)));
   BUILTIN = MOTOR_DB.map((r) => ({
     id: r.id,
     name: r.n,
