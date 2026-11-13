@@ -642,7 +642,7 @@ async function flFit() {
     store.set("rfs-design", D);
     runAll();
     const pct = (k - 1) * 100;
-    if (Math.abs(pct) > 35) {
+    if (Math.abs(pct) > 30) {
       // a large change: a window that stays until OK is pressed (a toast goes by before it can be read)
       const box = document.getElementById("calwarn");
       document.getElementById("calwarntxt").textContent =
