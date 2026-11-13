@@ -207,7 +207,7 @@ export function bldRenderAdd() {
   if (!hasNose && si === 0) h += `<button class="btn ghost" data-add="nose">Nose cone</button>`;
   h += `<button class="btn ghost" data-add="tube">Body tube</button><button class="btn ghost" data-add="transition">Transition</button></div>`;
   if (body)
-    h += `<div class="bldh">Add to ${esc(body.name)}</div><div class="bldadds">${["fins", "mount", "inner", "ring", "bulkhead", "coupler", "lug", "buttons", "chute", "streamer", "cord", "mass", "bump"].map((t) => `<button class="btn ghost" data-add="${t}">${BLD_NAMES[t]}</button>`).join("")}</div>`;
+    h += `<div class="bldh">Add to ${esc(body.name)}</div><div class="bldadds">${["fins", "mount", "inner", "ring", "bulkhead", "coupler", "lug", "buttons", "flyaway", "chute", "streamer", "cord", "mass", "bump"].map((t) => `<button class="btn ghost" data-add="${t}">${t === "flyaway" ? "Fly-away rail guide" : BLD_NAMES[t]}</button>`).join("")}</div>`;
   else
     h += `<p class="note" style="margin:6px 0 0">Select a body part to add fins, a motor mount, recovery and other parts to it.</p>`;
   {
@@ -282,6 +282,33 @@ function bldAdd(type) {
     if (type === "nose") st.parts.unshift(p);
     else st.parts.splice(at, 0, p);
     setBldSel(p.id);
+  } else if (type === "flyaway") {
+    /* a fly-away rail guide: a cage around the body that rides the rail and falls away at its end. It is kept as a
+       protuberance of shape "flyaway" (its weight and drag count only on the rail), placed just above the fins: on
+       the selected body tube if it has fins, otherwise on the stage's body tube that does */
+    const sel = f && f.p ? f.parent || f.p : null,
+      hasFins = (q) => q && (q.kids || []).some((k) => k.type === "fins"),
+      body = hasFins(sel)
+        ? sel
+        : st.parts.find(hasFins) || sel || st.parts.find((p) => p.type === "tube") || st.parts[0];
+    if (!body) return;
+    const k = {
+      ...bldNew("bump", bldBodyR(body)),
+      name: "Fly-away rail guide",
+      shape: "flyaway",
+      h: 0.02,
+      len: 0.06,
+      mass: 0.1,
+    };
+    body.kids = body.kids || [];
+    body.kids.push(k);
+    const b = bldLayout(BLD).bodies.find((q) => q.p === body),
+      fn = b && b.kids.find((q) => q.k.type === "fins");
+    if (fn) {
+      k.ref = "top";
+      k.pos = Math.max(fn.x - b.x - k.len, 0);
+    }
+    setBldSel(k.id);
   } else {
     const body = f && f.p ? f.parent || f.p : st.parts.find((p) => p.type === "tube") || st.parts[0];
     if (!body) return;
@@ -354,7 +381,7 @@ export function bldRenderEdit() {
   const p = f.p,
     fields = bldFields(p),
     body = !f.parent;
-  let h = `<div class="bldh">${esc(BLD_NAMES[p.type])}${p.type === "raw" ? ` (${esc(p.tag)})` : ""}</div>`;
+  let h = `<div class="bldh">${esc(p.type === "bump" && p.shape === "flyaway" ? "Fly-away rail guide" : BLD_NAMES[p.type])}${p.type === "raw" ? ` (${esc(p.tag)})` : ""}</div>`;
   // the motor itself is chosen on the Motor tab; the mount shows which one it holds
   {
     const host = p.type === "mount" ? p : p.type === "tube" && p.mm ? p.mm : null;

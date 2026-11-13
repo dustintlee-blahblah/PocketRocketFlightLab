@@ -77,7 +77,6 @@ export const BLD_BUMPS = [
   ["ramp", "Long box, sloped front"],
   ["round", "Upright cylinder"],
   ["faired", "Streamlined"],
-  ["flyaway", "Fly-away rail guide"],
 ];
 /**
  * Surface finishes offered: [OpenRocket name, label]. The names and roughness heights are OpenRocket's, kept so its

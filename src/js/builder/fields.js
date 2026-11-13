@@ -309,7 +309,8 @@ export function bldFields(p) {
     case "bump":
       return [
         ["name", "Name", "text"],
-        ["shape", "Shape", "sel", BLD_BUMPS],
+        // a fly-away rail guide is its own part in the add list (kept as this shape), so it has no shape to choose
+        ...(p.shape === "flyaway" ? [] : [["shape", "Shape", "sel", BLD_BUMPS]]),
         // a fly-away rail guide goes all the way around the body, so it has no width or angle
         ...(p.shape === "flyaway" ? [] : [["w", "Width", "num", "small"]]),
         ["h", p.shape === "flyaway" ? "Thickness around the body" : "Height above the body", "num", "small"],
