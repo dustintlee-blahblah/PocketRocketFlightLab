@@ -4,6 +4,15 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 299 (2026-11-12)
+
+**Rocket builder**
+- **Fly-away rail guide is its own part**: it moved from the Protuberance shapes to the add-a-part list, next to Launch lug and Rail buttons. Adding one puts it just above the fins (on the body tube that has them). Its behaviour is unchanged, and designs that already have one open as before.
+- **Launch rods 1/4, 5/16, 3/8 and 1/2 in**: new lug types (1/4 Rod … 1/2 Rod) beside 1/8 and 3/16, each with the usual lug size for that rod. A lug from a file that doesn't say its type is taken as made for the largest rod it slides over.
+
+**Range and RSO Checklist**
+- **Rail or rod type** offers the same rods (1/8 to 1/2 in), and each rod lug passes only on its own rod.
+
 ## Build 298 (2026-11-12)
 
 **Rocket builder**
