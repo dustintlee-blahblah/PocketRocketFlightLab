@@ -4,6 +4,15 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 296 (2026-11-12)
+
+**Results**
+- **Every speed shows its mph (or km/h)** in small grey type under the ft/s or m/s value, in the main results, the staging panel and the Monte Carlo results.
+- **New figures: Time to burnout and Coast time to apogee** (Ascent section). **Max roll rate** now always shows (0 rpm for a rocket that doesn't roll); it used to appear only when the rocket rolled.
+
+**PDF report**
+- **Every results figure, in the same sections as the Results tab.** Each tile grows to fit its text (long entries such as Stability at liftoff used to run out of their box and lose words), with units and notes in smaller grey type and mph or km/h under each speed. A staged flight's booster and sustainer figures are included too. The Checks list moves to a new page cleanly when it doesn't fit.
+
 ## Build 295 (2026-11-12)
 
 **Flight animation**
