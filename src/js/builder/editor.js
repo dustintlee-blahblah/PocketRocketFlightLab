@@ -12,6 +12,7 @@ import {
   BLD_LINE,
   BLD_LUG_KINDS,
   BLD_NAMES,
+  BLD_ROD_LUG,
   BLD_SURF,
   bldBodyR,
   bldId,
@@ -616,11 +617,21 @@ function bldWire(el, p, mode, si) {
           const usual = { ogive: 1, parabolic: 1, power: 0.5, haack: 0 }[inp.value];
           if (usual != null) p.param = usual;
         }
-        // a rail-type lug is a plastic slider: choosing one sets that material and names it after its kind
+        // choosing a lug type: a rail lug is a plastic slider (Delrin); a rod lug gets the usual size for its rod when
+        // it is too small to slide over it. A lug still under a default name is named after its type
         if (key === "kind" && p && p.type === "lug") {
-          if (inp.value !== "rod") p.mat = "Delrin";
-          if (!p.name || /^(Launch lug|Launch Lug - .*)$/i.test(p.name))
-            p.name = (BLD_LUG_KINDS.find((x) => x[0] === inp.value) || [])[1] || p.name;
+          const R = BLD_ROD_LUG[inp.value];
+          if (R) {
+            if (p.mat === "Delrin") p.mat = "Cardboard";
+            // too small for the rod, or (for a 1/8 rod) big enough for a 3/16 rod and so loose on this one
+            if (
+              !((p.id_ || 0) >= R.rod + 0.0003) ||
+              (inp.value === "rod18" && (p.id_ || 0) >= BLD_ROD_LUG.rod316.rod + 0.0003)
+            )
+              Object.assign(p, { id_: R.id, od: R.od });
+          } else p.mat = "Delrin";
+          if (!p.name || /^launch lug( \(.*\))?$/i.test(p.name) || /^launch lug - /i.test(p.name))
+            p.name = `Launch lug (${(BLD_LUG_KINDS.find((x) => x[0] === inp.value) || [])[1]})`;
         }
         // a fly-away rail guide sits just above the fins: choosing that shape puts it there (on a body with fins)
         if (key === "shape" && p && p.type === "bump" && inp.value === "flyaway") {

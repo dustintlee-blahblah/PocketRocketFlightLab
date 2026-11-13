@@ -3,6 +3,7 @@
  * chart series.
  */
 import { BLD } from "../builder/builder-ui.js";
+import { bldLugKind } from "../builder/model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { curBoost, curMotor, L, mstats, PROFILE } from "../design/defaults.js";
@@ -118,8 +119,8 @@ export function padGuideCheck(rt, launch) {
         ]
       : ["good", pad[0], "The fly-away rail guide carries the rocket up the rail, so it needs no rail buttons."];
   // rod lugs slide over a rod; rail lugs and rail buttons ride a rail of their own size
-  const rodLugs = lugs.filter((l) => !(l.kind === "r1010" || l.kind === "r1515")),
-    railLugs = lugs.filter((l) => l.kind === "r1010" || l.kind === "r1515"),
+  const rodLugs = lugs.filter((l) => bldLugKind(l).startsWith("rod")),
+    railLugs = lugs.filter((l) => !bldLugKind(l).startsWith("rod")),
     railSz = [
       ...btns.map((b) => (b.size === "custom" && b.dims ? (b.dims.od > 0.013 ? "1515" : "1010") : b.size)),
       ...railLugs.map((l) => l.kind.slice(1)),
@@ -134,7 +135,15 @@ export function padGuideCheck(rt, launch) {
           ? `The rocket has ${railLugs.length ? "rail-type launch lugs" : "rail buttons"} but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug.`
           : "The design has no rod-type launch lug to slide over the rod.",
       ];
-    const ok = rodLugs.filter((l) => (l.id_ || 0) >= d + 0.0003);
+    // a lug made for the other rod: a 1/8 rod lug won't go over a 3/16 rod, and a 3/16 lug is loose on a 1/8 rod
+    const mine = rodLugs.filter((l) => bldLugKind(l) === rt);
+    if (!mine.length)
+      return [
+        "bad",
+        pad[0],
+        `The launch lug is set for a ${rt === "rod18" ? "3/16 in" : "1/8 in"} rod, not a ${pad[0]}. Use the matching rod, or change the lug's type.`,
+      ];
+    const ok = mine.filter((l) => (l.id_ || 0) >= d + 0.0003);
     return ok.length
       ? [
           "good",
@@ -144,7 +153,7 @@ export function padGuideCheck(rt, launch) {
       : [
           "bad",
           pad[0],
-          `The launch lug is too small for a ${pad[0]}: its inside diameter, ${fmt(Math.max(...rodLugs.map((l) => l.id_ || 0)), "small")} ${uname("small")}, needs to be at least ${fmt(d + 0.0003, "small")} ${uname("small")}.`,
+          `The launch lug is too small for a ${pad[0]}: its inside diameter, ${fmt(Math.max(...mine.map((l) => l.id_ || 0)), "small")} ${uname("small")}, needs to be at least ${fmt(d + 0.0003, "small")} ${uname("small")}.`,
         ];
   }
   if (!railSz.length)

@@ -254,7 +254,7 @@ export function bldInfo(F) {
         ? "Weight of the item, such as a camera with its shroud. A fly-away rail guide’s weight is carried only up the rail."
         : "Weight of this item, such as an altimeter, battery, ballast or payload.",
     w: "How wide the item is, across the airflow.",
-    kind: "Rod type: a tube that slides over a launch rod; its inside diameter must clear the rod.\n\nRail type (1010 or 1515): a solid slider shaped to ride in a rail's slot, as tall and as wide as that rail's button. It flies only from a rail of its own size; its drag is a long box's (Hoerner) on width × height.",
+    kind: "1/8 Rod or 3/16 Rod: a tube that slides over a launch rod of that size; it flies only from that rod, and its inside diameter must clear it. Choosing one gives the lug the usual size for that rod if it is too small.\n\n1010 Rail or 1515 Rail: a solid slider shaped to ride in a rail's slot, as tall and as wide as that rail's button. It flies only from a rail of its own size; its drag is a long box's (Hoerner) on width × height.",
     ang: "Where around the body the item sits, in degrees from the top of the side view. One item can sit anywhere; the angle matters when there are several. Two alike on opposite sides (0° and 180°) balance each other; two on the same side add up.\n\nAn item on one side pulls the rocket off straight: its weight moves the CG off the centerline, so the motor’s push passes beside it, and its drag pulls back on that side. The fins work against both, so a small item gives a slight arc and a big one a strong turn.",
     h: "How far the item stands out from the body tube.",
   };

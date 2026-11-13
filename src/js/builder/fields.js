@@ -3,7 +3,7 @@
  * each stage, and the choices they offer (shapes, motor sizes, cluster layouts, deployment events).
  */
 import { BLD, bldFind } from "./builder-ui.js";
-import { BLD_BUMPS, BLD_BUTTONS, BLD_LUG_KINDS, bldOvOn } from "./model.js";
+import { BLD_BUMPS, BLD_BUTTONS, BLD_LUG_KINDS, bldLugKind, bldOvOn } from "./model.js";
 import { FIN_EDGES } from "../core/units-and-fin-edges.js";
 /**
  * Nose and transition shapes offered: [shape, label].
@@ -237,6 +237,7 @@ export function bldFields(p) {
         ...kw,
       ];
     case "lug":
+      if (bldLugKind(p) !== p.kind) p.kind = bldLugKind(p); // a lug made before lug types were named
       return [
         ["name", "Name", "text"],
         ["kind", "Lug type", "sel", BLD_LUG_KINDS],

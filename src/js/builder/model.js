@@ -225,7 +225,7 @@ export function bldNew(type, R = 0.0333) {
         id,
         type,
         name,
-        kind: "rod",
+        kind: "rod316",
         od: 0.0076,
         id_: 0.0064,
         len: 0.05,
@@ -453,14 +453,31 @@ export function bldMountMM(k) {
  * Rail button sizes by rail: outside diameter, height and weight.
  */
 /**
- * The kinds of launch lug: a tube that slides over a rod, or a solid slider shaped to ride in a rail's slot (1010 or
- * 1515). A rail lug stands out from the body as far as that rail's button and is as wide as one.
+ * The kinds of launch lug: a tube that slides over a 1/8 or 3/16 in rod, or a solid slider shaped to ride in a rail's
+ * slot (1010 or 1515). A rail lug stands out from the body as far as that rail's button and is as wide as one.
  */
 export const BLD_LUG_KINDS = [
-  ["rod", "Launch Lug - Rod Type"],
-  ["r1010", "Launch Lug - 1010 Rail"],
-  ["r1515", "Launch Lug - 1515 Rail"],
+  ["rod18", "1/8 Rod"],
+  ["rod316", "3/16 Rod"],
+  ["r1010", "1010 Rail"],
+  ["r1515", "1515 Rail"],
 ];
+/**
+ * Each rod's diameter, and the usual lug for it (inside and outside diameter) (m).
+ */
+export const BLD_ROD_LUG = {
+  rod18: { rod: 0.003175, id: 0.0042, od: 0.005 },
+  rod316: { rod: 0.0047625, id: 0.0057, od: 0.0066 },
+};
+/**
+ * A lug's type: one saved before lug types were named is read from its size (a 1/8 rod lug unless it clears 3/16).
+ * @param {object} k the lug
+ * @returns {string} rod18, rod316, r1010 or r1515
+ */
+export function bldLugKind(k) {
+  if (k && BLD_LUG_KINDS.some(([v]) => v === k.kind)) return k.kind;
+  return (k && k.id_) >= BLD_ROD_LUG.rod316.rod + 0.0003 ? "rod316" : "rod18";
+}
 /**
  * A rail-type lug's size: width and height above the body (those of the rail's button), or null for a rod lug.
  * @param {object} k the lug

@@ -9,6 +9,7 @@ import {
   BLD_SURF,
   bldBodyR,
   bldId,
+  bldLugKind,
   bldMounts,
   bldNew,
   bldPts,
@@ -515,12 +516,13 @@ export function bldFromOrk(xml, info) {
             case "launchlug":
               Object.assign(k, {
                 type: "lug",
-                kind: ["r1010", "r1515"].includes((txt(e, "prfllug") || "").trim()) ? txt(e, "prfllug").trim() : "rod",
+                kind: (txt(e, "prfllug") || "").trim(),
                 od: 2 * num(e, "radius"),
                 id_: Math.max(2 * (num(e, "radius") - num(e, "thickness")), 0),
                 len: num(e, "length"),
                 dir: num(e, "radialdirection"),
               });
+              k.kind = bldLugKind(k); // a lug saved before lug types: its type from its size
               break;
             case "railbutton": {
               const d = {
