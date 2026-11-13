@@ -654,7 +654,18 @@ export function parseOrk(xml, opts = {}) {
       ri = Math.max(ro - num(c, "thickness", 0.0005), 0);
       const cnt = Math.max(1, num(c, "instancecount", 1));
       m = rho * Math.PI * (ro * ro - ri * ri) * len * cnt;
-      lugs.push({ x, ro, ri, len, n: cnt, si: curStage, cdo: odc(c) });
+      // a rail-type lug (this app's): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail
+      const rail = ["r1010", "r1515"].includes((txt(c, "prfllug") || "").trim()) ? txt(c, "prfllug").trim() : "";
+      lugs.push({
+        x,
+        ro,
+        ri,
+        len,
+        n: cnt,
+        si: curStage,
+        cdo: odc(c),
+        ...(rail ? { rail, w: num(c, "prfllugw", 2 * ro) } : {}),
+      });
     } else if (tag === "railbutton") {
       const od = num(c, "outerdiameter", 0.0097),
         id = num(c, "innerdiameter", 0.008),

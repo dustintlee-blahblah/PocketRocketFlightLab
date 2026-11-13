@@ -10,6 +10,7 @@ import {
   BLD_BULK,
   BLD_FINISH,
   BLD_LINE,
+  BLD_LUG_KINDS,
   BLD_NAMES,
   BLD_SURF,
   bldBodyR,
@@ -607,13 +608,19 @@ function bldWire(el, p, mode, si) {
         full = true;
       } else if (kind === "sel") {
         O[k] = inp.value;
-        full = ["shape", "deploy", "size", "cluster", "ign", "edge"].includes(key); // "edge": beveled fins show their bevel lengths
+        full = ["shape", "deploy", "size", "cluster", "ign", "edge", "kind"].includes(key); // "edge": beveled fins show their bevel lengths; "kind": a rail lug has no diameters
         // a nose or transition takes its new shape's usual parameter (as OpenRocket does): a tangent ogive, a full
         // parabola, a half-power series, a von Kármán. Kept from the old shape it can mean a plain cone (an ogive or
         // parabola at 0, a power series at 1), so the new shape would look like nothing had changed.
         if (key === "shape" && p && (p.type === "nose" || p.type === "transition")) {
           const usual = { ogive: 1, parabolic: 1, power: 0.5, haack: 0 }[inp.value];
           if (usual != null) p.param = usual;
+        }
+        // a rail-type lug is a plastic slider: choosing one sets that material and names it after its kind
+        if (key === "kind" && p && p.type === "lug") {
+          if (inp.value !== "rod") p.mat = "Delrin";
+          if (!p.name || /^(Launch lug|Launch Lug - .*)$/i.test(p.name))
+            p.name = (BLD_LUG_KINDS.find((x) => x[0] === inp.value) || [])[1] || p.name;
         }
         // a fly-away rail guide sits just above the fins: choosing that shape puts it there (on a body with fins)
         if (key === "shape" && p && p.type === "bump" && inp.value === "flyaway") {

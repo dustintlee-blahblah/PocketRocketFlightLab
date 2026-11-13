@@ -1761,8 +1761,13 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
     }
     const n = lg.n || 1,
       h = 2 * lg.ro,
-      F = blFactor(h, lg.x ?? A.L / 2, v, nu),
-      ann = Math.PI * (lg.ro * lg.ro - lg.ri * lg.ri),
+      F = blFactor(h, lg.x ?? A.L / 2, v, nu);
+    // a rail-type lug is a solid slider: the long box's drag (Hoerner) on its width × height, like a protuberance
+    if (lg.rail) {
+      pressure += (n * F * bumpCd({ shape: "long" }, M) * (lg.w || h) * h) / S;
+      continue;
+    }
+    const ann = Math.PI * (lg.ro * lg.ro - lg.ri * lg.ri),
       ai = Math.PI * lg.ri * lg.ri;
     let inner = 0;
     if (ai > 1e-12) {

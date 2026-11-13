@@ -515,6 +515,7 @@ export function bldFromOrk(xml, info) {
             case "launchlug":
               Object.assign(k, {
                 type: "lug",
+                kind: ["r1010", "r1515"].includes((txt(e, "prfllug") || "").trim()) ? txt(e, "prfllug").trim() : "rod",
                 od: 2 * num(e, "radius"),
                 id_: Math.max(2 * (num(e, "radius") - num(e, "thickness")), 0),
                 len: num(e, "length"),

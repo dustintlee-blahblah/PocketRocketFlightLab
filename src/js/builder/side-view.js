@@ -3,7 +3,7 @@
  * figures under the drawing (size, weights, CG, CP, and the stability lines behind Show details).
  */
 import { BLD, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
-import { BLD_BUTTONS, bldLayout, bldLen, bldMountR, bldPts } from "./model.js";
+import { BLD_BUTTONS, bldLayout, bldLen, bldMountR, bldPts, bldRailLug } from "./model.js";
 import { esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
@@ -423,8 +423,15 @@ export function bldDraw() {
           break;
         }
         case "lug": {
-          c.fillRect(x1, Y(rr + k.od), kk.len * sc, k.od * sc);
-          hit = [x1, x2, Y(rr + k.od) - 4, Y(rr) + 2];
+          // a rail-type lug: a solid slider as tall as the rail's button, with its narrower neck where it meets the body
+          const RL = bldRailLug(k),
+            hh = RL ? RL.h : k.od;
+          if (RL) {
+            const neck = Math.max(hh * 0.35 * sc, 1);
+            c.fillRect(x1, Y(rr) - neck, kk.len * sc, neck);
+            c.fillRect(x1, Y(rr + hh), kk.len * sc, Math.max(hh * sc - neck - 1, 1));
+          } else c.fillRect(x1, Y(rr + k.od), kk.len * sc, k.od * sc);
+          hit = [x1, x2, Y(rr + hh) - 4, Y(rr) + 2];
           break;
         }
         case "buttons": {

@@ -225,6 +225,7 @@ export function bldNew(type, R = 0.0333) {
         id,
         type,
         name,
+        kind: "rod",
         od: 0.0076,
         id_: 0.0064,
         len: 0.05,
@@ -451,6 +452,24 @@ export function bldMountMM(k) {
 /**
  * Rail button sizes by rail: outside diameter, height and weight.
  */
+/**
+ * The kinds of launch lug: a tube that slides over a rod, or a solid slider shaped to ride in a rail's slot (1010 or
+ * 1515). A rail lug stands out from the body as far as that rail's button and is as wide as one.
+ */
+export const BLD_LUG_KINDS = [
+  ["rod", "Launch Lug - Rod Type"],
+  ["r1010", "Launch Lug - 1010 Rail"],
+  ["r1515", "Launch Lug - 1515 Rail"],
+];
+/**
+ * A rail-type lug's size: width and height above the body (those of the rail's button), or null for a rod lug.
+ * @param {object} k the lug
+ * @returns {{w:number, h:number}|null}
+ */
+export function bldRailLug(k) {
+  const P = k && (k.kind === "r1010" || k.kind === "r1515") ? BLD_BUTTONS[k.kind.slice(1)] : null;
+  return P ? { w: P.od, h: P.h } : null;
+}
 export const BLD_BUTTONS = {
   1010: { od: 0.0102, id: 0.0064, h: 0.0097, fl: 0.0021, bs: 0.0021, label: "1010 (small)" },
   1515: { od: 0.0157, id: 0.0081, h: 0.0127, fl: 0.0025, bs: 0.0025, label: "1515 (large)" },

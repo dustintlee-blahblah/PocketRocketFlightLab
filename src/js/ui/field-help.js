@@ -37,7 +37,7 @@ const FIELD_INFO = {
     `Length of the launch rail or rod the rocket slides along before it’s free. A longer rail gives more speed at rail exit, which keeps the rocket straighter in wind. A rail shorter than ${units === "imp" ? "2.5 ft" : "0.76 m"} gets a warning.`,
   angle: "How far the rail is tilted from straight up, in degrees. 0 is vertical. Most clubs allow up to 20°.",
   railType:
-    "What guides the rocket off the pad. The RSO Checklist checks that it suits the rocket: rods need a launch lug big enough to slide over them, and 1010 and 1515 rails need rail buttons of that size (1010 buttons fit 1010 rails; 1515 buttons fit 1515 rails). It's saved with a launch site. Launching warns when the rocket has no lug or buttons, or ones that don't suit the pad; a launch tower needs none, and neither does a rocket with a fly-away rail guide (a protuberance of that shape in the builder). It doesn't change the simulated flight: set the rail length to the guide's length above the rocket's lowest lug or button.",
+    "What guides the rocket off the pad. The RSO Checklist checks that it suits the rocket: rods need a rod-type launch lug big enough to slide over them, and 1010 and 1515 rails need rail buttons or a rail-type launch lug of that size (1010 fits 1010 rails; 1515 fits 1515 rails). It's saved with a launch site. Launching warns when the rocket has no lug or buttons, or ones that don't suit the pad; a launch tower needs none, and neither does a rocket with a fly-away rail guide (a protuberance of that shape in the builder). It doesn't change the simulated flight: set the rail length to the guide's length above the rocket's lowest lug or button.",
   railMode:
     "Into the wind tilts the rail toward the wind, the usual practice, so the rocket doesn’t weathercock as far downwind.\n\nToward a set direction lets you choose the compass direction instead.",
   railDir:
@@ -254,6 +254,7 @@ export function bldInfo(F) {
         ? "Weight of the item, such as a camera with its shroud. A fly-away rail guide’s weight is carried only up the rail."
         : "Weight of this item, such as an altimeter, battery, ballast or payload.",
     w: "How wide the item is, across the airflow.",
+    kind: "Rod type: a tube that slides over a launch rod; its inside diameter must clear the rod.\n\nRail type (1010 or 1515): a solid slider shaped to ride in a rail's slot, as tall and as wide as that rail's button. It flies only from a rail of its own size; its drag is a long box's (Hoerner) on width × height.",
     ang: "Where around the body the item sits, in degrees from the top of the side view. One item can sit anywhere; the angle matters when there are several. Two alike on opposite sides (0° and 180°) balance each other; two on the same side add up.\n\nAn item on one side pulls the rocket off straight: its weight moves the CG off the centerline, so the motor’s push passes beside it, and its drag pulls back on that side. The fins work against both, so a small item gives a slight arc and a big one a strong turn.",
     h: "How far the item stands out from the body tube.",
   };

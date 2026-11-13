@@ -11,6 +11,7 @@ import {
   bldMountR,
   bldOvOn,
   bldPts,
+  bldRailLug,
   bldSettings,
 } from "./model.js";
 import { allMotors } from "../design/defaults.js";
@@ -170,8 +171,14 @@ export function bldToOrk(model, L, opts = {}) {
         const ro = k.od > 0 ? k.od / 2 : R;
         return `<tubecoupler>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${n(ro)}</outerradius><thickness>${n(Math.min(k.wall, ro))}</thickness><subcomponents/></tubecoupler>`;
       }
-      case "lug":
+      case "lug": {
+        // a rail-type lug is written as a solid lug as tall as the slider (OpenRocket has no rail lug); prfllug keeps
+        // its kind and prfllugw its width for this app
+        const RL = bldRailLug(k);
+        if (RL)
+          return `<launchlug>${head(k)}${fin(k)}${bulk(k)}<radialdirection>${n(k.dir || 0)}</radialdirection><radius>${n(RL.h / 2)}</radius><thickness>${n(RL.h / 2)}</thickness><length>${n(k.len)}</length><prfllug>${k.kind}</prfllug><prfllugw>${n(RL.w)}</prfllugw></launchlug>`;
         return `<launchlug>${head(k)}${fin(k)}${bulk(k)}<radialdirection>${n(k.dir || 0)}</radialdirection><radius>${n(k.od / 2)}</radius><thickness>${n(Math.max((k.od - k.id_) / 2, 1e-4))}</thickness><length>${n(k.len)}</length></launchlug>`;
+      }
       case "buttons": {
         const P = k.size === "custom" && k.dims ? k.dims : BLD_BUTTONS[k.size] || BLD_BUTTONS["1010"];
         // OpenRocket lines the copies up aft of the first button, so place the first one from the front

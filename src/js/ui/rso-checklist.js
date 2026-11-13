@@ -114,20 +114,27 @@ export function padGuideCheck(rt, launch) {
       ? [
           "bad",
           pad[0],
-          "A fly-away rail guide rides a rail, not a rod. Use a rail, or give the rocket a launch lug in place of the guide.",
+          "A fly-away rail guide rides a rail, not a rod. Use a rail, or give the rocket a rod-type launch lug in place of the guide.",
         ]
       : ["good", pad[0], "The fly-away rail guide carries the rocket up the rail, so it needs no rail buttons."];
+  // rod lugs slide over a rod; rail lugs and rail buttons ride a rail of their own size
+  const rodLugs = lugs.filter((l) => !(l.kind === "r1010" || l.kind === "r1515")),
+    railLugs = lugs.filter((l) => l.kind === "r1010" || l.kind === "r1515"),
+    railSz = [
+      ...btns.map((b) => (b.size === "custom" && b.dims ? (b.dims.od > 0.013 ? "1515" : "1010") : b.size)),
+      ...railLugs.map((l) => l.kind.slice(1)),
+    ];
   if (rt.startsWith("rod")) {
     const d = pad[1];
-    if (!lugs.length)
+    if (!rodLugs.length)
       return [
         "bad",
         pad[0],
-        btns.length
-          ? "The rocket has rail buttons but no launch lug, so it can't fly from a rod. Use a rail, or add a lug."
-          : "The design has no launch lug to slide over the rod.",
+        btns.length || railLugs.length
+          ? `The rocket has ${railLugs.length ? "rail-type launch lugs" : "rail buttons"} but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug.`
+          : "The design has no rod-type launch lug to slide over the rod.",
       ];
-    const ok = lugs.filter((l) => (l.id_ || 0) >= d + 0.0003);
+    const ok = rodLugs.filter((l) => (l.id_ || 0) >= d + 0.0003);
     return ok.length
       ? [
           "good",
@@ -137,25 +144,30 @@ export function padGuideCheck(rt, launch) {
       : [
           "bad",
           pad[0],
-          `The launch lug is too small for a ${pad[0]}: its inside diameter, ${fmt(Math.max(...lugs.map((l) => l.id_ || 0)), "small")} ${uname("small")}, needs to be at least ${fmt(d + 0.0003, "small")} ${uname("small")}.`,
+          `The launch lug is too small for a ${pad[0]}: its inside diameter, ${fmt(Math.max(...rodLugs.map((l) => l.id_ || 0)), "small")} ${uname("small")}, needs to be at least ${fmt(d + 0.0003, "small")} ${uname("small")}.`,
         ];
   }
-  if (!btns.length)
+  if (!railSz.length)
     return [
       "bad",
       pad[0],
-      lugs.length
-        ? "The rocket has a launch lug but no rail buttons, so it can't fly from a rail. Use a rod, or add rail buttons."
-        : "The design has no rail buttons.",
+      rodLugs.length
+        ? "The rocket has a rod-type launch lug but no rail buttons or rail-type lug, so it can't fly from a rail. Use a rod, or add rail buttons or a rail-type lug."
+        : "The design has no rail buttons or rail-type launch lug.",
     ];
-  const sz = btns.map((b) => (b.size === "custom" && b.dims ? (b.dims.od > 0.013 ? "1515" : "1010") : b.size)),
-    want = pad[1];
-  return sz.every((z) => z === want)
-    ? ["good", pad[0], `${want} rail buttons match the rail.`]
+  const want = pad[1],
+    what =
+      btns.length && railLugs.length
+        ? "rail buttons and lugs"
+        : railLugs.length
+          ? "rail-type launch lugs"
+          : "rail buttons";
+  return railSz.every((z) => z === want)
+    ? ["good", pad[0], `${want} ${what} match the rail.`]
     : [
         "bad",
         pad[0],
-        `The rocket's rail buttons look like ${[...new Set(sz)].join(" and ")} size, which don't fit a ${pad[0]}. Use the matching rail or change the buttons.`,
+        `The rocket's ${what} are ${[...new Set(railSz)].join(" and ")} size, which don't fit a ${pad[0]}. Use the matching rail or change them.`,
       ];
 }
 /**
