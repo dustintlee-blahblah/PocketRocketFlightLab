@@ -56,8 +56,6 @@ export function start() {
     document.getElementById("s-met").onclick = () => setUnits("met");
     /**
      * Follows the phone's light or dark setting, or always uses one.
-     *
-     * appearance: follow the phone, or always light or dark
      */
     const applyTheme = (t) => {
       if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);

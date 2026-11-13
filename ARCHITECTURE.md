@@ -59,7 +59,8 @@ IndexedDB (`files/recent.js`).
 ## What happens when you tap Launch
 
 1. `runNow()` (`ui/state.js`) reads the fields into `L` and checks the rail length, that each stage has a motor that
-   lights, and that each motor fits its mount (`ui/launch-warnings.js`).
+   lights, that each motor fits its mount, and that the rocket's lugs or rail buttons suit the pad
+   (`ui/launch-warnings.js`, `padGuideCheck()` in `ui/rso-checklist.js`).
 2. `runAll()` (`ui/results.js`) works out the static stability (`stability()`, or `stackStability()` (`physics/staging.js`) for a staged
    rocket), flies the rocket with `simulate(D, L, motor, boosterMotor)`, and flies it again at five wind speeds for the
    wind table.
@@ -151,6 +152,127 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
 - **Weather** (`weather/`): the forecast for the site and winds aloft.
 - **Report** (`report/pdf-report.js`): the PDF flight report (jsPDF) and file downloads on each platform.
 - **Animation** (`animation/`): the flight replayed as a side view, and its video export.
+
+## Reading the code: names and landmarks
+
+The code uses short names, the way the equations it implements do. This section is the key to them.
+
+### Names you will meet everywhere
+
+| Name | Means |
+|---|---|
+| `D` | the design the physics flies (see The data, above) |
+| `L` | the launch conditions |
+| `m`, `mb` | the sustainer's (or only) motor and the booster's motor; `mb1` a three-stage rocket's first-stage motor |
+| `A` or `G` | the aerodynamic geometry from `aero(D)`: body sections (`segs`), fin sets (`fins`), protuberances (`bumps`), reference area (`Aref`), radius `R`, length `L`. In `simulate()` it is `G`, from `Gat(t)`: the geometry of whatever is still attached at time `t` |
+| `S` | static stability: CP, CG and margin, from `stability()` or `stackStability()` |
+| `st` | a flight's summary (apogee `maxAlt`, `maxV`, `offRail`, `tb` burnout, `tApo`, events, warnings) |
+| `out` | a flight's time series: arrays `t`, `alt`, `vel`, `acc`, `thrust`... of equal length |
+| `atm` | the air at a height, from `atmosphere()`: `rho`, `p`, `T`, speed of sound `a` |
+| `M`, `v`, `q` | Mach number, airspeed (m/s), dynamic pressure ½ρv² |
+| `k`, `p` (builder) | a part and its parent in the builder's tree; `kk` a part with its place worked out by `bldLayout()` |
+| `c`, `e` (file readers) | an XML element being read |
+| `tg` | a motor target: `"sustainer"`, `"booster"` or `"first"` |
+
+Everything is in SI units (m, kg, s, N, radians) until it is shown; angles the user types are degrees and are converted
+where they are read.
+
+### Prefixes
+
+Functions and variables of one feature share a prefix, which also tells you the folder:
+
+| Prefix | Feature | Where |
+|---|---|---|
+| `bld` | the rocket builder (`bldNew`, `bldFields`, `bldRender`, `bldToOrk`...) | `builder/` |
+| `fl` | the flight log (`flList`, `flFit`, `flOpen`...) | `flightlog/flight-log.js` |
+| `cal` | drag calibration | `flightlog/drag-calibration.js` |
+| `alt` | altimeter files | `flightlog/` |
+| `md` | motor delays and the motor configuration picker | `ui/motor-delay.js` |
+| `mc` | landing dispersion (Monte Carlo) | `physics/monte-carlo.js` |
+| `wt` | the Wind Tunnel | `ui/wind-tunnel.js` |
+| `wx` | the weather forecast | `weather/forecast.js` |
+| `site` | saved launch sites | `ui/launch-sites.js` |
+| `anim` | the flight animation | `animation/` |
+| `bp` | black powder (ejection charges) | `recovery/ejection-charge.js` |
+| `rso` | the RSO checklist | `ui/rso-checklist.js` |
+| `pr` | app-wide helpers reachable from anywhere (`prToast`) | `files/save.js` |
+| `render…`, `draw…` | put HTML on the page; paint a canvas | throughout |
+| `set…` | the setter for a shared variable (`setD`, `setLastSim`) | beside the variable |
+
+### Conventions
+
+- **Fields.** A form is a list of rows, `[key, label, kind, dimension or options]` (`ui/forms.js` for the Range tab,
+  `builder/fields.js` for parts). The input for launch field `key` has the id `f-<key>`; for a builder part's field,
+  `bf-<key>`, with its Override switch at `bfo-<key>`. The "i" help for a key is in `ui/field-help.js`.
+- **Result tiles** are `[label, value, unit]` triples in named groups (`resultGroups()` in `ui/results.js`); the
+  Results tab and the PDF report both draw from that one list, so a new figure is added there once.
+- **Checks** (RSO checklist, Launch warnings) return `[status, label, why]` with status `"good"`, `"warn"` or `"bad"`.
+- **Overrides.** A value the user can override is stored as `x` with a switch `xOn`; `bldOvOn(part, "x")` says whether
+  it is in force.
+- **Comments.** Every function has a doc comment saying what it is for; physics comments name the source of each
+  formula. A longer block comment above a group of functions ("see the note above") explains the feature as a whole.
+
+### Inside the largest functions
+
+Four functions are long because each is one job done in a fixed order, sharing a lot of working state. They are built
+from named inner steps; read them by these landmarks.
+
+**`simulate()`** (`physics/simulate.js`): set-up first (the motors' thrust and mass models `MS` and `MB`, staging times,
+the geometry at each moment `Gat(t)`, parachutes), then:
+
+| Inner function | What it does |
+|---|---|
+| `inertia(t)`, `rollI(t)` | mass properties at a time: CG, pitch and roll inertia |
+| `deriv(t, s, ph)` | the equations of motion: the rate of change of the state `s` in phase `ph` (`"rail"`, `"flight"`, `"drogue"`, `"main"`, `"free"`). Everything physical is here |
+| `stepSize()` | the next time step |
+| `afterStep()`, `recordSample()` | bookkeeping after a step; adds a sample to `out` |
+| `trackAscent()` | maximum speed, Mach, burnout, apogee |
+| `stagingEvents()` | separation and upper-stage ignition |
+| `railOrFlight()` | leaving the rail, tip-off, tumbling |
+| `chutesAndStats()` | deployment and the descent's figures |
+| `landing()` | touchdown |
+
+The main loop (`while (t < 3600)`) takes one Runge-Kutta step of `deriv()` and then calls these in the order listed. The state `s` is
+`[x, z, vx, vz, y, vy, bx, by, bz, wx, wy, wz, p, roll]`: position (x downrange, y crossrange, z up), velocity, the
+rocket's axis as a unit vector `b`, its pitch/yaw angular velocity `w`, roll rate `p` and roll angle. Vectors are
+written out by component (`bx, by, bz`), so a cross product is three lines. In `deriv`: `T` thrust, `FA` axial force
+(drag), `N` normal force, `Mp` the pitching moment, `C2` the damping, `J` the mass properties from `inertia(t)`, `mm`
+the mass, `u` the direction of the air moving past the rocket, and `d` and `q` (as `dx, dy, dz` and `qx, qy, qz`)
+the body's two cross axes.
+
+**`parseOrk()`** (`files/openrocket-import.js`) reads an OpenRocket file in one walk of its component tree:
+
+| Part | What it does |
+|---|---|
+| helpers at the top (`txt`, `num`, `dens`, `lenOf`...) | read one value from an element; resolve automatic sizes |
+| `walk(c, x, parent)` | the walk: one branch per component type (nose cone, body tube, fin set, parachute, mass component, launch lug...), each adding its mass with `addMass()` and recording its shape |
+| `motorMountIn()` | a motor mount and its motor |
+| `finalize(sel, label)` | builds a design from a set of stages: once for a single-stage rocket, per stage for a staged one |
+| the end | recovery devices, the file's saved simulations, clusters |
+
+**`bldFromOrk()`** (`builder/ork-read.js`) reads the same XML into builder parts, with a `case` per component type that
+mirrors `walk()`. A new kind of part needs a branch in both, plus `bldToOrk()` (`builder/ork-export.js`) to write it.
+
+**`buildReportPdf()`** (`report/pdf-report.js`) draws the report top to bottom; each section starts with a
+`// ---- name` comment: page 1 (title block and the rocket's configuration), then page 2 on (apogee, stats, flags,
+graphs, drift by wind speed, landing dispersion, the safety terms).
+
+### Where to change what
+
+| To change... | Look in |
+|---|---|
+| a drag or stability formula | `physics/aerodynamics.js` (`cdParts`, `cnaParts`), with its source in AERODYNAMICS.md |
+| how the flight is flown | `deriv()` in `physics/simulate.js` |
+| a part's fields in the builder | `builder/fields.js`; its defaults in `bldNew()` (`builder/model.js`); how it is drawn in `builder/side-view.js` |
+| how a part is saved and opened | `builder/ork-export.js`, `builder/ork-read.js` and `files/openrocket-import.js` (all three) |
+| a figure on the Results tab or in the report | `resultGroups()` in `ui/results.js` |
+| a Launch warning or RSO checklist item | `ui/state.js` (`runNow`), `ui/launch-warnings.js`, `ui/rso-checklist.js` |
+| a Range tab field | `ui/forms.js`, and its help in `ui/field-help.js` |
+| the motor list | `tools/motor-catalog/` (the list is generated; don't edit `data/motor-catalog.js`) |
+| the motor filters | `ui/motor-tab.js`, `motors/catalog-lookup.js` |
+
+After any change: `npm test` (nothing that shouldn't move has moved), `npm run lint`, `npm run format:check`,
+`npm run test:smoke`.
 
 ## The Android app
 

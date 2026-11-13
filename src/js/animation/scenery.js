@@ -93,7 +93,7 @@ function animScenery(c, W, H, gy, K, CX, t, wind) {
   /**
    * Draws one mountain range.
    *
-   * two mountain ranges, the far one bluer and snow-capped; they shift only a little as the view follows the rocket
+   * Two mountain ranges, the far one bluer and snow-capped; they shift only a little as the view follows the rocket.
    */
   const ridge = (hmax, f, seed, col1, col2, snow) => {
     const sh = -CX * K * f,
@@ -297,8 +297,6 @@ function animSmoke(c, out, st, RD, t, SX, SY, K, wind) {
 /**
  * Draws one frame: on the screen, or (for a video) on a given canvas with the readout drawn into the picture.
  * @param {HTMLCanvasElement} [target]
- *
- * draws one frame: on the screen, or (for a video) on a given canvas, with the readout drawn into the picture
  */
 export function animDraw(target) {
   const video = !!target;
@@ -511,7 +509,7 @@ export function animDraw(target) {
     /**
      * A shape point in the drawing's local frame.
      *
-     * local frame: +x toward the nose; the shape's x runs from the nose, so flip it
+     * Local frame: +x toward the nose; the shape's x runs from the nose, so flip it.
      */
     const P = ([xx, rr]) => [(S.len / 2 - xx) * sc, rr * sc];
     c.fillStyle = body;

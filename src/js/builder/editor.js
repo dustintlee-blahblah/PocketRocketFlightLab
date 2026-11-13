@@ -51,8 +51,6 @@ import { mountFilter, renderMotors } from "../ui/motor-tab.js";
 import { DIMS, fmt, fromDisp, toDisp, uname } from "../ui/units.js";
 /**
  * Draws the fin being edited to scale, with its distance to the end of its tube.
- *
- * the fin being edited, drawn to scale with its root, tip, span and sweep and its distance to the end of the tube it's on
  */
 export function bldDrawFinEdit() {
   const cv = document.getElementById("bldfinview");
@@ -169,9 +167,6 @@ let bldAddOpen = false;
  * Which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage.
  * @param {number} si stage index
  * @returns {string}
- *
- * the Motor tab follows the mount size typed in the builder: it shows that size of motor
- * which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage (bottom)
  */
 const bldTgt = (si) => (!(si > 0) ? "sustainer" : BLD && BLD.stages.length === 3 && si === 2 ? "first" : "booster");
 /**

@@ -160,8 +160,6 @@ function simUuid() {
  * The run's summary figures, worked out once for both file formats.
  * @param {object} R run
  * @returns {object}
- *
- * the run's figures, worked out once for both file formats
  */
 function simFigures(R) {
   const { out, st } = R,
@@ -362,12 +360,11 @@ function simOrkAdd(xml, R, cfg) {
   return new XMLSerializer().serializeToString(doc);
 }
 /**
- * After a save to a new file, moves (or copies) the design's flight log and drag calibration to it.
+ * After a save to a new file, moves the design's flight log and drag calibration to it (a saved copy takes copies of
+ * them).
  * @param {string} oldFl the flight log key before
  * @param {string} oldCal the calibration key before
  * @param {boolean} move move them (a copy gets copies)
- *
- * after a save to a new file, the design's flight log and drag calibration move with it (a copy takes copies of them)
  */
 function prCarryLog(oldFl, oldCal, move) {
   const nf = flKey(),

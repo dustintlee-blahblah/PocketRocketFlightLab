@@ -86,14 +86,13 @@ export function clusterOf(main, extras, mainD = 0) {
   return cluster;
 }
 /**
- * The motors one stage flies on. If the main mount is set never to light, the first extra motor takes its place.
+ * The motors one stage flies on: the main mount's motor with the others. If the main mount is set never to light, or
+ * lights late, the first extra motor takes its place.
  * @param {object} main the stage's main motor
  * @param {object[]} extras the stage's extra motors
  * @param {number} mainD the main motor's ignition delay, s
  * @param {boolean} mainOff the main mount never lights
  * @returns {object} motor object
- *
- * a stage's motors as flown: the main mount's motor (unless that mount is set never to light, or lights late) with the others
  */
 function flightOf(main, extras, mainD, mainOff) {
   const extraList = (extras || []).filter((e) => e && findMotor(e.id));

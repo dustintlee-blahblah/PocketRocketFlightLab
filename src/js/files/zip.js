@@ -121,8 +121,6 @@ export const isAndroidApp = () => !!(window.PocketRocketApp && window.PocketRock
  * The other files inside an .ork zip (decal images), as base64, so a save keeps them.
  * @param {ArrayBuffer} buf
  * @returns {Promise<{name:string, b64:string}[]>}
- *
- * the other files inside an OpenRocket .ork zip (decal images), kept so a save doesn't lose them
  */
 export async function zipOthers(buf) {
   const u8 = new Uint8Array(buf);

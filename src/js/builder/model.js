@@ -109,8 +109,6 @@ export const bldId = () =>
  * @param {string} type part type ("nose", "tube", "fins", "chute", "mount"...)
  * @param {number} [R=0.0333] the body radius, m
  * @returns {object} part
- *
- * a new part with sensible sizes for the body it goes on (R = body radius)
  */
 export function bldNew(type, R = 0.0333) {
   const id = bldId(),
@@ -291,10 +289,6 @@ export function bldNew(type, R = 0.0333) {
   }
 }
 /**
- * Design-wide builder settings that aren't parts (finish, inertia, drag adjustments), at their defaults.
- * @returns {object}
- */
-/**
  * True when an override field is in use: it has a value and its Override switch isn't off. Values from a design file
  * have no switch yet and count as on.
  * @param {object} O the part, stage or rocket settings that hold it
@@ -317,14 +311,16 @@ export const BLD_APP_SETTINGS = [
   "s1DryInertia",
   "s1DryInertiaOn",
 ];
+/**
+ * Design-wide builder settings that aren't parts (finish, inertia, drag adjustments), at their defaults.
+ * @returns {object}
+ */
 export function bldSettings() {
   return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
 }
 /**
  * A complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one parachute.
  * @returns {object} builder model
- *
- * a complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one chute
  */
 export function bldDefault() {
   const R = 0.0333,
@@ -354,8 +350,6 @@ export const bldBodyR = (p) =>
  * Where everything sits, front to back: each body part with its stage, position and radius.
  * @param {object} model builder model
  * @returns {{bodies:object[], len:number, ...}}
- *
- * where everything sits, front to back
  */
 export function bldLayout(model) {
   const out = [];
@@ -420,8 +414,6 @@ export function bldLen(k) {
  * A free-form fin outline from its "x,y" lines (meters); the root runs along y = 0.
  * @param {object} k fin part
  * @returns {{pts:number[][], root:number, span:number}}
- *
- * free-form fin outline from "x,y" lines (metres); the root runs along y = 0
  */
 export function bldPts(k) {
   const pts = String(k.pts || "")
@@ -442,15 +434,10 @@ export function bldPts(k) {
  * A motor mount's inside diameter, rounded to the motor size it takes.
  * @param {object} k mount part
  * @returns {number} mm
- *
- * the motor mount's inside size, rounded to the motor size it takes
  */
 export function bldMountMM(k) {
   return Math.round((k.od - 2 * k.wall) * 1000);
 }
-/**
- * Rail button sizes by rail: outside diameter, height and weight.
- */
 /**
  * The kinds of launch lug: a tube that slides over a 1/8 or 3/16 in rod, or a solid slider shaped to ride in a rail's
  * slot (1010 or 1515). A rail lug stands out from the body as far as that rail's button and is as wide as one.
@@ -516,6 +503,9 @@ export function bldRailLug(k) {
   // its own height (od) and width when it has them: a rail lug read from a file keeps the file's size
   return P ? { w: k.w > 0 ? k.w : P.od, h: k.od > 0 ? k.od : P.h } : null;
 }
+/**
+ * Rail button sizes by rail: outside diameter, height and weight.
+ */
 export const BLD_BUTTONS = {
   1010: { od: 0.0102, id: 0.0064, h: 0.0097, fl: 0.0021, bs: 0.0021, label: "1010 (small)" },
   1515: { od: 0.0157, id: 0.0081, h: 0.0127, fl: 0.0025, bs: 0.0025, label: "1515 (large)" },
@@ -524,8 +514,6 @@ export const BLD_BUTTONS = {
  * The motor tube's outside radius inside a body part (the centering rings' hole size).
  * @param {object} b body part from bldLayout
  * @returns {number} m
- *
- * the motor tube's outside radius in a body part: the ring's hole size
  */
 export function bldMountR(b) {
   const m = (b.p.kids || []).find((k) => k.type === "mount" || k.type === "inner");
@@ -535,8 +523,6 @@ export function bldMountR(b) {
  * Every motor mount in a stage (inner tubes with a motor, or body tubes flown as their own mount).
  * @param {object} st stage
  * @returns {object[]}
- *
- * every motor mount in a stage (inner tubes with a motor, or a body tube flown as its own mount)
  */
 export function bldMounts(st) {
   return st.parts.flatMap((p) => [...(p.mm ? [p.mm] : []), ...(p.kids || []).filter((k) => k.type === "mount")]);

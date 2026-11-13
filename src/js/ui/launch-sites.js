@@ -13,7 +13,7 @@ import { prFetchText } from "../weather/forecast.js";
 /**
  * The saved-sites manager's state: open, the site being renamed, the site waiting for delete confirmation.
  *
- * a field's own settings (not the day's weather: the height the wind is measured at goes with the wind reading)
+ * A field's own settings (not the day's weather: the height the wind is measured at goes with the wind reading)
  */
 var SITEMGR = { open: false, edit: null, del: null }; // the saved-sites manager (below)
 /**
@@ -99,10 +99,9 @@ export function siteRender() {
   siteBtnUpdate();
 }
 /**
- * The current values of the site keys.
+ * The current values of the site keys. The chosen site stays in force when another rocket is opened (a design file
+ * carries launch conditions of its own).
  * @returns {object}
- *
- * the chosen site stays in force when another rocket is opened (a design file carries launch conditions of its own)
  */
 function siteSnap() {
   const v = {};
@@ -203,10 +202,9 @@ function siteApply(name) {
   delete m.dataset.keep;
 }
 /**
- * Looks up a site's elevation from map data (see the note above) and keeps it with the site.
+ * Looks up the elevation of a site saved without one from map data (Open-Meteo's elevation service, 90 m terrain model;
+ * see the note above) and keeps it with the site.
  * @param {object} x site
- *
- * a site saved without an elevation: looked up from map data (Open-Meteo's elevation service, 90 m terrain model) and kept with the site
  */
 async function siteElevLookup(x) {
   const m = document.getElementById("sitemsg");

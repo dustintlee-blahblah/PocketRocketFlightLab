@@ -17,13 +17,12 @@ import { fmt, uname } from "../ui/units.js";
    black powder volume (the makers' loading guidance), about 65% of the black powder weight. */
 const BP_PIN = { "2-56": 35, "4-40": 50 }; // approximate shear strength of one nylon pin, lbf
 /**
- * A RockSim EjectionDelay value as a motor delay: seconds (0 = at burnout), or null for plugged / no charge.
+ * A RockSim EjectionDelay value as a motor delay: 0 or more is the delay in seconds (0 fires at burnout); negative (-1
+ * plugged, -2) is no charge, returned as null. (Each design's own charge settings, per bay, live with the design and
+ * are saved inside its .ork file; settings from before that lived on the device, and the open design takes them over
+ * once.)
  * @param {*} v
  * @returns {number|null}
- *
- * each design's own charge settings (per bay: pressure, pins, what fires it; where bays divide) live with the design, and
- * are saved inside its .ork file. Settings from before this lived on the device; the open design takes them over once.
- * RockSim's EjectionDelay field: 0 or more is the delay in seconds (0 fires at burnout); negative (-1 plugged, -2) is no charge
  */
 export const rktEj = (v) => (v == null || !isFinite(+v) || +v < 0 ? null : +v);
 /**
@@ -97,8 +96,6 @@ function bpCalc(v) {
 /**
  * The aft-most body tube's inside diameter, name and a key that changes when that tube does.
  * @returns {{id:number, name:string, key:string}|null}
- *
- * the inside diameter of the rocket's aft-most body tube (from the builder's parts), with a key that changes when that tube does
  */
 function bpAftTube() {
   try {
@@ -516,8 +513,6 @@ export function bpRender() {
  * @param {object} v calculator settings
  * @param {object} c compartment
  * @returns {object}
- *
- * each compartment's own settings: pressure, shear pins, and what fires its charge
  */
 function bpCompSet(v, c) {
   const all = bpDesign().comps;

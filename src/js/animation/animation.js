@@ -30,8 +30,6 @@ export const ANIM = {
  * @returns {{body:number[][], fins:object[], outs:object[], len:number, R:number}} body outline points, fin outlines, the
  *   items standing out from the body (rail buttons, lugs, protuberances), length and
  *   radius, m
- *
- * the rocket's outline in its own frame: x from the nose tip, r out from the axis
  */
 function animShape(DD, x0 = 0, x1 = Infinity) {
   const AE = aero(DD),
@@ -216,8 +214,6 @@ function animTick(now) {
  * @param {number[]} ys values
  * @param {number} t
  * @returns {number}
- *
- * linear interpolation of a recorded series at time t
  */
 export function animAt(ts, ys, t) {
   if (!ts.length) return 0;

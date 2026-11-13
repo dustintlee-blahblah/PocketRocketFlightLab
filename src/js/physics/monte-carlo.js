@@ -26,8 +26,6 @@ let mcBusy = false,
   mcAgain = false;
 /**
  * Start a dispersion run in the background after a simulation run (replacing one still going).
- *
- * after each run of the simulation, the dispersion flies in the background (a newer run replaces one still going)
  */
 export function mcAuto() {
   if (!lastSim) return;
@@ -281,11 +279,9 @@ export function apoRange(st, D) {
   return { lo: A * (1 - lo), hi: A * (1 + hi), loPct: lo, hiPct: hi, mLo, mHi, cLo, cHi, mc: !!mc, cal, est, fast };
 }
 /**
- * An end of the apogee range in the units shown, rounded (to 10 above 1,000).
+ * An end of the apogee range in the units shown, rounded: to 10 above 1,000, otherwise to 1.
  * @param {number} v m
  * @returns {string}
- *
- * a range end, rounded in the units shown: to 10 above 1,000, otherwise to 1
  */
 export function apoRound(v) {
   const d = toDisp(v, "alt"),
@@ -346,8 +342,6 @@ export function drawMC() {
  * @param {CanvasRenderingContext2D} c
  * @param {number} W width, px
  * @param {number} H height, px
- *
- * the landing bullseye, drawn as the chart's Landing view: every dispersion landing seen from above, north up, with the 68% and 95% ellipses
  */
 export function drawMCInto(cv, c, W, H) {
   c.clearRect(0, 0, W, H);
@@ -443,8 +437,6 @@ export const MC_K68 = Math.sqrt(-2 * Math.log(1 - 0.68)),
  * The farthest point of the 95% landing ellipse from the pad.
  * @param {object} M dispersion results (me, mn: mean east and north; a1, b1: the ellipse's 1σ axes; ang: its angle)
  * @returns {number} m
- *
- * farthest point of the 95% landing ellipse from the pad
  */
 export function mcFar95(M) {
   let f = 0;

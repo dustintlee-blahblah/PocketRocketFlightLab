@@ -23,10 +23,9 @@ function renderExamples() {
   }
 }
 /**
- * Opens an example rocket like a file, as its own copy (Save changes saves a new .ork).
+ * Opens an example rocket like a file, as its own copy, so nothing you change touches the example (Save changes saves a
+ * new .ork).
  * @param {number} i index in EXAMPLES
- *
- * an example opens like a file: its own copy, so nothing you change touches the example (Save changes saves a new .ork)
  */
 export async function openExample(i) {
   const e = EXAMPLES[i],

@@ -63,10 +63,6 @@ function stagCp(M) {
 function tipCapCd(M) {
   return M <= 0.8 ? 0 : (stagCp(M) / 2) * smooth01((M - 0.8) / 0.5);
 }
-/**
- * Base drag coefficient on the base area at Mach M (Fleeman's correlation). Kept for protuberances in crossflow
- * (rail buttons); the rocket's own bases use the TN 3819 curves below.
- */
 /* Transonic peak of a fin's wave drag over (t/c)^(5/3), against aspect ratio × (t/c)^(1/3): MIL-HDBK-762 figure 5-130
    (rectangular fins), the highest point of each curve. Used for its trend only (see the fins in cdParts). */
 const FIN_PEAK_AR = [
@@ -78,6 +74,12 @@ const FIN_PEAK_AR = [
   [2, 3.0],
   [3, 3.25],
 ];
+/**
+ * Base drag coefficient on the base area at Mach M (Fleeman's correlation). Kept for protuberances in crossflow
+ * (rail buttons); the rocket's own bases use the TN 3819 curves below.
+ * @param {number} M Mach number
+ * @returns {number}
+ */
 const fleemanBase = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M);
 /* ---------- base pressure: NACA TN 3819 (Love, 1957) above Mach 1, Fleeman below ----------
    Body base (no fins, no boattail): the "basic curve of present analysis" of fig. 18, digitized, as −Cp,base.
@@ -451,8 +453,6 @@ const NOSE_TR100 = {
 /**
  * NASA TR R-100 fig. 11: nose pressure drag at Mach 1.4 against nose fineness (length/diameter), as
  * [fineness, CD]; finenessScale() normalizes it to fineness 3.
- *
- * fig. 11, Mach 1.4: nose pressure drag against nose fineness l/d (second-order theory and data), normalized at l/d = 3
  */
 const NOSE_FINENESS = [
   [1, 0.5],
@@ -705,15 +705,15 @@ function blFactor(h, x, v, nu) {
 const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07, ramp: 0.39, flyaway: 1.2 }; // a fly-away rail guide: a blunt block, there only on the rail
 /**
  * Drag coefficient of a protuberance, on its frontal area, before the boundary-layer factor (blFactor: Hoerner's
- * effective dynamic pressure, 0.75·(h/δ)^(1/3), is the same thing within a few percent). Below Mach 1 Hoerner's
- * value. Above Mach 1 a blunt shape follows the rail button's rise (cylinderCd, by stagnation pressure and
- * modified Newtonian: about 1.3 at Mach 1.5 for the blunt box), which Hoerner's free-flight values at Mach 1 to 2
- * bracket (ch. XX, p. 20-14: 0.75 for a forward-facing step plus 0.45 for a rear-facing one, 0.8 for blunt rings,
- * 2.0 for round rivet heads, which he calls high). There is no such data for a faired one: it takes the larger of that and the Newtonian pressure on a front
- * face that climbs to its height over half its length, 2·sin²θ. A sloped-front box stays a share of the long blunt
- * box at every speed: 0.39/0.74 below Mach 1, and above it the share Hoerner's free-flight steps give, a rear-facing
- * step (0.45) plus modified Newtonian pressure on a 30° front (Cp,max·sin²30°) against a forward-facing step (0.75)
- * plus the same rear one (0.70 of the long box at Mach 1.5), blended over Mach 1 to 1.3.
+ * effective dynamic pressure, 0.75·(h/δ)^(1/3), is the same thing within a few percent). Below Mach 1 Hoerner's value.
+ * Above Mach 1 a blunt shape follows the rail button's rise (cylinderCd, by stagnation pressure and modified Newtonian:
+ * about 1.3 at Mach 1.5 for the blunt box), which Hoerner's free-flight values at Mach 1 to 2 bracket (ch. XX, p.
+ * 20-14: 0.75 for a forward-facing step plus 0.45 for a rear-facing one, 0.8 for blunt rings, 2.0 for round rivet
+ * heads, which he calls high). There is no such data for a faired one: it takes the larger of that and the Newtonian
+ * pressure on a front face that climbs to its height over half its length, 2·sin²θ. A sloped-front box stays a share of
+ * the long blunt box at every speed: 0.39/0.74 below Mach 1, and above it the share Hoerner's free-flight steps give, a
+ * rear-facing step (0.45) plus modified Newtonian pressure on a 30° front (Cp,max·sin²30°) against a forward-facing
+ * step (0.75) plus the same rear one (0.70 of the long box at Mach 1.5), blended over Mach 1 to 1.3.
  * @param {{shape:string, h:number, len:number}} b protuberance
  * @param {number} M Mach number
  * @returns {number}
@@ -903,11 +903,10 @@ export function xfinSets(list, rs) {
   }));
 }
 /**
- * A fin's outline as [x along the root, y out from the body] points.
+ * A fin's outline as [x along the root, y out from the body] points, for drawing: the shape from the design file when
+ * there is one, otherwise the trapezoid.
  * @param {object} f fin set
  * @returns {number[][]}
- *
- * a fin's outline for drawing: the shape from the design file when there is one, otherwise the trapezoid
  */
 export function finOutline(f) {
   return f.pts && f.pts.length > 2
@@ -920,15 +919,14 @@ export function finOutline(f) {
       ];
 }
 /**
- * A fin's geometric properties from its outline, by thin spanwise strips.
+ * A fin's geometric properties from its outline, by thin spanwise strips: exact for any shape (a trapezoid gives
+ * Barrowman's closed forms). Sweep angles are strip averages of the local mid-chord and leading-edge slopes (Barrowman
+ * 1967, applied strip by strip to any outline).
  * @param {object} f fin set
  * @returns {{area:number, span:number, mac:number, xcp:number, cnX:number, edgeH:number, yMac:number, I1:number,
  *   I2:number}|null} area (m²), span, mean aerodynamic chord, the quarter-MAC point from the root leading edge (Barrowman's
  *   fin CP), the term X of Barrowman's lift formula, the leading-edge height weighted by cos² of its sweep, the MAC's
  *   spanwise station, and the first and second moments of area about the root; null for a degenerate outline
- *
- * fin properties from its outline, by thin spanwise strips: exact for any shape (a trapezoid gives Barrowman's closed forms).
- * Sweep angles are strip averages of the local mid-chord and leading-edge slopes (Barrowman 1967, applied strip by strip to any outline).
  */
 export function finGeom(f) {
   const ol = finOutline(f),
@@ -1446,11 +1444,6 @@ function extraCnParts(A, M) {
   return parts;
 }
 /**
- * Kinematic viscosity of the air (Sutherland's law for the dynamic viscosity).
- * @param {{T:number, rho:number}} atm the air, from atmosphere()
- * @returns {number} m²/s
- */
-/**
  * The airframe's wall for the skin's heating in flight (the test drag model): thickness, heat capacity per volume and
  * thermal diffusivity. A design without a wall on file (entered by its outline, or saved before walls were kept)
  * counts as 2 mm of a paper or plastic tube.
@@ -1478,10 +1471,15 @@ export function skinHeating(A, v, atm, skinT) {
     cf = plateCf((v * A.L) / kinVisc(atm), A.L, A.segs[0] ? A.segs[0].rs : 0, M, A.blMode, skinT / atm.T);
   return { h: heatCoef(cf, atm.rho, v), Taw: atm.T * (1 + VD_R * 0.2 * M * M) };
 }
+/**
+ * Kinematic viscosity of the air (Sutherland's law for the dynamic viscosity).
+ * @param {{T:number, rho:number}} atm the air, from atmosphere()
+ * @returns {number} m²/s
+ */
 function kinVisc(atm) {
   const mu = (1.458e-6 * Math.pow(atm.T, 1.5)) / (atm.T + 110.4);
   return mu / atm.rho;
-} // Sutherland's law
+}
 /* Base drag of a blunt fin trailing edge. A fin's flat trailing edge is a two-dimensional base: its wake sheds vortices
    in a regular (periodic) street, which pulls the base pressure far lower than behind the rocket's round,
    three-dimensional base. Hoerner (Fluid-Dynamic Drag, ch. 3) correlates both against the friction drag of what lies
@@ -1838,8 +1836,6 @@ export function finLiftRatio(f, M) {
  * Ackeret above, blended between). Used for roll damping.
  * @param {number} M
  * @returns {number}
- *
- * 2-D lift slope of a fin strip against its incompressible 2π, for roll damping
  */
 function stripLiftRatio(M) {
   const sub = (m) => 1 / Math.sqrt(1 - m * m),
@@ -1854,8 +1850,6 @@ function stripLiftRatio(M) {
  * @param {object} A aerodynamic model
  * @param {number} M Mach number
  * @returns {object} see cnaParts
- *
- * the normal-force parts at a given Mach number, cached in steps of 0.01 Mach
  */
 export function cnaPartsM(A, M) {
   A._cnM = A._cnM || new Map();
@@ -1922,14 +1916,12 @@ function cnaParts(A, M = 0) {
   };
 }
 /**
- * Fin-cant roll forcing and roll damping of all fin sets, at a Mach number. The roll moment is
- * q·Aref·(force − damp·p/V), with p the roll rate.
+ * Fin-cant roll forcing and roll damping of all fin sets, at a Mach number. The roll moment is q·Aref·(force −
+ * damp·p/V), with p the roll rate. A fin's own normal-force slope is CNα1 = 8(s/d)²/(1+√(1+X²)) (the set's Barrowman
+ * slope is N/2 of it); cant tilts each fin's chord, and spinning at p meets each strip at an angle p·r/V.
  * @param {object} A aerodynamic model
  * @param {number} [M=0] Mach number
  * @returns {{force:number, damp:number}}
- *
- * each fin set's roll terms: moment = q·Aref·(force − damp·p/V). A fin's own normal-force slope CNα1 = 8(s/d)²/(1+√(1+X²))
- * (the set's Barrowman slope is N/2 of it); cant tilts each fin's chord, and spinning at p meets each strip at an angle p·r/V
  */
 function rollParts(A, M = 0) {
   const d = 2 * A.R;

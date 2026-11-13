@@ -29,8 +29,6 @@ export function start() {
     );
     /**
      * The keyboard was put away while the field still has focus: finish the edit and bring the launch bar back.
-     *
-     * the keyboard was put away while the field still has focus: finish the edit and bring the launch bar back
      */
     const closed = () => {
       document.documentElement.classList.remove("typing");

@@ -32,8 +32,6 @@ function openLink(url) {
 }
 /**
  * Shows the note that the flight report has no flyer profile, when there isn't one.
- *
- * the flight report shows the flier's profile; say so when this copy of the app has none
  */
 export function profNoteRender() {
   const n = document.getElementById("exportprof");

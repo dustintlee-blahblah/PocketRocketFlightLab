@@ -56,8 +56,6 @@ export function bldSave() {
 }
 /**
  * Puts the motors chosen on the Motor tab into each stage's primary motor mount.
- *
- * the primary motor mount of each stage holds the motor chosen on the Motor tab
  */
 export function bldSyncMotors() {
   if (!BLD) return;
@@ -136,8 +134,6 @@ export function bldRender() {
 }
 /**
  * Starts a new design from scratch: a basic flyable rocket with a 29 mm motor.
- *
- * a new design from scratch: a basic flyable rocket to change
  */
 export function bldNewDesign() {
   BLD = bldDefault();

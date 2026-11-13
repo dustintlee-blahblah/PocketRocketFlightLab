@@ -156,8 +156,6 @@ export function bldOffApply(list) {
 }
 /**
  * Works out the flight design D from the parts (written as .ork and read back), keeping app-only settings.
- *
- * the flight code's summary, worked out from the parts
  */
 export function bldDerive() {
   bldSyncMotors();
@@ -198,8 +196,6 @@ export function bldDerive() {
   }
   /**
    * A stage's extra motors for the cluster, matching the main motor unless they were chosen separately.
-   *
-   * clusters: the extra motors match the main one, unless they were chosen separately on the Motor tab
    */
   const ex = (list, key) => {
     const want = (list || []).reduce((a, e) => a + (e.count || 1), 0),

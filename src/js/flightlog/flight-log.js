@@ -195,8 +195,6 @@ function flParseDir(s) {
  * The altimeter files kept with a flight (older entries kept just one).
  * @param {object} f flight
  * @returns {object[]}
- *
- * the altimeter files kept with a flight (older entries kept just one)
  */
 export function flAltis(f) {
   if (f.altis) return f.altis;
@@ -220,8 +218,6 @@ export function flAltis(f) {
  * @param {object} m
  * @param {object} [mb]
  * @returns {{I:number, cls:string}|null}
- *
- * the motors flown: total impulse and class, the way the certification check counts them
  */
 export function flMotorInfo(m, mb) {
   if (!m) return null;
@@ -259,8 +255,6 @@ function flLiftMass(Dd, m, mb) {
  * has them).
  * @param {object} f flight
  * @returns {{D:object, L:object, m:object, mb:object}|null}
- *
- * the current design flown in the logged flight's conditions and weight, on its motor if this device still has it
  */
 function flCtx(f) {
   if (!lastSim) return null;
@@ -304,12 +298,10 @@ function flPredict(f) {
   return c ? flSim(c) : null;
 }
 /**
- * A simulated landing spot as east/north meters from the pad (drift along the wind).
+ * A landing spot as east/north meters from the pad: simulated (drift along the wind) or real (distance and bearing).
  * @param {object} st flight summary
  * @param {number} windDir degrees, the direction the wind blows from
  * @returns {{e:number, n:number}}
- *
- * a landing spot as east/north metres from the pad: simulated (drift along the wind) or real (distance and bearing)
  */
 function flSimLand(st, windDir) {
   const h = ((((windDir ?? 270) + 180) % 360) * Math.PI) / 180,
@@ -341,8 +333,6 @@ export function flLandTxt(p) {
  * @param {object} f flight
  * @param {{e:number, n:number}} p landing spot
  * @returns {string|null}
- *
- * is a landing inside the last dispersion run's ellipses? only when that run's wind matches the flight's
  */
 function flInMC(f, p) {
   if (!lastMC || !lastSim || lastMC.when !== lastSim.when || !p) return null;
@@ -369,8 +359,6 @@ function flInMC(f, p) {
  * @param {object} f flight
  * @param {object} a altimeter results
  * @returns {string}
- *
- * what the altimeter's events say about the delay and the main
  */
 function flEventTxt(f, a) {
   if (!a || !a.ev) return "";
@@ -665,8 +653,6 @@ async function flFit() {
 /**
  * Draws the calibration line at the top of the log (older calibrations are brought into the log's way).
  * @param {object[]} list flights
- *
- * the calibration line at the top of the log; older calibrations are brought into the log's way of working
  */
 function renderFlCal(list) {
   const el = document.getElementById("flcal");

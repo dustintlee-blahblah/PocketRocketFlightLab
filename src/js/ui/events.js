@@ -64,7 +64,7 @@ export function start() {
     /**
      * Sets the page's bottom space to the launch bar's real height.
      *
-     * measured from the top of the bar to the bottom of the screen, so anything below it (the phone's gesture bar) counts too
+     * Measured from the top of the bar to the bottom of the screen, so anything below it (the phone's gesture bar) counts too.
      */
     const set = () => {
       const r = rb.getBoundingClientRect();
@@ -93,7 +93,7 @@ export function start() {
     /**
      * True where a swipe shouldn't change tabs (see the note above).
      *
-     * not while typing or dragging a slider, inside a table that scrolls sideways, or with a pop-up open
+     * Not while typing or dragging a slider, inside a table that scrolls sideways, or with a pop-up open.
      */
     const blocked = (t) => {
       if (!t.closest) return false;

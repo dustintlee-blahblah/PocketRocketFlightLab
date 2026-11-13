@@ -77,15 +77,14 @@ function motorMeta(m, s) {
   return bits.map(esc).join(" · ");
 }
 /**
- * The motors that pass the filters.
+ * The motors that pass the filters. The sparky filter is "all", "only" (sparky motors only) or "none" (no sparky
+ * motors), from ThrustCurve's sparky flag.
  * @param {number|null} dia mm
  * @param {string} sys motor system or "all"
  * @param {string} q search text
  * @param {string} [brand]
  * @param {string} [sparky]
  * @returns {object[]}
- *
- * sparky: "all", "only" (sparky motors only) or "none" (no sparky motors), from ThrustCurve's sparky flag
  */
 export function filterMotors(dia, sys, q, brand = F.brand, sparky = F.sparky) {
   const qq = q.trim().toLowerCase().replace(/\s+/g, " ");
@@ -219,8 +218,6 @@ const MOTOR_SIZES = [13, 18, 24, 29, 38, 54, 75, 98, 132, 152, 161]; // standard
  * The motor size a mount takes: the largest standard motor that slides into its inside diameter.
  * @param {number} d inside diameter, m
  * @returns {number|null} mm
- *
- * the motor size a mount takes: the largest standard motor that slides into its inside diameter
  */
 function mountClass(d) {
   if (!(d > 0)) return null;
@@ -234,8 +231,6 @@ function mountClass(d) {
  * @param {object} Dx design
  * @param {boolean} booster
  * @returns {{cls:number, src:string}|null} mm, and "chosen" or "file"
- *
- * the mount size in use: the one chosen on the Rocket tab, or the one from the design file
  */
 function mountSize(Dx, booster) {
   const sel = booster ? Dx.bMountSel : Dx.mountSel;
@@ -244,14 +239,13 @@ function mountSize(Dx, booster) {
   return c ? { cls: c, src: "file" } : null;
 }
 /**
- * A stand-in motor that fits the mount (see the note above).
+ * A stand-in motor that fits the mount (see the note above), for when a file's motor isn't in the list and the motor
+ * already selected doesn't fit: a motor of the mount's size, in the file motor's impulse class if there is one (else a
+ * middling one).
  * @param {object} Dx design
  * @param {boolean} booster
  * @param {object} [want] the file's motor
  * @returns {object|null}
- *
- * a stand-in when a file's motor isn't in the list and the motor already selected doesn't fit the mount:
- * a motor of the mount's size, in the file motor's impulse class if there is one (else a middling one)
  */
 export function fitStandIn(Dx, booster, want) {
   const cur = findMotor(booster ? boostId : motorId),
@@ -295,8 +289,6 @@ export function motorFit(m, Dx, booster) {
  * @param {object} Dx design
  * @param {boolean} booster
  * @returns {{cls:number, body:number}|null} mm
- *
- * a chosen mount bigger than the body it sits in
  */
 export function mountTooBig(Dx, booster) {
   const ms = mountSize(Dx, booster);

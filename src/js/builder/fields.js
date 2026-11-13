@@ -46,8 +46,6 @@ const BLD_DEPLOY = [
  * The fields a part shows in the editor: [key, label, kind, dimension or options].
  * @param {object} p part
  * @returns {Array[]}
- *
- * the fields each part shows: [key, label, kind, dim or options]
  */
 export function bldFields(p) {
   const posF = [["pos", "Position", "pos"]],

@@ -65,11 +65,10 @@ const WX_LEVELS = [
 const PR_FETCH = {};
 let prFetchN = 0;
 /**
- * Fetches a URL as text (see the note above).
+ * Fetches a URL as text (see the note above): through the Android app when it's there (so the request isn't held to the
+ * page's own network rules), else fetch().
  * @param {string} url
  * @returns {Promise<string>}
- *
- * a web request: through the Android app when it's there (so it isn't held to the page's own network rules), else fetch()
  */
 export function prFetchText(url) {
   const A = window.PocketRocketApp;
@@ -202,8 +201,8 @@ function siteCoordSet() {
 /**
  * Opens directions to the site (see the note above).
  *
- * the site's coordinates handed to the map app: on Android a geo: link (the phone's default map app); in a browser,
- * Apple Maps on iPhone/iPad/Mac and Google Maps elsewhere, both opening with directions to the site
+ * The site's coordinates handed to the map app: on Android a geo: link (the phone's default map app); in a browser,
+ * Apple Maps on iPhone/iPad/Mac and Google Maps elsewhere, both opening with directions to the site.
  */
 function siteDirections() {
   const la = +(L.lat ?? NaN),
@@ -382,8 +381,6 @@ async function wxGet(lat, lon, date, kind) {
  * @returns {object} rows, temperatures aloft, cloud cover by level and band, visibility, precipitation chance,
  *   surface wind, gusts, temperature, humidity, pressure and the model's elevation
  * @throws {Error} if the reply is malformed or lacks that hour
- *
- * the forecast's levels for one hour, as winds-aloft rows above the pad (pure: tested on its own)
  */
 function wxRows(j, key, elev) {
   const H = j && j.hourly;

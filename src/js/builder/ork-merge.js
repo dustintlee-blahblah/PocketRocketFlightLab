@@ -48,7 +48,7 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   /**
    * Every component in a rocket by key, with its parent and order.
    *
-   * the rocket itself is matched as the rocket, whatever its id
+   * The rocket itself is matched as the rocket, whatever its id.
    */
   const index = (root) => {
     const m = new Map(),
@@ -83,8 +83,6 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   const ser = (el) => (el ? new XMLSerializer().serializeToString(el).replace(/\s+xmlns="[^"]*"/g, "") : null);
   /**
    * An element's fields: its direct children (not its parts), keyed by name, configuration and repeat.
-   *
-   * an element's fields: its direct children (not its parts), keyed by name, flight configuration and repeat count
    */
   const fields = (el) => {
     const out = new Map(),
@@ -228,8 +226,8 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
   /**
    * A component's subcomponents element, created if missing.
    *
-   * structure: each part the app knows sits under the parent the new design gives it, in the new design's order;
-   * parts the app doesn't know keep their place among their neighbours
+   * Structure: each part the app knows sits under the parent the new design gives it, in the new design's order;
+   * parts the app doesn't know keep their place among their neighbours.
    */
   const ensureSubs = (el) => {
     let s = subs(el);
@@ -413,12 +411,11 @@ export function bldMergeOrk(origXml, newXml, cfg, baseXml) {
   return new XMLSerializer().serializeToString(od);
 }
 /**
- * A RockSim part's id in the converted design: a fixed UUID from its place in the file.
+ * A RockSim part's id in the converted design: a fixed UUID from its place in the file. RockSim parts are numbered in
+ * file order and the importer gives each builder part the same number, so a save can find it again (OpenRocket needs
+ * UUIDs, and the same file always gets the same ids).
  * @param {number} i
  * @returns {string}
- *
- * RockSim parts, numbered in file order; the importer gives each builder part the same number, so a save can find it again
- * a RockSim part's id in the converted design: a fixed UUID from its place in the file (OpenRocket needs UUIDs, and the same file always gets the same ids)
  */
 export function rktPartId(i) {
   return "00000000-0000-4000-8000-" + (0x52000000000 + (i | 0)).toString(16).padStart(12, "0");

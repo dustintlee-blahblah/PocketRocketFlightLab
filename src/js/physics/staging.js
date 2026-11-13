@@ -85,7 +85,7 @@ export function stackDesign(D) {
 /**
  * Whether a design is a three-stage rocket (a first stage under the booster, in D.s1).
  *
- * three stages: the first (bottom) stage under the booster-and-sustainer stack; D.s1 holds its parts in the booster's field names
+ * Three stages: the first (bottom) stage under the booster-and-sustainer stack; D.s1 holds its parts in the booster's field names.
  */
 export const isThree = (D) => !!(D && D.twoStage && D.threeStage && D.s1 && D.s1.bLength > 0);
 /**

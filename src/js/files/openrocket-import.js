@@ -94,6 +94,8 @@ export function unflipNoses(doc) {
 /**
  * Reads an OpenRocket design.
  * @param {string} xml the design XML
+ * @param {{offIds:string[]}} [opts] offIds: the ids of stages switched off (the builder passes them, since its own
+ *   file numbers only its stages)
  * @returns {{design:object, launch:object, notes:string[], motor:object, boosterMotor:object, firstMotor:object,
  *   motorExtras:object[], boosterExtras:object[], firstExtras:object[], src:object}} the design, launch site and
  *   conditions, notes on what was simplified, each stage's main motor (designation, maker, delay...) and extra
@@ -274,8 +276,6 @@ export function parseOrk(xml, opts = {}) {
    * @param {number} ri its inside radius, m
    * @param {boolean} isInner an inner tube (not a body tube flown as its own mount)
    * @param {number} xAft the tube's aft end from the nose tip, m
-   *
-   * a motor mount: an inner tube, or a body tube flown as its own mount (minimum diameter)
    */
   function motorMountIn(c, ri, isInner, xAft) {
     // only a tube marked as a motor mount holds motors (an inner tube around a mount must not count them again)
@@ -362,7 +362,7 @@ export function parseOrk(xml, opts = {}) {
   /**
    * The motor configuration id a simulation element flew.
    *
-   * a motor configuration chosen on the Motor tab (ORK_CFG) wins; then the one the file's simulation used; then the default
+   * A motor configuration chosen on the Motor tab (ORK_CFG) wins; then the one the file's simulation used; then the default.
    */
   const simCfgOf = (sm) => {
     const c = sm && sm.getElementsByTagName("conditions")[0],
@@ -1113,8 +1113,6 @@ export function parseOrk(xml, opts = {}) {
    * @param {number[]} sel stage indexes
    * @param {string} label prefix for its notes
    * @returns {object} design fields for that airframe
-   *
-   * build one airframe from a set of stages: sustainer = [0], booster = [1], single = all
    */
   function finalize(sel, label) {
     const pre = label ? label + ": " : "";

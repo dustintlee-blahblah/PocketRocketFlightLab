@@ -248,8 +248,6 @@ function askAddMotors(names) {
  * @param {string} fileName
  * @param {ArrayBuffer} [buf] the file as opened (kept for saving changes back into it)
  * @param {{cfg:string}} [opts] cfg: a motor configuration chosen on the Motor tab, when reopening for it
- *
- * open a design from .ork / .rkt text: from a file, or from the rocket builder
  */
 export async function loadDesignXml(xml, fileName, buf, opts = {}) {
   const rep = document.getElementById("orkreport");

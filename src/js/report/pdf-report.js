@@ -957,8 +957,6 @@ function buildReportPdf() {
  * @param {number} y
  * @param {number} w
  * @param {number} h
- *
- * the safety-cone graph: the path to chute opening (or apogee), true scale, inside the cone from the pad
  */
 function pdfCone(doc, C, x, y, w, h) {
   const { out, st, L: RL } = lastSim,

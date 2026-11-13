@@ -134,7 +134,7 @@ export function renderDragTable() {
 /**
  * everRun: a run has happened this session; staleWhy: the reason shown while results are out of date.
  *
- * what changed since the last run, named for the tab it was changed on
+ * What changed since the last run, named for the tab it was changed on.
  */
 let everRun = false,
   staleWhy = "";

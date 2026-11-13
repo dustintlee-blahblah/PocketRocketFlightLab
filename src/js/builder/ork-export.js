@@ -21,8 +21,6 @@ import { findMotor } from "../motors/clusters.js";
  * The motor type OpenRocket uses to find a motor along with its name: single-use, reload or hybrid.
  * @param {object} km mount's motor {id, name, mfr}
  * @returns {string}
- *
- * OpenRocket finds a motor by its type as well as its name: single-use, reload or hybrid
  */
 function orkMotorType(km) {
   const m =
@@ -66,9 +64,9 @@ export function bldToOrk(model, L, opts = {}) {
     return f ? `<finish>${e(f)}</finish>` : "";
   };
   /**
-   * Fields of a part opened from a file that the builder doesn't edit, written back as they were.
+   * A part's overrides (drag, weight, CG). They are written only while they're switched on (an override switched off
+   * is kept with the app's settings).
    */
-  // overrides are written only while they're switched on (an override switched off is kept with the app's settings)
   const known = (k) =>
     (bldOvOn(k, "cdo")
       ? `<overridecd>${n(k.cdo)}</overridecd><overridesubcomponentscd>${!!k.cdoAll}</overridesubcomponentscd>`

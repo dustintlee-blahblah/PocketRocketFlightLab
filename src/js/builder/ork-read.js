@@ -65,9 +65,7 @@ export function bldFromOrk(xml, info) {
     return s ? [...s.children] : [];
   };
   /**
-   * A part kept as written, without its own position.
-   *
-   * a part kept as written, minus its own position (the builder writes that, in this body part's frame)
+   * A part kept as written, without its own position (the builder writes that, in this body part's frame).
    */
   const ser = (el) => {
     const c = el.cloneNode(true);
@@ -280,7 +278,7 @@ export function bldFromOrk(xml, info) {
   /**
    * The cached number after "auto".
    *
-   * the same rules the flight code uses: an automatic radius follows the part before it, else the next stated one
+   * The same rules the flight code uses: an automatic radius follows the part before it, else the next stated one.
    */
   const autoNum = (el, tag) => {
     const m = (txt(el, tag) || "").match(/-?\d+(\.\d+)?(e-?\d+)?/i);
@@ -777,8 +775,6 @@ export function bldFromOrk(xml, info) {
  * Checks that would make the design wrong or unflyable (no motor mount, a mount wider than its tube...).
  * @param {object} model
  * @returns {string[]}
- *
- * checks that would make the file wrong or unflyable
  */
 export function bldProblems(model) {
   const out = [];

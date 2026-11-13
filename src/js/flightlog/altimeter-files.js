@@ -251,8 +251,6 @@ function altGuess(P) {
  * Median of three, to drop single-sample spikes (an ejection charge's pressure blip).
  * @param {number[]} a
  * @returns {number[]}
- *
- * median of three, to drop single-sample spikes (an ejection charge's pressure blip)
  */
 function altMed3(a) {
   return a.map((v, i) => (i && i < a.length - 1 ? [a[i - 1], v, a[i + 1]].sort((x, y) => x - y)[1] : v));
@@ -366,7 +364,7 @@ export function altCompute(P, map) {
   /**
    * The first sample from an index at or below a height.
    *
-   * descent rates: just after apogee (drogue, or the only chute) and near the ground (main)
+   * Descent rates: just after apogee (drogue, or the only chute) and near the ground (main)
    */
   const cross = (lvl, from) => {
     for (let i = from; i <= iE; i++) if (h[i] <= lvl) return i;

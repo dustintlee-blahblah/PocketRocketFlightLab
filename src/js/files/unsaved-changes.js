@@ -11,10 +11,9 @@ import { DEFAULT_MOTOR } from "../motors/catalog-lookup.js";
 import { drawProfile } from "../ui/charts.js";
 /* ---------- unsaved changes: asked about before another file is opened ---------- */
 /**
- * A snapshot of what the design file can hold (app-only settings don't count as changes).
+ * A snapshot of what the design file can hold: only that counts as a change (app-only settings like the safety cone
+ * don't).
  * @returns {string} JSON
- *
- * only what the design file can hold counts as a change (app-only settings like the safety cone don't)
  */
 function designSnap(d, l, m, b) {
   const no = new Set([...SAVE_IGNORE, ...SAVE_NOT.common, ...SAVE_NOT.ork]);
@@ -51,9 +50,6 @@ export function isDirty() {
 /**
  * True if a design is open and has unsaved changes.
  * @returns {boolean}
- *
- * the rocket's name, with an asterisk while an opened .ork/.rkt has unsaved changes
- * a design that's open (from a file, or started here) with changes that aren't saved
  */
 function designDirty() {
   return !document.documentElement.classList.contains("nodesign") && isDirty();
@@ -74,8 +70,6 @@ export function renderTitle() {
 /**
  * Marks a rocket as open for the rest of this session (or none), and shows the design screens.
  * @param {boolean} on
- *
- * a rocket is open (from a file or entered by hand) for the rest of this session
  */
 export function setActive(on) {
   try {

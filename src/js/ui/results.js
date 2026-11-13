@@ -303,8 +303,6 @@ function renderStaging(st, S) {
  * @param {object} st
  * @param {object} SU the sustainer's stability after separation
  * @returns {object}
- *
- * the stage figures, grouped by stage in flight order
  */
 export function stageGroups(st, SU) {
   const T = stageTiles(st, SU),
@@ -370,11 +368,9 @@ function stageTiles(st, SU) {
   ];
 }
 /**
- * A three-stage rocket's first-stage figures.
+ * A three-stage rocket's first-stage figures: the first stage's own drop, and the booster lighting after it.
  * @param {object} st
  * @returns {Array[]}
- *
- * a three-stage rocket: the first stage's own drop, and the booster lighting after it
  */
 function firstTiles(st) {
   const f = st.first || {},
@@ -490,12 +486,6 @@ export function chargeEvents(st, D, outs) {
   return out.sort((a, b) => a.t - b.t);
 }
 /**
- * The main results tiles in groups of related ones: [title, [[label, value, unit], …]].
- * @param {object} st
- * @param {object} S
- * @returns {Array[]}
- */
-/**
  * The nose weight plan for this flight (noseWeightPlan), worked out once per run.
  * @param {object} st flight summary
  * @param {object} S stability at liftoff
@@ -523,6 +513,12 @@ export function noseWeightText(w) {
     ? `${fmt(w, "smass")} ${uname("smass")} of nose weight`
     : "more than nose weight alone can give (larger fins or a longer body)";
 }
+/**
+ * The main results tiles in groups of related ones: [title, [[label, value, unit], …]].
+ * @param {object} st flight summary
+ * @param {object} S stability at liftoff
+ * @returns {Array[]}
+ */
 export function resultGroups(st, S) {
   const RS = lastSim || {},
     altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),

@@ -70,8 +70,6 @@ export function brandOfMfr(mfr) {
  * @param {object} m motor
  * @param {object[]} pool motors to search
  * @returns {object|null} the matching motor, or null
- *
- * the same motor: same name, same maker, same diameter and the same total impulse (within 1%); other fields don't matter
  */
 export function dupMotor(m, pool) {
   const norm = (x) => (x || "").toUpperCase().replace(/[^A-Z0-9]/g, ""),

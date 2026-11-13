@@ -112,11 +112,10 @@ const recentAppUri = () => {
   }
 };
 /**
- * Adds a file just opened from the picker, or moves the same file to the top.
+ * Adds a file just opened from the picker, or moves the same file (by its place on the phone, or by name in the
+ * browser) to the top.
  * @param {ArrayBuffer} buf file contents
  * @param {string} name file name
- *
- * a file just opened from the picker; the same file (by its place on the phone, or by name in the browser) moves to the top
  */
 export async function recentAdd(buf, name) {
   const uri = recentAppUri(),
@@ -130,8 +129,6 @@ export async function recentAdd(buf, name) {
  * After Save changes: updates the entry to follow the file that was written.
  * @param {Uint8Array} bytes
  * @param {string} fname
- *
- * after Save changes: the entry follows the file that was written
  */
 export async function recentSaved(bytes, fname) {
   const old = SOURCE && SOURCE.recentId ? await recentGet(SOURCE.recentId) : null,

@@ -500,8 +500,6 @@ export function drawChart() {
 }
 /**
  * Writes the highest wind (from the wind sweep) that keeps the airframe inside the safety cone while the motor burns.
- *
- * the highest wind (from the wind sweep) that keeps the airframe inside the cone while the motor burns
  */
 export function coneWindNote() {
   const RL = lastSim.L,
@@ -529,8 +527,6 @@ export function coneWindNote() {
  * @param {CanvasRenderingContext2D} c
  * @param {number} W width, px
  * @param {number} H height, px
- *
- * side view of the climb, drawn to true scale so the cone's angle is real; wind blows left to right
  */
 function drawConeChart(c, W, H) {
   const { out, st, L: RL } = lastSim,

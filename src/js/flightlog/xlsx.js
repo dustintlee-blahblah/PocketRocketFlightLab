@@ -630,8 +630,6 @@ function flAllOpen() {
  * The measured curves to draw over the chart (altitude or vertical velocity), one per altimeter.
  * @param {string} ser series
  * @returns {object[]|null}
- *
- * the measured curves over the chart's simulation (altitude or vertical velocity), one per altimeter
  */
 export function flOverlay(ser) {
   if (!flShow || (ser !== "alt" && ser !== "vel")) return null;

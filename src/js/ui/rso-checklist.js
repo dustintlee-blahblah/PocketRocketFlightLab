@@ -42,14 +42,12 @@ function hprFlight(st, m, mb, m1) {
   return { hpr: I.some((v) => v > 160) || tot > 320 || prop > 0.125 || mass > 1.5, I: tot, prop, mass };
 }
 /**
- * The most cloud cover from the pad up to a height (see the note above).
+ * The most cloud cover at any height from the pad up to z above it (see the note above): from the forecast's level-by-
+ * level cover, or else from the low (up to about 3 km above sea level), mid (3–8 km) and high (above 8 km) bands.
  * @param {object} LL launch conditions
  * @param {number} z height above the pad, m
  * @returns {{c:number, z:number, from:string}|null} cover 0–1, its height, and whether it came from the forecast's
  *   levels or the cloud bands (null with no cloud)
- *
- * the most cloud cover at any height from the pad up to z (above the pad): from the forecast's level-by-level cover, or else
- * from the low (up to about 3 km above sea level), mid (3–8 km) and high (above 8 km) bands
  */
 function cloudBelow(LL, z) {
   const P = LL.cloudProf;
@@ -79,13 +77,12 @@ function cloudBelow(LL, z) {
   return { ...best, from: "bands" };
 }
 /**
- * Whether the rocket's lugs or buttons suit the pad's rod or rail. A launch tower needs none, and neither does a
- * rocket with a fly-away rail guide (a protuberance of that shape), which rides a rail and lets go at its end.
+ * Whether the rocket's rail guides suit the pad: a rod lug only over its own rod (and with an inside diameter that
+ * clears it), rail buttons and rail lugs only on a rail of their size. A launch tower needs none, and neither does a
+ * rocket with a fly-away rail guide, which rides a rail and lets go at its end.
  * @param {string} rt rail type
  * @param {boolean} [launch] for the Launch button: also say so when no rail type is set and the design has no guides at all
  * @returns {Array|null} [status, label, why]; null when there is nothing to say
- *
- * whether the rocket's guides suit the pad: lugs over a rod (inside diameter at least the rod's), buttons of the rail's size
  */
 export function padGuideCheck(rt, launch) {
   if (rt === "tower")
@@ -823,8 +820,6 @@ function rsoSetOpen(o) {
 }
 /**
  * Shows the motor temperature beside its folded title.
- *
- * motor temperature (Motor tab) starts folded up; its value shows beside the title
  */
 export function mtSummary() {
   const e = document.getElementById("mtsum");
@@ -835,8 +830,6 @@ export function mtSummary() {
 }
 /**
  * Names the imperfections that are switched on in their folded header.
- *
- * the folded Imperfections header names any that are switched on
  */
 function imperfSum() {
   const e = document.getElementById("imperfsum");

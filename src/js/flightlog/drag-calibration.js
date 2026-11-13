@@ -18,8 +18,6 @@ export var CAL_STORE = "rfs-cal";
 /**
  * The key a calibration was kept under before the flight log (file and rocket names).
  * @returns {string}
- *
- * before the flight log, a calibration was kept under the file and rocket names
  */
 export function calKeyOld() {
   return `${(SOURCE && SOURCE.name) || ""}|${D.name || ""}`;
@@ -82,8 +80,6 @@ export function applyCal() {
  * @param {number} target apogee, m
  * @param {object} [ctx] the run's {D, L, m, mb} (the last run by default)
  * @returns {{k:number}|{out:string, lim:number}} k, or out "high"/"low" with the apogee reached at the limit
- *
- * the drag multiplier that makes a run reach the measured apogee (apogee falls as drag rises, so bisect)
  */
 export function solveDragScale(target, ctx) {
   const { D: SD, L: SL, m, mb } = ctx || lastSim,

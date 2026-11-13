@@ -83,8 +83,6 @@ function motorModel(m) {
  * From the design's rail buttons or lug, or typical spots (55% and 92% of the length).
  * @param {object} D design
  * @returns {{aft:number, gap:number}} m from the nose tip, m
- *
- * where the rail guides are: from the design's buttons or lugs, or typical button spots (55% and 92% of the length)
  */
 function railGuides(D) {
   const L = D.length;
@@ -455,8 +453,6 @@ export function simulate(D, L, m, mb, opts = {}) {
    * "main" or "free"). The state is [x, z, vx, vz, y, vy, bx, by, bz, wx, wy, wz, p, roll angle]: position (x
    * downrange, y crossrange, z up), velocity, the rocket's axis (unit vector), its pitch/yaw angular velocity, the roll
    * rate and roll angle. The last element of the returned array is the axial acceleration, for the readout.
-   *
-   * state: x, z, vx, vz, y, vy, rocket axis (bx, by, bz), pitch/yaw angular velocity (wx, wy, wz), roll rate p and roll angle
    */
   function deriv(t, s, ph) {
     const [x, z, vx, vz, y, vy, bx, by, bz, wx, wy, wz, p] = s,

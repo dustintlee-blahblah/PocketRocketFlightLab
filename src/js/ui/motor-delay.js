@@ -107,11 +107,9 @@ export function mdMotor(tg) {
   return tg === "first" ? curFirst() : tg === "booster" ? curBoost() : curMotor();
 }
 /**
- * A target's ejection delay: seconds after burnout (0 = at burnout), or null for plugged.
+ * A target's ejection delay: seconds after burnout (0 is a charge at burnout), or null for plugged.
  * @param {string} tg
  * @returns {number|null}
- *
- * null is plugged; 0 is a charge at burnout
  */
 function mdGet(tg) {
   const h = mdHost(tg),
@@ -140,13 +138,11 @@ export function mdSet(tg, v) {
   mdRender();
 }
 /**
- * The delays a motor is sold with, and whether it comes plugged (see the note above).
+ * The delays a motor is sold with, in seconds, and whether it comes plugged (see the note above). 0 s is a real charge
+ * at burnout (booster motors use it to separate stages or light the next motor), kept apart from plugged (no charge),
+ * as OpenRocket does; catalog placeholders of 60 s or more are left out.
  * @param {object} m motor
  * @returns {{list:number[], plugged:boolean}}
- *
- * the delays a motor is sold with, in seconds, and whether it comes plugged. 0 s is a real charge at burnout (booster
- * motors use it to separate stages or light the next motor), kept apart from plugged (no charge), as OpenRocket does;
- * catalog placeholders of 60 s or more are left out
  */
 export function mdStock(m) {
   const p = String((m && m.delays) || "")
@@ -158,12 +154,11 @@ export function mdStock(m) {
   };
 }
 /**
- * After a motor change: moves a stock delay to the nearest one the new motor offers (see the note above).
+ * After a motor change: moves a stock delay of the old motor to the nearest one the new motor offers (see the note
+ * above); plugged and custom times stay.
  * @param {string} tg
  * @param {object} oldM
  * @param {object} newM
- *
- * a new motor: a stock delay of the old motor moves to the nearest one the new motor offers; plugged and custom times stay
  */
 export function mdSnap(tg, oldM, newM) {
   if (!oldM || !newM || oldM.id === newM.id) return;
@@ -287,10 +282,8 @@ function mdRenderExtra(tg) {
   });
 }
 /**
- * Where each stage sits along the stack, for the side view.
+ * Where each stage sits along the stack, for the Motor tab's side view of the stages (the one being chosen is shaded).
  * @returns {Array[]} [target, from, to] in m from the nose tip
- *
- * the Motor tab's side view of the stages, with the one being chosen shaded
  */
 function mtargetRanges() {
   const L0 = D.length,

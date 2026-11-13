@@ -20,8 +20,6 @@ export async function inflate(bytes, format) {
  * Lists the files in a .zip archive from its central directory.
  * @param {ArrayBuffer} buf
  * @returns {Promise<{name:string, read:function():Promise<Uint8Array>}[]>}
- *
- * every file in a .zip archive: its name, and a function that unpacks it
  */
 export async function unzipEntries(buf) {
   const u8 = new Uint8Array(buf),
