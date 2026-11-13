@@ -25,6 +25,7 @@ import {
   bldOvOn,
   bldPts,
   bldRailLug,
+  bldRodFor,
 } from "./model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
@@ -657,12 +658,8 @@ function bldWire(el, p, mode, si) {
           const R = BLD_ROD_LUG[inp.value];
           if (R) {
             if (p.mat === "Delrin") p.mat = "Cardboard";
-            // too small for the rod, or (for a 1/8 rod) big enough for a 3/16 rod and so loose on this one
-            if (
-              !((p.id_ || 0) >= R.rod + 0.0003) ||
-              (inp.value === "rod18" && (p.id_ || 0) >= BLD_ROD_LUG.rod316.rod + 0.0003)
-            )
-              Object.assign(p, { id_: R.id, od: R.od });
+            // too small for the rod, or big enough for the next larger rod and so loose on this one
+            if (bldRodFor(p.id_) !== inp.value) Object.assign(p, { id_: R.id, od: R.od });
           } else {
             // a rail slider the size of that rail's button
             const P = BLD_BUTTONS[inp.value.slice(1)];

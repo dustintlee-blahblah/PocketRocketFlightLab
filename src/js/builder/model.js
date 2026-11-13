@@ -458,31 +458,52 @@ export function bldMountMM(k) {
 export const BLD_LUG_KINDS = [
   ["rod18", "1/8 Rod"],
   ["rod316", "3/16 Rod"],
+  ["rod14", "1/4 Rod"],
+  ["rod516", "5/16 Rod"],
+  ["rod38", "3/8 Rod"],
+  ["rod12", "1/2 Rod"],
   ["r1010", "1010 Rail"],
   ["r1515", "1515 Rail"],
 ];
 /**
- * Each rod's diameter, and the usual lug for it (inside and outside diameter) (m).
+ * Each launch rod, smallest first: its diameter, its name, and the usual lug for it (inside and outside diameter, a
+ * little over the rod) (m). 1/8 and 3/16 in rods fly small and larger low-power rockets, 1/4 in mid power, and 5/16
+ * to 1/2 in the high-power rockets still flown from rods.
  */
 export const BLD_ROD_LUG = {
-  rod18: { rod: 0.003175, id: 0.0042, od: 0.005 },
-  rod316: { rod: 0.0047625, id: 0.0057, od: 0.0066 },
+  rod18: { rod: 0.003175, name: "1/8 in rod", id: 0.0042, od: 0.005 },
+  rod316: { rod: 0.0047625, name: "3/16 in rod", id: 0.0057, od: 0.0066 },
+  rod14: { rod: 0.00635, name: "1/4 in rod", id: 0.0072, od: 0.0081 },
+  rod516: { rod: 0.0079375, name: "5/16 in rod", id: 0.0089, od: 0.0099 },
+  rod38: { rod: 0.009525, name: "3/8 in rod", id: 0.0105, od: 0.0117 },
+  rod12: { rod: 0.0127, name: "1/2 in rod", id: 0.0138, od: 0.0152 },
 };
+/**
+ * The largest rod a lug's inside diameter clears (with 0.3 mm to spare), or the smallest rod when it clears none.
+ * @param {number} id inside diameter (m)
+ * @returns {string} a key of BLD_ROD_LUG
+ */
+export function bldRodFor(id) {
+  const keys = Object.keys(BLD_ROD_LUG);
+  let best = keys[0];
+  for (const r of keys) if ((id || 0) >= BLD_ROD_LUG[r].rod + 0.0003) best = r;
+  return best;
+}
 /**
  * A lug's type: the one chosen (kind), or when the file doesn't say (a lug saved before lug types, from RockSim, or a
  * rail lug re-saved by OpenRocket, which drops the app's tag) read from its size. A solid lug (no hole) can only be a
  * rail guide (older OpenRocket designs draw rail buttons that way): a 1515 one if it is taller than halfway between the
- * two buttons' heights, otherwise a 1010. Any other lug is for a 3/16 rod if it clears one, otherwise a 1/8 rod. A
- * lug whose type is only read from its size keeps the file's shape and drag; the type is used to check it against
- * the pad.
+ * two buttons' heights, otherwise a 1010. Any other lug is taken as made for the largest rod it
+ * slides over (1/8 in when it clears none). A lug whose type is only read from its size keeps the file's shape and
+ * drag; the type is used to check it against the pad.
  * @param {object} k the lug (od, id_ in m)
- * @returns {string} rod18, rod316, r1010 or r1515
+ * @returns {string} a key of BLD_ROD_LUG (rod18 … rod12), r1010 or r1515
  */
 export function bldLugKind(k) {
   if (k && BLD_LUG_KINDS.some(([v]) => v === k.kind)) return k.kind;
   if (k && k.od > 0 && !((k.id_ || 0) > 0.0005))
     return k.od > (BLD_BUTTONS["1010"].h + BLD_BUTTONS["1515"].h) / 2 ? "r1515" : "r1010";
-  return (k && k.id_) >= BLD_ROD_LUG.rod316.rod + 0.0003 ? "rod316" : "rod18";
+  return bldRodFor(k && k.id_);
 }
 /**
  * A rail-type lug's size: width and height above the body (those of the rail's button), or null for a rod lug.

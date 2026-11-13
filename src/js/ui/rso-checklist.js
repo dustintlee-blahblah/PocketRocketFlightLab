@@ -3,7 +3,7 @@
  * chart series.
  */
 import { BLD } from "../builder/builder-ui.js";
-import { bldLugKind } from "../builder/model.js";
+import { BLD_ROD_LUG, bldLugKind } from "../builder/model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { curBoost, curMotor, L, mstats, PROFILE } from "../design/defaults.js";
@@ -104,8 +104,7 @@ export function padGuideCheck(rt, launch) {
           "The design has no launch lug, rail buttons or fly-away rail guide. Add the ones the rocket has in the builder, or set the rail type to Launch tower.",
         ];
   const pad = {
-    rod18: ["1/8 in rod", 0.003175],
-    rod316: ["3/16 in rod", 0.0047625],
+    ...Object.fromEntries(Object.entries(BLD_ROD_LUG).map(([k, v]) => [k, [v.name, v.rod]])),
     r1010: ["1010 rail", "1010"],
     r1515: ["1515 rail", "1515"],
   }[rt];
@@ -141,7 +140,7 @@ export function padGuideCheck(rt, launch) {
       return [
         "bad",
         pad[0],
-        `The launch lug is set for a ${rt === "rod18" ? "3/16 in" : "1/8 in"} rod, not a ${pad[0]}. Use the matching rod, or change the lug's type.`,
+        `The launch lug is set for a ${[...new Set(rodLugs.map((l) => (BLD_ROD_LUG[bldLugKind(l)] || {}).name))].join(" and ")}, not a ${pad[0]}. Use the matching rod, or change the lug's type.`,
       ];
     const ok = mine.filter((l) => (l.id_ || 0) >= d + 0.0003);
     return ok.length
