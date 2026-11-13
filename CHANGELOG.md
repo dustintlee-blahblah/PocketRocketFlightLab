@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 297 (2026-11-12)
+
+**Rocket builder**
+- **Three types of launch lug**: Launch Lug - Rod Type (a tube over a rod, as before and the default), Launch Lug - 1010 Rail and Launch Lug - 1515 Rail (a solid slider that rides in the rail's slot, as tall and wide as that rail's button). A rail lug's drag is a long box's (Hoerner) on its width × height. Saved in the .ork file (OpenRocket sees a solid lug of the same height).
+
+**Launch and RSO Checklist**
+- **Each lug flies only from its own rod or rail**: a rod-type lug from a rod its inside diameter clears, a 1010 rail lug from a 1010 rail, a 1515 rail lug from a 1515 rail. Rail buttons are checked against the rail the same way. Launch warns, and the RSO Checklist's rail fit item says what doesn't match.
+
 ## Build 296 (2026-11-12)
 
 **Results**
