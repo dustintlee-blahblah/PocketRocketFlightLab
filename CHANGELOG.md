@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 300 (2026-11-13)
+
+**Motors**
+- **Every motor in OpenRocket's motor database**: the built-in list is rebuilt from the database OpenRocket downloads and flies (version 20260920070751), replacing the old AeroTech, Cesaroni, Loki and Estes list. 1,127 motors from 27 makers (AeroTech 319, Cesaroni 310, AMW 87, Contrail 67, Loki 63, Gorilla 52, Hypertek 47, Kosdon 30, Estes 25, Ellis Mountain 24, Quest 19, Sky Ripper 17, Apogee 12 and 14 more), up from 1,029 from 4. The RASAero list's repeats of ThrustCurve.org motors under other names are left out, so each motor is listed once. Every motor of the old list is in the new one, so saved designs keep their motor; 108 use a different curve now (the one closest to the certified figures in today's data), 15 of them AeroTech motors that changed total impulse by more than 2% (the most the F62T, −11.5%, and F50T, +11%).
+- **The manufacturer filter is back** on the Motor tab, makers with the most motors first. (Since the move to modules it read the brand list before the motors were loaded, so it showed only All.) The motor system filter adds "Reload" for other makers' reloads.
+- **OpenRocket's maker codes** in older .ork and RASP files: "E" Estes, "A" AeroTech (it meant Apogee here before; Apogee is "AP"), "Q" Quest, "H" Hypertek, "K" Kosdon, and the rest. A file naming its motor by maker code now finds that maker's motor.
+
 ## Build 299 (2026-11-12)
 
 **Rocket builder**
