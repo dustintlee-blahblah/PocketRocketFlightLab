@@ -306,7 +306,7 @@ function renderStaging(st, S) {
  *
  * the stage figures, grouped by stage in flight order
  */
-function stageGroups(st, SU) {
+export function stageGroups(st, SU) {
   const T = stageTiles(st, SU),
     by = (...names) => T.filter((r) => names.some((n) => r[0].startsWith(n)));
   const g = {};
@@ -523,7 +523,7 @@ export function noseWeightText(w) {
     ? `${fmt(w, "smass")} ${uname("smass")} of nose weight`
     : "more than nose weight alone can give (larger fins or a longer body)";
 }
-function resultGroups(st, S) {
+export function resultGroups(st, S) {
   const RS = lastSim || {},
     altAt = (t) => (RS.out && RS.out.t.length ? Math.max(0, animAt(RS.out.t, RS.out.alt, t)) : null),
     spd = (v) => (v != null ? fmt(v, "speed") : "—");
@@ -554,9 +554,20 @@ function resultGroups(st, S) {
     ["Liftoff weight", fmt(st.liftMass, "mass"), uname("mass")],
     ["Thrust-to-weight (avg)", st.avgTtw.toFixed(1), ": 1"],
     [
+      st.staged ? "Time to sustainer burnout" : "Time to burnout",
+      st.tb != null && !st.ignAfterApogee && !st.ignLocked ? st.tb.toFixed(2) : "—",
+      "s",
+    ],
+    [
       st.staged ? "Sustainer burnout altitude" : "Burnout altitude",
       st.burnAlt != null ? fmt(st.burnAlt, "alt") : "—",
       uname("alt"),
+    ],
+    // from burnout to apogee; 0 when the motor is still burning at apogee
+    [
+      "Coast time to apogee",
+      st.tApo && st.tb != null && !st.ignAfterApogee && !st.ignLocked ? Math.max(0, st.tApo - st.tb).toFixed(1) : "—",
+      "s",
     ],
     ["Time to apogee", st.tApo ? st.tApo.toFixed(1) : "—", "s"],
     [
@@ -622,16 +633,12 @@ function resultGroups(st, S) {
       st.tumble ? "Tumbles" : st.maxAoA != null ? st.maxAoA.toFixed(1) : "0.0",
       st.tumble ? "" : "°",
     ],
-    // roll, when the fins are canted (or anything else spins it)
-    ...(st.maxRoll > 0.05
-      ? [
-          [
-            "Max roll rate",
-            ((st.maxRoll * 60) / (2 * Math.PI)).toFixed(0),
-            `rpm · ${(st.maxRoll / (2 * Math.PI)).toFixed(1)} rev/s`,
-          ],
-        ]
-      : []),
+    // roll: from canted fins, a crooked fin or anything else that spins it (0 for a rocket that doesn't roll)
+    [
+      "Max roll rate",
+      (((st.maxRoll || 0) * 60) / (2 * Math.PI)).toFixed(0),
+      `rpm · ${((st.maxRoll || 0) / (2 * Math.PI)).toFixed(1)} rev/s`,
+    ],
     ...(st.flutter && st.maxMach > 0.5
       ? [
           [
@@ -704,15 +711,6 @@ function resultGroups(st, S) {
     ["Recovery", recovery],
     ["Descent and landing", descent],
   ].filter(([, t]) => t.length);
-}
-/**
- * The main results tiles, all groups in order: [label, value, unit].
- * @param {object} st
- * @param {object} S
- * @returns {Array[]}
- */
-export function resultTiles(st, S) {
-  return resultGroups(st, S).flatMap(([, t]) => t);
 }
 
 /**

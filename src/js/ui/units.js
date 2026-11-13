@@ -106,6 +106,16 @@ export function start() {
  * @returns {string} HTML
  */
 export function speedAlso(v, u) {
+  const s = speedAlsoText(v, u);
+  return s ? `<div class="k also">${s}</div>` : "";
+}
+/**
+ * The same as speedAlso, as plain text ("322 mph"), for the PDF report. Empty when there is nothing to add.
+ * @param {string} v the value as shown
+ * @param {string} u its unit text
+ * @returns {string}
+ */
+export function speedAlsoText(v, u) {
   const su = uname("speed");
   if (typeof u !== "string" || !(u === su || u.startsWith(su + " "))) return "";
   const t = String(v).trim().replace(/,/g, "");
@@ -113,5 +123,5 @@ export function speedAlso(v, u) {
   const x = parseFloat(t),
     [y, n] = su === "ft/s" ? [x * (3600 / 5280), "mph"] : su === "m/s" ? [x * 3.6, "km/h"] : [NaN, ""];
   if (!isFinite(y)) return "";
-  return `<div class="k also">${Math.abs(y) < 10 ? y.toFixed(1) : Math.round(y).toLocaleString("en-US")} ${n}</div>`;
+  return `${Math.abs(y) < 10 ? y.toFixed(1) : Math.round(y).toLocaleString("en-US")} ${n}`;
 }

@@ -16,9 +16,10 @@ import { airInertia } from "../physics/simulate.js";
 import { fullStack, isThree } from "../physics/staging.js";
 import { chartEvents, niceTicks } from "../ui/charts.js";
 import { supNote } from "../ui/donate.js";
-import { compass, driftDir, lastSim, resultTiles } from "../ui/results.js";
+import { TGT_NAME } from "../ui/motor-tab.js";
+import { compass, driftDir, lastSim, resultGroups, stageGroups } from "../ui/results.js";
 import { CERT_NAME, resultFlags, windRows } from "../ui/rso-checklist.js";
-import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
+import { fmt, fromDisp, speedAlsoText, toDisp, uname } from "../ui/units.js";
 /* ---------- PDF flight report ---------- */
 /**
  * How files are saved here: an object with save({filename, data}) that resolves with {status}.
@@ -564,40 +565,116 @@ function buildReportPdf() {
     );
     y += 16;
   }
-  // ---- stats grid
-  const tiles = resultTiles(st, SL);
-  const cols = 3,
-    cw = CW / cols,
-    rh = 34,
-    rows = Math.ceil(tiles.length / cols);
-  col(C.line, "draw");
-  doc.setLineWidth(0.6);
-  tiles.forEach(([k, v, u], i) => {
-    const cx = MX + (i % cols) * cw,
-      cy = y + Math.floor(i / cols) * rh;
-    col(C.field, "fill");
-    doc.rect(cx, cy, cw, rh, "FD");
-    font("normal", 8);
-    col(C.muted);
-    T(k, cx + 8, cy + 12);
-    font("bold", 12);
-    col(C.ink);
-    T(`${v}${u ? " " + u.trim() : ""}`, cx + 8, cy + 27);
-  });
-  y += rows * rh + 18;
+  // ---- stats: every figure the Results tab shows, in its sections, three to a row. A tile is as tall as its
+  // longest neighbour needs: the title, the value with its unit and notes (wrapped to the tile), and the speed in
+  // mph or km/h under a speed. The staging figures follow, one section per stage, for a staged flight.
+  {
+    const cols = 3,
+      cw = CW / cols,
+      pad = 8,
+      inner = cw - 2 * pad;
+    /** The lines of one tile: [title lines, value, first unit line (beside the value), further unit lines, extra]. */
+    const lay = ([k, v, u]) => {
+      font("normal", 8);
+      const tl = doc.splitTextToSize(pdfSafe(k), inner);
+      font("bold", 12);
+      const vs = pdfSafe(String(v)),
+        vw = doc.getTextWidth(vs) + 3;
+      font("normal", 9);
+      const words = pdfSafe(String(u || "").trim())
+        .split(/\s+/)
+        .filter(Boolean);
+      let first = "";
+      while (words.length && doc.getTextWidth((first ? first + " " : "") + words[0]) <= inner - vw)
+        first = (first ? first + " " : "") + words.shift();
+      // the value alone is too wide for its unit: the unit starts on the next line
+      const rest = words.length ? doc.splitTextToSize(words.join(" "), inner) : [];
+      const also = speedAlsoText(v, u);
+      return { tl, vs, vw, first, rest, also, h: tl.length * 10 + 26 + rest.length * 11 + (also ? 10 : 0) };
+    };
+    const section = (title, rows) => {
+      if (!rows.length) return;
+      const L = rows.map(lay),
+        rowH = [];
+      for (let i = 0; i < L.length; i += cols) rowH.push(Math.max(...L.slice(i, i + cols).map((t) => t.h)));
+      // keep a section's heading with its first row
+      if (y + 16 + rowH[0] > PH - 50) {
+        doc.addPage();
+        y = 50;
+      }
+      font("bold", 8);
+      col(C.muted);
+      T(title.toUpperCase(), MX, y + 8);
+      y += 13;
+      col(C.line, "draw");
+      doc.setLineWidth(0.6);
+      for (let r = 0; r < rowH.length; r++) {
+        if (y + rowH[r] > PH - 50) {
+          doc.addPage();
+          y = 50;
+        }
+        for (let c = 0; c < cols; c++) {
+          const t = L[r * cols + c],
+            cx = MX + c * cw;
+          col(C.field, "fill");
+          doc.rect(cx, y, cw, rowH[r], "FD");
+          if (!t) continue;
+          let ty = y + 10;
+          font("normal", 8);
+          col(C.muted);
+          t.tl.forEach((ln) => {
+            T(ln, cx + pad, ty);
+            ty += 10;
+          });
+          ty += 6;
+          font("bold", 12);
+          col(C.ink);
+          T(t.vs, cx + pad, ty);
+          font("normal", 9);
+          col(C.muted);
+          if (t.first) T(t.first, cx + pad + t.vw, ty);
+          t.rest.forEach((ln) => {
+            ty += 11;
+            T(ln, cx + pad, ty);
+          });
+          if (t.also) {
+            ty += 10;
+            font("normal", 8);
+            T(t.also, cx + pad, ty);
+          }
+        }
+        y += rowH[r];
+      }
+      y += 8;
+    };
+    resultGroups(st, SL).forEach(([g, rows]) => section(g, rows));
+    if (st.staged) {
+      const G = stageGroups(st, SL);
+      Object.keys(G).forEach((k) => section(`Staging: ${TGT_NAME[k] || k}`, G[k]));
+    }
+    y += 8;
+  }
   // ---- flags
   const flags = resultFlags(st, SL, m, RD);
   if (flags.length) {
+    if (y + 40 > PH - 50) {
+      doc.addPage();
+      y = 50;
+    }
     font("bold", 10);
     col(C.ink);
     T("Checks", MX, y);
     y += 14;
     flags.forEach(([c, t]) => {
+      font("normal", 9.5);
+      const lines = doc.splitTextToSize(pdfSafe(t), CW - 16);
+      if (y + lines.length * 12 > PH - 50) {
+        doc.addPage();
+        y = 50;
+      }
       col(C[c] || C.ink, "fill");
       doc.circle(MX + 4, y - 3.5, 3, "F");
-      font("normal", 9.5);
       col(C.ink);
-      const lines = doc.splitTextToSize(pdfSafe(t), CW - 16);
       doc.text(lines, MX + 14, y);
       y += lines.length * 12 + 2;
     });
