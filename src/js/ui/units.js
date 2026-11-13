@@ -98,3 +98,20 @@ export function start() {
     },
   };
 }
+/**
+ * A result tile's speed in everyday units: under a value shown in ft/s or m/s, the same speed in mph or km/h, as a
+ * small grey line like the tile's title. Empty for anything that isn't one plain speed.
+ * @param {string} v the value as shown
+ * @param {string} u its unit text (may carry a note after the unit)
+ * @returns {string} HTML
+ */
+export function speedAlso(v, u) {
+  const su = uname("speed");
+  if (typeof u !== "string" || !(u === su || u.startsWith(su + " "))) return "";
+  const t = String(v).trim().replace(/,/g, "");
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return "";
+  const x = parseFloat(t),
+    [y, n] = su === "ft/s" ? [x * (3600 / 5280), "mph"] : su === "m/s" ? [x * 3.6, "km/h"] : [NaN, ""];
+  if (!isFinite(y)) return "";
+  return `<div class="k also">${Math.abs(y) < 10 ? y.toFixed(1) : Math.round(y).toLocaleString("en-US")} ${n}</div>`;
+}

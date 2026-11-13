@@ -21,7 +21,7 @@ import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender, supRender } from "./donate.js";
 import { TGT_NAME } from "./motor-tab.js";
 import { renderRSO, renderWindTable, resultFlags } from "./rso-checklist.js";
-import { fmt, fromDisp, uname } from "./units.js";
+import { fmt, fromDisp, speedAlso, uname } from "./units.js";
 /* ---------- rendering ---------- */
 /**
  * The last run: {st, out, S, m, mb, D, L, windTable, ...}, or null when results are out of date.
@@ -139,7 +139,10 @@ export function renderResults() {
     .map(
       ([g, t]) =>
         `<div class="statgrp"><div class="stath">${g}</div><div class="stats">${t
-          .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
+          .map(
+            ([k, v, u]) =>
+              `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div>${speedAlso(v, u)}</div>`,
+          )
           .join("")}</div></div>`,
     )
     .join("");
@@ -289,7 +292,10 @@ function renderStaging(st, S) {
       }),
   );
   document.getElementById("stagestats").innerHTML = G[stageView]
-    .map(([k, v, u]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div></div>`)
+    .map(
+      ([k, v, u]) =>
+        `<div class="stat"><div class="k">${k}</div><div class="v">${v}<i>${u}</i></div>${speedAlso(v, u)}</div>`,
+    )
     .join("");
 }
 /**
