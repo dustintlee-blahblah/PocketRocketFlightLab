@@ -655,15 +655,10 @@ export function parseOrk(xml, opts = {}) {
       const cnt = Math.max(1, num(c, "instancecount", 1));
       m = rho * Math.PI * (ro * ro - ri * ri) * len * cnt;
       // a rail-type lug (this app's): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail
+      // a rail-type lug the app saved (tagged): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail. An
+      // untagged solid lug keeps the file's own shape (a solid cylinder), as OpenRocket flies it
       const tagged = (txt(c, "prfllug") || "").trim(),
-        // a solid lug with no tag: a rail lug that OpenRocket re-saved without the app's tag (see bldLugKind)
-        rail = ["r1010", "r1515"].includes(tagged)
-          ? tagged
-          : !tagged && !(ri > 0.0005)
-            ? 2 * ro > (0.0097 + 0.0127) / 2
-              ? "r1515"
-              : "r1010"
-            : "";
+        rail = ["r1010", "r1515"].includes(tagged) ? tagged : "";
       lugs.push({
         x,
         ro,

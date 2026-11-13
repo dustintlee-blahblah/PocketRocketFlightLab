@@ -9,7 +9,6 @@ import {
   BLD_SURF,
   bldBodyR,
   bldId,
-  bldLugKind,
   bldMounts,
   bldNew,
   bldPts,
@@ -516,13 +515,14 @@ export function bldFromOrk(xml, info) {
             case "launchlug":
               Object.assign(k, {
                 type: "lug",
-                kind: (txt(e, "prfllug") || "").trim(),
+                // its type, when the app saved it; otherwise it is read from its size (bldLugKind) when needed
+                ...((txt(e, "prfllug") || "").trim() ? { kind: txt(e, "prfllug").trim() } : {}),
+                ...(num(e, "prfllugw") > 0 ? { w: num(e, "prfllugw") } : {}),
                 od: 2 * num(e, "radius"),
                 id_: Math.max(2 * (num(e, "radius") - num(e, "thickness")), 0),
                 len: num(e, "length"),
                 dir: num(e, "radialdirection"),
               });
-              k.kind = bldLugKind(k); // a lug saved before lug types: its type from its size
               break;
             case "railbutton": {
               const d = {

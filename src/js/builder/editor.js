@@ -8,6 +8,7 @@ import { BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from 
 import {
   BLD_BODY,
   BLD_BULK,
+  BLD_BUTTONS,
   BLD_FINISH,
   BLD_LINE,
   BLD_LUG_KINDS,
@@ -17,11 +18,13 @@ import {
   bldBodyR,
   bldId,
   bldLayout,
+  bldLugKind,
   bldMountMM,
   bldMounts,
   bldNew,
   bldOvOn,
   bldPts,
+  bldRailLug,
 } from "./model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
@@ -375,7 +378,11 @@ export function bldRenderEdit() {
             ? p.mm && p.mm.delay
             : key === "mmOverhang"
               ? p.mm && p.mm.overhang
-              : p[key];
+              : key === "kind" && p.type === "lug"
+                ? bldLugKind(p) // a lug from a file that doesn't say: its type read from its size
+                : key === "w" && p.type === "lug"
+                  ? (bldRailLug(p) || {}).w
+                  : p[key];
     h += bldFieldHtml(
       {
         key,
@@ -629,7 +636,11 @@ function bldWire(el, p, mode, si) {
               (inp.value === "rod18" && (p.id_ || 0) >= BLD_ROD_LUG.rod316.rod + 0.0003)
             )
               Object.assign(p, { id_: R.id, od: R.od });
-          } else p.mat = "Delrin";
+          } else {
+            // a rail slider the size of that rail's button
+            const P = BLD_BUTTONS[inp.value.slice(1)];
+            Object.assign(p, { mat: "Delrin", od: P.h, id_: 0, w: P.od });
+          }
           if (!p.name || /^launch lug( \(.*\))?$/i.test(p.name) || /^launch lug - /i.test(p.name))
             p.name = `Launch lug (${(BLD_LUG_KINDS.find((x) => x[0] === inp.value) || [])[1]})`;
         }

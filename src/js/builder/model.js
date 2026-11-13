@@ -470,9 +470,12 @@ export const BLD_ROD_LUG = {
   rod316: { rod: 0.0047625, id: 0.0057, od: 0.0066 },
 };
 /**
- * A lug's type when the file doesn't say (a lug saved before lug types, from RockSim, or a rail lug re-saved by
- * OpenRocket, which drops the app's tag): read from its size. A solid lug (no hole) can only be a rail lug, written
- * as one as tall as its rail's button; any other lug is for a 3/16 rod if it clears one, otherwise a 1/8 rod.
+ * A lug's type: the one chosen (kind), or when the file doesn't say (a lug saved before lug types, from RockSim, or a
+ * rail lug re-saved by OpenRocket, which drops the app's tag) read from its size. A solid lug (no hole) can only be a
+ * rail guide (older OpenRocket designs draw rail buttons that way): a 1515 one if it is taller than halfway between the
+ * two buttons' heights, otherwise a 1010. Any other lug is for a 3/16 rod if it clears one, otherwise a 1/8 rod. A
+ * lug whose type is only read from its size keeps the file's shape and drag; the type is used to check it against
+ * the pad.
  * @param {object} k the lug (od, id_ in m)
  * @returns {string} rod18, rod316, r1010 or r1515
  */
@@ -488,8 +491,10 @@ export function bldLugKind(k) {
  * @returns {{w:number, h:number}|null}
  */
 export function bldRailLug(k) {
-  const P = k && (k.kind === "r1010" || k.kind === "r1515") ? BLD_BUTTONS[k.kind.slice(1)] : null;
-  return P ? { w: P.od, h: P.h } : null;
+  const t = k ? bldLugKind(k) : "",
+    P = t === "r1010" || t === "r1515" ? BLD_BUTTONS[t.slice(1)] : null;
+  // its own height (od) and width when it has them: a rail lug read from a file keeps the file's size
+  return P ? { w: k.w > 0 ? k.w : P.od, h: k.od > 0 ? k.od : P.h } : null;
 }
 export const BLD_BUTTONS = {
   1010: { od: 0.0102, id: 0.0064, h: 0.0097, fl: 0.0021, bs: 0.0021, label: "1010 (small)" },

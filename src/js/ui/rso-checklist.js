@@ -123,7 +123,7 @@ export function padGuideCheck(rt, launch) {
     railLugs = lugs.filter((l) => !bldLugKind(l).startsWith("rod")),
     railSz = [
       ...btns.map((b) => (b.size === "custom" && b.dims ? (b.dims.od > 0.013 ? "1515" : "1010") : b.size)),
-      ...railLugs.map((l) => l.kind.slice(1)),
+      ...railLugs.map((l) => bldLugKind(l).slice(1)),
     ];
   if (rt.startsWith("rod")) {
     const d = pad[1];

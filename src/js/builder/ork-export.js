@@ -8,7 +8,6 @@ import {
   BLD_SURF,
   bldId,
   bldLayout,
-  bldLugKind,
   bldMountR,
   bldOvOn,
   bldPts,
@@ -175,10 +174,10 @@ export function bldToOrk(model, L, opts = {}) {
       case "lug": {
         // a rail-type lug is written as a solid lug as tall as the slider (OpenRocket has no rail lug); prfllug keeps
         // its kind and prfllugw its width for this app
-        const RL = bldRailLug(k);
+        const RL = k.kind ? bldRailLug(k) : null; // only a type that was chosen here is written as one
         if (RL)
           return `<launchlug>${head(k)}${fin(k)}${bulk(k)}<radialdirection>${n(k.dir || 0)}</radialdirection><radius>${n(RL.h / 2)}</radius><thickness>${n(RL.h / 2)}</thickness><length>${n(k.len)}</length><prfllug>${k.kind}</prfllug><prfllugw>${n(RL.w)}</prfllugw></launchlug>`;
-        return `<launchlug>${head(k)}${fin(k)}${bulk(k)}<radialdirection>${n(k.dir || 0)}</radialdirection><radius>${n(k.od / 2)}</radius><thickness>${n(Math.max((k.od - k.id_) / 2, 1e-4))}</thickness><length>${n(k.len)}</length><prfllug>${bldLugKind(k)}</prfllug></launchlug>`;
+        return `<launchlug>${head(k)}${fin(k)}${bulk(k)}<radialdirection>${n(k.dir || 0)}</radialdirection><radius>${n(k.od / 2)}</radius><thickness>${n(Math.max((k.od - k.id_) / 2, 1e-4))}</thickness><length>${n(k.len)}</length>${k.kind ? `<prfllug>${k.kind}</prfllug>` : ""}</launchlug>`;
       }
       case "buttons": {
         const P = k.size === "custom" && k.dims ? k.dims : BLD_BUTTONS[k.size] || BLD_BUTTONS["1010"];
