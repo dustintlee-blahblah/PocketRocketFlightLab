@@ -655,7 +655,15 @@ export function parseOrk(xml, opts = {}) {
       const cnt = Math.max(1, num(c, "instancecount", 1));
       m = rho * Math.PI * (ro * ro - ri * ri) * len * cnt;
       // a rail-type lug (this app's): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail
-      const rail = ["r1010", "r1515"].includes((txt(c, "prfllug") || "").trim()) ? txt(c, "prfllug").trim() : "";
+      const tagged = (txt(c, "prfllug") || "").trim(),
+        // a solid lug with no tag: a rail lug that OpenRocket re-saved without the app's tag (see bldLugKind)
+        rail = ["r1010", "r1515"].includes(tagged)
+          ? tagged
+          : !tagged && !(ri > 0.0005)
+            ? 2 * ro > (0.0097 + 0.0127) / 2
+              ? "r1515"
+              : "r1010"
+            : "";
       lugs.push({
         x,
         ro,
@@ -664,7 +672,7 @@ export function parseOrk(xml, opts = {}) {
         n: cnt,
         si: curStage,
         cdo: odc(c),
-        ...(rail ? { rail, w: num(c, "prfllugw", 2 * ro) } : {}),
+        ...(rail ? { rail, w: num(c, "prfllugw", rail === "r1515" ? 0.0157 : 0.0102) } : {}),
       });
     } else if (tag === "railbutton") {
       const od = num(c, "outerdiameter", 0.0097),

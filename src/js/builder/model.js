@@ -470,12 +470,16 @@ export const BLD_ROD_LUG = {
   rod316: { rod: 0.0047625, id: 0.0057, od: 0.0066 },
 };
 /**
- * A lug's type: one saved before lug types were named is read from its size (a 1/8 rod lug unless it clears 3/16).
- * @param {object} k the lug
+ * A lug's type when the file doesn't say (a lug saved before lug types, from RockSim, or a rail lug re-saved by
+ * OpenRocket, which drops the app's tag): read from its size. A solid lug (no hole) can only be a rail lug, written
+ * as one as tall as its rail's button; any other lug is for a 3/16 rod if it clears one, otherwise a 1/8 rod.
+ * @param {object} k the lug (od, id_ in m)
  * @returns {string} rod18, rod316, r1010 or r1515
  */
 export function bldLugKind(k) {
   if (k && BLD_LUG_KINDS.some(([v]) => v === k.kind)) return k.kind;
+  if (k && k.od > 0 && !((k.id_ || 0) > 0.0005))
+    return k.od > (BLD_BUTTONS["1010"].h + BLD_BUTTONS["1515"].h) / 2 ? "r1515" : "r1010";
   return (k && k.id_) >= BLD_ROD_LUG.rod316.rod + 0.0003 ? "rod316" : "rod18";
 }
 /**
