@@ -642,11 +642,17 @@ async function flFit() {
     store.set("rfs-design", D);
     runAll();
     const pct = (k - 1) * 100;
-    prToast(
-      Math.abs(pct) > 35
-        ? `Calibrated: drag ×${k.toFixed(2)}. That's a large change, so double-check the weights, motors and conditions.`
-        : `Calibrated: drag ×${k.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%)`,
-    );
+    if (Math.abs(pct) > 35) {
+      // a large change: a window that stays until OK is pressed (a toast goes by before it can be read)
+      const box = document.getElementById("calwarn");
+      document.getElementById("calwarntxt").textContent =
+        `Calibrated: drag ×${k.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%). That's a large change, so double-check the weights, motors and conditions.`;
+      document.getElementById("calwarnok").onclick = () => {
+        box.hidden = true;
+      };
+      box.hidden = false;
+      document.getElementById("calwarnok").focus();
+    } else prToast(`Calibrated: drag ×${k.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%)`);
   } finally {
     flFitBusy = false;
     renderFlightLog();
