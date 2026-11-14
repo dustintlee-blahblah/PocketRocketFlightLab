@@ -166,7 +166,7 @@ have no flight history, so they are scored with the skin fully heated (right for
 | Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.8% of length; CNα 16% low on average (10–22% at every Mach number). |
 | Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (check) | NACA RM L56G24, free flight | Drag 7.4% low (the model's instrument fairings, not in the app's design, are part of that); CP 6.0% of length forward. |
 | Slender missile with small tail fins, Mach 0.6–3.95 (check) | NASA TM-2005-213541, configuration 3, wind tunnel (the report's digital data) | Drag less base 6–17% high outside Mach 0.9–1.2; 100% high at Mach 0.9 and 35% at 1.19 (gap 12); CP 3.5–13% of length forward; CNα 4% low at Mach 0.6, 15–28% low above 1. |
-| Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 6.0% (bias +2.2%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.3%). Below Mach 0.8, 4.3%; Mach 0.8–1.2, 6.1%; above 1.2, 7.3%. As true heights: 8.5% and 5.4%. |
+| Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 5.8% (bias +2.1%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.5%). Below Mach 0.8, 3.8%; Mach 0.8–1.2, 6.1%; above 1.2, 7.3%. As true heights: 8.6% and 5.4%. |
 | Nose drag to Mach 2 | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%, worked out before build 288 and not redone. Another program, not a measurement. |
 | Large angles of attack, rounded tips, pods, tube fins, drag above Mach 5 | — | Not checked against measurements. The app says so on any flight that passes Mach 5. |
@@ -187,13 +187,13 @@ standard the same pressure change spans more height, so the altimeter reads low:
 LDRS-26's 100 °F (Featherweight's Raven manual says 10% or more; Nakka's flights with GPS and a barometric altimeter
 side by side show the same). `validation/flights.js` compares those 17 with what the altimeter would have read at
 the simulated apogee, for both the app's and RASAero II's predictions; `--geometric` compares true heights instead.
-As the altimeter reads, the app is 6.0% off with a +2.2% bias and RASAero II 5.2% with −3.3%; as true heights the
-app would be 8.5% (+7.6%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
+As the altimeter reads, the app is 5.8% off with a +2.1% bias and RASAero II 5.2% with −3.5%; as true heights the
+app would be 8.6% (+7.7%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
 that the air aloft is as much warmer than standard as the air at the pad, which is doubtful for Don't Debate This
 (56,000 ft; 14% low on this reading). A well-mixed layer to 3 km above the pad with the standard tropopause, in
 place of a uniform shift, moves the 23 flights by a few tenths of a percent: the result does not hang on the
-profile; that one flight does. What is left below Mach 0.8 is the EZI-65 (+13%, entered at 70 °F where the other
-LDRS-26 flights have 100 °F; at 100 °F it would be about 9%) and Thunder and Lightning (+6%); above it, Raven
+profile; that one flight does. What is left below Mach 0.8 is the EZI-65 (+9%; its file says 70 °F, and it is flown at the
+100 °F of the other six LDRS-26 flights) and Thunder and Lightning (+6%); above it, Raven
 (+22%) and Proteus 6 (+17%, measured by accelerometer).
 
 The Results tab says what a barometric altimeter would read for the predicted apogee when the day's air puts it 2%
@@ -258,12 +258,12 @@ source does not give.
 factor that rocket needs (`validation/drag-factors.js`, as the altimeter reads). The fourteen rockets with beveled or
 square fins need 1.00 on average (0.83 to 1.20), and the seven of them above Mach 1.2 need 1.02: there is no
 general shortfall of drag, at any speed. The nine whose fins are entered as rounded (five sport rockets measured at
-LDRS-26, Blister, Rabia twice and Torrent) need 1.10 on average, from 0.87 to 1.40. The largest single factors:
+LDRS-26, Blister, Rabia twice and Torrent) need 1.09 on average, from 0.87 to 1.40. The largest single factors:
 
 | Flight | Factor | Note |
 |---|---|---|
 | Raven, LDRS-26 (Mach 1.15) | 1.40 | rounded fins |
-| LOC/Precision EZI-65, LDRS-26 | 1.31 | rounded fins; entered at 70 °F where the other LDRS-26 flights have 100 °F |
+| LOC/Precision EZI-65, LDRS-26 | 1.22 | rounded fins |
 | Proteus 6 (Mach 2.95) | 1.20 | boattail; measured by integrated accelerometers |
 | Rabia, Thunder and Lightning, Torrent | 1.14–1.16 | rounded fins |
 | Qu8k (Mach 3.5) | 1.10 | boattail; measured by integrated accelerometer |
@@ -272,8 +272,8 @@ LDRS-26, Blister, Rabia twice and Torrent) need 1.10 on average, from 0.87 to 1.
 
 What was tried:
 
-- Flying the rounded fins as square ones brings their average to 1.01, but not their scatter (0.78 to 1.32): it
-  fixes the EZI-65 (1.04) and overshoots Cancer Descending and Blister (0.78, 0.79), and Raven still needs 1.32.
+- Flying the rounded fins as square ones brings their average to 1.00, but not their scatter (0.78 to 1.32): it
+  fixes the EZI-65 (0.96) and overshoots Cancer Descending and Blister (0.78, 0.79), and Raven still needs 1.32.
   Hand-rounded plywood and fiberglass edges are likely blunter than the model's rounded edge, but these flights
   can't say by how much, and RASAero II is also 6–12% high on four of the LDRS-26 rockets.
 - A 3 mm aluminium wall in place of the placeholder (a skin that stays cooler, so more friction) moves the factors
@@ -328,9 +328,9 @@ ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag
    at every speed while its CP agrees. On NASA TM-2005-213541's configuration 3 it is 4% low at Mach 0.6 and 15–28%
    low above Mach 1, with the CP forward, and RM L56G24's CP is 6% forward too: the fins seem to carry more lift
    than the app gives them, or the body less (see items 4 and 5).
-8. **Rounded and hand-finished fin edges.** The rockets with rounded fins need about 10% more drag than the
+8. **Rounded and hand-finished fin edges.** The rockets with rounded fins need about 9% more drag than the
    model gives them on average, with wide scatter (see "Where the remaining apogee error sits"). The EZI-65 (0.25 in
-   rounded fins, 3.6% of the chord) is 13% high.
+   rounded fins, 3.6% of the chord) is 9% high.
 9. **Very short bevels.** With bevels of about 1% of the chord, as on the Kinsel A-601, linear theory would give
    more drag than a square edge, so each bevel is capped there. How a nearly square bevel really behaves between
    the two is open (the Kinsel A-601 is 4% high).

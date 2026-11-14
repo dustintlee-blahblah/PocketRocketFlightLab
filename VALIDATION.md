@@ -8,7 +8,7 @@ each part of the model to its source and to these checks.
 **Build 288 changed the drag model.** The drag and apogee figures on this page were worked out with the model before
 it and have not all been redone (that model was removed in build 303; the `v1.0-build302` tag is the last that can
 run it). For the current model against the same measurements, case by case, see "How well each part is checked" in
-[AERODYNAMICS.md](AERODYNAMICS.md); in brief, its apogee error on the 23 measured flights is 6.0%, against 8.3% for
+[AERODYNAMICS.md](AERODYNAMICS.md); in brief, its apogee error on the 23 measured flights is 5.8%, against 8.3% for
 the model before it, both as the altimeters read. The scripts below score the current model. The stability figures
 are unaffected.
 

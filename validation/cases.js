@@ -1318,7 +1318,9 @@ const FLIGHTS = [
     w: 10.06,
     cg: 59.0,
     site: 2750.0,
-    tF: 70.0,
+    // its RASAero II file says 70 °F; the other six LDRS-26 flights, from the same site, all say 100 °F, so that is
+    // taken as the day's temperature here too
+    tF: 100.0,
     rod: 10.0,
     angle: 0.0,
     wind: 0.0,
