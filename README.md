@@ -56,7 +56,7 @@ build.js                            joins src/ into the single page the app ship
 web/                                build output (not in git): the app as one HTML file
 android/                            Android app: a WebView around the same page, built with Gradle
 tests/golden.js                     regression test: proves a change leaves every result the same
-tests/golden-snapshot.json          the recorded results of the built-in examples that `npm test` checks
+tests/golden-snapshot.json          the recorded results (examples and builder designs) that `npm test` checks
 tests/drag-benchmarks.js            the drag model against published NACA measurements
 tests/smoke.js                      clicks through the tabs and controls; fails on any page error or an empty screen
 tests/roundtrip.js                  changes every field of every builder part, saves, reopens and compares
@@ -139,8 +139,10 @@ npm run test:drag
 
 `tests/golden.js` flies the built-in examples (and any `.ork` and `.rkt` files in folders you name) under several conditions, motors and delay settings, and records everything
 the app computes: flight results, stability, RSO Checklist, charge timing, drag and stability
-coefficients, Monte Carlo dispersion, the Results text and the saved `.ork`. Record a snapshot before a
-change, then check against it after:
+coefficients, Monte Carlo dispersion, the Results text and the saved `.ork`. It then makes designs in the builder for
+what the examples don't have (two and three stages, a cluster, each kind of rail guide, a protuberance on one side,
+canted fins, the current drag model, a file whose motor isn't in the list or fits several) and records the motor list.
+Record a snapshot before a change, then check against it after:
 
 ```
 node build.js
@@ -151,7 +153,7 @@ node tests/golden.js check before.json --fixtures path/to/designs
 
 A change meant to leave behavior alone (formatting, comments, refactoring) must pass with no differences.
 
-`npm test` checks the built-in examples against the committed `tests/golden-snapshot.json`. When a change is meant to
+`npm test` checks the built-in examples and the builder designs against the committed `tests/golden-snapshot.json`. When a change is meant to
 alter results (a physics fix, new output), check that the differences are the intended ones, then record the snapshot
 again with `npm run test:record` and commit it with the change, saying in the commit message what changed and why.
 

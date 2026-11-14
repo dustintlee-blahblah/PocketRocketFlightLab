@@ -31,7 +31,7 @@ npx playwright install chromium
 npm test
 ```
 
-`npm test` builds the page and runs the regression test; it should end with `PASS: 40 cases identical`. Open
+`npm test` builds the page and runs the regression test; it should end with `PASS: 54 cases identical`. Open
 `web/pocket-rocket-flight-lab.html` in a browser to use the app you built. For the Android app, see the README.
 
 ## Making a change
