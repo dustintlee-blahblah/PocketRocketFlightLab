@@ -152,6 +152,36 @@ const RM10_PTS = [
   [1.98, 0.255 - 0.149 - 0.004],
 ];
 
+/* Arcas short model: slope of the normal force with angle of attack near zero, per degree, on the body's
+   cross-section. Read off the plotted points of NASA TN D-4013 figure 7(b) (Mach 0.6 to 1.2: the point at about 2°)
+   and TN D-4014 figure 5 (Mach 1.5 to 4.63: the points from about −4° to +4°), fins on at zero deflection and fins
+   off. The reports give no table: the readings are good to about ±0.015 per degree with the fins on, and ±0.01 with
+   them off (a quarter of the value at the low speeds). */
+const ARCAS_CNA_DEG = [
+  [0.6, 0.22],
+  [0.8, 0.207],
+  [0.9, 0.202],
+  [0.95, 0.232],
+  [1.2, 0.283],
+  [1.5, 0.228],
+  [1.8, 0.2],
+  [2.3, 0.172],
+  [2.96, 0.15],
+  [3.96, 0.134],
+  [4.63, 0.13],
+];
+const ARCAS_BODY_CNA_DEG = [
+  [0.6, 0.0365],
+  [0.8, 0.03],
+  [0.9, 0.05],
+  [0.95, 0.054],
+  [1.2, 0.051],
+  [1.5, 0.036],
+  [2.3, 0.045],
+  [2.96, 0.052],
+  [4.63, 0.065],
+];
+
 /* Arcas: measured CP, % of body length from the nose tip, from NASA TN D-4013 (1967), figures 11 and 12 (Mach 0.6–0.9,
    short and long models) and TN D-4014 (1967), figure 7 (short model, Mach 1.5–4.6). */
 const ARCAS = {
@@ -606,6 +636,24 @@ const CASES = [
     quantity: "cp",
     xml: ARCAS.long.xml,
     pts: Object.entries(ARCAS.long.cp).map(([M, v]) => [+M, v / 100]),
+  },
+  {
+    id: "arcas-short-cna",
+    title: "NASA TN D-4013/4014, Arcas short model: normal-force slope",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cna",
+    xml: ARCAS.short.xml,
+    pts: ARCAS_CNA_DEG.map(([M, v]) => [M, (v * 180) / Math.PI]),
+  },
+  {
+    id: "arcas-short-body-cna",
+    title: "NASA TN D-4013/4014, Arcas short model without fins: normal-force slope",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cna",
+    xml: arcasOrk(30.115, 27.925, false),
+    pts: ARCAS_BODY_CNA_DEG.map(([M, v]) => [M, (v * 180) / Math.PI]),
   },
   {
     id: "l55g28a-cd",
