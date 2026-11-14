@@ -272,7 +272,7 @@ graphs, drift by wind speed, landing dispersion, the safety terms).
 | the motor filters | `ui/motor-tab.js`, `motors/catalog-lookup.js` |
 
 After any change: `npm test` (nothing that shouldn't move has moved), `npm run lint`, `npm run format:check`,
-`npm run test:smoke`.
+`npm run test:smoke`; after a change to the builder, a part's fields or the file format, `npm run test:roundtrip` too.
 
 ## The Android app
 
@@ -286,6 +286,12 @@ with the fonts and PDF library switched to bundled copies.
 - `tests/golden.js` opens the built page in headless Chromium, flies designs under several conditions, motors and
   delays, and records everything the app computes. `npm test` compares the built-in examples with
   `tests/golden-snapshot.json`. A change that shouldn't alter results must pass unchanged.
+- `tests/smoke.js` clicks through the tabs and controls. It fails on any page error, and on a screen that comes up
+  empty: the motor makers and motor list, the builder's tree, add-a-part list and drawing, the Range tab's fields, and
+  the result tiles, chart, checklist and wind table.
+- `tests/roundtrip.js` changes every editor field of every builder part through the real input, saves with the app's own
+  save, reopens with its own open, and fails if a field was lost or the flight changed. A new part type goes in `TYPES`
+  at its top; a field that legitimately reads back differently goes in `SAME`, with the reason.
 - `tests/drag-benchmarks.js` compares the drag model with published wind-tunnel and free-flight measurements.
 - `validation/` checks the app against OpenRocket and NASA's Arcas wind-tunnel data; VALIDATION.md has the results.
-- Both run on every push and pull request (`.github/workflows/check.yml`), with lint, formatting and an Android build.
+- The regression, smoke, save-and-reopen and drag tests run on every push and pull request (`.github/workflows/check.yml`), with lint, formatting and an Android build.

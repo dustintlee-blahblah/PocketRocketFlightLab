@@ -546,12 +546,13 @@ export function parseRkt(xml) {
   return r;
 }
 /**
- * Finds a motor in the catalog or the uploaded motors by its file designation and maker (and diameter, if given).
+ * Finds a motor by its file designation and maker (and diameter, if given), and says what else it could have been:
+ * a file that names no maker, or a name several motors share, can fit more than one.
  * @param {{designation:string, mfr:string, dia:number}} mo
- * @returns {object|null}
+ * @returns {{m:object|null, others:object[]}} the motor chosen and the other motors that fit the name equally well
  */
-export function matchMotor(mo) {
-  if (!mo || !mo.designation) return null;
+export function matchMotorAll(mo) {
+  if (!mo || !mo.designation) return { m: null, others: [] };
   const norm = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   const d = norm(mo.designation),
     mf = (mo.mfr || "").toLowerCase();
@@ -572,11 +573,31 @@ export function matchMotor(mo) {
   );
   const dia = mo.dia ? Math.round(mo.dia * 1000) : null;
   const okDia = (m) => !dia || Math.round(m.dia * 1000) === dia;
-  return (
-    pool.find((m) => norm(m.name) === d) ||
-    pool.find((m) => okDia(m) && norm(m.cn) === d) ||
-    pool.find((m) => okDia(m) && (d.startsWith(norm(m.name)) || norm(m.name).startsWith(d))) ||
-    pool.find((m) => okDia(m) && m.cn && new RegExp("(^|\\d)" + norm(m.cn) + "($|[A-Z])").test(d)) ||
-    null
-  );
+  // tried in order, most exact first; the first test that finds anything decides
+  const tiers = [
+    (m) => norm(m.name) === d,
+    (m) => okDia(m) && norm(m.cn) === d,
+    (m) => okDia(m) && (d.startsWith(norm(m.name)) || norm(m.name).startsWith(d)),
+    (m) => okDia(m) && m.cn && new RegExp("(^|\\d)" + norm(m.cn) + "($|[A-Z])").test(d),
+  ];
+  for (const t of tiers) {
+    // of several motors with the name, one in the file's diameter comes first
+    const hits = pool.filter(t).sort((a, b) => okDia(b) - okDia(a));
+    if (!hits.length) continue;
+    // the same motor listed twice (an uploaded copy of a built-in one, say) isn't a second candidate
+    const key = (m) => `${m.brand}|${norm(m.name)}|${Math.round(m.dia * 1000)}`;
+    const others = hits
+      .slice(1)
+      .filter((m, i, a) => key(m) !== key(hits[0]) && a.findIndex((x) => key(x) === key(m)) === i);
+    return { m: hits[0], others };
+  }
+  return { m: null, others: [] };
+}
+/**
+ * Finds a motor in the catalog or the uploaded motors by its file designation and maker (and diameter, if given).
+ * @param {{designation:string, mfr:string, dia:number}} mo
+ * @returns {object|null}
+ */
+export function matchMotor(mo) {
+  return matchMotorAll(mo).m;
 }

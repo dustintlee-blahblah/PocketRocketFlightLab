@@ -3,11 +3,12 @@
  * chart series.
  */
 import { BLD } from "../builder/builder-ui.js";
-import { BLD_ROD_LUG, bldLugKind } from "../builder/model.js";
+import { BLD_ROD_LUG, bldLugKind, bldMounts } from "../builder/model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
-import { curBoost, curMotor, L, mstats, PROFILE } from "../design/defaults.js";
+import { boostId, curBoost, curMotor, firstId, L, motorId, mstats, PROFILE } from "../design/defaults.js";
 import { RANGE_KEYS } from "../files/save.js";
+import { findMotor } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
 import { aero } from "../physics/aerodynamics.js";
 import { apoRange, lastMC, mcFar95 } from "../physics/monte-carlo.js";
@@ -897,6 +898,29 @@ export function renderRSO() {
   P.hidden = false;
 }
 /**
+ * The stages flying a stand-in motor: the design file names a motor that isn't in the motor list, so another was picked.
+ * @returns {string[]} a sentence for each
+ */
+function standIns() {
+  if (!BLD || !BLD.hold || !BLD.stages) return [];
+  const out = [];
+  const one = (i, id, label) => {
+    const st = BLD.stages[i],
+      k = st && bldMounts(st)[0],
+      f = k && k.motor,
+      m = id != null && BLD.hold[i] === id ? findMotor(id) : null;
+    if (!m || !f || !f.name || f.id === m.id) return;
+    out.push(
+      `${label} stand-in motor: the design calls for the ${esc(`${f.mfr || ""} ${f.name}`.trim())}, which isn’t in your motor list. These results are for the ${esc(m.cn || m.name)}. Upload the right .eng file on the Motor tab.`,
+    );
+  };
+  const n = BLD.stages.length;
+  one(0, motorId, n > 1 ? "The sustainer flew a" : "Flown on a");
+  if (n > 1) one(1, boostId, "The booster flew a");
+  if (n > 2) one(2, firstId, "The first stage flew a");
+  return out;
+}
+/**
  * The results flags: stability, rail exit speed, tumbling, deployment speed, landing...
  * @param {object} st
  * @param {object} S
@@ -907,6 +931,8 @@ export function renderRSO() {
 export function resultFlags(st, S, m, D) {
   const flags = [];
   if (st.error) flags.push(["bad", st.error]);
+  // a stand-in motor is named when the file is opened; it's said again here so the numbers aren't read as the file's own
+  for (const s of standIns()) flags.push(["warn", s]);
   if (st.tumble)
     flags.push([
       "bad",

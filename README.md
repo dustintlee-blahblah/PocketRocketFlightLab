@@ -58,7 +58,8 @@ android/                            Android app: a WebView around the same page,
 tests/golden.js                     regression test: proves a change leaves every result the same
 tests/golden-snapshot.json          the recorded results of the built-in examples that `npm test` checks
 tests/drag-benchmarks.js            the drag model against published NACA measurements
-tests/smoke.js                      clicks through the tabs and controls; fails on any page error
+tests/smoke.js                      clicks through the tabs and controls; fails on any page error or an empty screen
+tests/roundtrip.js                  changes every field of every builder part, saves, reopens and compares
 tools/set-build.js                  sets the build number everywhere it appears
 tools/screenshots.js                takes the screenshots in docs/images from the built app
 tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
@@ -116,12 +117,13 @@ npm run format                      # Prettier (print width 120)
 npm run lint                        # ESLint, unused exports, module load checks, imports up to date
 npm test                            # build, then the regression test against tests/golden-snapshot.json
 npm run test:smoke                  # build, then the UI smoke test
+npm run test:roundtrip              # build, then the save-and-reopen test (about 3 minutes)
 ```
 
 Edit the files in `src/`, then build. `web/` is build output and isn't in git.
 
 Every push and pull request runs the same checks on GitHub (`.github/workflows/check.yml`): formatting, lint, the
-regression test, the UI smoke test, the drag benchmarks, and an Android build.
+regression test, the UI smoke test, the save-and-reopen test, the drag benchmarks, and an Android build.
 
 ### Drag benchmarks
 

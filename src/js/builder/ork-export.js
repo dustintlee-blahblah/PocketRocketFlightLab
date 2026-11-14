@@ -158,16 +158,18 @@ export function bldToOrk(model, L, opts = {}) {
             : `<clusterconfiguration>single</clusterconfiguration><clusterscale>1.0</clusterscale><clusterrotation>0.0</clusterrotation>`;
         return `<innertube>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${n(k.od / 2)}</outerradius><thickness>${n(k.wall)}</thickness>${cl}${k.type === "mount" ? motorMount(k, b.si) : ""}<subcomponents>${(k.inside || []).join("")}</subcomponents></innertube>`;
       }
+      // a ring, bulkhead or coupler left to fit its tube (od 0; a ring's hole, id_ 0) is written as OpenRocket writes an
+      // automatic size, "auto" before the number, so it still follows the tube after the file is reopened
       case "ring": {
         const ro = k.od > 0 ? k.od / 2 : R,
           inner = k.id_ > 0 ? k.id_ / 2 : bldMountR(b);
-        return `<centeringring>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${n(ro)}</outerradius><innerradius>${n(Math.min(inner, ro))}</innerradius></centeringring>`;
+        return `<centeringring>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${k.od > 0 ? "" : "auto "}${n(ro)}</outerradius><innerradius>${k.id_ > 0 ? "" : "auto "}${n(Math.min(inner, ro))}</innerradius></centeringring>`;
       }
       case "bulkhead":
-        return `<bulkhead>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${n(k.od > 0 ? k.od / 2 : R)}</outerradius></bulkhead>`;
+        return `<bulkhead>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${k.od > 0 ? "" : "auto "}${n(k.od > 0 ? k.od / 2 : R)}</outerradius></bulkhead>`;
       case "coupler": {
         const ro = k.od > 0 ? k.od / 2 : R;
-        return `<tubecoupler>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${n(ro)}</outerradius><thickness>${n(Math.min(k.wall, ro))}</thickness><subcomponents/></tubecoupler>`;
+        return `<tubecoupler>${head(k)}${bulk(k)}<length>${n(k.len)}</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>${k.od > 0 ? "" : "auto "}${n(ro)}</outerradius><thickness>${n(Math.min(k.wall, ro))}</thickness><subcomponents/></tubecoupler>`;
       }
       case "lug": {
         // a rail-type lug is written as a solid lug as tall as the slider (OpenRocket has no rail lug); prfllug keeps

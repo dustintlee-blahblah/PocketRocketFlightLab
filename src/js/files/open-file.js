@@ -29,7 +29,7 @@ import {
 } from "../design/defaults.js";
 import { parseOrk } from "./openrocket-import.js";
 import { recentAdd, renderRecent } from "./recent.js";
-import { matchMotor, parseRkt } from "./rocksim-import.js";
+import { matchMotor, matchMotorAll, parseRkt } from "./rocksim-import.js";
 import { RANGE_KEYS, setORK_CFG, setORK_SIM, setSource, SOURCE } from "./save.js";
 import { prHash, prStateRead } from "./saved-simulation.js";
 import { isDirty, markClean, setActive } from "./unsaved-changes.js";
@@ -325,6 +325,16 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
     const mm = matchMotor(r.motor);
     let mnote = "";
     /**
+     * A sentence for a motor name that fits more than one motor in the list, so the choice isn't made silently.
+     */
+    const alsoFits = (mo) => {
+      const a = matchMotorAll(mo);
+      if (!a.m || !a.others.length) return "";
+      const nm = (m) => `${m.brand} ${m.name}`;
+      const o = a.others.slice(0, 3).map(nm);
+      return ` The file’s “${`${mo.mfr || ""} ${mo.designation}`.trim()}” also fits ${o.join(", ")}${a.others.length > 3 ? ` and ${a.others.length - 3} more` : ""}: the ${nm(a.m)} was chosen. Check it on the Motor tab.`;
+    };
+    /**
      * Matches a stage's extra motors to the motor list.
      */
     const addExtras = (list, key, label) => {
@@ -346,7 +356,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
     let xnote = addExtras(r.motorExtras, "extraMotors", D.twoStage ? "The sustainer" : "The rocket");
     if (mm) {
       const c = clusterOf(mm, D.extraMotors);
-      mnote = `${D.twoStage ? "Sustainer motor" : "Motor"} set to ${c.cn || c.name}.` + xnote;
+      mnote = `${D.twoStage ? "Sustainer motor" : "Motor"} set to ${c.cn || c.name}.` + alsoFits(r.motor) + xnote;
     } else if (r.motor && r.motor.designation) {
       const miss = [
         ...new Set(
@@ -373,7 +383,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         setBoostId(bm.id);
         store.set("rfs-bmotor", boostId);
         const c = clusterOf(bm, D.bExtraMotors);
-        mnote += ` Booster motor set to ${c.cn || c.name}.` + bx;
+        mnote += ` Booster motor set to ${c.cn || c.name}.` + alsoFits(r.boosterMotor) + bx;
       } else if (r.boosterMotor && r.boosterMotor.designation) {
         mnote += ` The booster uses ${r.boosterMotor.mfr} ${r.boosterMotor.designation}, which isn’t in your motor list. Upload its .eng file on the Motor tab.`;
         const alt = fitStandIn(D, true, r.boosterMotor);
@@ -391,7 +401,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         setFirstId(fm.id);
         store.set("rfs-b1motor", firstId);
         const c = clusterOf(fm, D.s1ExtraMotors);
-        mnote += ` First-stage motor set to ${c.cn || c.name}.` + fx;
+        mnote += ` First-stage motor set to ${c.cn || c.name}.` + alsoFits(r.firstMotor) + fx;
       } else if (r.firstMotor && r.firstMotor.designation) {
         mnote += ` The first stage uses ${r.firstMotor.mfr} ${r.firstMotor.designation}, which isn’t in your motor list. Upload its .eng file on the Motor tab.`;
         const alt = fitStandIn(s1View(D), true, r.firstMotor, firstId);

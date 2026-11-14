@@ -1,4 +1,4 @@
-# Checks every push and every pull request: formatting, lint, the regression test, the drag benchmarks,
+# Checks every push and every pull request: formatting, lint, the regression, smoke and save-and-reopen tests, the drag benchmarks,
 # and that the Android app builds.
 
 name: Check
@@ -41,6 +41,9 @@ jobs:
 
       - name: UI smoke test (tabs, controls, builder; fails on any page error)
         run: node tests/smoke.js
+
+      - name: Save and reopen test (every builder part and field survives the app's own save and open)
+        run: node tests/roundtrip.js
 
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag

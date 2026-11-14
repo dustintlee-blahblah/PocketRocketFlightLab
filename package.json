@@ -14,6 +14,7 @@
     "test:drag": "node build.js && node tests/drag-benchmarks.js",
     "test:record": "node build.js && node tests/golden.js record tests/golden-snapshot.json --no-fixtures",
     "test:smoke": "node build.js && node tests/smoke.js",
+    "test:roundtrip": "node build.js && node tests/roundtrip.js",
     "validate:arcas": "node build.js && node validation/arcas.js",
     "validate:openrocket": "node build.js && node validation/openrocket.js",
     "validate:accuracy": "node build.js && node validation/accuracy.js",

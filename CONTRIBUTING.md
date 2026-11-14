@@ -46,7 +46,11 @@ npm test
      they're the intended ones, then run `npm run test:record` and commit the new `tests/golden-snapshot.json` with
      the change. Say in the pull request what changed, by how much, and why it's better, with evidence where you can
      (OpenRocket, a NASA/NACA report, flight data).
-   - `npm run test:smoke`: clicks through the tabs and controls and fails on any page error.
+   - `npm run test:smoke`: clicks through the tabs and controls and fails on any page error, or on a screen that
+     comes up empty (motor makers, the add-a-part list, the result tiles and charts).
+   - `npm run test:roundtrip`: changes every field of every builder part, saves with the app’s own save, reopens, and
+     fails if a field or the flight changed. Run it after touching the builder, the file format or a part’s fields; add a
+     new part type to `TYPES` at the top of `tests/roundtrip.js`.
    - `npm run test:drag` if you touched the drag model.
 4. **Modules.** Import what you use and export only what other modules need. Keep a module's top level to
    definitions; anything it does when the app opens goes in its `start()` (see ARCHITECTURE.md). To change a shared
