@@ -7,8 +7,8 @@
  * center of pressure; rollParts() the fin-cant roll forcing and roll damping; stability() the static margin.
  * Sources for each term are given where it is computed.
  */
-import { FIN_SWEEP_N, finBlunt, finSweepRatio, finTransonicCd, finWaveK } from "../core/units-and-fin-edges.js";
-import { dragModel, heatCoef, vanDriestRatio, VD_R, wallThermal } from "./drag-model.js";
+import { FIN_SWEEP_N, finSweepRatio, finWaveK } from "../core/units-and-fin-edges.js";
+import { heatCoef, vanDriestRatio, VD_R, wallThermal } from "./drag-model.js";
 import { bodyPressures } from "./flow-picture.js";
 import { noseR, noseSpec, noseTip } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
@@ -151,7 +151,7 @@ const TN3819_FIN = [
   [2.6, 0.017],
   [3.0, 0.018],
 ];
-/* The test drag model's body base pressure (drag-model.js), as −Cp,base: NASA TR R-100 (Stoney, 1961), fig. 3, the
+/* The body's base pressure, as −Cp,base: NASA TR R-100 (Stoney, 1961), fig. 3, the
    three-dimensional curve for a cylindrical afterbody with a turbulent boundary layer, from free-flight
    measurements, Mach 0.5 to 2. The Missile DATCOM final report (section 3.1.1.8) takes cylinder base drag from this
    report. The figure draws a band (the scatter of the flight data); these are its middle, digitized: nearly level
@@ -183,18 +183,13 @@ const R100_BODY = [
  */
 const tn3819W = (M) => smooth01((M - 0.95) / 0.25);
 /**
- * −Cp at the base of a body without fins or boattail, on the base area.
+ * −Cp at the base of a body without fins or boattail, on the base area: TR R-100's flight-measured curve
+ * (R100_BODY), limited to 95% of vacuum.
  * @param {number} M Mach number
- * @param {boolean} [test] the test drag model: TR R-100's flight-measured curve at every speed (R100_BODY)
  * @returns {number}
  */
-function baseCpBody(M, test = false) {
-  if (test) return Math.min(tblAt(R100_BODY, M), 0.95 / (0.7 * Math.max(M, 1) ** 2));
-  const sub = 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1),
-    w = tn3819W(M);
-  if (w <= 0) return sub;
-  const sup = Math.min(tblAt(TN3819_BODY, Math.max(M, 1)), 0.95 / (0.7 * Math.max(M, 1) ** 2));
-  return sub * (1 - w) + sup * w;
+function baseCpBody(M) {
+  return Math.min(tblAt(R100_BODY, M), 0.95 / (0.7 * Math.max(M, 1) ** 2));
 }
 /**
  * −Cp at a blunt two-dimensional base (a square or rounded fin trailing edge), on its frontal area.
@@ -207,82 +202,35 @@ function baseCp2D(M) {
   if (w <= 0) return sub;
   const m = Math.max(M, 1),
     vac = 1 / (0.7 * m * m),
-    sup = m <= 4 ? tblAt(TN3819_2D, m) : Math.min(0.73 * vac, baseCpBody(m));
+    // past the two-dimensional data (Mach 4): TN 3819's body curve, limited to 95% of vacuum, or 0.73 of vacuum if less
+    sup = m <= 4 ? tblAt(TN3819_2D, m) : Math.min(0.73 * vac, Math.min(tblAt(TN3819_BODY, m), 0.95 / (0.7 * m ** 2)));
   return sub * (1 - w) + Math.min(sup, 0.95 * vac) * w;
 }
 /**
- * Pressure ratio p/p∞ after a Prandtl–Meyer turn of `turn` radians from free stream at Mach M (expansion if > 0).
- * @param {number} M
- * @param {number} turn rad
- * @returns {number}
- */
-function pmPressureRatio(M, turn) {
-  const nu = (m) => {
-    const b = Math.sqrt(Math.max(m * m - 1, 0));
-    return Math.sqrt(6) * Math.atan(b / Math.sqrt(6)) - Math.atan(b);
-  };
-  if (!(turn > 0)) return 1;
-  const target = nu(M) + turn;
-  let lo = 1,
-    hi = 100;
-  for (let i = 0; i < 60; i++) {
-    const m = (lo + hi) / 2;
-    if (nu(m) < target) lo = m;
-    else hi = m;
-  }
-  const M2 = (lo + hi) / 2;
-  return Math.pow((1 + 0.2 * M * M) / (1 + 0.2 * M2 * M2), 3.5);
-}
-/**
- * −Cp over the rocket's own base (TN 3819 above Mach 1): the body curve, corrected for a boattail ending at the base,
- * plus the fins' added suction, limited to 95% of vacuum.
- * @param {{bt:number, hD:number, fins:{g:number, xc:number}[]}} B base geometry from aero(): boattail half-angle (rad)
- *   ending at the base, base over maximum diameter, and each fin set's base-influence terms (tn3819FinTerm)
+ * −Cp over the rocket's own base: the body curve (TR R-100), corrected for a boattail ending at the base, plus the
+ * fins' added suction above Mach 1 (TN 3819), limited to 95% of vacuum.
+ * @param {{attT:number, hD:number, fins:{g:number, xc:number}[]}} B base geometry from aero(): the attached share of
+ *   a boattail ending at the base, base over maximum diameter, and each fin set's base-influence terms
+ *   (tn3819FinTerm)
  * @param {number} M Mach number
- * @param {boolean} [test] the test drag model: the body curve is TR R-100's (R100_BODY) at every speed, with the same
- *   boattail and fin corrections above Mach 1
  * @returns {number}
  */
-function baseCpRocket(B, M, test = false) {
+function baseCpRocket(B, M) {
   const w = tn3819W(M),
-    sub = test ? baseCpBody(M, true) : 0.12 + 0.13 * Math.min(M, 1) * Math.min(M, 1);
-  /* The test drag model's boattail rule (below): the body curve's pressure times base radius / maximum radius, at
-     every speed. Below Mach 1 that is also the form of Hoerner's base drag rule, (base diameter / diameter)³; TR
-     R-100 warns it can still be too high there (boattailed bases can read above free-stream pressure). */
-  const btK = test && B && B.attT > 0 ? 1 - B.attT * (1 - Math.min(Math.max(B.hD, 0), 1)) : 1;
-  if (w <= 0 || !B) return w <= 0 ? sub * btK : baseCpBody(M, test);
+    sub = baseCpBody(M);
+  /* The boattail rule: the body curve's pressure times base radius / maximum radius, at every speed. TR R-100's
+     equation 1 for a conical afterbody takes the cylinder's base drag times (base radius / maximum radius)³: on the
+     base's own area, the body curve's pressure times that ratio. "A purely empirical approximation for the effect of
+     base diameter ratio on the base pressure", from flight data on bodies with afterbodies: on the RM-10 (base 0.6 of
+     the maximum) it gives 0.12 at Mach 1.2, where TN 3320 measured about 0.11 in flight. Below Mach 1 that is also
+     the form of Hoerner's base drag rule, (base diameter / diameter)³; TR R-100 warns it can still be too high there
+     (boattailed bases can read above free-stream pressure). Only the attached share of a steep tail cone counts. */
+  const btK = B && B.attT > 0 ? 1 - B.attT * (1 - Math.min(Math.max(B.hD, 0), 1)) : 1;
+  if (w <= 0 || !B) return w <= 0 ? sub * btK : baseCpBody(M);
   const m = Math.max(M, 1),
     q = 0.7 * m * m;
-  let cp = tblAt(test ? R100_BODY : TN3819_BODY, m);
-  /* The boattail relief below works by taking the boattail's angle off the turn the flow makes at the base. Near Mach 1
-     that turn is only a few degrees, so any boattail would cancel it; flight data say otherwise: the RM-10's 4.8°
-     afterbody (NACA TN 3320, full-scale free flight) keeps a base pressure coefficient of about 0.11 from Mach 1.2 to
-     2.8, against the method's 0 at Mach 1.2. So the relief fades in from Mach 1.5 to 2.0, where it agrees with that
-     flight once the fins' share is added, and below Mach 1.5 the base keeps the body curve. */
-  const btW = smooth01((m - 1.5) / 0.5);
-  /* The test drag model: TR R-100's equation 1 for a conical afterbody takes the cylinder's base drag times (base
-     radius / maximum radius)³: on the base's own area, the body curve's pressure times that ratio. "A purely empirical
-     approximation for the effect of base diameter ratio on the base pressure", from flight data on bodies with
-     afterbodies, so it needs no fade-in below Mach 2: on the RM-10 (base 0.6 of the maximum) it gives 0.12 at Mach
-     1.2, where TN 3320 measured about 0.11 in flight. Only the attached share of a steep tail cone counts. */
-  if (test) {
-    cp *= btK;
-  } else if (B.bt > 0 && btW > 0) {
-    const cp0 = cp;
-    // δe from the body curve: the Prandtl–Meyer turn that gives the body-alone base pressure
-    const pb = 1 - cp * q;
-    let lo = 0,
-      hi = 1.2;
-    for (let i = 0; i < 50; i++) {
-      const t = (lo + hi) / 2;
-      if (pmPressureRatio(m, t) > pb) lo = t;
-      else hi = t;
-    }
-    const de = (lo + hi) / 2,
-      K = 0.85 + 0.15 * Math.min(Math.max(B.hD, 0), 1),
-      d = Math.max(de - K * B.bt, 0);
-    cp = cp0 * (1 - btW) + ((1 - pmPressureRatio(m, d)) / q) * btW;
-  }
+  let cp = tblAt(R100_BODY, m);
+  cp *= btK;
   let fin = 0;
   const ref = m <= 3 ? tblAt(TN3819_FIN, m) : (tblAt(TN3819_FIN, 3) * tblAt(TN3819_BODY, m)) / tblAt(TN3819_BODY, 3),
     reach = Math.min(Math.max(1 + 2 * (m - 1.5), 1), 3);
@@ -566,13 +514,13 @@ function noseCdTR100(shape, param, M) {
   }
   return curveCd("par", M);
 }
-/* ---------- the test drag model's nose wave drag above Mach 2 (drag-model.js) ----------
+/* ---------- nose wave drag above Mach 2 ----------
    The pressure along the nose by the second-order shock-expansion method (Syvertson and Dennis, NACA Report 1328),
    started from the exact Taylor–Maccoll cone solution at the tip (NACA Report 1135; flow-picture.js, which the Wind
    Tunnel's picture already uses), summed over the nose's frontal area. For a cone this is the exact cone pressure.
    The Missile DATCOM final report (section 3.1.1.4) chose this method for supersonic body wave drag, and found it
    reads about 20% high below Mach 2 and fails near Mach 1.4, where the flow behind the nose shock goes subsonic; so
-   the released model's measured curves (TR R-100) are kept to Mach 2 and this takes over by Mach 2.5. Report 1328
+   the measured curves (TR R-100) are kept to Mach 2 and this takes over by Mach 2.5. Report 1328
    checks the method for Mach number over nose fineness ratio from about 0.4 to 2; past that it tends to the
    tangent-cone pressures, which is where Newtonian theory also goes.
    A nose's drag coefficient on its own base area depends only on its shape and fineness, so it is worked out once
@@ -622,7 +570,7 @@ function noseSeTable(shape, param, fin) {
  * A sharp nose's pressure drag coefficient on its base area above Mach 2, by second-order shock-expansion.
  * @param {{shape:string, param:number, fin:number}} nose
  * @param {number} M Mach number
- * @returns {number|null} null when the method has no answer there (the caller keeps the released model's value)
+ * @returns {number|null} null when the method has no answer there (the caller keeps the measured curves' value)
  */
 function noseCdSE(nose, M) {
   const tab = noseSeTable(nose.shape, nose.param, nose.fin),
@@ -639,11 +587,11 @@ function noseCdSE(nose, M) {
  * @param {number} k roughness height, m
  * @param {number} M Mach number
  * @param {string} mode "natural" for natural laminar-to-turbulent transition; otherwise turbulent from the start
- * @param {number} [wall] the test drag model (drag-model.js): the wall's temperature over the air's, Tw/Te, for
- *   Van Driest II compressibility in place of the released factor. 0 or left out: the released model.
+ * @param {number} wall the wall's temperature over the air's, Tw/Te, for Van Driest II compressibility
+ *   (drag-model.js)
  * @returns {number} Cf on the wetted area
  */
-function plateCf(Re, Lc, k, M, mode, wall = 0) {
+function plateCf(Re, Lc, k, M, mode, wall) {
   // flat-plate skin friction: turbulent (or natural transition), with roughness and compressibility
   // The boundary layer is taken as turbulent from the nose tip: on a real rocket the tip, joints, lugs and paint trip it early.
   // Roughness is measured against the component's own streamwise length (body length, or a fin's mean chord), as in
@@ -658,8 +606,7 @@ function plateCf(Re, Lc, k, M, mode, wall = 0) {
   // Nikuradse regimes: roughness has no effect below k+ ≈ 5 (hydraulically smooth) and full effect above k+ ≈ 70 (fully rough)
   const kPlus = k * (Re / Lc) * Math.sqrt(smoothCf / 2);
   const w = kPlus > 0 ? smooth01(Math.log(kPlus / 5) / Math.log(70 / 5)) : 0;
-  const comp = wall > 0 ? vanDriestRatio(M, Re, wall) : Math.pow(1 + 0.144 * M * M, -0.65);
-  return (smoothCf + w * Math.max(roughCf - smoothCf, 0)) * comp;
+  return (smoothCf + w * Math.max(roughCf - smoothCf, 0)) * vanDriestRatio(M, Re, wall);
 }
 /**
  * Drag coefficient of a short cylinder in crossflow (a rail button), on its frontal area.
@@ -1119,8 +1066,8 @@ export function aero(D) {
       });
     } else {
       const deg = (Math.atan(dr / sg.len) * 180) / Math.PI;
-      // kT: the test drag model keeps the flow on boattails up to 15° (see baseB.attT)
-      aft.push({ seg: i, k: smooth01((deg - 8) / 12), kT: smooth01((deg - 15) / 10), area });
+      // the flow stays on boattails up to 15° and has left by 25° (see baseB.attT): k is the separated share
+      aft.push({ seg: i, k: smooth01((deg - 15) / 10), area });
     }
   });
   const last = segs[segs.length - 1],
@@ -1253,21 +1200,16 @@ export function aero(D) {
     fore,
     aft,
     baseArea,
-    // the base's shape for its pressure above Mach 1 (TN 3819): a boattail ending at the base, and the fins near it
+    // the base's shape for its pressure: a boattail ending at the base, and the fins near it (TN 3819)
     baseB: (() => {
       const ls = segs[segs.length - 1],
         bt = ls && ls.kind === "trans" && ls.r2 < ls.r1 && ls.len > 0 ? Math.atan((ls.r1 - ls.r2) / ls.len) : 0;
       return {
-        /* TN 3819's boattail effect is for flow that follows the boattail. Steeper than about 8° the flow starts to
-           leave it (Hoerner's rule above, fully separated by 20°, where the step counts as base instead), so only the
-           attached share of the angle turns the flow: a separated tail cone gives no relief at the base. */
-        bt: bt * (1 - smooth01((bt * (180 / Math.PI) - 8) / 12)),
+        // for the boattail's drag (TR R-100, equation 1): the base over the body's maximum radius, the boattail's
+        // whole angle in degrees, and the share of the flow that stays attached to it
         hD: ls ? ls.r2 / R : 1,
-        // for the test drag model's boattail (TR R-100, equation 1): its whole angle in degrees, the share of the
-        // flow that stays attached to it, and its start over the body's maximum radius
         btDeg: bt * (180 / Math.PI),
-        att: bt > 0 ? 1 - smooth01((bt * (180 / Math.PI) - 8) / 12) : 0,
-        /* The test drag model's attached share: full up to 15°, none past 25°. TR R-100 checked its afterbody
+        /* The attached share: full up to 15°, none past 25°. TR R-100 checked its afterbody
            equation against flight data for slopes up to 15°, and the Arcas model's 15° boattail (NASA TN D-4013)
            keeps its base at or above free-stream pressure below Mach 0.95, which a separated tail cone could not. */
         attT: bt > 0 ? 1 - smooth01((bt * (180 / Math.PI) - 15) / 10) : 0,
@@ -1444,7 +1386,7 @@ function extraCnParts(A, M) {
   return parts;
 }
 /**
- * The airframe's wall for the skin's heating in flight (the test drag model): thickness, heat capacity per volume and
+ * The airframe's wall for the skin's heating in flight: thickness, heat capacity per volume and
  * thermal diffusivity. A design without a wall on file (entered by its outline, or saved before walls were kept)
  * counts as 2 mm of a paper or plastic tube.
  * @param {{t:number, rho:number}} [wall] the body's wall from the design file: thickness m, density kg/m³
@@ -1457,7 +1399,7 @@ function skinWall(wall) {
   return { t, rhoC: rho * th.c, alpha: th.alpha };
 }
 /**
- * How fast the air heats the skin (the test drag model, drag-model.js): the heat transfer coefficient from the body's
+ * How fast the air heats the skin (drag-model.js): the heat transfer coefficient from the body's
  * own friction at the skin's temperature, and the adiabatic wall temperature the skin is heading for.
  * @param {object} A aerodynamic model from aero()
  * @param {number} v airspeed, m/s
@@ -1538,25 +1480,23 @@ function finK(f, Mn, beta, cb2) {
  * @param {number} v airspeed, m/s
  * @param {object} atm the air, from atmosphere()
  * @param {number} [nozzleArea=0] nozzle exit area while a motor burns, m² (its exhaust fills that much of the base)
- * @param {string} [model] "released" or "test" (drag-model.js); by default the current one
- * @param {number} [skinT] the test model: the skin's temperature, K (a flight follows it, skinHeating() below). Left
- *   out, the skin is fully heated (the adiabatic wall), as on a wind tunnel model.
+ * @param {number} [skinT] the skin's temperature, K (a flight follows it, skinHeating() above). Left out, the skin
+ *   is fully heated (the adiabatic wall), as on a wind tunnel model.
  * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref
  */
-export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0) {
+export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
   // a fixed Cd for the whole rocket (from the design file): used as it is, scaled by any calibration to a real flight
   if (A.override > 0) return { cd: A.override * (A.scale || 1), friction: 0, pressure: 0, base: 0, override: true };
   v = Math.max(v, 0.01);
   const M = v / atm.a,
     nu = kinVisc(atm),
     q0 = stagCp(M),
-    tm = model === "test", // the test drag model's terms (drag-model.js); everything else is the released model
-    cb = baseCpBody(M, tm),
+    cb = baseCpBody(M),
     cb2 = baseCp2D(M),
-    cbBase = baseCpRocket(A.baseB, M, tm),
+    cbBase = baseCpRocket(A.baseB, M),
     S = A.Aref,
-    // the test model's friction (drag-model.js) takes the wall's temperature over the air's; 0 means the released model
-    vd = tm ? (skinT > 0 ? skinT / atm.T : 1 + VD_R * 0.2 * M * M) : 0;
+    // the friction (drag-model.js) takes the wall's temperature over the air's: the skin's own, or the adiabatic wall's
+    vd = skinT > 0 ? skinT / atm.T : 1 + VD_R * 0.2 * M * M;
   /* where the transonic drag rise starts depends on the shape. Bodies: the transonic similarity rule (Oswatitsch) says
      flows over slender bodies match when (1 − M²) scales with (d/l)^(2/3), so a slender body's drag rise comes later than
      a stubby one's: the measured fineness-3 curves are read at an equivalent Mach number, 1 − M_eq² = (1 − M²)·(l/d ÷ 3)^(2/3).
@@ -1602,8 +1542,8 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
       let cdn = Math.max(it.sub, noseCdTR100(it.nose.shape, it.nose.param, mEq(M, it.nose.fin)) * it.nose.scale);
       // beyond the measured data, blend from Mach 4 to 6 into modified Newtonian theory: Cp,max·sin²θ over the nose (Lees)
       if (M > 4) cdn = mix(cdn, stagCp(M) * it.kN, smooth01((M - 4) / 2));
-      // the test drag model: second-order shock-expansion from Mach 2 (fully by 2.5), for noses that come to a point
-      if (tm && M > NOSE_SE_M0 && !it.blunt) {
+      // second-order shock-expansion from Mach 2 (fully by 2.5), for noses that come to a point
+      if (M > NOSE_SE_M0 && !it.blunt) {
         const se = noseCdSE(it.nose, M);
         if (se != null) cdn = mix(cdn, se, smooth01((M - NOSE_SE_M0) / 0.5));
       }
@@ -1614,17 +1554,17 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
     pressure += ((M < 1 ? (1 - tr) * it.sub + tr * wave(1) : wave(M)) * it.area) / S;
   }
   for (const it of A.aft) {
-    if (!skip(it)) base += ((tm && it.kT != null ? it.kT : it.k) * cb * it.area) / S;
+    if (!skip(it)) base += (it.k * cb * it.area) / S;
   }
   if (A.baseArea > 0) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
-  /* The test drag model: the pressure (wave) drag of a boattail ending at the base, above Mach 1. TR R-100's
+  /* The pressure (wave) drag of a boattail ending at the base, above Mach 1. TR R-100's
      equation 1 for conical afterbodies: (0.0010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)^n] on the
      maximum cross-section, θ the afterbody's slope in degrees, n = 4 below Mach 3.5 and 3 above. Its first part
      approximates the second-order theory of NACA TN 2972 (Jack) and was checked against flight data for slopes under
      15°; the report warns against using it below Mach 1, so it fades in through the transonic drag rise, from Mach
      0.88 to 1 (the Arcas model's 15° boattail, NASA TN D-4013 with its fins off, gains about 0.15 of pressure drag
      over that range and holds it to Mach 1.2; this gives 0.14 at Mach 1 and 0.12 at 1.2). Only the attached share
-     of a steeper cone counts (the rest is already base area, above). The released model has no such term.
+     of a steeper cone counts (the rest is already base area, above).
      The report's flight data stop near Mach 2. From Mach 2.5 the drag is taken from wind-tunnel measurements of
      conical boattails behind a cylinder at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, US Army Missile Command
      RD-TR-70-5, as MIL-HDBK-762 figure 5-144 gives them: slopes of 4.3° to 9.5°, bases 0.73 and 0.82 of the
@@ -1634,7 +1574,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
      theory chart, figure 5-122, is this without the reduction, up to 1.5 times the measurements; TR R-100 also
      found theory overestimating as slopes near 15°). The two are blended from Mach 2 to 2.5, so each is used where
      it was measured. */
-  if (tm && M > 0.88 && A.baseB && A.baseB.attT > 0) {
+  if (M > 0.88 && A.baseB && A.baseB.attT > 0) {
     const B = A.baseB,
       th = Math.min(B.btDeg, 15),
       h = Math.min(Math.max(B.hD, 0), 1),
@@ -1658,22 +1598,22 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
       Mdd = Math.max(0.6, 0.96 - 1.5 * f.tc),
       trF = smooth01((Mn - Mdd) / (1.06 - Mdd));
     if (f.edge === "square") {
-      /* The test drag model below the drag rise: 0.4 of stagnation pressure, what a blunt leading edge adds over a
-         rounded one on long rectangular sections tested between walls (Hoerner, Fluid-Dynamic Drag, ch. III, figure
-         22: the flow closes again on the sides once the section is 2.5 thicknesses long). The 0.8 is a flat face
-         in three-dimensional flow, kept above Mach 1 and in the released model. Hoerner's figure 23 also shows a
+      /* Below the drag rise: 0.4 of stagnation pressure, what a blunt leading edge adds over a rounded one on long
+         rectangular sections tested between walls (Hoerner, Fluid-Dynamic Drag, ch. III, figure 22: the flow closes
+         again on the sides once the section is 2.5 thicknesses long). Above it, 0.8: a flat face in
+         three-dimensional flow. Hoerner's figure 23 also shows a
          corner radius of 0.2 of the thickness is enough to lose the penalty, which is why a rounded leading edge has
          none below Mach 1. */
-      pressure += (tm ? 0.4 + 0.4 * trF : 0.8) * stagCp(Mn) * c2 * edge;
+      pressure += (0.4 + 0.4 * trF) * stagCp(Mn) * c2 * edge;
       base += finTeCp(M, cb2, finCf.get(f), f) * edge;
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
       base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;
-    } else if (tm) {
-      /* The test drag model: wave drag of sharp-edged fins by thin-airfoil theory on the free stream, K·(t/c)²/β on
+    } else {
+      /* Wave drag of sharp-edged fins by thin-airfoil theory on the free stream, K·(t/c)²/β on
          the fin's area (K from the section: finK). While the leading edge is swept behind the Mach line (β < tan Λ)
          the drag stays at the value it has when the Mach line reaches the edge, K·(t/c)²·cot Λ, and β is never taken
-         under 0.4, where linear theory overshoots (the released model's floor). It rises from the section's
+         under 0.4, where linear theory overshoots. It rises from the section's
          drag-divergence Mach number to Mach 1.05, where Missile DATCOM's fin method also puts the full value. There
          is no separate transonic bump. Checked against the measured pressure drag of 45° untapered fins 2.8% thick
          (NASA TR R-100 figure 5: 0.0037 on the fin area from Mach 1.05 to 3; this gives 0.0046 falling to 0.0016)
@@ -1682,8 +1622,8 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
         bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), tanL, 0.4),
         rise = smooth01((M - Mdd) / (1.05 - Mdd));
       /* Near Mach 1 thin-airfoil theory is too low for fins with little sweep: by transonic similarity the drag there
-         goes as (t/c)^(5/3). The peak is 5.7·(t/c)^(5/3) times the fifth power of cos Λ / cos 30° (the released
-         model's sweep rule), from the drag the Arcas model's 30° fins add (NASA TN D-4013, fins on minus fins off,
+         goes as (t/c)^(5/3). The peak is 5.7·(t/c)^(5/3) times the fifth power of cos Λ / cos 30° (the sweep
+         rule fitted to the RM-10's fins, units-and-fin-edges.js), from the drag the Arcas model's 30° fins add (NASA TN D-4013, fins on minus fins off,
          less their friction: 0.03 on the fin area from Mach 0.95 to 1.05, back to the linear value by Mach 1.2);
          the 45° fins of TR R-100 figure 5 peak at 0.0055, and this gives 0.0057. Sweep past 30° also delays the
          rise (those 45° fins show none below Mach 0.97). The larger of the two terms is used.
@@ -1703,13 +1643,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, model = dragModel, skinT = 0)
           smooth01((M - Math.min((Mdd - 0.03) / Math.sqrt(finSweepRatio(f.cosL)), 0.98)) / 0.09) *
           (M > 1.05 ? Math.exp(-(M - 1.05) / 0.2) : 1);
       pressure += (Math.max(lin, peak) * f.n * f.area) / S;
-    } else {
-      const beta = Math.max(Math.sqrt(Math.max(Mn * Mn - 1, 0)), 0.4),
-        kS = Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N),
-        subLE = kS + (1 - kS) * smooth01((Mn - 1) / 0.1); // a subsonic leading edge weakens it (see finTransonicCd)
-      pressure += (((trF * subLE * finK(f, Mn, beta, cb2) * f.tc * f.tc) / beta) * c2 * f.n * f.area) / S;
     }
-    if (!tm && !finBlunt(f.edge)) pressure += (finTransonicCd(M, f.tc, f.cosL) * f.n * f.area) / S;
   }
   // pods and side boosters: each copy's skin friction (with its own form factor), nose and transition pressure drag, and base
   for (const pd of A.pods || []) {

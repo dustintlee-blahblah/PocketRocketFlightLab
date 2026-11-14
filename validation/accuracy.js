@@ -2,7 +2,7 @@
 /*
  * How accurate the aerodynamic model is against every measured rocket in validation/cases.js, by speed band:
  *
- *   node build.js && node validation/accuracy.js [--model released] [--verbose] [--skin cold]
+ *   node build.js && node validation/accuracy.js [--verbose] [--skin cold]
  *
  * For each case the app's model is built from the case's geometry and compared point by point: drag as a relative
  * error, the fins' added drag as a difference in Cd, the center of pressure as a difference in % of body length, the
@@ -20,8 +20,6 @@ const { chromium } = require("playwright");
 const { CASES } = require("./cases.js");
 
 const verbose = process.argv.includes("--verbose");
-// --model released scores the previous drag model (the one before build 288) instead of the current one
-const model = process.argv.includes("--model") ? process.argv[process.argv.indexOf("--model") + 1] : "";
 const BANDS = [
   ["subsonic", 0, 0.8],
   ["transonic", 0.8, 1.2],
@@ -46,7 +44,6 @@ const KIND = {
   await p.addInitScript(() => (window.PR_EXPOSE = true));
   await p.goto("file://" + path.join(__dirname, "..", "web", "pocket-rocket-flight-lab.html"));
   await p.waitForFunction(() => typeof window.cdParts === "function");
-  if (model) await p.evaluate((m) => setDragModel(m), model);
   const results = await p.evaluate(
     ([cases, coldSkin]) => {
       const air = atmosphere({ ...defaultLaunch(), elev: 0, tempC: 15, pressure: 0, humidity: 0 }, 0),
@@ -56,7 +53,7 @@ const KIND = {
         return { D, A: aero(D) };
       };
       // drag at a Mach number; with a Reynolds number given (on a length), the air's density is set to give it
-      /* The skin's temperature (the test drag model's friction depends on it). Every case is scored with the skin
+      /* The skin's temperature (the friction depends on it). Every case is scored with the skin
        fully heated (the adiabatic wall: 0, cdParts' default), which is right for a wind tunnel model. A free-flight
        model's skin is somewhere between that and the air's temperature: a few millimetres of metal at Mach 2 near the
        ground heats with a time constant of about five seconds, the length of the flight. --skin cold rescores the
@@ -66,14 +63,7 @@ const KIND = {
       const cd = (m, M, Re, len, noz, noBase) => {
         const v = M * air.a,
           atm = Re ? { ...air, rho: (mu * Re) / (v * len) } : air;
-        return cdParts(
-          noBase ? { ...m.A, baseArea: 0 } : m.A,
-          v,
-          atm,
-          noz ? Math.PI * (noz / 2) ** 2 : 0,
-          undefined,
-          skinT,
-        ).cd;
+        return cdParts(noBase ? { ...m.A, baseArea: 0 } : m.A, v, atm, noz ? Math.PI * (noz / 2) ** 2 : 0, skinT).cd;
       };
       // CP (share of length) and normal-force slope as a balance measures them, over ±2°
       const balance = (A, M) => {

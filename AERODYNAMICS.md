@@ -28,13 +28,14 @@ coefficient jumps.
 
 **From build 288 the model described in this section (called the test model below, the name it had while it was being
 built) is the app's drag model.** The one it replaced, called the released model below and described term by term in
-the rest of this page, is no longer offered in the app (the Settings switch was removed in build 303; the code is
-kept for the validation scripts), and the rest of this page's drag tables describe it; where the two differ, the table just below says how. Stability (the center of pressure and normal force) is the
+the rest of this page, is gone from the app: its Settings switch and its code were removed in build 303 (the
+`v1.0-build302` tag is the last with both, for anyone repeating the comparisons below). The rest of this page's drag
+tables still describe it; where the two differ, the table just below says how the app computes that term today. Stability (the center of pressure and normal force) is the
 same in both.
 
 The test model was built term by term from public sources, mainly the method choices in the Missile DATCOM final report (Vukelich et al., AFWAL-TR-86-3091
 Volume I, 1988, approved for public release) and the NACA and NASA reports it relies on. A term not yet moved over is
-computed exactly as the released model computes it. Flights, the landing dispersion, flight-log calibration and the
+computed exactly as the released model computed it. Flights, the landing dispersion, flight-log calibration and the
 Wind Tunnel all use the test model. A drag calibration fitted with the released model (before build 288) is not
 applied; refit it from the logged flights. The code is in `src/js/physics/drag-model.js`.
 

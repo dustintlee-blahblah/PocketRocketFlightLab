@@ -28,7 +28,7 @@ import {
   smooth01,
 } from "./aerodynamics.js";
 import { atmosphere } from "./atmosphere.js";
-import { dragModel, skinStep } from "./drag-model.js";
+import { skinStep } from "./drag-model.js";
 import { flutterSpeed } from "./flutter.js";
 import { fill, fillStep, opening } from "./parachutes.js";
 import { boosterDesign, fullStack, isThree, stackDesign, stackDesign3 } from "./staging.js";
@@ -478,12 +478,7 @@ export function simulate(D, L, m, mb, opts = {}) {
       const FL = flyaway(G, Math.abs(va), atm),
         mR = mm + FL.mass;
       const Fd =
-        0.5 *
-          atm.rho *
-          va *
-          Math.abs(va) *
-          cdParts(G, Math.abs(va), atm, T > 0 ? An_ : 0, undefined, skin ? skin.T : 0).cd *
-          G.Aref +
+        0.5 * atm.rho * va * Math.abs(va) * cdParts(G, Math.abs(va), atm, T > 0 ? An_ : 0, skin.T).cd * G.Aref +
         0.5 * atm.rho * va * Math.abs(va) * FL.cdA;
       /* rail-guide friction: coefficient 0.2 times the force on each guide. The guides carry the weight across a leaning
          rail and the crosswind's side force; each force is shared between the front and aft guide by where it acts
@@ -556,7 +551,7 @@ export function simulate(D, L, m, mb, opts = {}) {
       ];
     }
     if (ph === "flight") {
-      const cd0 = cdParts(G, vr, atm, T > 0 ? An_ : 0, undefined, skin ? skin.T : 0).cd,
+      const cd0 = cdParts(G, vr, atm, T > 0 ? An_ : 0, skin.T).cd,
         q = 0.5 * atm.rho * vr * vr,
         C = cnaPartsM(G, vr / atm.a),
         J = inertia(t);
@@ -785,10 +780,10 @@ export function simulate(D, L, m, mb, opts = {}) {
     (three && t < t1Sep + 0.5) ||
     (staged && t >= tOff - 0.05 && t < tSep + 0.5) ||
     (ignOK && t >= tIgn - 0.05 && t < susEnd() + 0.5);
-  /* the test drag model (drag-model.js): the skin's temperature, followed through the flight from the air temperature
-     on the pad, since the friction depends on it. null with the released model, which doesn't use it. */
+  /* the skin's temperature (drag-model.js), followed through the flight from the air temperature on the pad, since
+     the friction depends on it */
   const skinT0 = atmosphere(L, 0).T,
-    skin = dragModel === "test" ? { T: skinT0, d: 0, max: skinT0 } : null;
+    skin = { T: skinT0, d: 0, max: skinT0 };
   let t = 0,
     s = [0, 0, 0, 0, 0, 0, rx, ry, rz, 0, 0, 0, 0, L.rollStart || 0],
     tDep = depMode === "timer" ? depDelay : null,
@@ -1318,7 +1313,7 @@ export function simulate(D, L, m, mb, opts = {}) {
     [x, z, vx, vz, y, vy] = s;
     sp = Math.hypot(vx, vy, vz);
     atm = atmosphere(L, Math.max(z, 0));
-    if (skin && (phase === "rail" || phase === "flight")) {
+    if (phase === "rail" || phase === "flight") {
       // heat (or cool) the skin over this step, at the step's end state
       const G = Gat(t),
         q = skinHeating(G, sp, atm, skin.T);

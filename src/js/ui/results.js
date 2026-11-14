@@ -11,7 +11,6 @@ import { renderFlightLog } from "../flightlog/flight-log.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { stability } from "../physics/aerodynamics.js";
 import { baroReading } from "../physics/atmosphere.js";
-import { dragModel } from "../physics/drag-model.js";
 import { mcAuto, renderMC } from "../physics/monte-carlo.js";
 import { noseWeightPlan } from "../physics/nose-weight.js";
 import { simulate } from "../physics/simulate.js";
@@ -61,7 +60,6 @@ export function runAll() {
     D: { ...D },
     L: { ...L },
     windTable,
-    dragModel,
     when: Date.now(),
   };
   renderResults();

@@ -5,7 +5,6 @@ import { store } from "../core/storage.js";
 import { D } from "../design/defaults.js";
 import { SOURCE } from "../files/save.js";
 import { flKey } from "./flight-log.js";
-import { dragModel } from "../physics/drag-model.js";
 import { simulate } from "../physics/simulate.js";
 import { lastSim } from "../ui/results.js";
 /* ---------- drag calibration ----------
@@ -58,15 +57,14 @@ export function calSet(v) {
   store.set(CAL_STORE, m);
 }
 /**
- * Whether a calibration was fitted with the previous drag model (builds before 288), so it doesn't apply: the
- * multiplier makes one model's drag match a flight, and the other model's drag differs. A calibration says which
- * model it belongs to only when that is the current one ("test"); one that doesn't say is from the previous model
- * (every calibration made before build 288).
+ * Whether a calibration was fitted with the drag model of builds before 288, so it doesn't apply: the multiplier
+ * made that model's drag match a flight, and today's drag differs. A calibration fitted since says so (dm: "test",
+ * the current model's name in saved data); one that doesn't say is from before.
  * @param {{k:number, dm?:string}|null} c
  * @returns {boolean}
  */
 export function calStale(c) {
-  return !!c && c.k > 0 && (c.dm || "released") !== dragModel;
+  return !!c && c.k > 0 && c.dm !== "test";
 }
 /**
  * Sets the design's drag multiplier from its calibration (1 without one, or with one fitted to the other drag model).

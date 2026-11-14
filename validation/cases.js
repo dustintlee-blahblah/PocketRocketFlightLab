@@ -200,7 +200,7 @@ const ARCAS_RE = (3e6 * 40.95) / 12;
    fins' leading edges to make the boundary layer turbulent. The fins (figure 1(b): double wedges of 2.72° half-angle,
    0.150 in thick at the root and 0.096 at the tip) sit on the 15° boattail, and each carries a strip of No. 60 grit
    (about 0.01 in high) on both faces, so what they add includes the grit's own drag, perhaps 0.03 at Mach 1.5, and
-   their effect on the boattail. The test model's fin drag is low by 0.065 at Mach 1.5 and 0.03 at Mach 1.8 here and
+   their effect on the boattail. The app's fin drag is low by 0.065 at Mach 1.5 and 0.03 at Mach 1.8 here and
    was left alone: the two fin sets it was built on (TR R-100 figure 5, the RM-10) have no grit and no boattail.
    [Mach, C_A fins on, C_A fins off] */
 const ARCAS_CA_SUP = [

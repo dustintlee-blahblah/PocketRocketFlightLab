@@ -10,7 +10,6 @@ import { applyCal, calGet, calKeyOld, calSet, calStale, solveDragScale } from ".
 import { altOpenFile, prIncomingGo, prPendingAlt } from "./xlsx.js";
 import { findMotor, flightFirst } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
-import { dragModel } from "../physics/drag-model.js";
 import { lastMC, MC_K68, MC_K95 } from "../physics/monte-carlo.js";
 import { simulate } from "../physics/simulate.js";
 import { isThree } from "../physics/staging.js";
@@ -623,7 +622,7 @@ async function flFit() {
       rms,
       skipped: skip,
       date: flToday(),
-      ...(dragModel === "released" ? {} : { dm: dragModel }), // which drag model it was fitted with (see calStale)
+      dm: "test", // fitted with the current drag model (see calStale); the name is the one saved since build 288
     });
     flFitMsg = "";
     applyCal();

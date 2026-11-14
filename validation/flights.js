@@ -3,7 +3,7 @@
  * The app's apogee against measured flights (validation/cases.js, FLIGHTS), next to RASAero II's prediction for the
  * same flight:
  *
- *   node build.js && node validation/flights.js [--html other-build.html] [--model test] [--verbose] [--csv out.csv]
+ *   node build.js && node validation/flights.js [--html other-build.html] [--verbose] [--csv out.csv]
  *
  * Each rocket is opened in the built app (headless Chromium) as an OpenRocket design with its launch weight and CG,
  * flown on RASAero's own thrust curve for its motor (validation/flight-motors.eng), from its launch site's altitude and
@@ -26,7 +26,6 @@ const html = path.resolve(opt("--html") || path.join(__dirname, "..", "web", "po
 const csvOut = opt("--csv");
 const verbose = args.includes("--verbose");
 const geometric = args.includes("--geometric"); // compare true heights even where a barometric altimeter measured
-const model = opt("--model"); // "released": fly the previous drag model (the one before build 288)
 const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
 
 (async () => {
@@ -40,7 +39,6 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
     (eng) => parseEng(eng).map((m) => ({ name: m.name, mfr: m.mfr, totalMass: m.totalMass, len: m.len })),
     eng,
   );
-  if (model) await p.evaluate((m) => setDragModel(m), model);
   const rows = [];
   for (const f of FLIGHTS) {
     const mo = motors.find((m) => m.name === f.motor && m.mfr === f.mfr);

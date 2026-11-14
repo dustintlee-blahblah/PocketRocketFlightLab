@@ -1,45 +1,33 @@
 /**
- * The drag model: "test", the app's drag model from build 288, or "released", the model builds up to 287 flew, kept
- * in Settings as "Previous" so the two can be compared on the same rocket, motor and air. (The names are from when
- * the first was being built beside the second; they are also the values kept in settings and files.)
+ * The parts of the drag model that have their own machinery: Van Driest II skin friction, and the skin temperature a
+ * flight follows for it. The rest of the model is in aerodynamics.js (cdParts).
  *
- * The current model follows the method choices recorded in the Missile DATCOM final report (Vukelich et al.,
- * AFWAL-TR-86-3091 Volume I, 1988; approved for public release) and the NACA and NASA reports it relies on. It was
- * built from the previous model one term at a time; any term not listed is computed exactly as the previous model
- * computes it. The terms that differ:
+ * The model follows the method choices recorded in the Missile DATCOM final report (Vukelich et al.,
+ * AFWAL-TR-86-3091 Volume I, 1988; approved for public release) and the NACA and NASA reports it relies on. It
+ * replaced the model of builds up to 287 in build 288 (the two could be switched in Settings until build 302; the
+ * earlier model's code was removed in build 303). Where the code or saved data say "test", they mean this model: it
+ * was the name it had while it was being built beside the earlier one, and a drag calibration saved since build 288
+ * carries it (dm: "test"). What it changed from the earlier model:
  *
- *   1. Skin friction compressibility: Van Driest II (below), in place of the released (1 + 0.144 M²)^−0.65, at the
- *      skin's own temperature. A flight follows the skin as it heats (skinStep below); with no flight history (the
- *      Wind Tunnel, the validation cases) the skin is taken as fully heated, as in a wind tunnel run.
+ *   1. Skin friction compressibility: Van Driest II (below), in place of (1 + 0.144 M²)^−0.65, at the skin's own
+ *      temperature. A flight follows the skin as it heats (skinStep below); with no flight history (the Wind
+ *      Tunnel, the validation cases) the skin is taken as fully heated, as in a wind tunnel run.
  *   2. Body base pressure: NASA TR R-100's flight-measured curve from Mach 0.5 to 2 (R100_BODY in aerodynamics.js),
  *      in place of Fleeman's correlation below Mach 1 and TN 3819's basic curve from 1 to 2. Above Mach 2, and for
- *      the boattail and fin corrections and fin trailing edges, TN 3819 as released.
- *   3. Nose wave drag above Mach 2: second-order shock-expansion (NACA Report 1328) from the exact cone solution, in
- *      place of the released curves' extension and Newtonian blend (noseCdSE in aerodynamics.js).
- *   4. Boattails above Mach 1: TR R-100's equation 1, a wave drag term the released model doesn't have and its
- *      base-diameter-ratio rule for the base pressure (at every speed), in place of TN 3819's boattail correction.
- *      The flow stays on boattails up to 15°, and the wave drag fades in from Mach 0.88 to 1 (NASA TN D-4013).
- *      From Mach 2.5 the wave drag is from wind-tunnel measurements instead (MIL-HDBK-762 figure 5-144).
+ *      the fin correction and fin trailing edges, TN 3819.
+ *   3. Nose wave drag above Mach 2: second-order shock-expansion (NACA Report 1328) from the exact cone solution
+ *      (noseCdSE in aerodynamics.js), in place of the measured curves' extension and Newtonian blend.
+ *   4. Boattails: TR R-100's equation 1, a wave drag term above Mach 1 and its base-diameter-ratio rule for the
+ *      base pressure (at every speed), in place of TN 3819's boattail correction. The flow stays on boattails up
+ *      to 15°, and the wave drag fades in from Mach 0.88 to 1 (NASA TN D-4013). From Mach 2.5 the wave drag is from
+ *      wind-tunnel measurements instead (MIL-HDBK-762 figure 5-144).
  *   5. Wave drag of sharp-edged fins: thin-airfoil theory on the free-stream Mach number, held at its value where the
- *      Mach line reaches the leading edge while the edge is swept behind it, in place of the released model's
- *      normal-Mach form with a fitted sweep factor and transonic bump. Checked against the measured fin pressure
- *      drag of NASA TR R-100 figure 5 and NACA RM E50D28. Near Mach 1 a transonic peak, 5.7·(t/c)^(5/3) with the
- *      released sweep factor, from the Arcas fins' measured drag (NASA TN D-4013), where it is the larger, scaled
- *      for the fin's aspect ratio by the trend of transonic similarity theory (MIL-HDBK-762 figure 5-130).
- *
- * cdParts() in aerodynamics.js reads dragModel below, which the app leaves on the current model.
+ *      Mach line reaches the leading edge while the edge is swept behind it, in place of a normal-Mach form with a
+ *      fitted sweep factor and a separate transonic bump. Checked against the measured fin pressure drag of NASA TR
+ *      R-100 figure 5 and NACA RM E50D28. Near Mach 1 a transonic peak, 5.7·(t/c)^(5/3) with the sweep factor
+ *      fitted to the RM-10's fins, from the Arcas fins' measured drag (NASA TN D-4013), where it is the larger,
+ *      scaled for the fin's aspect ratio by the trend of transonic similarity theory (MIL-HDBK-762 figure 5-130).
  */
-
-/** The drag model the flight uses: "test", the current one. The app always flies it; "released", the one before
-    build 288, is kept so the validation scripts can score the two side by side (validation/accuracy.js --model). */
-export let dragModel = "test";
-/**
- * Chooses the drag model. Nothing in the app calls this: it is for the validation scripts.
- * @param {string} m "test" (current) or "released" (previous); anything else means "test"
- */
-export function setDragModel(m) {
-  dragModel = m === "released" ? "released" : "test";
-}
 
 /* ---------- Van Driest II: compressible turbulent skin friction ----------
    Van Driest, E. R., "The Problem of Aerodynamic Heating", Aeronautical Engineering Review 15 (October 1956),
@@ -56,8 +44,8 @@ export function setDragModel(m) {
    friction chart of MIL-HDBK-762, figure 5-134, both showed it too high.)
    The Missile DATCOM final report (section 3.1.1.1) chose Van Driest II for turbulent boundary layers at all speeds
    because it "includes the effects of wall temperature, Mach number, Reynolds number, and surface roughness".
-   Only the ratio to the incompressible value is used here, applied to the released model's smooth and rough
-   flat-plate friction, so this term changes the Mach number and wall temperature effects and nothing else.
+   Only the ratio to the incompressible value is used here, applied to the smooth and rough flat-plate
+   friction (plateCf in aerodynamics.js), so this term changes the Mach number and wall temperature effects and nothing else.
    The wall temperature runs from the air's (a skin that has had no time to heat: Tw/Te = 1) to the adiabatic wall
    temperature Te·(1 + r·m), which a skin reaches when it has been at speed long enough (a wind tunnel model). The
    ratio is tabulated against how far the skin has got between the two, θ = (Tw − Te)/(Taw − Te), held to 0–1: a

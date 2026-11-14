@@ -570,7 +570,7 @@ export function parseOrk(xml, opts = {}) {
       ro = isAuto(c, "radius") ? R.last || nextExplicit(c) || autoNum(c, "radius") : num(c, "radius");
       ri = Math.max(ro - num(c, "thickness", 0.001), 0);
       m = rho * Math.PI * (ro * ro - ri * ri) * len;
-      // wt, wd: the wall's thickness and density, for the skin's heating in flight (the test drag model, drag-model.js)
+      // wt, wd: the wall's thickness and density, for the skin's heating in flight (drag-model.js)
       if (parent.top)
         segments.push({
           kind: "tube",
@@ -1252,7 +1252,7 @@ export function parseOrk(xml, opts = {}) {
       mass,
       cg: mass > 0 ? mom / mass - x0 : length / 2,
       segs: useSegs ? segs : null,
-      // the body's wall, averaged over its sections by surface: for the skin's heating in flight (the test drag model)
+      // the body's wall, averaged over its sections by surface: for the skin's heating in flight
       wall: (() => {
         let w = 0,
           t = 0,
