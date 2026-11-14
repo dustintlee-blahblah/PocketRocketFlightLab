@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 302 (2026-11-13)
+
+No change to the app itself: it flies, opens and saves exactly as Build 301 does.
+
+**Under the hood**
+- **Save-and-reopen test runs on GitHub**: it ticks checkboxes with the input's own click. A pointer click needed the box on screen, and on GitHub's machine (other fonts) one landed outside the window, which failed the checks for Build 301.
+
 ## Build 301 (2026-11-13)
 
 **Opening files**
