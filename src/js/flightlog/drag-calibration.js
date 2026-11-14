@@ -58,7 +58,7 @@ export function calSet(v) {
   store.set(CAL_STORE, m);
 }
 /**
- * Whether a calibration was fitted with the other drag model (Settings, Drag model), so it doesn't apply: the
+ * Whether a calibration was fitted with the previous drag model (builds before 288), so it doesn't apply: the
  * multiplier makes one model's drag match a flight, and the other model's drag differs. A calibration says which
  * model it belongs to only when that is the current one ("test"); one that doesn't say is from the previous model
  * (every calibration made before build 288).

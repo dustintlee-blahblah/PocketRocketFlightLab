@@ -27,13 +27,14 @@
  *      released sweep factor, from the Arcas fins' measured drag (NASA TN D-4013), where it is the larger, scaled
  *      for the fin's aspect ratio by the trend of transonic similarity theory (MIL-HDBK-762 figure 5-130).
  *
- * cdParts() in aerodynamics.js reads the setting; the Wind Tunnel asks for both models by name to draw them together.
+ * cdParts() in aerodynamics.js reads dragModel below, which the app leaves on the current model.
  */
 
-/** The drag model the flight uses: "test" (the current one) or "released" (the previous one). */
+/** The drag model the flight uses: "test", the current one. The app always flies it; "released", the one before
+    build 288, is kept so the validation scripts can score the two side by side (validation/accuracy.js --model). */
 export let dragModel = "test";
 /**
- * Chooses the drag model.
+ * Chooses the drag model. Nothing in the app calls this: it is for the validation scripts.
  * @param {string} m "test" (current) or "released" (previous); anything else means "test"
  */
 export function setDragModel(m) {

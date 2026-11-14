@@ -16,13 +16,9 @@
  * --no-fixtures flies the built-in examples only.
  *
  * After the design files it flies designs made in the builder, for what the examples don't have (stages, a cluster,
- * each rail guide, a protuberance on one side, canted fins, the current drag model, a file whose motor is missing or
+ * each rail guide, a protuberance on one side, canted fins, a file whose motor is missing or
  * ambiguous), and records the motor list and where each motor id of the earlier lists leads. A feature that changes
  * the flight gets a case there (the "built" list).
- *
- * The flights (all but the one "current-drag" case) use the previous drag model (Settings, Drag model: Previous), the one the committed snapshot was recorded
- * with, so the snapshot keeps proving that model's results haven't moved; the current drag model is checked against
- * measurements instead (tests/drag-benchmarks.js, validation/).
  *
  * tests/golden-snapshot.json is the committed snapshot of the built-in examples; `npm test` checks it, and
  * `npm run test:record` records it again after a change that is meant to alter results (say which in the commit).
@@ -70,7 +66,7 @@ for (const d of fixtureDirs)
 
 /* ---- runs inside the page ---- */
 // a deterministic page: seeded random numbers, a fixed clock and ids, so two runs give identical output
-const INIT = `(()=>{window.PR_EXPOSE=true;window.PR_DRAG_DEFAULT="released";let s=123456789;Math.random=()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};window.PR_SEED=()=>{s=123456789;};
+const INIT = `(()=>{window.PR_EXPOSE=true;let s=123456789;Math.random=()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};window.PR_SEED=()=>{s=123456789;};
   const T0=Date.UTC(2026,10,1,18,0,0);const RD=Date;let tick=0;
   class FD extends RD{constructor(...a){if(a.length)super(...a);else super(T0+(tick++));}static now(){return T0+(tick++);}}
   window.Date=FD;let n=0;if(window.crypto)try{crypto.randomUUID=()=>"00000000-0000-4000-8000-"+String(++n).padStart(12,"0");}catch(e){}
@@ -251,7 +247,7 @@ async function snapshot(page, label) {
 
   /* ---- designs made in the builder ----
      What the built-in examples don't have: stages, a cluster, each kind of rail guide, a protuberance off to one
-     side, canted fins, the current drag model, and a file whose motor isn't in the list or fits several. Each starts
+     side, canted fins, and a file whose motor isn't in the list or fits several. Each starts
      from the builder's new design with its motors named by id. They run after the examples, and each starts the
      random numbers again, so adding or changing one moves no other case. (The example cases above share one run of
      random numbers, as they always have: a change to one example's dispersion run moves the ones after it.) */
@@ -268,7 +264,6 @@ async function snapshot(page, label) {
         // its own random numbers and launch settings, so no case here depends on the ones before it
         PR_SEED();
         setL(defaultLaunch());
-        setDragModel("released");
         bldNewDesign();
         setMotorId(G80);
         L.wind = 3;
@@ -299,7 +294,6 @@ async function snapshot(page, label) {
   const R = 0.0333;
   const built = [
     ["new", () => G.start()],
-    ["current-drag", () => (G.start(), setDragModel("test"))],
     [
       "fly-away-guide",
       (R) => G.start(() => G.guide({ ...bldNew("bump", R), shape: "flyaway", h: 0.02, len: 0.06, mass: 0.1 })),
@@ -374,7 +368,6 @@ async function snapshot(page, label) {
       },
       arg: [mfr, name],
     });
-  await page.evaluate(() => setDragModel("released"));
   // the motor list itself, and where each motor id of the lists before it leads
   {
     const c = await page.evaluate(() => ({

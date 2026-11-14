@@ -1538,7 +1538,7 @@ function finK(f, Mn, beta, cb2) {
  * @param {number} v airspeed, m/s
  * @param {object} atm the air, from atmosphere()
  * @param {number} [nozzleArea=0] nozzle exit area while a motor burns, m² (its exhaust fills that much of the base)
- * @param {string} [model] "released" or "test" (drag-model.js); by default the one chosen in Settings
+ * @param {string} [model] "released" or "test" (drag-model.js); by default the current one
  * @param {number} [skinT] the test model: the skin's temperature, K (a flight follows it, skinHeating() below). Left
  *   out, the skin is fully heated (the adiabatic wall), as on a wind tunnel model.
  * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref

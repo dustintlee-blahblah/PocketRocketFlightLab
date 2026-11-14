@@ -89,7 +89,7 @@ function wtCompute() {
     { A, atm, An } = S,
     mmax = +document.getElementById("wtmax").value || 2,
     nu = atm.mu / atm.rho,
-    test = dragModel === "released"; // with the previous drag model chosen (Settings), the current one's drag is worked out alongside
+    test = dragModel === "released"; // only when a validation script has chosen the previous drag model: the current one's drag is worked out alongside
   const rows = machGrid(mmax).map((M) => {
     const v = M * atm.a,
       off = cdParts(A, v, atm, 0),
@@ -387,7 +387,7 @@ function wtCharts() {
     desc: ov
       ? "The design file sets a fixed Cd, so it doesn't change with speed."
       : cmp
-        ? "At zero angle of attack. The previous drag model (chosen in Settings) against the current one, coasting and with the motor burning (dashed). The current model’s skin is taken as fully heated here; a flight follows it as it warms."
+        ? "At zero angle of attack. The previous drag model against the current one, coasting and with the motor burning (dashed). The current model’s skin is taken as fully heated here; a flight follows it as it warms."
         : "At zero angle of attack. Dashed: with the motor burning, its nozzle filling part of the base.",
     x: X,
     xLabel: "Mach",

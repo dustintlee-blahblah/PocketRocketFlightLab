@@ -680,7 +680,7 @@ function renderFlCal(list) {
   let h = "";
   if (k && stale)
     h =
-      `<span id="flcalst"><b>Calibration not in use.</b> This rocket’s drag calibration (×${k.toFixed(2)}) was fitted with the ${dragModel === "released" ? "current" : "previous"} drag model, and the drag model has changed since, so flights run without it. ${c.flights ? "Refit it to use your logged flights with this model." : "Remove it, then tick “Use for calibration” on a logged flight to fit a new one."}</span>` +
+      `<span id="flcalst"><b>Calibration not in use.</b> This rocket’s drag calibration (×${k.toFixed(2)}) was fitted with the previous drag model (builds before 288), so flights run without it. ${c.flights ? "Refit it to use your logged flights with this model." : "Remove it, then tick “Use for calibration” on a logged flight to fit a new one."}</span>` +
       (c.flights ? `<button class="btn ghost" type="button" id="flrefit">Refit</button>` : "") +
       `<button class="btn ghost" type="button" id="flcalrm">Remove</button>`;
   else if (k && c.flights)

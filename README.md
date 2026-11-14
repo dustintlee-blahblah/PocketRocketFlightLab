@@ -141,7 +141,7 @@ npm run test:drag
 the app computes: flight results, stability, RSO Checklist, charge timing, drag and stability
 coefficients, Monte Carlo dispersion, the Results text and the saved `.ork`. It then makes designs in the builder for
 what the examples don't have (two and three stages, a cluster, each kind of rail guide, a protuberance on one side,
-canted fins, the current drag model, a file whose motor isn't in the list or fits several) and records the motor list.
+canted fins, a file whose motor isn't in the list or fits several) and records the motor list.
 Record a snapshot before a change, then check against it after:
 
 ```

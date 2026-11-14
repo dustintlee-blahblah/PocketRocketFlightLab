@@ -28,16 +28,15 @@ coefficient jumps.
 
 **From build 288 the model described in this section (called the test model below, the name it had while it was being
 built) is the app's drag model.** The one it replaced, called the released model below and described term by term in
-the rest of this page, is kept as Settings → Drag model → Previous, and the rest of this page's drag tables describe
-it; where the two differ, the table just below says how. Stability (the center of pressure and normal force) is the
+the rest of this page, is no longer offered in the app (the Settings switch was removed in build 303; the code is
+kept for the validation scripts), and the rest of this page's drag tables describe it; where the two differ, the table just below says how. Stability (the center of pressure and normal force) is the
 same in both.
 
-Settings → Drag model switches between the test (current) model and the released (previous) one. The test model
-was built term by term from public sources, mainly the method choices in the Missile DATCOM final report (Vukelich et al., AFWAL-TR-86-3091
+The test model was built term by term from public sources, mainly the method choices in the Missile DATCOM final report (Vukelich et al., AFWAL-TR-86-3091
 Volume I, 1988, approved for public release) and the NACA and NASA reports it relies on. A term not yet moved over is
 computed exactly as the released model computes it. Flights, the landing dispersion, flight-log calibration and the
-Wind Tunnel follow the setting; with the previous model chosen, the Wind Tunnel also draws the current model's drag.
-A drag calibration is kept with the model it was fitted with. The code is in `src/js/physics/drag-model.js`.
+Wind Tunnel all use the test model. A drag calibration fitted with the released model (before build 288) is not
+applied; refit it from the logged flights. The code is in `src/js/physics/drag-model.js`.
 
 | Term | Test model | Released model |
 |---|---|---|

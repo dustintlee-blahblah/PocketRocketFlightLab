@@ -287,7 +287,7 @@ with the fonts and PDF library switched to bundled copies.
   delays, and records everything the app computes. `npm test` compares the built-in examples with
   `tests/golden-snapshot.json`. A change that shouldn't alter results must pass unchanged. After the examples it flies
   designs made in the builder (`built` in the file): stages, a cluster, each rail guide, a side protuberance, canted
-  fins, the current drag model, and files whose motor is missing or ambiguous; and it records the motor list and where
+  fins, and files whose motor is missing or ambiguous; and it records the motor list and where
   each old motor id leads. A new feature that changes the flight gets a case there, added at the end so the cases
   before it don't move.
 - `tests/smoke.js` clicks through the tabs and controls. It fails on any page error, and on a screen that comes up

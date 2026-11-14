@@ -20,7 +20,7 @@ const { chromium } = require("playwright");
 const { CASES } = require("./cases.js");
 
 const verbose = process.argv.includes("--verbose");
-// --model released scores the previous drag model (Settings, Drag model: Previous) instead of the current one
+// --model released scores the previous drag model (the one before build 288) instead of the current one
 const model = process.argv.includes("--model") ? process.argv[process.argv.indexOf("--model") + 1] : "";
 const BANDS = [
   ["subsonic", 0, 0.8],

@@ -5,8 +5,6 @@
 import { BLD, bldRender } from "../builder/builder-ui.js";
 import { store } from "../core/storage.js";
 import { PROFILE, units } from "../design/defaults.js";
-import { applyCal } from "../flightlog/drag-calibration.js";
-import { setDragModel } from "../physics/drag-model.js";
 import { drawMC } from "../physics/monte-carlo.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender } from "./donate.js";
@@ -14,12 +12,7 @@ import { setUnits } from "./events.js";
 import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
 import { renderRSO } from "./rso-checklist.js";
-import { wtRefresh } from "./wind-tunnel.js";
 let rt = null;
-/* The drag model a fresh install starts on: the current one ("test" in the code: physics/drag-model.js). A page that
-   sets PR_DRAG_DEFAULT to "released" starts on the previous one instead (tests/golden.js does, to keep checking that
-   the previous model's results haven't moved). Settings can switch either. */
-const dragDefault = typeof window !== "undefined" && window.PR_DRAG_DEFAULT === "released" ? "released" : "test";
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
  */
@@ -75,23 +68,6 @@ export function start() {
           store.set("rfs-theme", b.dataset.themeSet);
           applyTheme(b.dataset.themeSet);
           sync();
-        }),
-    );
-    /* drag model: the current one, or the previous one for comparison (physics/drag-model.js). A drag calibration
-       belongs to the model it was fitted with, so the design's multiplier is set again. The last run's results stay
-       until the next Launch. */
-    menu.querySelectorAll("[data-drag-set]").forEach(
-      (b) =>
-        (b.onclick = () => {
-          store.set("rfs-dragmodel", b.dataset.dragSet);
-          setDragModel(b.dataset.dragSet);
-          try {
-            applyCal();
-          } catch (_) {}
-          sync();
-          try {
-            wtRefresh();
-          } catch (_) {}
         }),
     );
     const sw = document.getElementById("s-swipe");
@@ -238,12 +214,12 @@ export function start() {
       document.getElementById("s-imp").setAttribute("aria-pressed", units === "imp");
       document.getElementById("s-met").setAttribute("aria-pressed", units === "met");
       sw.checked = store.get("rfs-swipe", true) !== false;
-      const dm = store.get("rfs-dragmodel", dragDefault) === "released" ? "released" : "test";
-      menu.querySelectorAll("[data-drag-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.dragSet === dm));
-      document.getElementById("s-dragnote").hidden = dm !== "released";
     }
     applyTheme(store.get("rfs-theme", "auto"));
-    setDragModel(store.get("rfs-dragmodel", dragDefault));
+    // the Drag model switch is gone (the app flies the current model): a choice saved by an earlier build is dropped
+    try {
+      localStorage.removeItem("rfs-dragmodel");
+    } catch (_) {}
     sync();
   })();
   window.addEventListener("resize", () => {
