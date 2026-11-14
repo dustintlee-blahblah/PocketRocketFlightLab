@@ -316,7 +316,9 @@ const SAME = [
           if (info.tag === "SELECT") await p.selectOption("#" + id, v);
           else if (info.type === "checkbox") {
             if (id.startsWith("bfo-")) await p.locator(`label.ovsw:has(#${id})`).click();
-            else await p.locator("#" + id).click({ force: true });
+            // the input's own click, in the page: a pointer click needs the box on screen, and where it lands
+            // depends on the fonts of the machine running the test
+            else await p.locator("#" + id).evaluate((e) => e.click());
           } else if (info.type === "number") {
             const cur = parseFloat(info.val);
             // a new value that is still a possible one: an inside diameter shrinks (it can't pass the outside one)
