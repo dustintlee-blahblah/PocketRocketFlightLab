@@ -827,7 +827,7 @@ export function drawFinsInto(cvId, noteId, FS) {
   const area = ptsOK ? (finGeom({ pts: FS.pts }) || { area: ((a + b) / 2) * s }).area : ((a + b) / 2) * s,
     ai = units === "imp" ? area / (IN * IN) : area * 1e4;
   note.textContent =
-    `Drawn to scale. ${FS.n} fins, each ${ai.toFixed(1)} ${units === "imp" ? "sq in" : "cm²"}, ${fmt(FS.t, "small")} ${uname("small")} thick with ${(FIN_EDGES.find((x) => x[0] === FS.edge) || [0, FS.edge])[1].replace(/ \(.*\)$/, "").toLowerCase()} edges${aft > 1e-6 ? `; trailing edge ${fmt(aft, "len")} ${u} from the ${FS.tailName || "tail"}` : ""}.` +
+    `Drawn to scale. ${FS.n} fins, each ${ai.toFixed(1)} ${units === "imp" ? "sq in" : "cm²"}, ${fmt(FS.t, "small")} ${uname("small")} thick with ${(FIN_EDGES.find((x) => x[0] === FS.edge) || [0, FS.edge])[1].replace(/ \(.*\)$/, "").toLowerCase()} edges${FS.edgeTE ? ` and a ${FS.edgeTE === "sharp" ? "tapered" : FS.edgeTE} trailing edge` : ""}${aft > 1e-6 ? `; trailing edge ${fmt(aft, "len")} ${u} from the ${FS.tailName || "tail"}` : ""}.` +
     (FS.cant ? ` Canted ${(+FS.cant).toFixed(1)}°, which spins the rocket.` : "") +
     (ptsOK && FS.note != null
       ? FS.note

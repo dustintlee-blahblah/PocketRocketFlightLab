@@ -33,6 +33,7 @@ function boosterFinSets(D) {
       t: D.bFinThick,
       xLead: D.bLength - D.bFinAft - D.bFinRoot,
       edge: D.bFinEdge,
+      edgeTE: D.bFinEdgeTE || "",
       bevLE: D.bFinBevLE || 0,
       bevTE: D.bFinBevTE || 0,
       rs: D.bFinFinish ?? D.finish,

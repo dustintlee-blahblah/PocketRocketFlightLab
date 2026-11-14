@@ -4,7 +4,7 @@
  */
 import { BLD, bldFind } from "./builder-ui.js";
 import { BLD_BUMPS, BLD_BUTTONS, BLD_LUG_KINDS, bldOvOn, bldRailLug } from "./model.js";
-import { FIN_EDGES } from "../core/units-and-fin-edges.js";
+import { FIN_EDGES, FIN_TE_EDGES } from "../core/units-and-fin-edges.js";
 /**
  * Nose and transition shapes offered: [shape, label].
  */
@@ -142,11 +142,13 @@ export function bldFields(p) {
             ]),
         ["t", "Thickness", "num", "small"],
         ["edge", "Edges", "sel", FIN_EDGES],
-        ...(p.edge === "beveled"
-          ? [
-              ["bevLE", "Leading-edge bevel length", "num", "small"],
-              ["bevTE", "Trailing-edge bevel length", "num", "small"],
-            ]
+        ["edgeTE", "Trailing edge", "sel", FIN_TE_EDGES],
+        // bevel lengths: the leading one on a beveled fin; the trailing one where the trailing edge is a bevel (a
+        // beveled fin's own, or a square or rounded fin tapered at the back)
+        ...(p.edge === "beveled" ? [["bevLE", "Leading-edge bevel length", "num", "small"]] : []),
+        ...((p.edge === "beveled" && !p.edgeTE) ||
+        (p.edgeTE === "sharp" && (p.edge === "beveled" || p.edge === "square" || p.edge === "rounded"))
+          ? [["bevTE", "Trailing-edge bevel length", "num", "small"]]
           : []),
         ["cant", "Cant angle", "num", "deg"],
         ...posF,

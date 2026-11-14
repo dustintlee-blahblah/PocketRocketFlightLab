@@ -271,7 +271,7 @@ function buildReportPdf() {
     ],
     [
       "Fin sweep / thickness",
-      `${fmt(RD.finSweep, "len")} / ${fmt(RD.finThick, "small")} ${uname("small")}, ${RD.finEdge}`,
+      `${fmt(RD.finSweep, "len")} / ${fmt(RD.finThick, "small")} ${uname("small")}, ${RD.finEdge}${RD.finEdgeTE ? `, ${RD.finEdgeTE === "sharp" ? "tapered" : RD.finEdgeTE} trailing edge` : ""}`,
     ],
     ...(RD.extraFins || []).map((f, i) => [
       `Fin set ${i + 2} @ ${fmt(f.pos, "len")} ${uname("len")}`,

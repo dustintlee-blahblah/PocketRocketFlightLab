@@ -247,10 +247,11 @@ async function snapshot(page, label) {
 
   /* ---- designs made in the builder ----
      What the built-in examples don't have: stages, a cluster, each kind of rail guide, a protuberance off to one
-     side, canted fins, and a file whose motor isn't in the list or fits several. Each starts
-     from the builder's new design with its motors named by id. They run after the examples, and each starts the
-     random numbers again, so adding or changing one moves no other case. (The example cases above share one run of
-     random numbers, as they always have: a change to one example's dispersion run moves the ones after it.) */
+     side, canted fins, fins with a trailing edge unlike the leading one, and a file whose motor isn't in the list or
+     fits several. Each starts from the builder's new design with its motors named by id. They run after the
+     examples, and each starts the random numbers again, so adding or changing one moves no other case. (The example
+     cases above share one run of random numbers, as they always have: a change to one example's dispersion run
+     moves the ones after it.) */
   const G80 = "a-5f4294d20002e900000007dd", // AeroTech G80T, 29 mm
     H128 = "a-5f4294d20002e9000000000d"; // AeroTech H128W, 29 mm
   await page.evaluate(
@@ -319,6 +320,15 @@ async function snapshot(page, label) {
       (R) => G.start(() => G.tube().kids.push({ ...bldNew("bump", R), w: 0.04, h: 0.05, len: 0.1, mass: 0.06 })),
     ],
     ["canted-fins", () => G.start(() => (G.kid("fins").cant = 2))],
+    // a sharp leading edge with a square back, and a rounded front tapered at the back
+    [
+      "fins-airfoil-square-back",
+      () => G.start(() => Object.assign(G.kid("fins"), { edge: "airfoil", edgeTE: "square" })),
+    ],
+    [
+      "fins-rounded-tapered-back",
+      () => G.start(() => Object.assign(G.kid("fins"), { edge: "rounded", edgeTE: "sharp", bevTE: 0.02 })),
+    ],
     ["cluster", () => G.start(() => (G.kid("mount").cluster = "double"))],
     [
       "two-stage",

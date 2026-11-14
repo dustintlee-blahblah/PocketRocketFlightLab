@@ -9,6 +9,7 @@ import { bldMergeOrk, rktPartId } from "../builder/ork-merge.js";
 import { bldProblems } from "../builder/ork-read.js";
 import { b64ToU8, esc, jclone } from "../core/helpers.js";
 import { store } from "../core/storage.js";
+import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { boostId, D, firstId, L, motorId } from "../design/defaults.js";
 import { recentPut, recentSaved, renderRecent } from "./recent.js";
 import { ORK_CFG, setSource, SOURCE } from "./save.js";
@@ -504,7 +505,8 @@ export async function saveDesignFile(asNew, opts = {}) {
   // the file keeps its name on Save changes, whatever the rocket is called (a new file name comes only from Save a copy)
   text = text
     .replace(/<crosssection>(beveled|doublewedge)<\/crosssection>/g, "<crosssection>airfoil</crosssection>")
-    .replace(/<prflbevel(le|te)>[^<]*<\/prflbevel(le|te)>/g, "");
+    .replace(/<prflbevel(le|te)>[^<]*<\/prflbevel(le|te)>/g, "")
+    .replace(/<prfltrailingedge>[^<]*<\/prfltrailingedge>/g, "");
   const bytes = new TextEncoder().encode(text);
   const extras = into
     ? (SOURCE.extras || [])
@@ -531,7 +533,8 @@ export async function saveDesignFile(asNew, opts = {}) {
   // the ejection charge settings ride along in their own file inside the .ork; OpenRocket ignores it
   {
     const fe = {},
-      fb = {};
+      fb = {},
+      ft = {};
     if (BLD)
       for (const st of BLD.stages)
         for (const pp of st.parts || [])
@@ -539,12 +542,19 @@ export async function saveDesignFile(asNew, opts = {}) {
             if (k.type === "fins" && k.id && !["square", "rounded", "airfoil"].includes(k.edge || "square"))
               fe[k.id] = k.edge;
             // bevel lengths of beveled fins (OpenRocket's format has no place for them)
-            if (k.type === "fins" && k.id && k.edge === "beveled" && (+k.bevLE > 0 || +k.bevTE > 0))
+            if (
+              k.type === "fins" &&
+              k.id &&
+              (k.edge === "beveled" || k.edgeTE === "sharp") &&
+              (+k.bevLE > 0 || +k.bevTE > 0)
+            )
               fb[k.id] = { le: +k.bevLE || 0, te: +k.bevTE || 0 };
+            // a trailing edge set apart from the section (OpenRocket's format has one edge type for the whole fin)
+            if (k.type === "fins" && k.id && finTeEdge(k.edgeTE)) ft[k.id] = k.edgeTE;
           }
     const i = extras.findIndex((x) => x.name === FIN_ORK);
     if (i >= 0) extras.splice(i, 1);
-    if (Object.keys(fe).length)
+    if (Object.keys(fe).length || Object.keys(fb).length || Object.keys(ft).length)
       extras.push({
         name: FIN_ORK,
         data: new TextEncoder().encode(
@@ -553,6 +563,7 @@ export async function saveDesignFile(asNew, opts = {}) {
             version: 1,
             finEdges: fe,
             ...(Object.keys(fb).length ? { finBevels: fb } : {}),
+            ...(Object.keys(ft).length ? { finTrailingEdges: ft } : {}),
           }),
         ),
       });

@@ -6,7 +6,7 @@
  * configuration used is the one chosen on the Motor tab (ORK_CFG), else the one the file's simulation flew, else
  * the default.
  */
-import { FIN_EDGES } from "../core/units-and-fin-edges.js";
+import { FIN_EDGES, finTeEdge } from "../core/units-and-fin-edges.js";
 import { D, L } from "../design/defaults.js";
 import { ORK_CFG, ORK_SIM } from "./save.js";
 import { noseR } from "../physics/geometry.js";
@@ -765,6 +765,8 @@ export function parseOrk(xml, opts = {}) {
         cant: num(c, "cant", 0),
         pts: outline,
         edge: (txt(c, "crosssection") || "square").toLowerCase(),
+        // the app's own trailing edge, set apart from the section (not part of OpenRocket's format)
+        edgeTE: finTeEdge(txt(c, "prfltrailingedge") || ""),
         // the app's own bevel lengths (beveled fins; not part of OpenRocket's format)
         bevLE: num(c, "prflbevelle", 0),
         bevTE: num(c, "prflbevelte", 0),
@@ -1198,6 +1200,7 @@ export function parseOrk(xml, opts = {}) {
       cant: g.cant || 0,
       pos: g.x - x0,
       edge: EDGE0(g.edge),
+      edgeTE: finTeEdge(g.edgeTE),
       bevLE: g.bevLE || 0,
       bevTE: g.bevTE || 0,
       cdo: g.cdo || 0,
@@ -1342,6 +1345,7 @@ export function parseOrk(xml, opts = {}) {
     finRb: f.rb ?? null,
     finSb: f.sb ?? null,
     finEdge: EDGE(f.edge),
+    finEdgeTE: finTeEdge(f.edgeTE),
     finBevLE: f.bevLE || 0,
     finBevTE: f.bevTE || 0,
     finCdOverride: f.cdo || 0,
@@ -1415,6 +1419,7 @@ export function parseOrk(xml, opts = {}) {
       bFinThick: bf.t,
       bFinAft: B.fAft,
       bFinEdge: EDGE(bf.edge),
+      bFinEdgeTE: finTeEdge(bf.edgeTE),
       bFinBevLE: bf.bevLE || 0,
       bFinBevTE: bf.bevTE || 0,
       bFinFinish: bf.rs ?? null,
@@ -1492,6 +1497,7 @@ export function parseOrk(xml, opts = {}) {
       bFinThick: cf.t,
       bFinAft: C1.fAft,
       bFinEdge: EDGE(cf.edge),
+      bFinEdgeTE: finTeEdge(cf.edgeTE),
       bFinBevLE: cf.bevLE || 0,
       bFinBevTE: cf.bevTE || 0,
       bFinFinish: cf.rs ?? null,

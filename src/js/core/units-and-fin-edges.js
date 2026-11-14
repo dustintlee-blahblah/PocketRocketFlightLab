@@ -35,6 +35,22 @@ export const FIN_EDGES = [
   ["doublewedge", "Double wedge (diamond)"],
 ];
 /**
+ * Trailing edges that can be set apart from the fin's section: [value, label]. "" means the trailing edge is the
+ * section's own (a square fin's is square, an airfoil's sharp).
+ */
+export const FIN_TE_EDGES = [
+  ["", "Same as the leading edge"],
+  ["square", "Square"],
+  ["rounded", "Rounded"],
+  ["sharp", "Tapered to a sharp edge"],
+];
+/**
+ * A trailing edge value from a file or a saved design, or "" (the section's own) if it isn't one of FIN_TE_EDGES.
+ * @param {string} e
+ * @returns {string}
+ */
+export const finTeEdge = (e) => (e && FIN_TE_EDGES.some((x) => x[0] === e) ? e : "");
+/**
  * Wave-drag constant K of a sharp edge type in Cd = K·(t/c)²/β (double wedge 4, beveled 10, airfoil 16/3).
  * @param {string} e edge type
  * @returns {number}

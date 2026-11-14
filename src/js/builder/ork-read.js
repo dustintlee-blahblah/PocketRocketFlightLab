@@ -14,6 +14,7 @@ import {
   bldPts,
   bldSettings,
 } from "./model.js";
+import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { unflipNoses } from "../files/openrocket-import.js";
 import { matchMotor } from "../files/rocksim-import.js";
 import { ORK_CFG, ORK_SIM } from "../files/save.js";
@@ -418,6 +419,7 @@ export function bldFromOrk(xml, info) {
                 n: Math.round(num(e, "fincount", 3)),
                 t: num(e, "thickness", 0.003),
                 edge: (txt(e, "crosssection") || "square").toLowerCase(),
+                edgeTE: finTeEdge(txt(e, "prfltrailingedge") || ""),
                 bevLE: num(e, "prflbevelle"),
                 bevTE: num(e, "prflbevelte"),
                 cant: num(e, "cant"),
@@ -435,6 +437,7 @@ export function bldFromOrk(xml, info) {
                 n: Math.round(num(e, "fincount", 3)),
                 t: num(e, "thickness", 0.003),
                 edge: (txt(e, "crosssection") || "square").toLowerCase(),
+                edgeTE: finTeEdge(txt(e, "prfltrailingedge") || ""),
                 bevLE: num(e, "prflbevelle"),
                 bevTE: num(e, "prflbevelte"),
                 cant: num(e, "cant"),
@@ -453,6 +456,7 @@ export function bldFromOrk(xml, info) {
                 n: Math.round(num(e, "fincount", 3)),
                 t: num(e, "thickness", 0.003),
                 edge: (txt(e, "crosssection") || "square").toLowerCase(),
+                edgeTE: finTeEdge(txt(e, "prfltrailingedge") || ""),
                 bevLE: num(e, "prflbevelle"),
                 bevTE: num(e, "prflbevelte"),
                 cant: num(e, "cant"),

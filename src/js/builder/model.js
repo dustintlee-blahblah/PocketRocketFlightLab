@@ -162,6 +162,7 @@ export function bldNew(type, R = 0.0333) {
         sweep: R * 2.7,
         t: 0.003,
         edge: "rounded",
+        edgeTE: "",
         bevLE: 0,
         bevTE: 0,
         pts: "",

@@ -35,7 +35,7 @@ function finnedOrk(o) {
 <bodytube><name>body</name><id>b</id><finish>${o.finish}</finish>${m}<length>${o.body * IN}</length>
 <thickness>${o.r * IN}</thickness><radius>${o.r * IN}</radius><subcomponents>
 <trapezoidfinset><name>fins</name><id>f</id><axialoffset method="bottom">0</axialoffset><finish>${o.finish}</finish>${m}
-<fincount>${o.n || 4}</fincount><rotation>0</rotation><thickness>${o.t * IN}</thickness><crosssection>${o.edge}</crosssection>
+<fincount>${o.n || 4}</fincount><rotation>0</rotation><thickness>${o.t * IN}</thickness><crosssection>${o.edge}</crosssection>${o.te ? `<prfltrailingedge>${o.te}</prfltrailingedge>` : ""}
 <cant>0</cant><rootchord>${o.cr * IN}</rootchord><tipchord>${o.ct * IN}</tipchord><sweeplength>${o.sw * IN}</sweeplength>
 <height>${o.s * IN}</height></trapezoidfinset></subcomponents></bodytube></subcomponents></stage></subcomponents>
 </rocket></openrocket>`;
@@ -216,8 +216,11 @@ const ARCAS_CA_SUP = [
    Geometry (in): 87.8 tangent-ogive nose, 15 diameter, 201.2 body (288.97 from the nose to the base, as both sources
    give), four fins at the base: root chord 38.96, tip 28, span 16.13, leading edge swept back 16.13, 1.1 thick, the
    leading edge beveled and the trailing edge blunt. The fin dimensions are the open-aerospace project's reconstruction
-   (github.com/open-aerospace/aerobee-150, its RASAero model); the app's "beveled" section bevels both edges, so it gives
-   these fins a little less trailing-edge drag than they have.
+   (github.com/open-aerospace/aerobee-150, its RASAero model). NASA's description of the vehicle (NTRS 19660005621, "Each
+   is a modified single wedge of magnesium skin and spars") gives no thickness at the trailing edge, and the app has no
+   single-wedge section, so the fins stay entered as beveled at both edges. Entered with a square trailing edge of
+   the full 1.1 in (te: "square") the drag is 19% high thrusting and 11% coasting, against 6% and 5% as they are:
+   this case can't check the trailing-edge term, and RM L55G28a below, whose report gives its fins' edges, does.
    The reference numbers are the manufacturer's: Vought Astronautics Report AST/E1R-13319 (Baber, 1961), "Performance
    Summary for the Aerobee 150A", figure 22, which cites Aerojet's wind-tunnel tests of the Aerobee 150A (Thomas,
    Aerojet Report 1784, 1960); the same curves are in Pressly et al., "Sounding Rockets", NASA TM X-55123 (1965),
@@ -329,6 +332,7 @@ const L55 = {
   s: 9,
   t: 0.175, // the two models' mean thickness
   edge: "beveled",
+  te: "square", // wedge leading edges, square trailing edges
 };
 // [Mach, Cd, Reynolds number on the body length]
 const L55_PTS = [

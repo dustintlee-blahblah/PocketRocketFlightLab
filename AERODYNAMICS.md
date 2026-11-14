@@ -113,6 +113,7 @@ A boattail that ends before the base (more body behind it) has only the separati
 | Square leading edge | all | 0.4 × stagnation pressure on the edge's face below the drag rise, rising to 0.8 through it, swept by the independence principle (cos²Λ). Hoerner (ch. III, figure 22): a blunt leading edge adds 0.4 over a rounded one on sections between walls; 0.8 is a flat face in three-dimensional flow. |
 | Rounded leading edge | from the drag rise | Modified Newtonian, ⅔ × stagnation pressure on the edge, rising through the drag rise. Nothing below it: Hoerner's figure 23 shows a corner radius of 0.2 of the thickness is enough to lose the blunt edge's penalty. |
 | Square and rounded trailing edges | all | The base drag above on the edge's area; a rounded edge takes 0.7 of a square one's (NASA TN D-6637: round against square trailing edges on turbine blades, 0.64–0.78). |
+| A trailing edge unlike the leading edge (the builder's Trailing edge field) | all | Each end of the section takes its own term. A sharp leading edge with a square or rounded back: the base drag above on the trailing edge, and of the wave drag only the front's share (thin-airfoil wave drag is the chordwise sum of the surface slope squared, so the tapering front and the tapering back each add their own part and a flat part between adds none): half of a double wedge's or an airfoil's K, or the leading bevel's 1/e₁. The peak near Mach 1 is left whole. A square or rounded front tapered to a sharp edge at the back: no base drag, the leading edge's own term, and the trailing bevel's 1/e₃ of wave drag. Checked on RM L55G28a's fins (wedge leading edges, square trailing edges). |
 | Sharp edges (airfoil, beveled, double wedge) | above the drag rise | Thin-airfoil wave drag on the free stream, K·(t/c)²/β on the fin's area (double wedge 4, airfoil 16/3). While the leading edge is swept behind the Mach line the drag is held at the value it has when the Mach line reaches the edge, K·(t/c)²·cot Λ, and β is never taken under 0.4. It rises from the section's drag-divergence Mach number to Mach 1.05, where Missile DATCOM's fin method also puts the full value. Beveled fins: K = 1/e₁ + 1/e₃ from the bevel lengths as shares of the mean chord (20% bevels, the default, give 10), each bevel held to at most what a square leading edge or a blunt trailing edge of the same thickness would cost. |
 | Sharp edges, the peak near Mach 1 | about 0.85 – 1.5 | 5.7·(t/c)^(5/3) on the fin's area, from the drag the Arcas model's 30° fins add (NASA TN D-4013, fins on minus fins off, less friction: 0.03 from Mach 0.95 to 1.05, back on the linear value by Mach 1.2). Scaled for sweep by (cos Λ / cos 30°)⁵, fitted to the RM-10's 60° fins (NACA RM E50D28), with the rise delayed for sweep past 30°; and for slenderness by the trend of transonic similarity theory (MIL-HDBK-762 figure 5-130) about the measured point: a stubby fin (aspect ratio 0.8, 3% thick) gets 0.4 of the peak, a long one (3, 5% thick) 1.7. It fades past Mach 1.05. The larger of this and the linear term is used. |
 | Drag divergence | | M_dd = 0.96 − 1.5(t/c) (NACA 0006 ≈ 0.87, 0012 ≈ 0.78). |
@@ -158,7 +159,7 @@ have no flight history, so they are scored with the skin fully heated (right for
 | Total drag, Mach 0.6–4.6 (tuned) | NACA RM A53D02, fineness-10 body with 72° fins, free flight | 7.7%: 4% high at Mach 0.6, 3–15% low from Mach 1 to 3.3. With a cold skin, 5.0%. |
 | Fin drag, Mach 1.5–2.0 (tuned) | NACA RM E50D28, RM-10 fins, wind tunnel | 0.011 in Cd, high. |
 | Boattail pressure drag, Mach 2.5 and 3.5 (tuned) | MIL-HDBK-762 figure 5-144, four conical boattails, wind tunnel | Within 0.002 in Cd. |
-| Fin-stabilized cone-cylinder, Mach 2.5–3.9 (check) | NACA RM L55G28a, free flight | Drag 5.2%, low. With a cold skin, 12.3% high. |
+| Fin-stabilized cone-cylinder, Mach 2.5–3.9 (check) | NACA RM L55G28a, free flight | Drag 1.2%, with its fins' square trailing edges entered (5.2% low with the fins sharp at both ends, as they were entered before the trailing edge could be set). With a cold skin, 16.7% high. |
 | Boattailed body with fins, Mach 0.6–1.2 (check; two terms were sized on it) | NASA TN D-4013, Arcas short model, 15° boattail, wind tunnel | Drag 7.8%: 15% high at Mach 0.6–0.7, 4–9% low from Mach 0.85 to 1.2. |
 | The same model, Mach 1.5–4.63 (check) | NASA TN D-4014, wind tunnel | Drag 4.1% with fins, 4.9% without. What the four fins add: 0.019 in Cd, low (0.065 low at Mach 1.5, 0.03 at 1.8). |
 | Boattailed bodies in flight, Mach 0.8–2 (check) | NASA TR R-100, configurations 11 (8° boattail) and 36 (4°), free flight | Drag 6.2% on configuration 11; 12.6% high on configuration 36. |
@@ -175,7 +176,7 @@ All check cases together, by speed band (mean absolute error, mean signed error 
 
 | Quantity | Below Mach 0.8 | 0.8–1.2 | 1.2–3 | 3–5 |
 |---|---|---|---|---|
-| Drag | 10.1% (+7.6) | 8.6% (+0.2) | 6.6% (+0.8) | 4.3% (+2.5) |
+| Drag | 10.1% (+7.6) | 8.6% (+0.2) | 5.9% (+1.5) | 3.8% (+3.3) |
 | CP, share of length | 2.4% (−2.4) | 3.5% (−3.4) | 3.8% (−3.8) | 1.0% (−0.3) |
 | CNα | 13.0% (−13.0) | 13.3% (−13.3) | 16.7% (−16.7) | 18.3% (−18.3) |
 
@@ -201,7 +202,7 @@ or more from the true height.
 
 **The skin's temperature and the free-flight drag cases.** A model boosted to speed in seconds is somewhere between
 a cold skin and a fully heated one. The two free-flight cases pull opposite ways: RM A53D02 scores 7.7% heated and
-5.0% cold, RM L55G28a 5.2% heated and 12.3% cold. So the skin's temperature does not explain what is left of
+5.0% cold, RM L55G28a 1.2% heated and 16.7% cold. So the skin's temperature does not explain what is left of
 either. The measured flights are flown with the skin followed in time, but `validation/cases.js` gives every one of
 them the same placeholder wall (2 mm, density 1000), which heats within a few seconds; published build details give
 only the Qu8k's material (aluminium), so each rocket's real wall is a missing input there.
@@ -229,7 +230,10 @@ fins, and its nose (a curved tip faired into a cone, entered as a power-series s
 roughly what the app can describe. The Arcas case was used to size the 15° attachment limit and the Mach 0.88 start
 of the wave drag, so its score is not fully independent.
 
-**Fins.** On the 45° fins of TR R-100 figure 5 the linear term gives 0.0046 against 0.0037 measured up to Mach 1.4
+**Fins.** RM L55G28a's fins have wedge leading edges and square trailing edges, as its report says. Entered that
+way the app's drag is within 1.2% of the flight from Mach 2.5 to 3.9; entered as sharp at both ends, the only
+choice before the trailing edge could be set apart, it was 5.2% low. That is the one independent check of a blunt
+trailing edge behind a sharp front, and it is supersonic only. On the 45° fins of TR R-100 figure 5 the linear term gives 0.0046 against 0.0037 measured up to Mach 1.4
 and falls below the measurement past Mach 2 (the report draws one level line to Mach 3 and says it did not try for
 accuracy); the peak near Mach 1 gives 0.0057 against 0.0055. The RM-10's fins (RM E50D28) are 5% thick along the
 flow: the report's 0.10 is measured normal to the 60° leading edge (NACA Report 1160). Left open: the Arcas fins add
@@ -294,7 +298,7 @@ Windows, and its drag table exported (Aero Plots, Export to CSV). Mean error aga
 | Case | App | RASAero II | RASAero II settings |
 |---|---|---|---|
 | RM A53D02 | 7.7% | 7.0% | all turbulent flow, as the app assumes (16.6% low with its default transition) |
-| RM L55G28a | 5.2% | 9.4% to 15.1%, low | Rough Camouflage Paint to Camouflage Paint, which bracket the app's 20 µm (20.1% with zero roughness) |
+| RM L55G28a | 1.2% | 9.4% to 15.1%, low | Rough Camouflage Paint to Camouflage Paint, which bracket the app's 20 µm (20.1% with zero roughness) |
 | Arcas short model, Mach 0.6–1.2 | 7.8% | 19.1% | zero roughness; low by 21–41% from Mach 0.9 to 1.1 |
 | TR R-100 configuration 11 | 6.2% | 6.5% | zero roughness |
 | TR R-100 configuration 36 | 12.6% | 11.7% | zero roughness, tangent ogive nose |
@@ -321,9 +325,11 @@ ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag
    (NACA Report 1307) give the body–fin lift carryover across subsonic and supersonic speeds in one framework.
 5. **Body lift at supersonic speeds and large angles.** Slender-body theory and K = 1.1 hold at low speed; Jorgensen
    (NASA TR R-474) carries a body's normal force to high angles and Mach numbers consistently.
-6. **Fins with a sharp leading edge and a blunt trailing edge.** Sounding-rocket fins are often made this way
-   (the Aerobee 150A's and RM L55G28a's are). The app's edge types are square, rounded, or sharp at both ends, so
-   such fins lose their trailing-edge base drag.
+6. **Single-wedge fins.** A fin with a sharp leading edge and a blunt trailing edge can be entered (the Trailing
+   edge field), and RM L55G28a's fins check it. The Aerobee 150A's fins are "a modified single wedge" (NTRS
+   19660005621), a section that thickens all the way to the trailing edge, which the app has no shape for, and
+   their thickness at the trailing edge isn't published: entered as beveled with a full-thickness square back the
+   app is 19% high thrusting and 11% coasting, against 6% and 5% entered as beveled at both ends, as they are.
 7. **Normal-force slope and CP with small fins on long bodies.** On the Aerobee 150A the app's CNα is 10–22% low
    at every speed while its CP agrees. On NASA TM-2005-213541's configuration 3 it is 4% low at Mach 0.6 and 15–28%
    low above Mach 1, with the CP forward, and RM L56G24's CP is 6% forward too: the fins seem to carry more lift

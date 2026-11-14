@@ -808,6 +808,7 @@ export function finSetsOf(D) {
       t: D.finThick,
       xLead: D.length - D.finAft - D.finRoot,
       edge: D.finEdge,
+      edgeTE: D.finEdgeTE || "",
       bevLE: D.finBevLE || 0,
       bevTE: D.finBevTE || 0,
       rs: D.finFinish ?? D.finish,
@@ -839,6 +840,7 @@ export function xfinSets(list, rs) {
     t: f.t,
     xLead: f.pos,
     edge: f.edge,
+    edgeTE: f.edgeTE || "",
     bevLE: f.bevLE || 0,
     bevTE: f.bevTE || 0,
     rs,
@@ -983,6 +985,7 @@ export function aero(D) {
     D.finThick,
     D.finAft,
     D.finEdge,
+    D.finEdgeTE,
     D.finBevLE,
     D.finBevTE,
     D.finish,
@@ -1459,20 +1462,33 @@ function finTeCp(M, cb, cf, f) {
    e1 = e3 = 0.5, gives the familiar 4; the default 20% bevels give 10). A short bevel is a steep wedge, where linear
    theory overstates the drag, so each bevel is held to at most what a flat edge of the same thickness costs: the
    leading bevel no more than a square leading edge (0.8 of stagnation pressure on its face), the trailing bevel no
-   more than a blunt two-dimensional base. Without bevel lengths the section keeps the 20% bevels. */
+   more than a blunt two-dimensional base. Without bevel lengths the section keeps the 20% bevels.
+   The same theory splits any section's wave drag between its two ends: the drag is the chordwise sum of the surface
+   slope squared, so the part of the chord that tapers in at the front and the part that tapers out at the back each
+   add their own share, and a flat part between them adds nothing. A fin whose trailing edge is set apart from its
+   section (a sharp leading edge with a square back, or a rounded front tapered at the back) therefore keeps the
+   share of the end that is sharp: half of a double wedge's 4 or an airfoil's 16/3 (sections alike fore and aft), or
+   the one bevel's 1/e. The other end takes its blunt-edge drag instead. */
 /**
  * Supersonic wave-drag constant K of a fin set's section, in Cd = K·(t/c)²/β.
  * @param {object} f fin set (edge, tc, mac, and for beveled fins bevLE and bevTE in m)
  * @param {number} Mn Mach number normal to the leading edge
  * @param {number} beta √(Mn² − 1), at least 0.4
  * @param {number} cb2 two-dimensional base pressure coefficient at this Mach number
+ * @param {boolean} [front=true] the leading edge is sharp
+ * @param {boolean} [rear=true] the trailing edge is sharp
  * @returns {number}
  */
-function finK(f, Mn, beta, cb2) {
-  if (f.edge !== "beveled" || !(f.bevLE > 0 || f.bevTE > 0) || !(f.mac > 0) || !(f.tc > 0)) return finWaveK(f.edge);
+function finK(f, Mn, beta, cb2, front = true, rear = true) {
+  const both = front && rear;
+  if (both && (f.edge !== "beveled" || !(f.bevLE > 0 || f.bevTE > 0) || !(f.mac > 0) || !(f.tc > 0)))
+    return finWaveK(f.edge);
+  // one sharp end of an airfoil or a double wedge: half the section's
+  if (!both && front && f.edge !== "beveled") return finWaveK(f.edge) / 2;
+  if (!(f.mac > 0) || !(f.tc > 0)) return both ? finWaveK(f.edge) : 5;
   const e1 = Math.min(0.5, Math.max(f.bevLE > 0 ? f.bevLE / f.mac : 0.2, f.tc / (0.8 * stagCp(Mn) * beta))),
     e3 = Math.min(0.5, Math.max(f.bevTE > 0 ? f.bevTE / f.mac : 0.2, f.tc / (Math.max(cb2, 0.05) * beta)));
-  return 1 / e1 + 1 / e3;
+  return both ? 1 / e1 + 1 / e3 : front ? 1 / e1 : 1 / e3;
 }
 /**
  * Zero-angle drag coefficient of the rocket at a speed, split into friction, pressure and base drag.
@@ -1597,6 +1613,12 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
       edge = (f.n * f.s * f.t) / S,
       Mdd = Math.max(0.6, 0.96 - 1.5 * f.tc),
       trF = smooth01((Mn - Mdd) / (1.06 - Mdd));
+    /* The two ends of the section. The leading edge is the section's (square, rounded, or sharp for an airfoil, a
+       beveled fin and a double wedge). The trailing edge is the section's too unless it is set apart: a sharp
+       leading edge with a square or rounded back (many sounding-rocket fins), or a rounded front tapered to a sharp
+       edge at the back. Each end takes its own term. */
+    const leBlunt = f.edge === "square" || f.edge === "rounded",
+      te = f.edgeTE || (leBlunt ? f.edge : "sharp");
     if (f.edge === "square") {
       /* Below the drag rise: 0.4 of stagnation pressure, what a blunt leading edge adds over a rounded one on long
          rectangular sections tested between walls (Hoerner, Fluid-Dynamic Drag, ch. III, figure 22: the flow closes
@@ -1605,11 +1627,12 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
          corner radius of 0.2 of the thickness is enough to lose the penalty, which is why a rounded leading edge has
          none below Mach 1. */
       pressure += (0.4 + 0.4 * trF) * stagCp(Mn) * c2 * edge;
-      base += finTeCp(M, cb2, finCf.get(f), f) * edge;
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
-      base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;
-    } else {
+    }
+    if (te === "square") base += finTeCp(M, cb2, finCf.get(f), f) * edge;
+    else if (te === "rounded") base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;
+    if (!leBlunt || te === "sharp") {
       /* Wave drag of sharp-edged fins by thin-airfoil theory on the free stream, K·(t/c)²/β on
          the fin's area (K from the section: finK). While the leading edge is swept behind the Mach line (β < tan Λ)
          the drag stays at the value it has when the Mach line reaches the edge, K·(t/c)²·cot Λ, and β is never taken
@@ -1632,16 +1655,20 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
          that number: MIL-HDBK-762 figure 5-130 (rectangular fins) has peaks of 0.55, 1.15, 2.1, 2.65, 3.0 and 3.25
          times (t/c)^(5/3) at 0.25, 0.5, 1, 1.5, 2 and 3. The measurements run several times the chart's level, so
          only its trend is used: the peak is scaled by the chart's value over its value at 0.55, where it was
-         measured. A stubby fin (aspect ratio 0.8, 3% thick) gets 0.4 of the peak, a long one (3, 5% thick) 1.7. */
-      const lin = (rise * finK(f, Math.max(M, 1.05), bEff, cb2) * f.tc * f.tc) / bEff,
-        peak =
-          5.7 *
-          Math.pow(Math.min(f.tc, 0.12), 5 / 3) *
-          (tblAt(FIN_PEAK_AR, Math.min(((2 * f.s * f.s) / f.area) * Math.cbrt(Math.min(f.tc, 0.12)), 3)) /
-            tblAt(FIN_PEAK_AR, 0.55)) *
-          Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N) *
-          smooth01((M - Math.min((Mdd - 0.03) / Math.sqrt(finSweepRatio(f.cosL)), 0.98)) / 0.09) *
-          (M > 1.05 ? Math.exp(-(M - 1.05) / 0.2) : 1);
+         measured. A stubby fin (aspect ratio 0.8, 3% thick) gets 0.4 of the peak, a long one (3, 5% thick) 1.7.
+         The peak belongs to a sharp leading edge, which both measured fin sets had; a fin with a blunt front and a
+         tapered back has its leading edge's own rise through Mach 1 instead (above). Nothing measured says how a
+         blunt back changes the peak of a sharp-nosed fin, so it is left whole. */
+      const lin = (rise * finK(f, Math.max(M, 1.05), bEff, cb2, !leBlunt, te === "sharp") * f.tc * f.tc) / bEff,
+        peak = leBlunt
+          ? 0
+          : 5.7 *
+            Math.pow(Math.min(f.tc, 0.12), 5 / 3) *
+            (tblAt(FIN_PEAK_AR, Math.min(((2 * f.s * f.s) / f.area) * Math.cbrt(Math.min(f.tc, 0.12)), 3)) /
+              tblAt(FIN_PEAK_AR, 0.55)) *
+            Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N) *
+            smooth01((M - Math.min((Mdd - 0.03) / Math.sqrt(finSweepRatio(f.cosL)), 0.98)) / 0.09) *
+            (M > 1.05 ? Math.exp(-(M - 1.05) / 0.2) : 1);
       pressure += (Math.max(lin, peak) * f.n * f.area) / S;
     }
   }

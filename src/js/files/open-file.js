@@ -8,7 +8,7 @@ import { BLD_APP_SETTINGS, bldDefault, bldMounts, bldSettings } from "../builder
 import { bldFromOrk } from "../builder/ork-read.js";
 import { b64ToU8, esc, jclone } from "../core/helpers.js";
 import { store } from "../core/storage.js";
-import { FIN_EDGES } from "../core/units-and-fin-edges.js";
+import { FIN_EDGES, finTeEdge } from "../core/units-and-fin-edges.js";
 import {
   allMotors,
   boostId,
@@ -494,11 +494,13 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
           if (t) {
             const j = JSON.parse(t),
               fe = j.finEdges || {},
-              fb = j.finBevels || {};
+              fb = j.finBevels || {},
+              ft = j.finTrailingEdges || {};
             for (const st of BLD.stages)
               for (const pp of st.parts || [])
                 for (const k of pp.kids || []) {
                   if (k.type === "fins" && fe[k.id] && FIN_EDGES.some((x) => x[0] === fe[k.id])) k.edge = fe[k.id];
+                  if (k.type === "fins" && ft[k.id]) k.edgeTE = finTeEdge(ft[k.id]);
                   const b = k.type === "fins" && fb[k.id];
                   if (b) {
                     k.bevLE = isFinite(b.le) && b.le > 0 ? +b.le : 0;

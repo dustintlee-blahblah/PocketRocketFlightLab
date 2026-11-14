@@ -66,6 +66,7 @@ export function bldDrawFinEdit() {
     t: k.t,
     cant: k.cant || 0,
     edge: k.edge || "square",
+    edgeTE: k.edgeTE || "",
     tailName: f.parent && f.parent.type === "tube" ? "tube end" : "aft end",
     aft: body && kk ? body.x + body.len - (kk.x + kk.len) : 0,
   };
@@ -639,7 +640,7 @@ function bldWire(el, p, mode, si) {
         full = true;
       } else if (kind === "sel") {
         O[k] = inp.value;
-        full = ["shape", "deploy", "size", "cluster", "ign", "edge", "kind"].includes(key); // "edge": beveled fins show their bevel lengths; "kind": a rail lug has no diameters
+        full = ["shape", "deploy", "size", "cluster", "ign", "edge", "edgeTE", "kind"].includes(key); // "edge": beveled fins show their bevel lengths; "kind": a rail lug has no diameters
         // a nose or transition takes its new shape's usual parameter (as OpenRocket does): a tangent ogive, a full
         // parabola, a half-power series, a von Kármán. Kept from the old shape it can mean a plain cone (an ogive or
         // parabola at 0, a power series at 1), so the new shape would look like nothing had changed.

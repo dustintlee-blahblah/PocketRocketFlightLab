@@ -49200,6 +49200,2112 @@
    ]
   ]
  },
+ "builder|fins-airfoil-square-back": {
+  "label": "builder|fins-airfoil-square-back",
+  "st": {
+   "Itot": 135.6284135,
+   "altDeploy": 659.151741965,
+   "avgAccBurn": 91.8147180612,
+   "avgTtw": 12.5172181747,
+   "burnAlt": 184.232425989,
+   "burnRoll": 0,
+   "burnTilt": 6.46072275331,
+   "cdLow": 0.503326249014,
+   "dampMax": {
+    "hz": 8.06396036452,
+    "zeta": 0.100060633578
+   },
+   "dampRail": {
+    "hz": 1.12182664922,
+    "zeta": 0.103811156724
+   },
+   "depDelay": 0,
+   "depMode": "apogee",
+   "drift": 882.60690608,
+   "driftY": -0.0171133258908,
+   "drogueRate": null,
+   "error": null,
+   "flutter": {
+    "G": 600000000,
+    "M": 0.49288441182,
+    "alt": 122.235747122,
+    "est": false,
+    "mat": "Birch plywood",
+    "ratio": 1.15964595146,
+    "t": 1.32,
+    "v": 167.493369982,
+    "vf": 144.434919789
+   },
+   "landMass": 0.592157902035,
+   "landed": true,
+   "liftMass": 0.649557902035,
+   "mMaxMach": 0.49289056521,
+   "mainRate": 4.24812933019,
+   "marginAtMaxMach": 2.65193125834,
+   "maxAcc": 162.46624013,
+   "maxAlt": 659.151741965,
+   "maxAoA": 6.61410316358,
+   "maxMach": 0.49141032039,
+   "maxQ": {
+    "M": 0.49288441182,
+    "alt": 122.235747122,
+    "q": 16982.5242086,
+    "t": 1.32
+   },
+   "maxRoll": 0,
+   "maxT0": {
+    "M": 0.49278602723,
+    "T": 301.32073119,
+    "alt": 120.903744197,
+    "t": 1.312
+   },
+   "maxV": 166.991811121,
+   "minMargin": {
+    "M": 0.0790894846961,
+    "alt": 2.44108877975,
+    "cal": 2.21800269155,
+    "t": 0.19
+   },
+   "noChute": false,
+   "offRail": 26.7157491232,
+   "offRailT": 0.189899383115,
+   "pathAngle": 3.85906988299,
+   "powerTilt": 6.45942615087,
+   "railAoA": 6.67455787682,
+   "railFric": 0.468231639418,
+   "railMargin": 1.81398703958,
+   "railPct": 12.7170038775,
+   "shockM": {
+    "F": 7.8869795546,
+    "alt": 656.204039137,
+    "g": 1.35816492453,
+    "t": 11.1661251066,
+    "v": 7.5145419886
+   },
+   "single": true,
+   "skinMax": 293.023285109,
+   "staged": false,
+   "tApo": 10.3033470133,
+   "tApoFree": 10.3033470133,
+   "tDeploy": 10.3033470133,
+   "tLand": 163.463097927,
+   "tMain": 10.3033470133,
+   "tb": 1.701,
+   "ttw": 16.7903011419,
+   "tumbleRate": 15.6339578857,
+   "vApo": 0.56486808239,
+   "vDeploy": 7.5145419886,
+   "vLand": 5.08532982034,
+   "vLandZ": 4.22825628432,
+   "windApo": 6.95634542378,
+   "xApo": -43.9065180104
+  },
+  "out": {
+   "acc": {
+    "n": 1776,
+    "h": 8345,
+    "s": [
+     0,
+     155.187763066,
+     99.706859921,
+     -42.1442398187,
+     -16.1626579468,
+     -3.20637630047,
+     -0.282683357167,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "alt": {
+    "n": 1776,
+    "h": 24675,
+    "s": [
+     8.35387251119e-7,
+     26.2298509628,
+     102.80104142,
+     199.545590272,
+     382.849849481,
+     580.039591304,
+     654.849507738,
+     642.799974877,
+     613.467742032,
+     584.219016647,
+     555.05326892,
+     525.969975417,
+     496.968617834,
+     468.048682933,
+     439.209662483,
+     410.451053206,
+     381.772356727,
+     353.173079531,
+     324.652732934,
+     296.210833067,
+     267.846900894,
+     239.560462272,
+     211.351048111,
+     183.218194712,
+     155.161444492,
+     127.180347651,
+     99.2744664512,
+     71.4433884455,
+     43.686783057,
+     16.0049032933
+    ]
+   },
+   "aoa": {
+    "n": 1776,
+    "h": 14183,
+    "s": [
+     "NaN",
+     0.676490436919,
+     0.00555832368018,
+     0.00284565676508,
+     0.00661208973561,
+     0.0513878004335,
+     3.09231587912,
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN"
+    ]
+   },
+   "ax": {
+    "n": 1776,
+    "h": 28175,
+    "s": [
+     0,
+     -0.0836984722422,
+     -0.106700960295,
+     -0.113641508885,
+     -0.133374991731,
+     -0.215224740151,
+     -0.615014112213,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781,
+     -0.961410657781
+    ]
+   },
+   "az": {
+    "n": 1776,
+    "h": 26352,
+    "s": [
+     1,
+     0.996491126776,
+     0.994291157085,
+     0.993521820289,
+     0.991065644236,
+     0.976564543922,
+     0.788516080552,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085,
+     0.275117181085
+    ]
+   },
+   "cross": {
+    "n": 1776,
+    "h": 29977,
+    "s": [
+     0,
+     0.00000225914440501,
+     0.000175162076471,
+     0.000766915227257,
+     0.00328107610552,
+     0.00975540718054,
+     0.0167492178232,
+     0.0203012901737,
+     0.0183628876389,
+     0.0164420498949,
+     0.0145402308222,
+     0.0126578819019,
+     0.0107955067906,
+     0.00895366971451,
+     0.00713300581046,
+     0.00533423401797,
+     0.00355817336633,
+     0.00180576386327,
+     0.0000780937484957,
+     -0.00162356423921,
+     -0.00329770347874,
+     -0.00494251437755,
+     -0.00655578452777,
+     -0.00813474859601,
+     -0.00967585121068,
+     -0.0111743478189,
+     -0.0126235728971,
+     -0.0140134246495,
+     -0.0153265657732,
+     -0.016524645881
+    ]
+   },
+   "drift": {
+    "n": 1776,
+    "h": 25867,
+    "s": [
+     0,
+     0.479314923071,
+     5.3795980851,
+     12.7290871997,
+     25.8243546584,
+     38.1819963797,
+     43.1701627019,
+     23.4598461853,
+     -22.9164441608,
+     -68.9139526275,
+     -114.519984867,
+     -159.722180328,
+     -204.506869128,
+     -248.858860055,
+     -292.761179347,
+     -336.194744952,
+     -379.137954868,
+     -421.566158908,
+     -463.450969071,
+     -504.75934105,
+     -545.452322219,
+     -585.483297579,
+     -624.795450397,
+     -663.31793558,
+     -700.959816763,
+     -737.599818104,
+     -773.067425425,
+     -807.10340772,
+     -839.259354195,
+     -868.521005838
+    ]
+   },
+   "pitch": {
+    "n": 1776,
+    "h": 24610,
+    "s": [
+     0,
+     4.80118611042,
+     6.12517502853,
+     6.52527558471,
+     7.66466410739,
+     12.4287130243,
+     37.9529476342,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902,
+     74.0310024902
+    ]
+   },
+   "roll": {
+    "n": 1776,
+    "h": 3553,
+    "s": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "t": {
+    "n": 1776,
+    "h": 22926,
+    "s": [
+     0.002,
+     0.602,
+     1.202,
+     1.802,
+     3.33334701326,
+     6.33334701326,
+     9.33334701326,
+     14.216873349,
+     20.9268125065,
+     27.6271615179,
+     34.3179678852,
+     40.9992782862,
+     47.671138998,
+     54.3335959001,
+     60.9866944762,
+     67.6304798164,
+     74.2649966164,
+     80.8902891776,
+     87.5064014027,
+     94.1133767901,
+     100.711258421,
+     107.30008894,
+     113.879910519,
+     120.45076479,
+     127.012692726,
+     133.565734375,
+     140.109928236,
+     146.645309429,
+     153.171902165,
+     159.689654143
+    ]
+   },
+   "thrust": {
+    "n": 1776,
+    "h": 5429,
+    "s": [
+     13.7006153846,
+     105.171965517,
+     87.8938372093,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "va": {
+    "n": 1776,
+    "h": 13518,
+    "s": [
+     "NaN",
+     88.8771525598,
+     161.894483362,
+     151.480811389,
+     96.1514412903,
+     43.285412289,
+     12.0566160632,
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN"
+    ]
+   },
+   "vel": {
+    "n": 1776,
+    "h": 26052,
+    "s": [
+     0.00455965662219,
+     88.4712920227,
+     160.971928228,
+     150.498636307,
+     95.2909095246,
+     42.2626264348,
+     9.09299204738,
+     -4.37456819244,
+     -4.36835136744,
+     -4.36216026813,
+     -4.35599958519,
+     -4.34986906755,
+     -4.34376846749,
+     -4.33769754064,
+     -4.33165604596,
+     -4.3256437457,
+     -4.31966040535,
+     -4.31370579346,
+     -4.30777968137,
+     -4.30188184259,
+     -4.2960120515,
+     -4.29017008076,
+     -4.28435569545,
+     -4.27856864004,
+     -4.27280860606,
+     -4.26707514421,
+     -4.26136738576,
+     -4.25568293128,
+     -4.25001125549,
+     -4.24423236614
+    ]
+   }
+  },
+  "S": {
+   "L": 0.95,
+   "cgB": 0.540966301304,
+   "cgL": 0.572163111075,
+   "cp": 0.715855261462,
+   "d": 0.0666,
+   "marginB": 2.62596036274,
+   "marginL": 2.15753979561,
+   "marginL10": 1.54146174904,
+   "marginL5": 1.87294554304,
+   "pctL": 15.1254895145,
+   "unc": 0.328078078078
+  },
+  "motor": [
+   "a-5f4294d20002e900000007dd",
+   "G80T",
+   null,
+   null
+  ],
+  "rso": [
+   [
+    "good",
+    "Stability at liftoff",
+    "2.16 cal",
+    "At least 1 caliber is the usual minimum; this has margin."
+   ],
+   [
+    "good",
+    "Stability as a share of length",
+    "15%",
+    "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
+   ],
+   [
+    "good",
+    "Stability leaving the rail",
+    "1.81 cal at 7°",
+    "In this wind the airflow meets the rocket at 7° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving 1.81 cal."
+   ],
+   [
+    "good",
+    "Damping ratio",
+    "0.10",
+    "Within the usual 0.05–0.3: gusts die out in a few swings."
+   ],
+   [
+    "warn",
+    "Weight and CG",
+    "Estimated",
+    "Added up from the parts list, not weighed. Built rockets usually come out heavier, which lowers apogee and moves the CG. Weigh the rocket ready to fly without its motor, find its balance point, and enter both on the Rocket tab (select the stage in the design tree)."
+   ],
+   [
+    "good",
+    "Speed off the rail",
+    "88 ft/s",
+    "Guideline at least 50 ft/s, on a 8.0 ft rail."
+   ],
+   [
+    "good",
+    "Thrust-to-weight (average)",
+    "12.5 : 1",
+    "At least 5:1 is the usual minimum."
+   ],
+   [
+    "good",
+    "Safety cone under power",
+    "6° of 20°",
+    "Stays inside the cone while the motor burns."
+   ],
+   [
+    "good",
+    "Speed when the chute opens",
+    "25 ft/s",
+    "Slow, near apogee: a gentle opening."
+   ],
+   [
+    "good",
+    "Landing speed",
+    "14 ft/s",
+    "At or below about 20 ft/s (6 m/s)."
+   ],
+   [
+    "good",
+    "Max Mach",
+    "0.49",
+    "Subsonic: the drag estimate is most reliable here."
+   ],
+   [
+    "good",
+    "Wind at the pad",
+    "7 mph",
+    "Within the 20 mph limit."
+   ],
+   [
+    "good",
+    "Rail or rod fit",
+    "1010 rail",
+    "1010 rail buttons match the rail."
+   ],
+   [
+    "good",
+    "Motor fit",
+    "29 mm in 29 mm",
+    "Fits the motor mount."
+   ]
+  ],
+  "flags": [
+   [
+    "good",
+    "Off-rail speed OK (≥ 50 ft/s)"
+   ],
+   [
+    "good",
+    "Stable at liftoff"
+   ],
+   [
+    "good",
+    "Stays inside the 20° safety cone under power (up to 6° from vertical)"
+   ],
+   [
+    "bad",
+    "Fin flutter likely: at T+1.3 s the airspeed is 116% of the estimated flutter speed (474 ft/s at 401 ft), for fins of Birch plywood (shear modulus about 0.6 GPa). This is a rough, conservative estimate; thicker fins, a stiffer material, a smaller span or tip-to-tip reinforcement raise the flutter speed."
+   ]
+  ],
+  "charges": [
+   [
+    "Apogee charge",
+    10.3033470133
+   ]
+  ],
+  "aero": [
+   [
+    0.3,
+    11.0482854218,
+    0.726396589756,
+    0.503326249014,
+    0.293272437701,
+    0.039751417179,
+    0.170302394134
+   ],
+   [
+    0.8,
+    11.7468022986,
+    0.734728485915,
+    0.546938887552,
+    0.323657419364,
+    0.0480746280781,
+    0.17520684011
+   ],
+   [
+    0.95,
+    12.0327935623,
+    0.738180185544,
+    0.594630798181,
+    0.323476972882,
+    0.0771947291913,
+    0.193959096108
+   ],
+   [
+    1.2,
+    12.598721924,
+    0.751831642285,
+    0.789390554124,
+    0.316538237499,
+    0.174603755832,
+    0.298248560793
+   ],
+   [
+    2,
+    10.3518258542,
+    0.735660589474,
+    0.631506788369,
+    0.274294016695,
+    0.157676274903,
+    0.19953649677
+   ],
+   [
+    3,
+    7.60288460712,
+    0.681488206422,
+    0.487584800274,
+    0.222721723437,
+    0.141734701643,
+    0.123128375195
+   ]
+  ],
+  "windTable": [
+   {
+    "apo": 664.480352671,
+    "drift": 4.89036050039,
+    "driftY": -0.00213985780506,
+    "error": null,
+    "landed": true,
+    "pathAngle": 0.388665008378,
+    "powerTilt": 0.547094172885,
+    "w": 0
+   },
+   {
+    "apo": 661.581050073,
+    "drift": 659.812943098,
+    "driftY": -0.0128902181055,
+    "error": null,
+    "landed": true,
+    "pathAngle": 2.83239794689,
+    "powerTilt": 4.78545169259,
+    "w": 2.2352
+   },
+   {
+    "apo": 652.615151249,
+    "drift": 1304.37108971,
+    "driftY": -0.0261589091368,
+    "error": null,
+    "landed": true,
+    "pathAngle": 5.73916060125,
+    "powerTilt": 9.59590722588,
+    "w": 4.4704
+   },
+   {
+    "apo": 638.597840852,
+    "drift": 1916.2415013,
+    "driftY": -0.0407713829732,
+    "error": null,
+    "landed": true,
+    "pathAngle": 8.45063517353,
+    "powerTilt": 14.1760373633,
+    "w": 6.7056
+   },
+   {
+    "apo": 620.972404347,
+    "drift": 2484.07283196,
+    "driftY": -0.0561537152199,
+    "error": null,
+    "landed": true,
+    "pathAngle": 10.9359050978,
+    "powerTilt": 18.4673299497,
+    "w": 8.9408
+   }
+  ],
+  "mdnote": "Plugged: no ejection charge fires. The G80 is sold with 4, 6, 7, 8, 9, 10, 11, 12, 13, 14 s delays.",
+  "ork": "5669:<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.9\" creator=\"Pocket Rocket Flight Lab\"><rocket><name>My rocket</name><id>UUID</id><axialoffset method=\"absolute\">0.0</axialoffset><position type=\"absolute\">0.0</position><motorconfiguration configid=\"UUID\" default=\"true\"><stage number=\"0\" active=\"true\"/></motorconfiguration><referencetype>maximum</referencetype><subcomponents><stage><name>Sustainer</name><id>UUID</id><subcomponents><nosecone><name>Nose cone</name><id>UUID</id><finish>normal</finish><material type=\"bulk\" density=\"1050\">Polystyrene (PS)</material><length>0.2</length><thickness>0.002</thickness><shape>ogive</shape><shapeclipped>false</shapeclipped><shapeparameter>1</shapeparameter><aftradius>0.0333</aftradius><aftshoulderradius>0.0313</aftshoulderradius><aftshoulderlength>0.0666</aftshoulderlength><aftshoulderthickness>0.002</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped><isflipped>false</isflipped><subcomponents></subcomponents></nosecone><bodytube><name>Body tube</name><id>UUID</id><finish>normal</finish><material type=\"bulk\" density=\"1300\">Blue Tube</material><length>0.75</length><thickness>0.0015</thickness><radius>0.0333</radius><subcomponents><trapezoidfinset><name>Fin set</name><id>UUID</id><axialoffset method=\"bottom\">0</axialoffset><finish>normal</finish><material type=\"bulk\" density=\"630\">Birch plywood</material><fincount>3</fincount><rotation>0</rotation><thickness>0.003</thickness><crosssection>airfoil</crosssection><cant>0</cant><prfltrailingedge>square</prfltrailingedge><rootchord>0.14985</rootchord><tipchord>0.05994</tipchord><height>0.07659</height><sweeplength>0.08991</sweeplength></trapezoidfinset><innertube><name>Motor mount</name><id>UUID</id><axialoffset method=\"bottom\">0</axialoffset><material type=\"bulk\" density=\"950\">Kraft phenolic</material><length>0.2</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>0.0155</outerradius><thickness>0.0008</thickness><clusterconfiguration>single</clusterconfiguration><clusterscale>1</clusterscale><clusterrotation>0</clusterrotation><motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0</ignitiondelay><overhang>0.006</overhang><motor configid=\"UUID\"><type>single</type><manufacturer>AeroTech</manufacturer><designation>G80T</designation><diameter>0.029</diameter><length>0.124</length><delay>none</delay></motor></motormount><subcomponents></subcomponents></innertube><centeringring><name>Aft centering ring</name><id>UUID</id><axialoffset method=\"bottom\">-0.003</axialoffset><material type=\"bulk\" density=\"630\">Birch plywood</material><length>0.006</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>auto 0.0318</outerradius><innerradius>auto 0.0155</innerradius></centeringring><centeringring><name>Forward centering ring</name><id>UUID</id><axialoffset method=\"bottom\">-0.185</axialoffset><material type=\"bulk\" density=\"630\">Birch plywood</material><length>0.006</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>auto 0.0318</outerradius><innerradius>auto 0.0155</innerradius></centeringring><railbutton><name>Rail buttons</name><id>UUID</id><axialoffset method=\"top\">0.415</axialoffset><finish>normal</finish><material type=\"bulk\" density=\"1150\">Delrin</material><instancecount>2</instancecount><instanceseparation>0.3</instanceseparation><angleoffset method=\"relative\">0</angleoffset><outerdiameter>0.0102</outerdiameter><innerdiameter>0.0064</innerdiameter><height>0.0097</height><baseheight>0.0021</baseheight><flangeheight>0.0021</flangeheight><screwheight>0.0</screwheight></railbutton><shockcord><name>Shock cord</name><id>UUID</id><axialoffset method=\"top\">0.04</axialoffset><packedlength>0.04</packedlength><packedradius>0.017172</packedradius><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><cordlength>2.997</cordlength><material type=\"line\" density=\"0.0105\">Kevlar 1/4 in</material></shockcord><parachute><name>Parachute</name><id>UUID</id><axialoffset method=\"top\">0.05</axialoffset><packedlength>0.08</packedlength><packedradius>0.02862</packedradius><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><cd>0.8</cd><material type=\"surface\" density=\"0.067\">Ripstop nylon</material><deployevent>apogee</deployevent><deployaltitude>150</deployaltitude><deploydelay>0</deploydelay><diameter>0.9144</diameter><linecount>6</linecount><linelength>0.9144</linelength><linematerial type=\"line\" density=\"0.0013\">Elastic cord (flat 6 mm, 1/4 in)</linematerial></parachute></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket><simulations><simulation status=\"outdated\"><name>Simulation 1</name><simulator>RK4Simulator</simulator><calculator>BarrowmanCalculator</calculator><conditions><configid>UUID</configid><launchrodlength>2.4384</launchrodlength><launchintowind>true</launchintowind><launchrodangle>0</launchrodangle><launchroddirection>90</launchroddirection><windaverage>3</windaverage><windturbulence>0</windturbulence><winddirection>4.71238898</winddirection><wind model=\"average\"><speed>3</speed><direction>4.71238898</direction><standarddeviation>0</standarddeviation></wind><windmodeltype>Average</windmodeltype><launchaltitude>0</launchaltitude><launchlatitude>40</launchlatitude><launchlongitude>-111.9</launchlongitude><geodeticmethod>flat</geodeticmethod><atmosphere model=\"extendedisa\"><basetemperature>288.15</basetemperature><basepressure>101325</basepressure></atmosphere><timestep>0.05</timestep><maxtime>1200.0</maxtime></conditions></simulation></simulations><photostudio/></openrocket>",
+  "mc": {
+   "a1": 272.561616705,
+   "am": 664.426180702,
+   "ang": 0.235618838769,
+   "as": 27.1922621557,
+   "b1": 246.574382614,
+   "far": 1427.76177298,
+   "in68": 0.65,
+   "in95": 0.95,
+   "max": 719.235121164,
+   "me": 831.19848138,
+   "min": 610.845531932,
+   "minMargin5": 1.79085715225,
+   "mn": -59.8871706965,
+   "n": 20,
+   "p05": 626.153011199,
+   "p95": 704.002583784,
+   "pts": [
+    {
+     "apo": 664.214769195,
+     "e": 889.01934102,
+     "landed": true,
+     "minMargin": 2.24960492794,
+     "n": -117.384085744,
+     "tumble": false
+    },
+    {
+     "apo": 628.867314663,
+     "e": 629.424140278,
+     "landed": true,
+     "minMargin": 2.00946023149,
+     "n": -3.66295233144,
+     "tumble": false
+    },
+    {
+     "apo": 673.146782561,
+     "e": 399.75521247,
+     "landed": true,
+     "minMargin": 2.43070481859,
+     "n": 54.1469103207,
+     "tumble": false
+    },
+    {
+     "apo": 669.120019771,
+     "e": 1070.03181554,
+     "landed": true,
+     "minMargin": 2.30288292919,
+     "n": 9.94408196393,
+     "tumble": false
+    },
+    {
+     "apo": 677.297487743,
+     "e": 798.045975254,
+     "landed": true,
+     "minMargin": 2.09624145735,
+     "n": -420.712306273,
+     "tumble": false
+    },
+    {
+     "apo": 639.596922759,
+     "e": 359.09450462,
+     "landed": true,
+     "minMargin": 2.13426528475,
+     "n": -88.8327129098,
+     "tumble": false
+    },
+    {
+     "apo": 688.350759994,
+     "e": 1167.71258097,
+     "landed": true,
+     "minMargin": 1.85199272687,
+     "n": 642.431814678,
+     "tumble": false
+    },
+    {
+     "apo": 634.172018651,
+     "e": 923.584047841,
+     "landed": true,
+     "minMargin": 2.38904563177,
+     "n": -59.1393228954,
+     "tumble": false
+    },
+    {
+     "apo": 704.002583784,
+     "e": 643.612496528,
+     "landed": true,
+     "minMargin": 2.10423857025,
+     "n": 123.863132803,
+     "tumble": false
+    },
+    {
+     "apo": 665.298140705,
+     "e": 700.714210241,
+     "landed": true,
+     "minMargin": 1.79085715225,
+     "n": -433.177171114,
+     "tumble": false
+    },
+    {
+     "apo": 686.673140166,
+     "e": 944.082755578,
+     "landed": true,
+     "minMargin": 2.47569201817,
+     "n": -217.820973549,
+     "tumble": false
+    },
+    {
+     "apo": 610.845531932,
+     "e": 820.461172322,
+     "landed": true,
+     "minMargin": 1.99623085491,
+     "n": -93.0822490988,
+     "tumble": false
+    },
+    {
+     "apo": 719.235121164,
+     "e": 1427.70172585,
+     "landed": true,
+     "minMargin": 1.80880730942,
+     "n": 13.0943642618,
+     "tumble": false
+    },
+    {
+     "apo": 653.713634344,
+     "e": 1040.23605286,
+     "landed": true,
+     "minMargin": 2.21539179706,
+     "n": -449.637156583,
+     "tumble": false
+    },
+    {
+     "apo": 647.340971985,
+     "e": 1159.88369809,
+     "landed": true,
+     "minMargin": 2.23379765597,
+     "n": 13.6601858482,
+     "tumble": false
+    },
+    {
+     "apo": 673.564110355,
+     "e": 827.769585149,
+     "landed": true,
+     "minMargin": 2.143775397,
+     "n": -177.489048017,
+     "tumble": false
+    },
+    {
+     "apo": 626.153011199,
+     "e": 997.684086231,
+     "landed": true,
+     "minMargin": 2.37154748821,
+     "n": -253.875193334,
+     "tumble": false
+    },
+    {
+     "apo": 677.879874596,
+     "e": 540.059899556,
+     "landed": true,
+     "minMargin": 2.45382653685,
+     "n": 245.407648541,
+     "tumble": false
+    },
+    {
+     "apo": 682.881965616,
+     "e": 578.319318044,
+     "landed": true,
+     "minMargin": 1.96325216109,
+     "n": -42.9228629948,
+     "tumble": false
+    },
+    {
+     "apo": 666.169452853,
+     "e": 706.777009153,
+     "landed": true,
+     "minMargin": 2.65575347213,
+     "n": 57.444482497,
+     "tumble": false
+    }
+   ],
+   "secs": 0,
+   "tumbles": 0,
+   "when": 0
+  },
+  "results": "\n    \n      Predicted apogee, above ground\n      \n        2,163ft\n        MotorG80Change\n      \n      No results yet. Set up the rocket, motor and conditions, then tap Launch.Launch now\n      Speed and accelerationMax ascent velocity548ft/s374 mphMax Mach0.49Off-rail velocity88ft/s60 mphMax acceleration16.6gAverage acceleration, to burnout9.4gMax dynamic pressure2.5psi · Mach 0.49AscentLiftoff weight1.43lbThrust-to-weight (avg)12.5: 1Time to burnout1.70sBurnout altitude604ftCoast time to apogee8.6sTime to apogee10.3sIdeal motor delay for apogee8.6sStabilityStability at liftoff2.16cal · 15% of length · uncertainty margin 1.8–2.5Stability leaving the rail1.81cal · at 7° in this wind · 13% of lengthDamping ratio0.10at max speed, 8.1 Hz · 0.10 leaving the railLowest stability in flight2.16cal · at liftoffMax angle of attack6.6°Max roll rate0rpm · 0.0 rev/sCd at Mach 0.30.503RecoveryApogee charge fires10.3s · 2,163 ftSpeed at deployment25ft/s17 mphChute opening load2lbf · 1 gDescent and landingDescent rate14ft/s9.5 mphLanding velocity17ft/s · 14 vertical12 mphFlight time163sLanding distance, downwind (E)2,896ft · 0.55 mi\n      Off-rail speed OK (≥ 50 ft/s)Stable at liftoffStays inside the 20° safety cone under power (up to 6° from vertical)Fin flutter likely: at T+1.3 s the airspeed is 116% of the estimated flutter speed (474 ft/s at 401 ft), for fins of Birch plywood (shear modulus about 0.6 GPa). This is a rough, conservative estimate; thicker fins, a stiffer material, a smaller span or tip-to-tip reinforcement raise the flutter speed.\n      A barometric altimeter would read about 3,735 ft (+4%): it assumes standard-atmosphere temperatures, and this air is colder.\n    \n\n    \n      RSO Checklisti\n      1 to check14 OKShow checks\n      ✓Stability at liftoff2.16 calAt least 1 caliber is the usual minimum; this has margin.✓Stability as a share of length15%The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets.✓Stability leaving the rail1.81 cal at 7°In this wind the airflow meets the rocket at 7° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving 1.81 cal.✓Damping ratio0.10Within the usual 0.05–0.3: gusts die out in a few swings.!Weight and CGEstimatedAdded up from the parts list, not weighed. Built rockets usually come out heavier, which lowers apogee and moves the CG. Weigh the rocket ready to fly without its motor, find its balance point, and enter both on the Rocket tab (select the stage in the design tree).✓Speed off the rail88 ft/sGuideline at least 50 ft/s, on a 8.0 ft rail.✓Thrust-to-weight (average)12.5 : 1At least 5:1 is the usual minimum.✓Safety cone under power6° of 20°Stays inside the cone while the motor burns.✓Speed when the chute opens25 ft/sSlow, near apogee: a gentle opening.✓Landing speed14 ft/sAt or below about 20 ft/s (6 m/s).✓Max Mach0.49Subsonic: the drag estimate is most reliable here.✓Wind at the pad7 mphWithin the 20 mph limit.✓Rail or rod fit1010 rail1010 rail buttons match the rail.✓Chance of tumbling0% (0 of 20)None of the 20 dispersion flights tumbled, with the wind, weight and balance varied.✓Motor fit29 mm in 29 mmFits the motor mount.\n    \n\n    \n\n    \n      Flight Animation\n      ▶ Watch the flight\n    \n\n    \n      Flight Performance\n      AltitudeVelocityAccelerationThrustDriftPitchAoAConeLanding\n      \n      Altitude (ft) vs timeBurnout 1.7 sApogee 10.3 s\n    \n\n    \n      Landing dispersioniShow results\n      20 flights in N s.Cancel\n      \n        Apogee, average2,180ft ± 89Apogee, 90% range2,054–2,310ftAverage landing spot2,734ft toward ELanding ellipse (95%)4,378 × 3,960ft, long axis ENE–WSWFarthest landing4,684ft · 0.89 miChance of tumbling0% · 0 of 20 flightsLowest stability, worst 5%1.79cal\n        The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, 65% and 95% of the 20 landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±25%, wind direction ±15°, impulse ±3%, weight ±2%, balance ±2.3% of length, drag ±5%, rail angle ±1°, thrust misalignment 0.2° (1σ).\n      \n    \n\n    \n      Drift by wind speedShow table\n      \n        WindApogeeTilt, poweredLanding0 mph2,180 ft1°16 ftdownwind (E)5 mph2,171 ft5°2,165 ftdownwind (E) · 0.41 mi10 mph2,141 ft10°4,279 ftdownwind (E) · 0.81 mi15 mph2,095 ft14°6,287 ftdownwind (E) · 1.19 mi20 mph2,037 ft18°8,150 ftdownwind (E) · 1.54 mi\n        Wind grows with height using the 1/7 power law for open ground, measured at 6 ft. With your 6.7 mph at the pad, that's about 15.6 mph at apogee. The wind blows from the W. The rail leans into the wind, so light winds can land the rocket upwind of the pad. It stays inside the 20° safety cone under power at every wind speed listed.\n      \n    \n    \n      Flight Log & Calibrationi\n      Not calibrated. Log a flight with its real apogee to calibrate the drag to it.\n      \n      No flights logged for My rocket yet. Log a flight by hand, or import the file from your altimeter (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Apogee Components or any CSV/text log).\n      + Log a flightImport altimeter file\n      All flightsExport backupExport CSVImport backup\n    \n\n\n\n    Enjoying Pocket Rocket Flight Lab? You can support it with a donation.×VenmoPayPal\n    \n      \n        Flight reportA PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.\n        Export PDF report\n      \n      Your name, club and certification won’t be on the report: this copy of the app doesn’t have your profile yet. Each copy (the Android app, each web browser) keeps its own settings. Add them in Settings → Profile\n      \n      Save this Flight to the .ork fileSave the design to a file first (Rocket tab), then runs can be saved into it.\n        Save this run\n    \n  ",
+  "report": "Started a new design from a basic rocket: nose cone, body tube, three fins, a 29 mm motor mount and a parachute.DetailsStarted a new design from a basic rocket: nose cone, body tube, three fins, a 29 mm motor mount and a parachute. Select any part below to change it, or add parts to it.",
+  "stageMotors": [
+   null,
+   null
+  ],
+  "guide": [
+   [
+    "",
+    null
+   ],
+   [
+    "tower",
+    [
+     "good",
+     "Launch tower",
+     "No lugs or buttons needed in a tower; the fins must clear its rails."
+    ]
+   ],
+   [
+    "rod18",
+    [
+     "bad",
+     "1/8 in rod",
+     "The rocket has rail buttons but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug."
+    ]
+   ],
+   [
+    "rod316",
+    [
+     "bad",
+     "3/16 in rod",
+     "The rocket has rail buttons but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug."
+    ]
+   ],
+   [
+    "rod14",
+    [
+     "bad",
+     "1/4 in rod",
+     "The rocket has rail buttons but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug."
+    ]
+   ],
+   [
+    "r1010",
+    [
+     "good",
+     "1010 rail",
+     "1010 rail buttons match the rail."
+    ]
+   ],
+   [
+    "r1515",
+    [
+     "bad",
+     "1515 rail",
+     "The rocket's rail buttons are 1010 size, which don't fit a 1515 rail. Use the matching rail or change them."
+    ]
+   ]
+  ]
+ },
+ "builder|fins-rounded-tapered-back": {
+  "label": "builder|fins-rounded-tapered-back",
+  "st": {
+   "Itot": 135.6284135,
+   "altDeploy": 684.793980536,
+   "avgAccBurn": 93.1435828923,
+   "avgTtw": 12.5172181747,
+   "burnAlt": 185.499851168,
+   "burnRoll": 0,
+   "burnTilt": 6.45406480694,
+   "cdLow": 0.46902385488,
+   "dampMax": {
+    "hz": 8.14419773213,
+    "zeta": 0.100036529186
+   },
+   "dampRail": {
+    "hz": 1.12197567398,
+    "zeta": 0.103810007657
+   },
+   "depDelay": 0,
+   "depMode": "apogee",
+   "drift": 920.346187713,
+   "driftY": -0.0168322403781,
+   "drogueRate": null,
+   "error": null,
+   "flutter": {
+    "G": 600000000,
+    "M": 0.49728409417,
+    "alt": 123.453998275,
+    "est": false,
+    "mat": "Birch plywood",
+    "ratio": 1.16991268811,
+    "t": 1.324,
+    "v": 168.986154111,
+    "vf": 144.443389519
+   },
+   "landMass": 0.592157902035,
+   "landed": true,
+   "liftMass": 0.649557902035,
+   "mMaxMach": 0.497289758526,
+   "mainRate": 4.24812933019,
+   "marginAtMaxMach": 2.654688417,
+   "maxAcc": 162.926697321,
+   "maxAlt": 684.793980536,
+   "maxAoA": 6.61298647859,
+   "maxMach": 0.495805861658,
+   "maxQ": {
+    "M": 0.49728409417,
+    "alt": 123.453998275,
+    "q": 17284.5593526,
+    "t": 1.324
+   },
+   "maxRoll": 0,
+   "maxT0": {
+    "M": 0.497187670191,
+    "T": 301.562940878,
+    "alt": 122.110116544,
+    "t": 1.316
+   },
+   "maxV": 168.483183645,
+   "minMargin": {
+    "M": 0.0791034646202,
+    "alt": 2.44130348207,
+    "cal": 2.21800269155,
+    "t": 0.19
+   },
+   "noChute": false,
+   "offRail": 26.7193423549,
+   "offRailT": 0.189891365809,
+   "pathAngle": 3.93150609923,
+   "powerTilt": 6.45278801345,
+   "railAoA": 6.67375146936,
+   "railFric": 0.468308424925,
+   "railMargin": 1.8140423329,
+   "railPct": 12.7173915128,
+   "shockM": {
+    "F": 7.86272037226,
+    "alt": 681.979638295,
+    "g": 1.35398741014,
+    "t": 11.3918889574,
+    "v": 7.77094002499
+   },
+   "single": true,
+   "skinMax": 293.180721118,
+   "staged": false,
+   "tApo": 10.5417551217,
+   "tApoFree": 10.5417551217,
+   "tDeploy": 10.5417551217,
+   "tLand": 169.58039557,
+   "tMain": 10.5417551217,
+   "tb": 1.701,
+   "ttw": 16.7903011419,
+   "tumbleRate": 15.6339578857,
+   "vApo": 0.776999421235,
+   "vDeploy": 7.77094002499,
+   "vLand": 5.05600483621,
+   "vLandZ": 4.2281381785,
+   "windApo": 6.99437525896,
+   "xApo": -47.0628878385
+  },
+  "out": {
+   "acc": {
+    "n": 1834,
+    "h": 8516,
+    "s": [
+     0,
+     157.404365304,
+     84.0042158817,
+     -39.0553778245,
+     -12.9378420889,
+     -2.52930679224,
+     -0.178387112145,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "alt": {
+    "n": 1834,
+    "h": 25501,
+    "s": [
+     8.35387251139e-7,
+     28.0582770991,
+     109.744407547,
+     210.130450282,
+     427.057739812,
+     616.57550503,
+     683.149104931,
+     664.148703445,
+     633.777183981,
+     603.495225102,
+     573.302239507,
+     543.197645981,
+     513.180869202,
+     483.251339665,
+     453.408493614,
+     423.65177297,
+     393.980625269,
+     364.394503615,
+     334.892866627,
+     305.475178423,
+     276.140908614,
+     246.889532366,
+     217.720530536,
+     188.633390001,
+     159.627604375,
+     130.702675661,
+     101.858118547,
+     73.0934737784,
+     44.4083661273,
+     15.8030372073
+    ]
+   },
+   "aoa": {
+    "n": 1834,
+    "h": 14594,
+    "s": [
+     "NaN",
+     0.580305371955,
+     0.00595393552745,
+     0.00280760967951,
+     0.00774996426121,
+     0.0672511761613,
+     6.27532285242,
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN"
+    ]
+   },
+   "ax": {
+    "n": 1834,
+    "h": 29103,
+    "s": [
+     0,
+     -0.084827236957,
+     -0.106975502282,
+     -0.114179617475,
+     -0.139266290512,
+     -0.234848636525,
+     -0.754021276488,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677,
+     -0.965353173677
+    ]
+   },
+   "az": {
+    "n": 1834,
+    "h": 27236,
+    "s": [
+     1,
+     0.996395674353,
+     0.994261656655,
+     0.993460122439,
+     0.990254967056,
+     0.972031951164,
+     0.656849951257,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069,
+     0.260946651069
+    ]
+   },
+   "cross": {
+    "n": 1834,
+    "h": 30871,
+    "s": [
+     0,
+     0.00000321299400255,
+     0.000203435848746,
+     0.00085460755687,
+     0.00420357170785,
+     0.0114477029961,
+     0.0192908902149,
+     0.0220029198344,
+     0.0199855425134,
+     0.017987632565,
+     0.0160097395712,
+     0.0140523288385,
+     0.0121159200883,
+     0.0102010962167,
+     0.00830851409259,
+     0.00643891802373,
+     0.00459315677779,
+     0.00277220542381,
+     0.000977193845764,
+     -0.000790555287983,
+     -0.00252947478276,
+     -0.00423768046183,
+     -0.00591286634189,
+     -0.00755214682181,
+     -0.00915180698269,
+     -0.0107068813268,
+     -0.0122103791011,
+     -0.0136516730515,
+     -0.0150124295793,
+     -0.0162516004862
+    ]
+   },
+   "drift": {
+    "n": 1834,
+    "h": 26756,
+    "s": [
+     0,
+     0.564949427507,
+     5.90350978044,
+     13.562886325,
+     29.0480259643,
+     41.2447445345,
+     46.5265406846,
+     19.628229189,
+     -28.5675295254,
+     -76.3650925081,
+     -123.752668752,
+     -170.717443515,
+     -217.24523737,
+     -263.32028494,
+     -308.924962181,
+     -354.039446176,
+     -398.641284999,
+     -442.704845534,
+     -486.200592169,
+     -529.094125548,
+     -571.344871306,
+     -612.90424146,
+     -653.712969892,
+     -693.697092078,
+     -732.761565199,
+     -770.779461672,
+     -807.571983532,
+     -842.866535863,
+     -876.189264179,
+     -906.455306562
+    ]
+   },
+   "pitch": {
+    "n": 1834,
+    "h": 25423,
+    "s": [
+     0,
+     4.86609039631,
+     6.14099567718,
+     6.55630893394,
+     8.00539199052,
+     13.5827010681,
+     48.939927652,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242,
+     74.8737595242
+    ]
+   },
+   "roll": {
+    "n": 1834,
+    "h": 3669,
+    "s": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "t": {
+    "n": 1834,
+    "h": 23777,
+    "s": [
+     0.002,
+     0.622,
+     1.242,
+     1.862,
+     3.74175512168,
+     6.84175512168,
+     9.94175512168,
+     15.4565118381,
+     22.3971744311,
+     29.3275622422,
+     36.2477275285,
+     43.1577220786,
+     50.0575972221,
+     56.9474038337,
+     63.8271923354,
+     70.6970126994,
+     77.5569144488,
+     84.4069466574,
+     91.2471579468,
+     98.0775964806,
+     104.898309953,
+     111.709345569,
+     118.510750007,
+     125.302569358,
+     132.084848996,
+     138.857633317,
+     145.620965105,
+     152.374883668,
+     159.119417113,
+     165.854512641
+    ]
+   },
+   "thrust": {
+    "n": 1834,
+    "h": 5545,
+    "s": [
+     13.7006153846,
+     106.217042105,
+     78.1105813953,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "va": {
+    "n": 1834,
+    "h": 13882,
+    "s": [
+     "NaN",
+     91.9988561339,
+     166.389153959,
+     150.925616075,
+     89.5461010884,
+     39.8125639321,
+     9.75584435814,
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN",
+     "NaN"
+    ]
+   },
+   "vel": {
+    "n": 1834,
+    "h": 26934,
+    "s": [
+     0.00455965662225,
+     91.5835211492,
+     165.432505316,
+     149.937736411,
+     88.6717837482,
+     38.6880830264,
+     5.56566024121,
+     -4.37910984851,
+     -4.37265789184,
+     -4.36623902526,
+     -4.35985281535,
+     -4.35349898271,
+     -4.34717725175,
+     -4.34088735073,
+     -4.33462901169,
+     -4.32840197047,
+     -4.32220596662,
+     -4.3160407433,
+     -4.30990604701,
+     -4.30380162704,
+     -4.29772723435,
+     -4.29168261909,
+     -4.28566752525,
+     -4.2796816783,
+     -4.27372475445,
+     -4.2677962962,
+     -4.26189544194,
+     -4.2560198346,
+     -4.2501590224,
+     -4.24418757508
+    ]
+   }
+  },
+  "S": {
+   "L": 0.95,
+   "cgB": 0.540966301304,
+   "cgL": 0.572163111075,
+   "cp": 0.715855261462,
+   "d": 0.0666,
+   "marginB": 2.62596036274,
+   "marginL": 2.15753979561,
+   "marginL10": 1.54146174904,
+   "marginL5": 1.87294554304,
+   "pctL": 15.1254895145,
+   "unc": 0.328078078078
+  },
+  "motor": [
+   "a-5f4294d20002e900000007dd",
+   "G80T",
+   null,
+   null
+  ],
+  "rso": [
+   [
+    "good",
+    "Stability at liftoff",
+    "2.16 cal",
+    "At least 1 caliber is the usual minimum; this has margin."
+   ],
+   [
+    "good",
+    "Stability as a share of length",
+    "15%",
+    "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
+   ],
+   [
+    "good",
+    "Stability leaving the rail",
+    "1.81 cal at 7°",
+    "In this wind the airflow meets the rocket at 7° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving 1.81 cal."
+   ],
+   [
+    "good",
+    "Damping ratio",
+    "0.10",
+    "Within the usual 0.05–0.3: gusts die out in a few swings."
+   ],
+   [
+    "warn",
+    "Weight and CG",
+    "Estimated",
+    "Added up from the parts list, not weighed. Built rockets usually come out heavier, which lowers apogee and moves the CG. Weigh the rocket ready to fly without its motor, find its balance point, and enter both on the Rocket tab (select the stage in the design tree)."
+   ],
+   [
+    "good",
+    "Speed off the rail",
+    "88 ft/s",
+    "Guideline at least 50 ft/s, on a 8.0 ft rail."
+   ],
+   [
+    "good",
+    "Thrust-to-weight (average)",
+    "12.5 : 1",
+    "At least 5:1 is the usual minimum."
+   ],
+   [
+    "good",
+    "Safety cone under power",
+    "6° of 20°",
+    "Stays inside the cone while the motor burns."
+   ],
+   [
+    "good",
+    "Speed when the chute opens",
+    "25 ft/s",
+    "Slow, near apogee: a gentle opening."
+   ],
+   [
+    "good",
+    "Landing speed",
+    "14 ft/s",
+    "At or below about 20 ft/s (6 m/s)."
+   ],
+   [
+    "good",
+    "Max Mach",
+    "0.50",
+    "Subsonic: the drag estimate is most reliable here."
+   ],
+   [
+    "good",
+    "Wind at the pad",
+    "7 mph",
+    "Within the 20 mph limit."
+   ],
+   [
+    "good",
+    "Rail or rod fit",
+    "1010 rail",
+    "1010 rail buttons match the rail."
+   ],
+   [
+    "good",
+    "Motor fit",
+    "29 mm in 29 mm",
+    "Fits the motor mount."
+   ]
+  ],
+  "flags": [
+   [
+    "good",
+    "Off-rail speed OK (≥ 50 ft/s)"
+   ],
+   [
+    "good",
+    "Stable at liftoff"
+   ],
+   [
+    "good",
+    "Stays inside the 20° safety cone under power (up to 6° from vertical)"
+   ],
+   [
+    "bad",
+    "Fin flutter likely: at T+1.3 s the airspeed is 117% of the estimated flutter speed (474 ft/s at 405 ft), for fins of Birch plywood (shear modulus about 0.6 GPa). This is a rough, conservative estimate; thicker fins, a stiffer material, a smaller span or tip-to-tip reinforcement raise the flutter speed."
+   ]
+  ],
+  "charges": [
+   [
+    "Apogee charge",
+    10.5417551217
+   ]
+  ],
+  "aero": [
+   [
+    0.3,
+    11.0482854218,
+    0.726396589756,
+    0.46902385488,
+    0.293272437701,
+    0.039751417179,
+    0.136
+   ],
+   [
+    0.8,
+    11.7468022986,
+    0.734728485915,
+    0.506732047442,
+    0.323657419364,
+    0.0480746280781,
+    0.135
+   ],
+   [
+    0.95,
+    12.0327935623,
+    0.738180185544,
+    0.549382592439,
+    0.323476972882,
+    0.0789056195571,
+    0.147
+   ],
+   [
+    1.2,
+    12.598721924,
+    0.751831642285,
+    0.712759737251,
+    0.316538237499,
+    0.187013677392,
+    0.20920782236
+   ],
+   [
+    2,
+    10.3518258542,
+    0.735660589474,
+    0.675466128472,
+    0.274294016695,
+    0.24635385253,
+    0.154818259246
+   ],
+   [
+    3,
+    7.60288460712,
+    0.681488206422,
+    0.561177001062,
+    0.222721723437,
+    0.238279626116,
+    0.10017565151
+   ]
+  ],
+  "windTable": [
+   {
+    "apo": 690.35735093,
+    "drift": 5.09857174836,
+    "driftY": -0.00229283172818,
+    "error": null,
+    "landed": true,
+    "pathAngle": 0.390310240843,
+    "powerTilt": 0.546949466585,
+    "w": 0
+   },
+   {
+    "apo": 687.332572696,
+    "drift": 688.055283739,
+    "driftY": -0.0126741657959,
+    "error": null,
+    "landed": true,
+    "pathAngle": 2.87079429395,
+    "powerTilt": 4.78301544589,
+    "w": 2.2352
+   },
+   {
+    "apo": 677.964278527,
+    "drift": 1359.80168945,
+    "driftY": -0.0257857921253,
+    "error": null,
+    "landed": true,
+    "pathAngle": 5.83252209497,
+    "powerTilt": 9.58612765938,
+    "w": 4.4704
+   },
+   {
+    "apo": 663.326943956,
+    "drift": 1997.23721364,
+    "driftY": -0.0404072411952,
+    "error": null,
+    "landed": true,
+    "pathAngle": 8.52434599212,
+    "powerTilt": 14.161680985,
+    "w": 6.7056
+   },
+   {
+    "apo": 644.922210179,
+    "drift": 2588.48971718,
+    "driftY": -0.0558889774554,
+    "error": null,
+    "landed": true,
+    "pathAngle": 11.0321354218,
+    "powerTilt": 18.4489476543,
+    "w": 8.9408
+   }
+  ],
+  "mdnote": "Plugged: no ejection charge fires. The G80 is sold with 4, 6, 7, 8, 9, 10, 11, 12, 13, 14 s delays.",
+  "ork": "5727:<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.9\" creator=\"Pocket Rocket Flight Lab\"><rocket><name>My rocket</name><id>UUID</id><axialoffset method=\"absolute\">0.0</axialoffset><position type=\"absolute\">0.0</position><motorconfiguration configid=\"UUID\" default=\"true\"><stage number=\"0\" active=\"true\"/></motorconfiguration><referencetype>maximum</referencetype><subcomponents><stage><name>Sustainer</name><id>UUID</id><subcomponents><nosecone><name>Nose cone</name><id>UUID</id><finish>normal</finish><material type=\"bulk\" density=\"1050\">Polystyrene (PS)</material><length>0.2</length><thickness>0.002</thickness><shape>ogive</shape><shapeclipped>false</shapeclipped><shapeparameter>1</shapeparameter><aftradius>0.0333</aftradius><aftshoulderradius>0.0313</aftshoulderradius><aftshoulderlength>0.0666</aftshoulderlength><aftshoulderthickness>0.002</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped><isflipped>false</isflipped><subcomponents></subcomponents></nosecone><bodytube><name>Body tube</name><id>UUID</id><finish>normal</finish><material type=\"bulk\" density=\"1300\">Blue Tube</material><length>0.75</length><thickness>0.0015</thickness><radius>0.0333</radius><subcomponents><trapezoidfinset><name>Fin set</name><id>UUID</id><axialoffset method=\"bottom\">0</axialoffset><finish>normal</finish><material type=\"bulk\" density=\"630\">Birch plywood</material><fincount>3</fincount><rotation>0</rotation><thickness>0.003</thickness><crosssection>rounded</crosssection><cant>0</cant><prflbevelle>0</prflbevelle><prflbevelte>0.02</prflbevelte><prfltrailingedge>sharp</prfltrailingedge><rootchord>0.14985</rootchord><tipchord>0.05994</tipchord><height>0.07659</height><sweeplength>0.08991</sweeplength></trapezoidfinset><innertube><name>Motor mount</name><id>UUID</id><axialoffset method=\"bottom\">0</axialoffset><material type=\"bulk\" density=\"950\">Kraft phenolic</material><length>0.2</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>0.0155</outerradius><thickness>0.0008</thickness><clusterconfiguration>single</clusterconfiguration><clusterscale>1</clusterscale><clusterrotation>0</clusterrotation><motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0</ignitiondelay><overhang>0.006</overhang><motor configid=\"UUID\"><type>single</type><manufacturer>AeroTech</manufacturer><designation>G80T</designation><diameter>0.029</diameter><length>0.124</length><delay>none</delay></motor></motormount><subcomponents></subcomponents></innertube><centeringring><name>Aft centering ring</name><id>UUID</id><axialoffset method=\"bottom\">-0.003</axialoffset><material type=\"bulk\" density=\"630\">Birch plywood</material><length>0.006</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>auto 0.0318</outerradius><innerradius>auto 0.0155</innerradius></centeringring><centeringring><name>Forward centering ring</name><id>UUID</id><axialoffset method=\"bottom\">-0.185</axialoffset><material type=\"bulk\" density=\"630\">Birch plywood</material><length>0.006</length><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><outerradius>auto 0.0318</outerradius><innerradius>auto 0.0155</innerradius></centeringring><railbutton><name>Rail buttons</name><id>UUID</id><axialoffset method=\"top\">0.415</axialoffset><finish>normal</finish><material type=\"bulk\" density=\"1150\">Delrin</material><instancecount>2</instancecount><instanceseparation>0.3</instanceseparation><angleoffset method=\"relative\">0</angleoffset><outerdiameter>0.0102</outerdiameter><innerdiameter>0.0064</innerdiameter><height>0.0097</height><baseheight>0.0021</baseheight><flangeheight>0.0021</flangeheight><screwheight>0.0</screwheight></railbutton><shockcord><name>Shock cord</name><id>UUID</id><axialoffset method=\"top\">0.04</axialoffset><packedlength>0.04</packedlength><packedradius>0.017172</packedradius><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><cordlength>2.997</cordlength><material type=\"line\" density=\"0.0105\">Kevlar 1/4 in</material></shockcord><parachute><name>Parachute</name><id>UUID</id><axialoffset method=\"top\">0.05</axialoffset><packedlength>0.08</packedlength><packedradius>0.02862</packedradius><radialposition>0.0</radialposition><radialdirection>0.0</radialdirection><cd>0.8</cd><material type=\"surface\" density=\"0.067\">Ripstop nylon</material><deployevent>apogee</deployevent><deployaltitude>150</deployaltitude><deploydelay>0</deploydelay><diameter>0.9144</diameter><linecount>6</linecount><linelength>0.9144</linelength><linematerial type=\"line\" density=\"0.0013\">Elastic cord (flat 6 mm, 1/4 in)</linematerial></parachute></subcomponents></bodytube></subcomponents></stage></subcomponents></rocket><simulations><simulation status=\"outdated\"><name>Simulation 1</name><simulator>RK4Simulator</simulator><calculator>BarrowmanCalculator</calculator><conditions><configid>UUID</configid><launchrodlength>2.4384</launchrodlength><launchintowind>true</launchintowind><launchrodangle>0</launchrodangle><launchroddirection>90</launchroddirection><windaverage>3</windaverage><windturbulence>0</windturbulence><winddirection>4.71238898</winddirection><wind model=\"average\"><speed>3</speed><direction>4.71238898</direction><standarddeviation>0</standarddeviation></wind><windmodeltype>Average</windmodeltype><launchaltitude>0</launchaltitude><launchlatitude>40</launchlatitude><launchlongitude>-111.9</launchlongitude><geodeticmethod>flat</geodeticmethod><atmosphere model=\"extendedisa\"><basetemperature>288.15</basetemperature><basepressure>101325</basepressure></atmosphere><timestep>0.05</timestep><maxtime>1200.0</maxtime></conditions></simulation></simulations><photostudio/></openrocket>",
+  "mc": {
+   "a1": 284.474418102,
+   "am": 690.320716962,
+   "ang": 0.23896222424,
+   "as": 28.3650837332,
+   "b1": 257.071108605,
+   "far": 1489.09486839,
+   "in68": 0.65,
+   "in95": 0.95,
+   "max": 747.424777604,
+   "me": 866.750373131,
+   "min": 634.568996346,
+   "minMargin5": 1.79085715225,
+   "mn": -62.3660496509,
+   "n": 20,
+   "p05": 649.977817261,
+   "p95": 731.300594763,
+   "pts": [
+    {
+     "apo": 690.56010098,
+     "e": 927.830344436,
+     "landed": true,
+     "minMargin": 2.24960492794,
+     "n": -122.509600449,
+     "tumble": false
+    },
+    {
+     "apo": 653.058808414,
+     "e": 656.021704929,
+     "landed": true,
+     "minMargin": 2.00946023149,
+     "n": -3.81623717297,
+     "tumble": false
+    },
+    {
+     "apo": 699.976837663,
+     "e": 417.017153553,
+     "landed": true,
+     "minMargin": 2.43070481859,
+     "n": 56.5349293703,
+     "tumble": false
+    },
+    {
+     "apo": 695.532205738,
+     "e": 1116.3077244,
+     "landed": true,
+     "minMargin": 2.30288292919,
+     "n": 10.4131874176,
+     "tumble": false
+    },
+    {
+     "apo": 702.5604021,
+     "e": 830.656343402,
+     "landed": true,
+     "minMargin": 2.09624145735,
+     "n": -437.893951276,
+     "tumble": false
+    },
+    {
+     "apo": 664.419392128,
+     "e": 374.408578118,
+     "landed": true,
+     "minMargin": 2.13426528475,
+     "n": -92.6220267522,
+     "tumble": false
+    },
+    {
+     "apo": 715.646491643,
+     "e": 1218.61284471,
+     "landed": true,
+     "minMargin": 1.85199272687,
+     "n": 670.413538989,
+     "tumble": false
+    },
+    {
+     "apo": 658.173949786,
+     "e": 961.740813545,
+     "landed": true,
+     "minMargin": 2.38904563177,
+     "n": -61.5233683047,
+     "tumble": false
+    },
+    {
+     "apo": 731.300594763,
+     "e": 671.017753524,
+     "landed": true,
+     "minMargin": 2.10423857025,
+     "n": 129.101252309,
+     "tumble": false
+    },
+    {
+     "apo": 691.196212101,
+     "e": 730.580985237,
+     "landed": true,
+     "minMargin": 1.79085715225,
+     "n": -451.62170957,
+     "tumble": false
+    },
+    {
+     "apo": 713.879449834,
+     "e": 985.081599778,
+     "landed": true,
+     "minMargin": 2.47569201817,
+     "n": -227.26290202,
+     "tumble": false
+    },
+    {
+     "apo": 634.568996346,
+     "e": 855.405581322,
+     "landed": true,
+     "minMargin": 1.99623085491,
+     "n": -97.0470857326,
+     "tumble": false
+    },
+    {
+     "apo": 747.424777604,
+     "e": 1489.03223989,
+     "landed": true,
+     "minMargin": 1.80880730942,
+     "n": 13.6570732905,
+     "tumble": false
+    },
+    {
+     "apo": 679.384136806,
+     "e": 1084.97694116,
+     "landed": true,
+     "minMargin": 2.21539179706,
+     "n": -468.995197421,
+     "tumble": false
+    },
+    {
+     "apo": 673.136243728,
+     "e": 1210.64070952,
+     "landed": true,
+     "minMargin": 2.23379765597,
+     "n": 14.2539486891,
+     "tumble": false
+    },
+    {
+     "apo": 699.938571042,
+     "e": 863.279598449,
+     "landed": true,
+     "minMargin": 2.143775397,
+     "n": -185.093428987,
+     "tumble": false
+    },
+    {
+     "apo": 649.977817261,
+     "e": 1039.24638842,
+     "landed": true,
+     "minMargin": 2.37154748821,
+     "n": -264.453349376,
+     "tumble": false
+    },
+    {
+     "apo": 704.221243259,
+     "e": 563.15257921,
+     "landed": true,
+     "minMargin": 2.45382653685,
+     "n": 255.900207449,
+     "tumble": false
+    },
+    {
+     "apo": 708.897837715,
+     "e": 602.477358897,
+     "landed": true,
+     "minMargin": 1.96325216109,
+     "n": -44.7101737994,
+     "tumble": false
+    },
+    {
+     "apo": 692.560270327,
+     "e": 737.520220126,
+     "landed": true,
+     "minMargin": 2.65575347213,
+     "n": 59.9539003278,
+     "tumble": false
+    }
+   ],
+   "secs": 0,
+   "tumbles": 0,
+   "when": 0
+  },
+  "results": "\n    \n      Predicted apogee, above ground\n      \n        2,247ft\n        MotorG80Change\n      \n      No results yet. Set up the rocket, motor and conditions, then tap Launch.Launch now\n      Speed and accelerationMax ascent velocity553ft/s377 mphMax Mach0.50Off-rail velocity88ft/s60 mphMax acceleration16.6gAverage acceleration, to burnout9.5gMax dynamic pressure2.5psi · Mach 0.50AscentLiftoff weight1.43lbThrust-to-weight (avg)12.5: 1Time to burnout1.70sBurnout altitude609ftCoast time to apogee8.8sTime to apogee10.5sIdeal motor delay for apogee8.8sStabilityStability at liftoff2.16cal · 15% of length · uncertainty margin 1.8–2.5Stability leaving the rail1.81cal · at 7° in this wind · 13% of lengthDamping ratio0.10at max speed, 8.1 Hz · 0.10 leaving the railLowest stability in flight2.16cal · at liftoffMax angle of attack6.6°Max roll rate0rpm · 0.0 rev/sCd at Mach 0.30.469RecoveryApogee charge fires10.5s · 2,247 ftSpeed at deployment25ft/s17 mphChute opening load2lbf · 1 gDescent and landingDescent rate14ft/s9.5 mphLanding velocity17ft/s · 14 vertical12 mphFlight time170sLanding distance, downwind (E)3,020ft · 0.57 mi\n      Off-rail speed OK (≥ 50 ft/s)Stable at liftoffStays inside the 20° safety cone under power (up to 6° from vertical)Fin flutter likely: at T+1.3 s the airspeed is 117% of the estimated flutter speed (474 ft/s at 405 ft), for fins of Birch plywood (shear modulus about 0.6 GPa). This is a rough, conservative estimate; thicker fins, a stiffer material, a smaller span or tip-to-tip reinforcement raise the flutter speed.\n      A barometric altimeter would read about 3,735 ft (+4%): it assumes standard-atmosphere temperatures, and this air is colder.\n    \n\n    \n      RSO Checklisti\n      1 to check14 OKShow checks\n      ✓Stability at liftoff2.16 calAt least 1 caliber is the usual minimum; this has margin.✓Stability as a share of length15%The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets.✓Stability leaving the rail1.81 cal at 7°In this wind the airflow meets the rocket at 7° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving 1.81 cal.✓Damping ratio0.10Within the usual 0.05–0.3: gusts die out in a few swings.!Weight and CGEstimatedAdded up from the parts list, not weighed. Built rockets usually come out heavier, which lowers apogee and moves the CG. Weigh the rocket ready to fly without its motor, find its balance point, and enter both on the Rocket tab (select the stage in the design tree).✓Speed off the rail88 ft/sGuideline at least 50 ft/s, on a 8.0 ft rail.✓Thrust-to-weight (average)12.5 : 1At least 5:1 is the usual minimum.✓Safety cone under power6° of 20°Stays inside the cone while the motor burns.✓Speed when the chute opens25 ft/sSlow, near apogee: a gentle opening.✓Landing speed14 ft/sAt or below about 20 ft/s (6 m/s).✓Max Mach0.50Subsonic: the drag estimate is most reliable here.✓Wind at the pad7 mphWithin the 20 mph limit.✓Rail or rod fit1010 rail1010 rail buttons match the rail.✓Chance of tumbling0% (0 of 20)None of the 20 dispersion flights tumbled, with the wind, weight and balance varied.✓Motor fit29 mm in 29 mmFits the motor mount.\n    \n\n    \n\n    \n      Flight Animation\n      ▶ Watch the flight\n    \n\n    \n      Flight Performance\n      AltitudeVelocityAccelerationThrustDriftPitchAoAConeLanding\n      \n      Altitude (ft) vs timeBurnout 1.7 sApogee 10.5 s\n    \n\n    \n      Landing dispersioniShow results\n      20 flights in N s.Cancel\n      \n        Apogee, average2,265ft ± 93Apogee, 90% range2,132–2,399ftAverage landing spot2,851ft toward ELanding ellipse (95%)4,569 × 4,129ft, long axis ENE–WSWFarthest landing4,885ft · 0.93 miChance of tumbling0% · 0 of 20 flightsLowest stability, worst 5%1.79cal\n        The landing bullseye is the Landing view of the Flight Performance chart above. Its inner ellipse is drawn to hold 68% of landings and the outer one 95% (in this run, 65% and 95% of the 20 landings fell inside them). It's seen from above with north up; the dot in the cross is the pad. Varied: wind speed ±25%, wind direction ±15°, impulse ±3%, weight ±2%, balance ±2.3% of length, drag ±5%, rail angle ±1°, thrust misalignment 0.2° (1σ).\n      \n    \n\n    \n      Drift by wind speedShow table\n      \n        WindApogeeTilt, poweredLanding0 mph2,265 ft1°17 ftdownwind (E)5 mph2,255 ft5°2,257 ftdownwind (E) · 0.43 mi10 mph2,224 ft10°4,461 ftdownwind (E) · 0.84 mi15 mph2,176 ft14°6,553 ftdownwind (E) · 1.24 mi20 mph2,116 ft18°8,492 ftdownwind (E) · 1.61 mi\n        Wind grows with height using the 1/7 power law for open ground, measured at 6 ft. With your 6.7 mph at the pad, that's about 15.6 mph at apogee. The wind blows from the W. The rail leans into the wind, so light winds can land the rocket upwind of the pad. It stays inside the 20° safety cone under power at every wind speed listed.\n      \n    \n    \n      Flight Log & Calibrationi\n      Not calibrated. Log a flight with its real apogee to calibrate the drag to it.\n      \n      No flights logged for My rocket yet. Log a flight by hand, or import the file from your altimeter (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Apogee Components or any CSV/text log).\n      + Log a flightImport altimeter file\n      All flightsExport backupExport CSVImport backup\n    \n\n\n\n    Enjoying Pocket Rocket Flight Lab? You can support it with a donation.×VenmoPayPal\n    \n      \n        Flight reportA PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.\n        Export PDF report\n      \n      Your name, club and certification won’t be on the report: this copy of the app doesn’t have your profile yet. Each copy (the Android app, each web browser) keeps its own settings. Add them in Settings → Profile\n      \n      Save this Flight to the .ork fileSave the design to a file first (Rocket tab), then runs can be saved into it.\n        Save this run\n    \n  ",
+  "report": "Started a new design from a basic rocket: nose cone, body tube, three fins, a 29 mm motor mount and a parachute.DetailsStarted a new design from a basic rocket: nose cone, body tube, three fins, a 29 mm motor mount and a parachute. Select any part below to change it, or add parts to it.",
+  "stageMotors": [
+   null,
+   null
+  ],
+  "guide": [
+   [
+    "",
+    null
+   ],
+   [
+    "tower",
+    [
+     "good",
+     "Launch tower",
+     "No lugs or buttons needed in a tower; the fins must clear its rails."
+    ]
+   ],
+   [
+    "rod18",
+    [
+     "bad",
+     "1/8 in rod",
+     "The rocket has rail buttons but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug."
+    ]
+   ],
+   [
+    "rod316",
+    [
+     "bad",
+     "3/16 in rod",
+     "The rocket has rail buttons but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug."
+    ]
+   ],
+   [
+    "rod14",
+    [
+     "bad",
+     "1/4 in rod",
+     "The rocket has rail buttons but no rod-type launch lug, so it can't fly from a rod. Use a rail, or add a rod-type lug."
+    ]
+   ],
+   [
+    "r1010",
+    [
+     "good",
+     "1010 rail",
+     "1010 rail buttons match the rail."
+    ]
+   ],
+   [
+    "r1515",
+    [
+     "bad",
+     "1515 rail",
+     "The rocket's rail buttons are 1010 size, which don't fit a 1515 rail. Use the matching rail or change them."
+    ]
+   ]
+  ]
+ },
  "builder|cluster": {
   "label": "builder|cluster",
   "st": {
