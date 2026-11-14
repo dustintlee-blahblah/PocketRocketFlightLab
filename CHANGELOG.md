@@ -4,6 +4,21 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 303 (2026-11-14)
+
+**Rocket builder**
+- **A fin's trailing edge can be set apart from its leading edge**: a new Trailing edge field on fin sets (Same as the leading edge, Square, Rounded, Tapered to a sharp edge), for a fin rounded or sharpened at the front and left square at the back, or the other way round. A blunt back adds base drag behind the fin at every speed and keeps only the front's share of the wave drag above Mach 1; a tapered back removes the base drag. Checked on NACA RM L55G28a, whose report gives wedge leading edges and square trailing edges: drag within 1.2% of the flight, against 5.2% low before. Saved in the app's own data inside the .ork (OpenRocket sees the leading edge's type). Designs that don't set it fly exactly as before.
+
+**Settings**
+- **The Drag model switch is gone**: the app always flies the current drag model (the app's since build 288). Anyone who had Previous chosen is moved to it. A drag calibration fitted with the previous model shows as not in use, with Refit and Remove, as it did when switching.
+
+**Under the hood**
+- **The previous drag model's code is removed.** The current model computes exactly what it did: 1,119,046 drag numbers over 286 designs, 286 flights, the regression cases, the drag benchmarks and the validation scripts are all identical before and after. The Wind Tunnel's previous-against-current comparison went with it.
+- **AERODYNAMICS.md describes only the current model**, with today's accuracy figures: 5.8% on the 23 measured flights as the altimeters read (RASAero II 5.2%).
+- **Where the remaining apogee error sits** (`validation/drag-factors.js`): the drag factor each measured flight needs. The fourteen rockets with beveled or square fins need 1.00 on average; the nine with rounded fins 1.09, with too much scatter between them to correct for.
+- **Validation**: the EZI-65 is flown at 100 °F like the other six LDRS-26 flights (its file said 70 °F).
+- The regression test flies the current drag model (it flew the previous one) and has two cases for the new trailing edges: 55 in all.
+
 ## Build 302 (2026-11-13)
 
 No change to the app itself: it flies, opens and saves exactly as Build 301 does.
