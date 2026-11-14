@@ -4,6 +4,24 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 301 (2026-11-13)
+
+**Opening files**
+- **A motor name that fits several motors is said out loud**: when a file's motor could be more than one in the list (a name two makers share, or a file that names no maker), the report on opening names the one chosen and the others, for example "The file's "K475" also fits Ellis Mountain K475: the AMW K475 was chosen." Of several with the name, one in the file's diameter is chosen first.
+- **A flight on a stand-in motor says so in the results**: when the file's motor isn't in your list and another is flown in its place, the Results checks and the PDF report carry a warning naming the motor the design calls for. Before, this was said once, when the file was opened.
+
+**Rocket builder**
+- **Auto-fit centering rings, bulkheads and couplers stay auto-fit** after a save and reopen (they came back as fixed sizes), and a parachute's line length left to follow the canopy stays that way.
+
+**Flight Log**
+- **The large-calibration warning stays open until you press OK**, and appears from a 30% drag correction (was 35%).
+
+**Under the hood**
+- **Regression test covers the newer features**: 13 more cases flown from designs made in the builder (two and three stages, a cluster, fly-away guide, rod and rail lugs, a protuberance on one side, canted fins, the current drag model, motors missing or ambiguous in a file), plus the motor list itself and where every earlier motor id leads. The 40 example cases' numbers are unchanged.
+- **Save-and-reopen test**: every field of every builder part is changed, saved with the app's own save, reopened and compared (490 checks). It found the two builder fixes above.
+- **The smoke test fails on an empty screen** (motor makers, the add-a-part list, result tiles, charts), which is how the missing manufacturer filter would have been caught.
+- Code comments swept and ARCHITECTURE.md extended with the names, conventions and landmarks used in the code.
+
 ## Build 300 (2026-11-13)
 
 **Motors**
