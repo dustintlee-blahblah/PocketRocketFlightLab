@@ -254,24 +254,39 @@ suggest something smoother than they are, so the builder's list says what each h
 matters little until it is large. The Aerobee coasting case's score depends on a finish and Reynolds number its
 source does not give.
 
-**Where the remaining apogee error sits.** Scaling each flight's drag until its apogee matches gives the factor that
-rocket needs. The university and research rockets with beveled fins need about 1; the rockets whose fins are entered
-as rounded (seven sport rockets measured at LDRS-26, and Rabia and Torrent) need more, about 1.10 times the model's
-drag on average as the altimeter reads (0.87 to 1.39), against 0.99 for the other fourteen. (These factors were
-worked out before the last changes to the friction and the fins' transonic peak and have not been redone; the
-pattern, not the exact figures, is the point.) What was tried:
+**Where the remaining apogee error sits.** Scaling each flight's whole drag until its apogee matches gives the
+factor that rocket needs (`validation/drag-factors.js`, as the altimeter reads). The fourteen rockets with beveled or
+square fins need 1.00 on average (0.83 to 1.20), and the seven of them above Mach 1.2 need 1.02: there is no
+general shortfall of drag, at any speed. The nine whose fins are entered as rounded (five sport rockets measured at
+LDRS-26, Blister, Rabia twice and Torrent) need 1.10 on average, from 0.87 to 1.40. The largest single factors:
 
+| Flight | Factor | Note |
+|---|---|---|
+| Raven, LDRS-26 (Mach 1.15) | 1.40 | rounded fins |
+| LOC/Precision EZI-65, LDRS-26 | 1.31 | rounded fins; entered at 70 °F where the other LDRS-26 flights have 100 °F |
+| Proteus 6 (Mach 2.95) | 1.20 | boattail; measured by integrated accelerometers |
+| Rabia, Thunder and Lightning, Torrent | 1.14–1.16 | rounded fins |
+| Qu8k (Mach 3.5) | 1.10 | boattail; measured by integrated accelerometer |
+| Cancer Descending, Blister, Ion Drive | 0.86–0.87 | the first two have rounded fins |
+| Don't Debate This (Mach 3.0) | 0.83 | 56,000 ft; the altimeter correction is doubtful that high |
+
+What was tried:
+
+- Flying the rounded fins as square ones brings their average to 1.01, but not their scatter (0.78 to 1.32): it
+  fixes the EZI-65 (1.04) and overshoots Cancer Descending and Blister (0.78, 0.79), and Raven still needs 1.32.
+  Hand-rounded plywood and fiberglass edges are likely blunter than the model's rounded edge, but these flights
+  can't say by how much, and RASAero II is also 6–12% high on four of the LDRS-26 rockets.
+- A 3 mm aluminium wall in place of the placeholder (a skin that stays cooler, so more friction) moves the factors
+  by 0.01 on average and 0.02 to 0.04 on the fastest flights. The wall is not what Proteus 6 and Qu8k are missing.
 - Rail buttons are worth 2.5% of apogee and are already counted.
 - A rougher finish closes the sport rockets' gap only by giving the good flights far too much drag.
-- Flying the rounded fins as square ones overcorrects (0.95 on average) and still leaves Raven and Thunder and
-  Lightning far off. Hand-rounded plywood and fiberglass edges are likely blunter than the model's rounded edge,
-  but these flights can't say by how much, and RASAero II is also 6–12% high on four of the seven LDRS-26 rockets.
 - A fin–body interference term of the size Box, Bishop and Hunt take from Mandell (the fin's friction on the root
   chord times half the body diameter) would add 0.03–0.06 to every rocket: about what the good flights and the
   polished NACA models don't need.
 
-So there is no one missing term, and the evidence is too scattered to act on. The fins are where it points: blunt
-and rounded edges below Mach 1.
+So there is no one missing term. Rounded edges are where the evidence points, with too much scatter between
+rockets to fit a number to; the two boattailed rockets above Mach 2.9 are the other group, and both were measured
+by accelerometer, not altimeter.
 
 **RASAero II on the same drag cases.** Each body was written as a RASAero II design file, opened in RASAero II on
 Windows, and its drag table exported (Aero Plots, Export to CSV). Mean error against the same measured points:
@@ -313,8 +328,8 @@ ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag
    at every speed while its CP agrees. On NASA TM-2005-213541's configuration 3 it is 4% low at Mach 0.6 and 15–28%
    low above Mach 1, with the CP forward, and RM L56G24's CP is 6% forward too: the fins seem to carry more lift
    than the app gives them, or the body less (see items 4 and 5).
-8. **Rounded and hand-finished fin edges below Mach 1.** The rockets with rounded fins fly about 10% lower than the
-   model says on average, with wide scatter (see "Where the remaining apogee error sits"). The EZI-65 (0.25 in
+8. **Rounded and hand-finished fin edges.** The rockets with rounded fins need about 10% more drag than the
+   model gives them on average, with wide scatter (see "Where the remaining apogee error sits"). The EZI-65 (0.25 in
    rounded fins, 3.6% of the chord) is 13% high.
 9. **Very short bevels.** With bevels of about 1% of the chord, as on the Kinsel A-601, linear theory would give
    more drag than a square edge, so each bevel is capped there. How a nearly square bevel really behaves between
