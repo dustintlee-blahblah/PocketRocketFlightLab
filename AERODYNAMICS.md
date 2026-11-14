@@ -133,11 +133,13 @@ A boattail that ends before the base (more body behind it) has only the separati
 
 | Term | Mach | Source |
 |---|---|---|
-| Nose, shoulders, boattails | all | Barrowman (1966/67) slender-body theory: CNα = 2(A₂ − A₁)/A_ref at the section's centroid. Doesn't change with Mach. |
+| Nose, shoulders, boattails | all | Barrowman (1966/67) slender-body theory: CNα = 2(A₂ − A₁)/A_ref at the section's centroid. Doesn't change with Mach, except for the nose above Mach 1 (next row). |
+| Nose with the cylinder behind it | above 1 | MIL-HDBK-762 figures 5-4 and 5-5 (tangent ogive-cylinders, used for every nose shape but a cone) and 5-6 and 5-7 (cone-cylinders): the slope and center of pressure of the nose and the body behind it, as far as the body keeps the nose's diameter, against d·β/(nose length) and (cylinder length)/(d·β), β = √(M² − 1). From measurements; the handbook gives ±10% in the slope and half a caliber in the CP. Read off the printed charts (to about ±0.05), faded in from Mach 1 to 1.2. Replaces the nose's slender-body 2. |
 | Fins | below 0.9 | Diederich's formula with Prandtl–Glauert compressibility, as Barrowman uses it. Any outline, by spanwise strips. |
 | Fins | above 1.5 | Linear supersonic theory (Ackeret) with tip loss, K/β·(1 − 1/(2·AR·β)): K = 4 for sharp and rounded edges (checked against Arcas TN D-4014 and NASA TM X-653), 2.5 for square edges (no data; the cautious value). The fin's CP moves from ¼ of the mean chord toward Barrowman's supersonic location. |
 | Fins | 0.9 – 1.5 | Blended between the two. |
-| Fin–body interference | all | Barrowman's factor, 1 + r/(s + r). Doesn't change with Mach. |
+| Fin–body interference | all | Barrowman's factor, 1 + r/(s + r): the fins' lift with the body between them. Doesn't change with Mach. |
+| The fins' lift carried onto the body | above 0.9 | Pitts, Nielsen and Kaattari, NACA Report 1307: by slender-body theory, (1 + τ)² − K_W(B) with τ = r/(s + r) (its equations 14 and 21), or, when βA(1 + λ)(1/(βm) + 1) > 4, each fin's pressure field carried onto the body between the Mach lines from the root chord (its equations 23 and 25, integrated numerically, over the body behind the fins as far as it goes). Faded in from Mach 0.9 to 1.5. Not used below Mach 0.9, where it made the lift 4–29% too high on the three measured rockets and moved the Arcas CP 5–9% of length aft. |
 | Five or more fins | all | Shielding factors as OpenRocket uses (5 fins 0.948 … more than 8, 0.75). |
 | Body lift across the flow | all | CN = K·(side area / A_ref)·sin²α, K = 1.1 (Galejs), acting at the middle of the side outline. The static CP includes it at a typical 2°. |
 | At larger angles | all | The fins stall from about 18° to 35° (their linear lift fades to 60%) and then act as flat plates across the flow (Hoerner, Cd ≈ 1.17 on 2/π of their area). |
@@ -155,7 +157,8 @@ have no flight history, so they are scored with the skin fully heated (right for
 
 | Part | Against | Result (mean absolute error) |
 |---|---|---|
-| Center of pressure, Mach 0.6–4.6 (tuned) | NASA TN D-4013/4014, Arcas sounding rocket, two body lengths, wind tunnel | RMS error 2.3% of body length (17 points). Worst at Mach 0.85–0.9 on the short model: 5% too far aft. |
+| Center of pressure, Mach 0.6–4.6 (tuned) | NASA TN D-4013/4014, Arcas sounding rocket, two body lengths, wind tunnel | RMS error 3.1% of body length (17 points). Worst on the short model: 5% too far aft at Mach 0.85–0.9, and 4–5% too far forward above Mach 3 (2–3% before the supersonic body terms went in). |
+| Normal-force slope of the same short model, Mach 0.6–4.63 (check) | NASA TN D-4013 figure 7(b), TN D-4014 figure 5, with and without fins | With fins 13.6%: 8–20% low to Mach 1.2, 17–28% high at Mach 1.5–1.8, within 7% at Mach 2.3–4, 13% low at 4.63. Body alone 24%: 15–52% low to Mach 1.2 (no sourced term there), within 10% at Mach 1.5–3, 22% low at 4.63. |
 | Total drag, Mach 0.6–4.6 (tuned) | NACA RM A53D02, fineness-10 body with 72° fins, free flight | 7.7%: 4% high at Mach 0.6, 3–15% low from Mach 1 to 3.3. With a cold skin, 5.0%. |
 | Fin drag, Mach 1.5–2.0 (tuned) | NACA RM E50D28, RM-10 fins, wind tunnel | 0.011 in Cd, high. |
 | Boattail pressure drag, Mach 2.5 and 3.5 (tuned) | MIL-HDBK-762 figure 5-144, four conical boattails, wind tunnel | Within 0.002 in Cd. |
@@ -164,9 +167,9 @@ have no flight history, so they are scored with the skin fully heated (right for
 | The same model, Mach 1.5–4.63 (check) | NASA TN D-4014, wind tunnel | Drag 4.1% with fins, 4.9% without. What the four fins add: 0.019 in Cd, low (0.065 low at Mach 1.5, 0.03 at 1.8). |
 | Boattailed bodies in flight, Mach 0.8–2 (check) | NASA TR R-100, configurations 11 (8° boattail) and 36 (4°), free flight | Drag 6.2% on configuration 11; 12.6% high on configuration 36. |
 | Pressure drag of 45° fins 2.8% thick (check) | NASA TR R-100 figure 5, free flight | 0.012 in Cd on the fin area. |
-| Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.8% of length; CNα 16% low on average (10–22% at every Mach number). |
-| Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (check) | NACA RM L56G24, free flight | Drag 7.4% low (the model's instrument fairings, not in the app's design, are part of that); CP 6.0% of length forward. |
-| Slender missile with small tail fins, Mach 0.6–3.95 (check) | NASA TM-2005-213541, configuration 3, wind tunnel (the report's digital data) | Drag less base 6–17% high outside Mach 0.9–1.2; 100% high at Mach 0.9 and 35% at 1.19 (gap 12); CP 3.5–13% of length forward; CNα 4% low at Mach 0.6, 15–28% low above 1. |
+| Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.7% of length; CNα 10% on average: 11–19% low below Mach 1, within 4% at Mach 1.2–1.45, 7–16% high at Mach 1.6–3, within 4% at Mach 4–5. |
+| Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (check) | NACA RM L56G24, free flight | Drag 7.4% low (the model's instrument fairings, not in the app's design, are part of that); CP within 1% of length (6% forward before the supersonic body terms). |
+| Slender missile with small tail fins, Mach 0.6–3.95 (check) | NASA TM-2005-213541, configuration 3, wind tunnel (the report's digital data) | Drag less base 6–17% high outside Mach 0.9–1.2; 100% high at Mach 0.9 and 35% at 1.19 (gap 12); CP 4–9% of length forward; CNα within 4% to Mach 1.19, 17% high at Mach 1.7, within 10% above. |
 | Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 5.8% (bias +2.1%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.5%). Below Mach 0.8, 3.8%; Mach 0.8–1.2, 6.1%; above 1.2, 7.3%. As true heights: 8.6% and 5.4%. |
 | Nose drag to Mach 2 | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%, worked out before build 288 and not redone. Another program, not a measurement. |
@@ -321,19 +324,24 @@ ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag
    nozzle's area is taken off now; the Aerobee data check that from Mach 2 to 5 and nothing checks it below.
 3. **Transonic center of pressure.** The measured CP moves forward near Mach 0.85–0.9 on short rockets; the model
    doesn't. NASA TM X-653 has more data to check it against.
-4. **Fin–body interference with Mach number.** Barrowman's factor is a low-speed one. Pitts, Nielsen and Kaattari
-   (NACA Report 1307) give the body–fin lift carryover across subsonic and supersonic speeds in one framework.
-5. **Body lift at supersonic speeds and large angles.** Slender-body theory and K = 1.1 hold at low speed; Jorgensen
-   (NASA TR R-474) carries a body's normal force to high angles and Mach numbers consistently.
+4. **Lift below Mach 1.** The normal-force slope is 8–20% low on the Arcas and the Aerobee 150A below Mach 1, and
+   the Arcas body alone 15–52% low. Report 1307's carryover of the fins' lift onto the body would close it but
+   overshoots (4–29% high) and moves the Arcas CP 5–9% of length aft, the unsafe direction, so it is used only
+   above Mach 0.9. No sourced correction for the subsonic range has been found.
+5. **Body lift above Mach 1.** The nose-cylinder charts stop at the first change of diameter, so a boattail keeps
+   its slender-body value at every speed: MIL-HDBK-762's supersonic boattail chart (figure 5-18) is cut off in the
+   public copy. The charts are for ogives and cones; other nose shapes use the ogive chart. With both supersonic
+   terms the lift is 15–28% high around Mach 1.5–2 on the Arcas, the Aerobee and TM-2005-213541, and the Arcas CP
+   is 4–5% of length forward above Mach 3 (the app understates stability there). Nothing measured checks the cone
+   chart: no rocket with a measured CP or slope here has a conical nose. At large angles Jorgensen (NASA TR R-474)
+   carries a body's normal force further than K = 1.1 does.
 6. **Single-wedge fins.** A fin with a sharp leading edge and a blunt trailing edge can be entered (the Trailing
    edge field), and RM L55G28a's fins check it. The Aerobee 150A's fins are "a modified single wedge" (NTRS
    19660005621), a section that thickens all the way to the trailing edge, which the app has no shape for, and
    their thickness at the trailing edge isn't published: entered as beveled with a full-thickness square back the
    app is 19% high thrusting and 11% coasting, against 6% and 5% entered as beveled at both ends, as they are.
-7. **Normal-force slope and CP with small fins on long bodies.** On the Aerobee 150A the app's CNα is 10–22% low
-   at every speed while its CP agrees. On NASA TM-2005-213541's configuration 3 it is 4% low at Mach 0.6 and 15–28%
-   low above Mach 1, with the CP forward, and RM L56G24's CP is 6% forward too: the fins seem to carry more lift
-   than the app gives them, or the body less (see items 4 and 5).
+7. **CP with small fins on a long body.** On NASA TM-2005-213541's configuration 3 the CP is 4–9% of length
+   forward at every speed, 6–8% below Mach 1 where items 4 and 5 don't reach.
 8. **Rounded and hand-finished fin edges.** The rockets with rounded fins need about 9% more drag than the
    model gives them on average, with wide scatter (see "Where the remaining apogee error sits"). The EZI-65 (0.25 in
    rounded fins, 3.6% of the chord) is 9% high.

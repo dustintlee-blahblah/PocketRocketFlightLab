@@ -1836,6 +1836,183 @@ export function rollPartsM(A, M) {
   A._rpM.set(key, r);
   return r;
 }
+/* ---------- the body's own lift above Mach 1 ----------
+   Slender-body theory gives a nose 2 per radian at every speed and a cylinder nothing. Above Mach 1 a nose with a
+   cylinder behind it carries more, and further aft: MIL-HDBK-762 (Design of Aerodynamically Stabilized Free
+   Rockets), figures 5-4 and 5-5, for tangent ogive-cylinders, from measurements (its reference 5; stated accuracy
+   ±10% in the slope and half a caliber in the center of pressure). Read off the charts at the crossings of their
+   two families of curves: a = d·β/(nose length), b = (cylinder length)/(d·β), β = √(M² − 1). */
+const BODY_A = [0, 0.25, 0.5, 1, 1.5, 2],
+  BODY_B = [0, 0.5, 1, 2, 3, 4, 6],
+  BODY_CN = [
+    [2, 2, 2, 2, 2, 2, 2],
+    [2.31, 2.49, 2.55, 2.58, 2.58, 2.57, 2.55],
+    [2.5, 2.67, 2.875, 3.04, 3.07, 3.08, 3.03],
+    [2.42, 2.75, 3.0, 3.27, 3.41, 3.5, 3.545],
+    [2.15, 2.64, 2.97, 3.31, 3.54, 3.67, 3.73],
+    [1.8, 2.54, 2.9, 3.35, 3.56, 3.68, 3.8],
+  ],
+  // center of pressure from the nose tip, in nose lengths (the a = 1.5 and 2 curves stop at b = 3: held there)
+  BODY_XCP = [
+    [0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45],
+    [0.49, 0.495, 0.497, 0.498, 0.5, 0.5, 0.498],
+    [0.54, 0.588, 0.627, 0.678, 0.692, 0.694, 0.694],
+    [0.527, 0.686, 0.77, 0.877, 0.929, 0.957, 0.977],
+    [0.515, 0.657, 0.857, 1.035, 1.105, 1.105, 1.105],
+    [0.505, 0.62, 0.915, 1.11, 1.173, 1.173, 1.173],
+  ];
+// cone-cylinder bodies: figures 5-6 and 5-7 of the same handbook, same parameters and grid
+const CONE_CN = [
+    [1.97, 1.97, 1.97, 1.97, 1.97, 1.97, 1.97],
+    [1.96, 2.09, 2.2, 2.36, 2.33, 2.28, 2.26],
+    [1.94, 2.25, 2.52, 2.78, 2.78, 2.67, 2.57],
+    [1.9, 2.45, 2.85, 3.35, 3.58, 3.68, 3.68],
+    [1.88, 2.46, 2.92, 3.58, 4.0, 4.0, 4.0],
+    [1.87, 2.47, 2.97, 3.7, 4.28, 4.28, 4.28],
+  ],
+  CONE_XCP = [
+    [0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667],
+    [0.668, 0.703, 0.733, 0.766, 0.77, 0.77, 0.77],
+    [0.675, 0.746, 0.8, 0.896, 0.944, 0.962, 0.965],
+    [0.692, 0.83, 0.935, 1.077, 1.17, 1.225, 1.225],
+    [0.7, 0.92, 1.053, 1.2, 1.268, 1.268, 1.268],
+    [0.7, 1.0, 1.16, 1.315, 1.315, 1.315, 1.315],
+  ];
+function bodyChart(tbl, a, b) {
+  const at = (v, g) => {
+    const x = Math.min(Math.max(v, g[0]), g[g.length - 1]);
+    let i = 0;
+    while (i < g.length - 2 && x > g[i + 1]) i++;
+    return [i, (x - g[i]) / (g[i + 1] - g[i])];
+  };
+  const [i, u] = at(a, BODY_A),
+    [j, v] = at(b, BODY_B);
+  return (
+    tbl[i][j] * (1 - u) * (1 - v) +
+    tbl[i + 1][j] * u * (1 - v) +
+    tbl[i][j + 1] * (1 - u) * v +
+    tbl[i + 1][j + 1] * u * v
+  );
+}
+/* ---------- the lift the fins put on the body, above Mach 1 ----------
+   Pitts, Nielsen and Kaattari, NACA Report 1307 (1957). Barrowman's factor 1 + r/(s + r) is the lift of the fins in
+   the presence of the body, K_W(B). The report adds K_B(W), the lift the fins induce on the body beside and behind
+   them: by slender-body theory (its equation 21) at subsonic speeds and for low aspect ratios, and above Mach 1,
+   when βA(1 + λ)(1/(βm) + 1) > 4, from the pressure field of each fin carried onto the body between the Mach lines
+   from the root chord's leading and trailing edges (the planar model, its equations 23 and 25, integrated here
+   numerically; the closed forms 24 and 26 are their integrals). The body behind the fins is counted as far as it
+   goes: the report's "afterbody" and "no afterbody" cases are the two ends of that. */
+const GL = (() => {
+  // Gauss–Legendre nodes and weights on (0, 1)
+  const n = 24,
+    x = [],
+    w = [];
+  for (let i = 0; i < n; i++) {
+    let z = Math.cos((Math.PI * (i + 0.75)) / (n + 0.5)),
+      pp = 1;
+    for (let it = 0; it < 50; it++) {
+      let p1 = 1,
+        p2 = 0;
+      for (let j = 0; j < n; j++) {
+        const p3 = p2;
+        p2 = p1;
+        p1 = ((2 * j + 1) * z * p2 - j * p3) / (j + 1);
+      }
+      pp = (n * (z * p1 - p2)) / (z * z - 1);
+      const dz = p1 / pp;
+      z -= dz;
+      if (Math.abs(dz) < 1e-15) break;
+    }
+    x.push((z + 1) / 2);
+    w.push(1 / ((1 - z * z) * pp * pp));
+  }
+  return { x, w };
+})();
+/** K_W(B) by slender-body theory (Report 1307, equation 14), τ = body radius / (radius + exposed span). */
+function kwSlender(t) {
+  if (!(t > 1e-6)) return 1;
+  if (t > 0.999) return 2;
+  return (
+    ((2 / Math.PI) *
+      ((1 + t ** 4) * (0.5 * Math.atan(0.5 * (1 / t - t)) + Math.PI / 4) - t * t * (1 / t - t + 2 * Math.atan(t)))) /
+    (1 - t) ** 2
+  );
+}
+/**
+ * The lift the fins put on the body, and where it acts (Report 1307).
+ * @param {object} A aerodynamic model
+ * @param {object} f fin set
+ * @param {number} rf body radius at the fins
+ * @param {number} cnW the fins' own lift slope without the body (per radian, on A.Aref)
+ * @param {number} M Mach number
+ * @returns {{cn:number, x:number}} lift slope on A.Aref and its station from the nose tip
+ */
+function bodyCarry(A, f, rf, cnW, M) {
+  const s = f.s,
+    cr = f.a,
+    t = rf / (s + rf);
+  if (!(rf > 0) || !(s > 0) || !(cr > 0)) return { cn: 0, x: f.xLead };
+  const kb = (1 + t) ** 2 - kwSlender(t),
+    tanL = Math.sqrt(Math.max(1 - f.cosL * f.cosL, 0)) / Math.max(f.cosL, 1e-6),
+    ct = Math.max((2 * f.area) / s - cr, 0),
+    lam = ct / cr,
+    AR = (2 * s * s) / f.area;
+  // subsonic: where the images of the fins' quarter-chord lifting line act (appendix D, equation D5)
+  const xSub = (() => {
+    const tq = tanL + (ct - cr) / (4 * s);
+    let num = 0,
+      den = 0;
+    for (let i = 0; i < GL.x.length; i++) {
+      // η from r to r + s; u² substitution for the square-root end at the tip
+      const u = GL.x[i],
+        e = s * (1 - u * u),
+        g = (Math.sqrt(Math.max(s * s - e * e, 0)) / (rf + e) ** 2) * 2 * u * s * GL.w[i];
+      num += g * e;
+      den += g;
+    }
+    return cr / 4 + (den > 0 ? (tq * num) / den : 0);
+  })();
+  if (M <= 1) return { cn: kb * cnW, x: f.xLead + xSub };
+  const beta = Math.sqrt(M * M - 1),
+    m = Math.min(1 / Math.max(tanL, 1e-6), 1e6),
+    bm = beta * m,
+    d = 2 * rf,
+    la = Math.max(A.L - (f.xLead + cr), 0);
+  // one fin's pressure field on the body, integrated over the strip between the Mach lines (equations 23 and 25)
+  let L = 0,
+    Mx = 0;
+  for (let i = 0; i < GL.x.length; i++) {
+    const eta = d * GL.x[i],
+      lo = beta * eta,
+      hi = Math.min(cr + beta * eta, cr + la);
+    if (hi <= lo) continue;
+    for (let j = 0; j < GL.x.length; j++) {
+      const u = GL.x[j],
+        xi = lo + (hi - lo) * u * u,
+        g =
+          bm > 1
+            ? Math.acos(Math.min(1, Math.max(-1, (xi / beta + bm * eta) / (eta + m * xi))))
+            : Math.sqrt(Math.max((xi / beta - eta) / (m * xi + eta), 0)),
+        wgt = d * GL.w[i] * (hi - lo) * 2 * u * GL.w[j] * g;
+      L += wgt;
+      Mx += wgt * xi;
+    }
+  }
+  const pre =
+    bm > 1.0001
+      ? ((4 / (beta * Math.PI)) * bm) / Math.sqrt(bm * bm - 1)
+      : bm > 1
+        ? 4 / (beta * Math.PI) // at a sonic leading edge the two forms meet
+        : (8 * bm ** 1.5) / (Math.PI * beta * (bm + 1));
+  const xPl = L > 0 ? Mx / L : cr / 2,
+    cnPl = bm > 1 && bm <= 1.0001 ? null : (f.n * pre * L) / A.Aref; // n/2 pairs of fins, two fins a pair
+  // the report's rule: slender-body theory unless the fins' tips are clear of the strip
+  const high = beta * AR * (1 + lam) * (1 / bm + 1) > 4,
+    cn = high && cnPl != null ? cnPl : kb * cnW;
+  // through Mach 1 the station moves from the subsonic one to the planar model's
+  const w = smooth01((M - 1) / 0.2);
+  return { cn, x: f.xLead + xSub * (1 - w) + xPl * w };
+}
 /**
  * Normal-force slope of each component (Barrowman) and where it acts, at a Mach number.
  * @param {object} A aerodynamic model from aero()
@@ -1856,6 +2033,26 @@ function cnaParts(A, M = 0) {
       xp = sg.x + (sg.len * A2 - sg.vol) / (A2 - A1);
     parts.push({ cn: c, x: isFinite(xp) ? xp : sg.x + sg.len / 2 });
   }
+  if (M > 1 && A.segs[0] && A.segs[0].r1 < 1e-6 && parts.length) {
+    // the nose with the cylinder behind it (as far as the body keeps the nose's diameter)
+    const ns = A.segs[0],
+      dn = 2 * ns.r2,
+      beta = Math.sqrt(M * M - 1);
+    let end = ns.x + ns.len;
+    for (let k = 1; k < A.segs.length; k++) {
+      const g = A.segs[k];
+      if (Math.abs(g.r1 - ns.r2) > 0.02 * ns.r2 || Math.abs(g.r2 - ns.r2) > 0.02 * ns.r2) break;
+      end = g.x + g.len;
+    }
+    const a = (dn * beta) / ns.len,
+      b = (end - (ns.x + ns.len)) / (dn * beta),
+      w = smooth01((M - 1) / 0.2),
+      sc = (Math.PI * ns.r2 * ns.r2) / A.Aref,
+      cone = ns.shape === "conical",
+      cnC = bodyChart(cone ? CONE_CN : BODY_CN, a, b) * sc,
+      xC = ns.x + bodyChart(cone ? CONE_XCP : BODY_XCP, a, b) * ns.len;
+    parts[0] = { cn: parts[0].cn * (1 - w) + cnC * w, x: parts[0].x * (1 - w) + xC * w };
+  }
   for (const f of A.fins) {
     const { a, s, n } = f,
       xb = f.xLead,
@@ -1863,6 +2060,13 @@ function cnaParts(A, M = 0) {
     const fm = finLiftRatio(f, M),
       cnf = (((1 + rf / (s + rf)) * (4 * n * (s / d) ** 2)) / (1 + Math.sqrt(1 + f.cnX ** 2))) * fm.k * (f.kff || 1);
     parts.push({ cn: cnf, x: xb + f.xcp + fm.dx, fin: true });
+    // the fins' lift carried onto the body: faded in from Mach 0.9 to 1.5 (below that the measured cases do not
+    // support adding it: see AERODYNAMICS.md)
+    const wk = smooth01((M - 0.9) / 0.6);
+    if (wk > 0) {
+      const bc = bodyCarry(A, f, rf, cnf / (1 + rf / (s + rf)), M);
+      parts.push({ cn: bc.cn * wk, x: bc.x, fin: true });
+    }
   }
   parts.push(...extraCnParts(A, M));
   const cn = parts.reduce((t, p) => t + p.cn, 0),
