@@ -16,6 +16,10 @@
  *  - NACA RM E50D28 (1950): RM-10 missile in the Lewis 8- by 6-foot tunnel, Mach 1.49 to 1.98: the drag the four
  *    60°-swept fins (circular-arc sections, 10% thick normal to the leading edge, taper ratio 1) add to the body (figure 8(d) minus figure 6), less the
  *    fins' measured base-pressure increase (figure 9). On the body's maximum cross-section area.
+ *  - NASA TN D-8040 (Patel & Czarnecki, 1975), figure 15, and Hoerner, Fluid-Dynamic Drag, chapter V, figure 10: the
+ *    drag of the face of a step facing the flow, on the step's area, at heights of 0.1 and 1 boundary-layer
+ *    thicknesses: a 3.9 in body stepping up 75 in back from the nose, the pressure drag with the step less without.
+ *    These are the curves the app's step drag is built from, so this guards the wiring, not the physics.
  */
 "use strict";
 const path = require("path");
@@ -35,7 +39,39 @@ const sets = [];
 args.forEach((a, i) => {
   if (a === "--set") sets.push(args[i + 1].split("="));
 });
-const { finnedOrk: ork, A53, A53_PTS, RM10, RM10_PTS } = require("../validation/cases.js");
+const { finnedOrk: ork, flightOrk, A53, A53_PTS, RM10, RM10_PTS } = require("../validation/cases.js");
+// the step case: [Mach, step height over the boundary layer's thickness, the source's drag coefficient]
+const STEP_X = 75 * 0.0254,
+  STEP_RE = 3e7,
+  STEP_DEL = 0.37 * STEP_X * Math.pow(STEP_RE, -0.2),
+  STEP_PTS = [
+    [0.5, 0.1, 0.161],
+    [0.5, 1, 0.311],
+    [1.61, 0.1, 0.315],
+    [1.61, 1, 0.48],
+    [2.2, 0.1, 0.227],
+    [2.2, 1, 0.373],
+  ];
+const stepOrk = (hd) =>
+  flightOrk(
+    {
+      title: "step",
+      nose: { len: 20, shape: "ogive" },
+      parts: [
+        { t: "tube", len: 55, d: 3.9 },
+        {
+          t: "tube",
+          len: 20,
+          d: 3.9 + (2 * hd * STEP_DEL) / 0.0254,
+          fins: { n: 3, cr: 8, ct: 3, s: 4, sw: 5, t: 0.125, loc: 8, edge: "beveled", le: 0.5, te: 0.3 },
+        },
+      ],
+      finish: "smooth",
+      w: 30,
+      cg: 50,
+    },
+    { totalMass: 5, len: 0.5 },
+  );
 
 (async () => {
   const browser = await chromium.launch();
@@ -64,10 +100,26 @@ const { finnedOrk: ork, A53, A53_PTS, RM10, RM10_PTS } = require("../validation/
       const f = model(cases.rm10f),
         b = model(cases.rm10b);
       out.rm10 = cases.rm10Pts.map(([M, meas]) => [M, meas, cd(f, M, 4.5e6, 0.3048).cd - cd(b, M, 4.5e6, 0.3048).cd]);
+      const flush = model(cases.steps[0]);
+      out.step = cases.stepPts.map(([M, hd, meas]) => {
+        const st = model(cases.steps[hd]),
+          pa = (m) => cd(m, M, cases.stepRe, cases.stepX).pressure * m.A.Aref;
+        return [M, meas, (pa(st) - pa(flush)) / (st.A.Aref - flush.A.Aref)];
+      });
       return out;
     },
     {
-      cases: { a53: ork(A53), a53Pts: A53_PTS, rm10f: ork(RM10(true)), rm10b: ork(RM10(false)), rm10Pts: RM10_PTS },
+      cases: {
+        a53: ork(A53),
+        a53Pts: A53_PTS,
+        rm10f: ork(RM10(true)),
+        rm10b: ork(RM10(false)),
+        rm10Pts: RM10_PTS,
+        steps: { 0: stepOrk(0), 0.1: stepOrk(0.1), 1: stepOrk(1) },
+        stepPts: STEP_PTS,
+        stepRe: STEP_RE,
+        stepX: STEP_X,
+      },
       sets,
     },
   );
@@ -94,5 +146,11 @@ const { finnedOrk: ork, A53, A53_PTS, RM10, RM10_PTS } = require("../validation/
   // this report's finned-body base pressure data; the limit guards against it getting worse
   report("NACA RM A53D02: total drag, fineness-10 body with 72°-swept fins", res.a53, 0.2, true);
   report("NACA RM E50D28: drag added by the RM-10's 60°-swept fins", res.rm10, 0.03, false);
+  report(
+    "NASA TN D-8040 and Hoerner: the face of a step 0.1 and 1 boundary-layer thicknesses high",
+    res.step,
+    0.02,
+    false,
+  );
   process.exitCode = fail ? 1 : 0;
 })();

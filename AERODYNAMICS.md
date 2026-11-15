@@ -79,7 +79,9 @@ The code is in `src/js/physics/drag-model.js`.
 | below 0.8 | Hoerner's shoulder-angle rule, 0.8·sin²(angle). |
 | 0.8 – 1 | Blended toward the Mach 1 wave drag (Oswatitsch similarity sets where). |
 | above 1 | Bonney's cone correlation (Fleeman, *Tactical Missile Design*); blunt shapes by modified Newtonian. |
-| A flat step | 0.8 × stagnation pressure on the step's area. |
+| A flat face with nothing ahead of it (a flat nose) | 0.8 × stagnation pressure on its area. |
+| A step up behind a narrower section | The flow leaves the wall ahead of a step and rides over a pocket of slow air, so the face feels far less than stagnation pressure, and less again when the step is short beside the boundary layer. Above Mach 1.6: NASA TN D-8040 (Patel and Czarnecki, 1975), figure 15, the face's drag coefficient against the step's height over the boundary layer's thickness, measured at Mach 1.61 and 2.20 (0.58 and 0.44 for a tall step, 0.32 and 0.23 at a tenth of the boundary layer), with the report's tall-step theory to Mach 6. Below Mach 0.9: Hoerner, chapter V, figure 10, 0.40 on the mean dynamic pressure the boundary layer leaves the step. Blended between. Where the narrower section is under half the wider one's radius it is blended toward the flat face (a guess: nothing here measures a slim body ahead of a blunt face). |
+| A flare behind a narrower section | As above for shoulders, but never more than a flat step of the same height: Bonney's cone correlation runs past stagnation pressure on short, steep flares. |
 
 ### Boattails (sections that shrink)
 

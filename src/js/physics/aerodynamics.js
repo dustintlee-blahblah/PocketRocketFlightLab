@@ -622,6 +622,51 @@ function cylinderCd(M) {
   const t = smooth01((M - 1) / 0.3);
   return (1 - t) * sub(1) + t * sup(M);
 }
+/* ---------- a step up in diameter ----------
+   The face of a step facing the flow, behind a narrower section. The flow leaves the wall ahead of the step and
+   rides over a pocket of slow air onto its corner, so the face feels far less than stagnation pressure, and less
+   still when the step is short beside the boundary layer.
+   Above Mach 1.6: Patel and Czarnecki, NASA TN D-8040 (1975), figure 15: the drag coefficient of the face, on the
+   step's area and the free-stream dynamic pressure, against the step's height over the boundary layer's thickness,
+   their extended theory through the band of measurements at Mach 1.61 and 2.20. Divided by its tall-step value the
+   curve is the same at both Mach numbers within 4% (STEP_F, their mean), and the tall-step value falls with Mach
+   as in the report's figure 2 (STEP_CD, to Mach 6). The report advises against using it below a height of 0.05 of
+   the boundary layer, where the measurements spread with Reynolds number; the curve's own value is used there.
+   Below Mach 0.9: Hoerner, Fluid-Dynamic Drag, chapter V, figure 10: 0.40 for a square step facing the flow, on the
+   mean dynamic pressure the boundary layer leaves it (blFactor). Blended between the two from Mach 0.9 to 1.61.
+   The boundary layer's thickness is the 1/7-power flat-plate layer's, 0.37·x/Re_x^0.2, as for protuberances. */
+const STEP_HD = [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10],
+  STEP_F = [0.151, 0.23, 0.281, 0.345, 0.44, 0.529, 0.621, 0.744, 0.838, 0.934, 0.987, 1],
+  STEP_M = [1.61, 2, 2.2, 3, 4, 5, 6],
+  STEP_CD = [0.585, 0.47, 0.437, 0.34, 0.27, 0.23, 0.2];
+/**
+ * Drag coefficient of a step's face, on its own area and the free-stream dynamic pressure.
+ * @param {number} M Mach number
+ * @param {number} h the step's height, m
+ * @param {number} x its distance from the nose tip, m
+ * @param {number} v airspeed, m/s
+ * @param {number} nu kinematic viscosity, m²/s
+ * @returns {number}
+ */
+function stepCd(M, h, x, v, nu) {
+  const sub = 0.4 * blFactor(h, x, v, nu);
+  if (M <= 0.9) return sub;
+  x = Math.max(x, 0.01);
+  const del = 0.37 * x * Math.pow(Math.max((v * x) / nu, 1e3), -0.2),
+    lr = Math.log(Math.min(Math.max(h / del, STEP_HD[0]), 10));
+  let i = 1;
+  while (i < STEP_HD.length - 1 && Math.log(STEP_HD[i]) < lr) i++;
+  const f = mix(
+    STEP_F[i - 1],
+    STEP_F[i],
+    (lr - Math.log(STEP_HD[i - 1])) / (Math.log(STEP_HD[i]) - Math.log(STEP_HD[i - 1])),
+  );
+  const m = Math.min(Math.max(M, STEP_M[0]), 6);
+  let j = 1;
+  while (j < STEP_M.length - 1 && STEP_M[j] < m) j++;
+  const sup = f * mix(STEP_CD[j - 1], STEP_CD[j], (m - STEP_M[j - 1]) / (STEP_M[j] - STEP_M[j - 1]));
+  return mix(sub, sup, smooth01((M - 0.9) / 0.71));
+}
 /**
  * How much of the free-stream dynamic pressure a protuberance feels inside the body's boundary layer: the mean
  * (u/U)² over its height in a 1/7-power turbulent profile.
@@ -1031,13 +1076,18 @@ export function aero(D) {
     sg.rs = sg.rs ?? D.finish;
     // step from the previous section (or a flat front face)
     const rPrev = i > 0 ? segs[i - 1].r2 : 0;
-    if (sg.r1 > rPrev + 1e-6) fore.push({ seg: i, step: true, area: Math.PI * (sg.r1 * sg.r1 - rPrev * rPrev) });
+    // a step's height, how far back it is, and the narrower section's radius over the wider one's
+    const stepAt = (rIn, rOut) => ({ h: rOut - rIn, x: sg.x, rIn: rIn / rOut });
+    if (sg.r1 > rPrev + 1e-6)
+      fore.push({ seg: i, step: true, area: Math.PI * (sg.r1 * sg.r1 - rPrev * rPrev), ...stepAt(rPrev, sg.r1) });
     else if (sg.r1 < rPrev - 1e-6) aft.push({ seg: i, k: 1, area: Math.PI * (rPrev * rPrev - sg.r1 * sg.r1) });
     if (sg.kind === "tube" || Math.abs(sg.r2 - sg.r1) < 1e-6) return;
     const area = Math.PI * Math.abs(sg.r2 * sg.r2 - sg.r1 * sg.r1),
       dr = Math.abs(sg.r2 - sg.r1);
     if (sg.len < 0.001) {
-      (sg.r2 > sg.r1 ? fore : aft).push(sg.r2 > sg.r1 ? { seg: i, step: true, area } : { seg: i, k: 1, area });
+      (sg.r2 > sg.r1 ? fore : aft).push(
+        sg.r2 > sg.r1 ? { seg: i, step: true, area, ...stepAt(sg.r1, sg.r2) } : { seg: i, k: 1, area },
+      );
       return;
     }
     if (sg.r2 > sg.r1) {
@@ -1048,6 +1098,8 @@ export function aero(D) {
         seg: i,
         step: false,
         area,
+        // a flare behind a narrower section costs no more than a flat step of its height would
+        ...(sg.r1 > 1e-6 ? stepAt(sg.r1, sg.r2) : {}),
         sub: 0.8 * Math.sin(Math.atan(slope)) ** 2,
         sig: Math.atan(dr / sg.len),
         blunt,
@@ -1549,8 +1601,13 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
     base = 0;
   for (const it of A.fore) {
     if (skip(it)) continue;
+    /* a flat face: 0.8 of stagnation pressure where nothing stands ahead of it (a flat nose); behind a narrower
+       section at least half its radius, the step's own drag. Between the two it is blended on the ratio of the
+       radii, which is a guess at how the limits join: the step measurements are for a wall, and a slim body ahead
+       of a blunt face (a spike) is known to shed much of the face's drag but isn't measured here. */
+    const stepped = it.h > 0 ? mix(0.8 * q0, stepCd(M, it.h, it.x, v, nu), smooth01(it.rIn / 0.5)) : 0.8 * q0;
     if (it.step) {
-      pressure += (0.8 * q0 * it.area) / S;
+      pressure += (stepped * it.area) / S;
       continue;
     }
     const wave = (m) => (it.blunt ? stagCp(m) * it.kN : bonneyCd(m, it.sig));
@@ -1567,7 +1624,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
       pressure += (cdn * it.area) / S;
       continue;
     } // measured nose drag (NASA TR R-100)
-    pressure += ((M < 1 ? (1 - tr) * it.sub + tr * wave(1) : wave(M)) * it.area) / S;
+    pressure += (Math.min(M < 1 ? (1 - tr) * it.sub + tr * wave(1) : wave(M), stepped) * it.area) / S;
   }
   for (const it of A.aft) {
     if (!skip(it)) base += (it.k * cb * it.area) / S;
