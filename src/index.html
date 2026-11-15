@@ -143,7 +143,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       </div>
       <div id="flightempty"><p class="note" id="flightemptytxt">No results yet. Set up the rocket, motor and conditions, then tap Launch.</p><button class="btn" id="emptylaunch" type="button" hidden>Launch now</button></div>
       <div class="statgroups" id="stats"></div>
-      <div class="flags" id="flags"></div>
+      <div class="flags" id="flags"></div><div id="draghints" hidden></div>
       <div class="ref" id="orkref" hidden></div><div class="ref" id="baroref" hidden></div>
     </div>
 
@@ -189,7 +189,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       </div>
     </div>
     <div class="panel" id="flpanel" hidden>
-      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Import the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works or Apogee Components altimeter (exported as CSV or text) to fill in the apogee and top speed and to show the real curve on the chart. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
+      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Import the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works or Apogee Components altimeter (exported as CSV or text) to fill in the apogee and top speed and to show the real curve on the chart. If the file has an accelerometer column (Altus Metrum and Featherweight files do), the log also shows the drag it measured in the coast, between burnout and apogee, where the accelerometer reads the drag directly whatever the motor did; a calibration uses that in place of the apogee when every ticked flight has it. It is only used when the boost agrees with the rocket’s weight and motor and the flight went straight up, so weigh the rocket and enter the weight with the flight. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
       <div id="flcal" class="flcal"></div>
       <div id="flprompt" class="flprompt" hidden></div>
       <div id="fllist"></div>

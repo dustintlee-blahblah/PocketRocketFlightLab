@@ -2048,6 +2048,137 @@ const FLIGHTS = [
   },
 ];
 
+/* ---------- weighed and logged flights (apogee and drag in the coast) ----------
+   Ordinary hobby rockets flown for Harvey Mudd College's rocketry course (E178, Prof. Erik Spjut), which publishes
+   each rocket's design, its weight and CG without a motor, and every flight's motor, air temperature, wind and
+   recorder files: https://pages.hmc.edu/spjut/AdvRoc/FlightData.md.html. Nothing from those files is in this
+   repository: each entry is the rocket's outline as its design file gives it, the page's weight, CG and conditions,
+   and two figures worked out here from the flight's data-logger file:
+     baro   the barometer's apogee above the pad, as an altimeter reads it (standard atmosphere), ft;
+     cd     [Mach, drag coefficient on the body's cross-section]: the drag the logger's accelerometer read in the
+            coast, where it reads the drag deceleration directly, whatever the motor did. Fitted through zero against
+            dynamic pressure below Mach 0.8, with the sensor's zero taken just before apogee and the speed from the
+            accelerometer itself, for the weighed rocket less its propellant.
+   Only flights that pass two checks are here: the launch weight the boost implies with the motor's rated impulse is
+   within 12% of the weighed rocket, and the height the accelerometer makes of the climb is within 8% of the
+   barometer's. Site: Lucerne Dry Lake, California; "site" is the pad's pressure altitude from the logger.
+   The design files have a polished finish and no rail buttons or launch lug; what the rockets really had isn't
+   recorded, so validation/logged-flights.js flies each both as filed and with regular paint and a pair of 1010 rail
+   buttons. Rail length and angle aren't recorded either: 6 ft and vertical are assumed. Units as for FLIGHTS;
+   dry (g) and cgDry (in from the nose tip) are without a motor. The motors are the app's own (name, maker). */
+const MINI_DX3 = {
+    nose: { len: 6.5, shape: "ogive", tip: 0 },
+    parts: [
+      { t: "tube", len: 8.0, d: 1.61 },
+      {
+        t: "tube",
+        len: 22.0,
+        d: 1.61,
+        fins: { n: 3, cr: 5.403, ct: 1.504, s: 1.689, sw: 2.924, t: 0.092, loc: 5.703, edge: "square" },
+      },
+    ],
+    dry: 333.55,
+    cgDry: 19.0,
+  },
+  VULCANITE_FINS = { n: 3, cr: 4.5, ct: 1.5, s: 3.25, sw: 2.25, t: 0.125, loc: 5.0, edge: "square" },
+  VULCANITE = {
+    nose: { len: 9.5, shape: "ogive", tip: 0 },
+    parts: [
+      { t: "tube", len: 10.0, d: 2.299 },
+      { t: "tube", len: 34.0, d: 2.299, fins: VULCANITE_FINS },
+    ],
+    dry: 802.0,
+    cgDry: 30.5,
+  },
+  DD_VULCANITE = {
+    nose: { len: 9.5, shape: "ogive", tip: 0 },
+    parts: [
+      { t: "tube", len: 16.25, d: 2.26 },
+      { t: "tube", len: 34.0, d: 2.26, fins: VULCANITE_FINS },
+    ],
+    dry: 1055.2,
+    cgDry: 30.5,
+  };
+const LOGGED = [
+  {
+    title: "Madcow Mini DX3, F67W, 15 Nov 2019 flight 1",
+    ...MINI_DX3,
+    motor: "F67W",
+    mfr: "AeroTech",
+    site: 2609,
+    tF: 45,
+    wind: 2,
+    baro: 1730,
+    cd: [0.25, 0.717],
+  },
+  {
+    title: "Madcow Mini DX3, F67W, 15 Nov 2019 flight 3",
+    ...MINI_DX3,
+    motor: "F67W",
+    mfr: "AeroTech",
+    site: 2615,
+    tF: 57,
+    wind: 0,
+    baro: 1597,
+    cd: [0.2, 0.774],
+  },
+  {
+    title: "Madcow Mini DX3, F67W, 15 Nov 2019 flight 5",
+    ...MINI_DX3,
+    motor: "F67W",
+    mfr: "AeroTech",
+    site: 2620,
+    tF: 65,
+    wind: 1,
+    baro: 1723,
+    cd: [0.25, 0.765],
+  },
+  {
+    title: "Madcow Mini DX3, G79W, 5 Feb 2021",
+    ...MINI_DX3,
+    motor: "G79W/L",
+    mfr: "AeroTech",
+    site: 2567,
+    tF: 40,
+    wind: 1,
+    baro: 3010,
+    cd: [0.35, 0.664],
+  },
+  {
+    title: "Madcow Mini DX3, H128W, 10 Apr 2021",
+    ...MINI_DX3,
+    motor: "H128W",
+    mfr: "AeroTech",
+    site: 2804,
+    tF: 65,
+    wind: 10,
+    baro: 4095,
+    cd: [0.4, 0.717],
+  },
+  {
+    title: "LOC Vulcanite, G78G, 5 Feb 2021",
+    ...VULCANITE,
+    motor: "G78G/L",
+    mfr: "AeroTech",
+    site: 2593,
+    tF: 48,
+    wind: 1,
+    baro: 1381,
+    cd: [0.2, 0.663],
+  },
+  {
+    title: "LOC Dual Deploy Vulcanite, I140W, 11 Feb 2023",
+    ...DD_VULCANITE,
+    motor: "HP-I140W",
+    mfr: "AeroTech",
+    site: 2943,
+    tF: 64,
+    wind: 1,
+    baro: 3804,
+    cd: [0.3, 0.703],
+  },
+].map((f) => ({ ...f, rod: 6, angle: 0, how: "barometric altimeter" }));
+
 /**
  * A measured flight's rocket as an OpenRocket design: the nose, the parts in order, rail buttons on the longest tube,
  * and the stage's mass and CG set so the loaded rocket matches the file's launch weight and CG (the motor's own mass
@@ -2099,6 +2230,7 @@ ${f.parts.map(part).join("\n")}
 }
 
 module.exports = {
+  LOGGED,
   IN,
   LB,
   FT,

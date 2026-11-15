@@ -24,6 +24,7 @@ In short:
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.9–6.9%, CP 0.8% of length, CNα 16% low |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 8.4% low |
 | Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 9.9%, app high (RASAero II: 5.4%) |
+| Apogee and coast drag of weighed, logged hobby rockets | 7 flights of 3 rockets, Harvey Mudd College data, Mach 0.3–0.9 | as their design files are set up (polished, no rail buttons): apogee 13.8% high, drag 15.7% low; with regular paint and rail buttons: apogee 3.5%, drag 6.3% |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
@@ -267,6 +268,51 @@ What the comparison shows so far:
 - **Compared with the build before the TN 3819 and trailing-edge changes**, the mean error went from 12.0% to 11.7%: 14
   flights closer, 3 further, 6 unchanged.
 
+## Weighed and logged hobby rockets: apogee and drag in the coast
+
+Harvey Mudd College's rocketry course (E178, Prof. Erik Spjut) publishes, for the ordinary kit rockets its students
+fly, each rocket's design file, its weight and CG without a motor, and every flight's motor, air temperature, wind
+and recorder files ([flight data page](https://pages.hmc.edu/spjut/AdvRoc/FlightData.md.html)). That is what the
+apogee checks above lack: the rocket weighed, and an accelerometer on board.
+
+Between burnout and apogee an accelerometer along the rocket reads the drag deceleration directly: gravity pulls on
+the sensor and the rocket alike, so it doesn't show. With the rocket's weight that gives the drag coefficient,
+whatever the motor did. `validation/cases.js` (LOGGED) has the seven flights that pass two checks on the sensor: the
+launch weight the boost implies with the motor's rated impulse is within 12% of the weighed rocket, and the height the
+accelerometer makes of the climb is within 8% of the barometer's. `npm run validate:logged` flies each one two ways:
+
+| Flight | Barometer apogee, ft | App, as filed | App, painted with rail buttons | Coast Cd (Mach) | App, as filed | App, painted with rail buttons |
+|---|---|---|---|---|---|---|
+| Madcow Mini DX3, F67W, flight 1 | 1,730 | +15.0% | +3.0% | 0.717 (0.25) | −18.9% | +0.9% |
+| Madcow Mini DX3, F67W, flight 3 | 1,597 | +22.7% | +10.3% | 0.774 (0.20) | −22.7% | −7.1% |
+| Madcow Mini DX3, F67W, flight 5 | 1,723 | +12.6% | +1.4% | 0.765 (0.25) | −23.6% | −5.7% |
+| Madcow Mini DX3, G79W | 3,010 | +13.7% | −4.2% | 0.664 (0.35) | −15.7% | +11.1% |
+| Madcow Mini DX3, H128W | 4,095 | +22.3% | −2.6% | 0.717 (0.40) | −22.4% | +3.2% |
+| LOC Vulcanite, G78G | 1,381 | +3.5% | −0.4% | 0.663 (0.20) | −2.2% | +7.7% |
+| LOC Dual Deploy Vulcanite, I140W | 3,804 | +6.7% | −2.6% | 0.703 (0.30) | −4.7% | +8.6% |
+| **Mean error (bias)** | | **13.8% (+13.8%)** | **3.5% (+0.7%)** | | **15.7% (−15.7%)** | **6.3% (+2.7%)** |
+
+What it shows:
+
+- **The design files are optimistic, not the model.** They are set to a polished finish and have no rail buttons or
+  launch lug. Flown that way the app (and OpenRocket, which the app agrees with on these files) is 4–23% high. With
+  regular paint (60 µm) and a pair of 1010 rail buttons it is within a few percent in both apogee and drag. What the
+  rockets really had isn't recorded, so this is a plausible set-up, not a measured one.
+- **Small rockets are where it matters.** A pair of 1010 rail buttons adds about a fifth to the drag of the 1.6 in
+  Mini DX3 and a few percent to the 2.3 in Vulcanites; the buttons don't shrink with the rocket.
+- So the app now says so: under the results, a design with a polished finish or with no rail buttons or lug gets a
+  note with what each is worth on that flight and a button to change it.
+
+What isn't in the set: flights whose recorder failed the two checks (among them every classic Featherweight Raven
+file, whose accelerometer read 12–21% low against a second recorder on the same flights), the Estes rockets (their drag
+is about the size of the sensor's resolution, and their fins aren't trapezoids), and the 38 mm prototype (two fin
+sets). On those, the app's apogee as filed is within 4% for the Estes Top Shot's six flights and 0–5% high for four
+J-motor flights of the prototype.
+
+The same measurement is in the app: import a flight's altimeter file with an accelerometer column into the Flight
+Log and it shows the drag the coast measured and can calibrate to it (`tests/coast.js` checks it against a flight of
+known drag).
+
 ## Running the checks
 
 You need the built page (`node build.js`) and Playwright's Chromium (`npx playwright install chromium`).
@@ -277,6 +323,7 @@ npm run test:drag                                        # drag against the NACA
 npm run validate:openrocket -- --jar OpenRocket-24.12.jar   # apogee against OpenRocket's examples
 npm run validate:accuracy                                # every measured rocket, by speed band
 npm run validate:flights                                 # apogee against measured flights
+npm run validate:logged                                  # apogee and coast drag against weighed, logged flights
 ```
 
 The OpenRocket comparison also needs Java 17 or later and

@@ -6,7 +6,7 @@
 import { esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
 import { inflate } from "../files/unzip.js";
-import { ALT_PRESS, altCompute, altParse } from "./altimeter-files.js";
+import { ALT_ACC, ALT_PRESS, altCompute, altParse } from "./altimeter-files.js";
 import {
   altMode,
   altP,
@@ -296,6 +296,8 @@ function altShow() {
       <div class="fld"><label for="alt-au">It holds</label><div class="in"><select id="alt-au">${[["ft", "altitude in feet"], ["m", "altitude in metres"], ...ALT_PRESS.map((p) => ["p:" + p[0], "pressure in " + p[0]])].map(([v, l]) => `<option value="${v}"${(m.isP ? "p:" + m.pUnit : m.aUnit) === v ? " selected" : ""}>${l}</option>`).join("")}</select></div></div>
       <div class="fld"><label for="alt-v">Velocity column</label><div class="in"><select id="alt-v">${opt(m.vel, "None: work it out from altitude")}</select></div></div>
       <div class="fld"><label for="alt-vu">Velocity unit</label><div class="in"><select id="alt-vu"${m.vel < 0 ? " disabled" : ""}><option value="ft"${m.vUnit === "ft" ? " selected" : ""}>ft/s</option><option value="m"${m.vUnit === "m" ? " selected" : ""}>m/s</option></select></div></div>
+      <div class="fld"><label for="alt-acc">Acceleration column (along the rocket)</label><div class="in"><select id="alt-acc">${opt(m.acc, "None")}</select></div></div>
+      <div class="fld"><label for="alt-accu">Acceleration unit</label><div class="in"><select id="alt-accu"${m.acc < 0 ? " disabled" : ""}>${ALT_ACC.map(([u]) => `<option value="${u}"${m.accUnit === u ? " selected" : ""}>${u === "m/s2" ? "m/s²" : u === "ft/s2" ? "ft/s²" : u}</option>`).join("")}</select></div></div>
     </div>`;
   /**
    * Reads the column choices back from the box.
@@ -312,6 +314,8 @@ function altShow() {
     if (g("alt-tu")) m.tUnit = g("alt-tu").value;
     if (g("alt-rate")) m.rate = parseFloat(g("alt-rate").value) || m.rate;
     m.vUnit = g("alt-vu").value;
+    m.acc = +g("alt-acc").value;
+    m.accUnit = g("alt-accu").value;
   };
   {
     const sh = document.getElementById("alt-sh");
@@ -335,6 +339,7 @@ function altShow() {
             return;
           }
           document.getElementById("alt-vu").disabled = m.vel < 0;
+          document.getElementById("alt-accu").disabled = m.acc < 0;
           altPreview();
         }),
   );
@@ -381,6 +386,9 @@ function altPreview() {
       : "") +
     (r.vDer
       ? `<p class="note" style="margin:6px 0 0">A speed worked out from a barometric altitude reads low near burnout; an accelerometer's velocity column is better when the file has one.</p>`
+      : "") +
+    (r.coast
+      ? `<p class="note" style="margin:6px 0 0">${r.coast.why ? `Accelerometer: not usable for measuring drag (${esc(r.coast.why)}).` : `Accelerometer: ${r.coast.n} readings of the coast, burnout at ${r.coast.tb.toFixed(1)} s. Once the flight is saved with its weight and motor, the log shows the drag this measures.`}</p>`
       : "") +
     (r.warn.length ? `<p class="note warn" style="margin:6px 0 0">${r.warn.map(esc).join(" ")}</p>` : "");
   // preview: the altitude curve, with the simulation for comparison
@@ -711,6 +719,7 @@ export function start() {
       curve: r.curve,
       ev: r.ev,
       land: r.land,
+      ...(r.coast && !r.coast.why ? { coast: r.coast } : {}),
       map: {
         ...altP.map,
         cols: altP.map.t >= 0 ? [altP.cols[altP.map.t], altP.cols[altP.map.alt]] : [altP.cols[altP.map.alt]],

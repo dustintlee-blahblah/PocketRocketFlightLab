@@ -25,7 +25,8 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
 - Opens OpenRocket and RockSim files and saves OpenRocket files, keeping everything the app doesn't edit
 - Rocket builder, motor comparison, landing dispersion (Monte Carlo), fin flutter checks
 - Flight log with altimeter imports (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile
-  Works, Apogee) and drag calibration to real flights
+  Works, Apogee) and drag calibration to real flights, from the apogee or from the drag an altimeter's
+  accelerometer measured in the coast
 - Weather forecast for the launch site, including winds aloft to about 100,000 ft
 
 How accurate is it? [VALIDATION.md](VALIDATION.md) compares it with OpenRocket and with NASA and NACA wind-tunnel

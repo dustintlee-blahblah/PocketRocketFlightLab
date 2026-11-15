@@ -15,7 +15,12 @@ const ALT_BRANDS = [
     /altos|altus ?metrum|telemetrum|telemega|telemini|easymini|easymega|easytimer|micropeak|^#?\s*version\s*,\s*serial/im,
     "m",
   ],
-  ["featherweight", "Featherweight", /featherweight|blue ?raven|\braven\b|syncsec|baro_press|fip(a)?\b/im, "ft"],
+  [
+    "featherweight",
+    "Featherweight",
+    /featherweight|blue ?raven|\braven\b|syncsec|baro_press|fip(a)?\b|time@axial accel/im,
+    "ft",
+  ],
   ["eggtimer", "Eggtimer", /eggtimer|egg ?finder|quasar|quantum|\bfalt\b|\bfveloc\b/im, "ft"],
   ["missileworks", "Missile Works", /missile ?works|m-?dacs|\brrc ?[23]\b|rrc2\+|rrc2l|rrc3 ?(sport|plus)?/im, "ft"],
   ["apogee", "Apogee Components", /apogee ?components|apogee ?rockets|apogeerockets/im, "ft"],
@@ -62,6 +67,8 @@ export function altParse(text, fname) {
         "This looks like a binary file. Export the flight as a CSV or text file from the altimeter's own program, then import that.",
     };
   const brand = altBrand(lines.slice(0, 80).join("\n"), fname);
+  const multi = altMultiRate(lines, brand, fname);
+  if (multi) return multi;
   let best = null;
   for (const d of [",", "\t", ";", " "]) {
     let run = [];
@@ -112,6 +119,78 @@ export function altParse(text, fname) {
     rate: rm ? +rm[1] : brand.id === "perfectflite" ? 20 : 10,
     preUnit: /\bmeters?\b|\bmetres?\b/i.test(pre) ? "m" : /\bfeet\b|\bft\b/i.test(pre) ? "ft" : null,
     hasHeader: !!header,
+    fname: fname || "",
+  };
+  P.map = altGuess(P);
+  return P;
+}
+/**
+ * Reads a Featherweight Interface Program export, where every channel has its own time column ("Time@Axial Accel (Gs)",
+ * the channel, a flags column) and its own sample rate, into one table on the fastest channel's times.
+ * @param {string[]} lines
+ * @param {object} brand
+ * @param {string} fname
+ * @returns {object|null} as altParse, or null for any other file
+ */
+function altMultiRate(lines, brand, fname) {
+  const hi = lines.findIndex((l) => (l.match(/Time@/g) || []).length >= 2);
+  if (hi < 0 || hi > 40) return null;
+  const hd = lines[hi].split(",").map((x) => x.trim()),
+    ch = [];
+  hd.forEach((n, i) => {
+    if (n.startsWith("Time@") && hd[i + 1] != null) ch.push({ name: hd[i + 1], i, t: [], v: [] });
+  });
+  if (ch.length < 2) return null;
+  for (let r = hi + 1; r < lines.length; r++) {
+    if (!lines[r]) continue;
+    // an empty channel is written as two commas where the others have three fields
+    const f = lines[r].replace(/,,/g, ",,,").split(",");
+    for (const c of ch) {
+      const t = f[c.i],
+        v = f[c.i + 1];
+      if (
+        t !== "" &&
+        v !== "" &&
+        t != null &&
+        v != null &&
+        altNum(t) &&
+        altNum(v) &&
+        !(c.t.length && +t <= c.t[c.t.length - 1])
+      ) {
+        c.t.push(+t);
+        c.v.push(+v);
+      }
+    }
+  }
+  const base = ch.reduce((a, b) => (b.t.length > a.t.length ? b : a));
+  if (base.t.length < 8) return null;
+  const step = Math.max(1, Math.ceil(base.t.length / 120000)),
+    T = base.t.filter((_, k) => k % step === 0);
+  const data = T.map((t) => [t]);
+  for (const c of ch) {
+    let j = 0;
+    T.forEach((t, k) => {
+      while (j < c.t.length - 2 && c.t[j + 1] < t) j++;
+      const n = c.t.length;
+      data[k].push(
+        !n || t > c.t[n - 1] + 1 || t < c.t[0] - 1
+          ? NaN
+          : n === 1 || t <= c.t[j]
+            ? c.v[j]
+            : t >= c.t[j + 1]
+              ? c.v[j + 1]
+              : c.v[j] + ((c.v[j + 1] - c.v[j]) * (t - c.t[j])) / (c.t[j + 1] - c.t[j]),
+      );
+    });
+  }
+  const P = {
+    brand: brand.id === "other" ? { id: "featherweight", name: "Featherweight", unit: "ft" } : brand,
+    cols: ["Time", ...ch.map((c) => c.name)],
+    data,
+    raw: [],
+    rate: (T.length - 1) / (T[T.length - 1] - T[0] || 1),
+    preUnit: null,
+    hasHeader: true,
     fname: fname || "",
   };
   P.map = altGuess(P);
@@ -213,6 +292,11 @@ function altGuess(P) {
     /wind|gps|max|ground|horiz|down.?range|cross/,
   );
   if (vel === alt || vel === t) vel = -1;
+  // the accelerometer along the rocket's axis, if the file has one
+  const acc = find(
+    [/^acceleration$|axial.?accel|accel.*axial/, /^accel(eration)?[ _]?[xz]?\b|^accel/, /accel/],
+    /lat|gyro|max|peak|veloc|speed|alt|time|state|flag|temp/,
+  );
   const map = {
     t,
     alt: alt >= 0 ? alt : press,
@@ -223,7 +307,29 @@ function altGuess(P) {
     vUnit: null,
     pUnit: "atm",
     rate: P.rate,
+    acc: acc === alt || acc === vel || acc === t ? -1 : acc,
+    accUnit: "g",
   };
+  if (map.acc >= 0) {
+    const h = H[map.acc],
+      v = col(map.acc).filter(isFinite),
+      big = v.reduce((a, b) => Math.max(a, Math.abs(b)), 0);
+    map.accUnit = /\bmg\b|\(mg|_mg\b/.test(h)
+      ? "mg"
+      : /ft\/s|fps/.test(h)
+        ? "ft/s2"
+        : /m\/s|mps/.test(h)
+          ? "m/s2"
+          : /\bgs?\b|\(g|_g\b|g's/.test(h)
+            ? "g"
+            : P.brand.id === "altus"
+              ? "m/s2"
+              : big > 2000
+                ? "mg"
+                : big > 90
+                  ? "m/s2"
+                  : "g";
+  }
   if (t >= 0) {
     map.tUnit = altColUnit(P.cols[t], "time") || "s";
     const v = col(t).filter(isFinite),
@@ -512,6 +618,7 @@ export function altCompute(P, map) {
       }
     }
   }
+  const coast = altCoast(P, map, { T, RI, h, tL, iA, i0 });
   const warn = [];
   if (T[T.length - 1] - T[0] > 4 * 3600) warn.push("The time column covers more than four hours; check its units.");
   if (!landed) warn.push("The recording ends before landing.");
@@ -530,5 +637,135 @@ export function altCompute(P, map) {
     ev,
     land,
     warn,
+    coast,
+  };
+}
+/**
+ * Accelerometer units: [name, m/s²].
+ */
+export const ALT_ACC = [
+  ["g", 9.80665],
+  ["m/s2", 1],
+  ["ft/s2", 0.3048],
+  ["mg", 0.00980665],
+];
+/**
+ * What the accelerometer along the rocket's axis recorded between burnout and apogee, kept small enough to store with
+ * the flight: in the coast it reads the drag deceleration directly (gravity acts on the sensor and the rocket alike),
+ * so with the rocket's weight it gives the drag, whatever the motor did. The zero is the reading just before apogee,
+ * where there is next to no drag; the speed is the accelerometer's own, added up from liftoff with gravity taken off,
+ * as for a flight straight up.
+ * @param {object} P from altParse
+ * @param {object} map column choices and units
+ * @param {object} F the flight as altCompute found it: times T, their rows RI, heights h, liftoff time tL, apogee index
+ *   iA, liftoff index i0
+ * @returns {object|null} {zero, vz, hz, t, a, v, h (the coast, in steps), bt, ba, bv, bh, bdt (the burn, in steps), hIn,
+ *   tb, n}: m, s, m/s, m/s² as read (drag negative); hIn is the height the accelerometer makes of the climb; or
+ *   {why} when the column can't be used; or null with no accelerometer column
+ */
+function altCoast(P, map, F) {
+  if (!(map.acc >= 0)) return null;
+  const G = 9.80665,
+    kA = (ALT_ACC.find((u) => u[0] === map.accUnit) || ALT_ACC[0])[1],
+    { T, RI, h, tL, iA, i0 } = F,
+    n = T.length;
+  let a = RI.map((ri) => P.data[ri][map.acc] * kA);
+  if (a.filter(isFinite).length < 0.8 * n) return { why: "the acceleration column has gaps" };
+  for (let i = 0; i < n; i++) if (!isFinite(a[i])) a[i] = i ? a[i - 1] : 0;
+  const med = (v) => (v.length ? v.slice().sort((x, y) => x - y)[v.length >> 1] : NaN),
+    mean = (lo, hi) => {
+      let s = 0,
+        k = 0;
+      for (let i = lo; i < hi && i < n; i++) {
+        s += a[i];
+        k++;
+      }
+      return k ? s / k : NaN;
+    },
+    at = (t) => {
+      let k = 0;
+      while (k < n - 1 && T[k] < t) k++;
+      return k;
+    };
+  // on the pad: the first samples, before the climb
+  const padEnd = Math.max(3, at(tL - 0.3));
+  let p0 = med(a.slice(0, padEnd));
+  // the sensor's sense: thrust must read positive
+  const bEnd = at(tL + Math.min(1, Math.max(0.3, (T[iA] - tL) / 6)));
+  if (mean(i0, Math.max(bEnd, i0 + 2)) - p0 < 0) {
+    a = a.map((x) => -x);
+    p0 = -p0;
+  }
+  // with gravity on the pad (reads +1 g) or with it taken off (reads 0)
+  if (Math.abs(p0 - G) >= 0.35 * G && Math.abs(p0) >= 0.35 * G)
+    return { why: "it doesn't read 0 or 1 g on the pad (the recording may start after liftoff)" };
+  const off = Math.abs(p0 - G) < 0.35 * G ? 0 : G;
+  a = a.map((x) => x + off);
+  // liftoff and burnout from the accelerometer itself
+  let iL = -1;
+  for (let i = Math.max(0, at(tL - 2)); i < Math.min(n - 3, at(tL + 1.5)); i++)
+    if (a[i] > 2.5 * G && a[i + 1] > 2 * G && a[i + 2] > 2 * G) {
+      iL = i;
+      break;
+    }
+  if (iL < 0) return { why: "no thrust was found in the acceleration column" };
+  const dtm = (T[n - 1] - T[0]) / (n - 1),
+    w = Math.max(1, Math.round(0.1 / dtm));
+  let iB = -1;
+  for (let i = at(T[iL] + 0.25); i < iA - w; i++)
+    if (mean(i, i + w) < 0) {
+      iB = i;
+      break;
+    }
+  if (iB < 0) return { why: "no coast was found in the acceleration column" };
+  const tA = T[iA],
+    z0 = at(tA - 1.6),
+    z1 = at(tA - 0.4);
+  if (tA - T[iB] < 3 || z1 - z0 < 2) return { why: "the coast is too short" };
+  const zero = mean(z0, z1);
+  // speed and height by adding up the accelerometer, for a flight straight up
+  const v = new Array(n).fill(0),
+    hI = new Array(n).fill(0);
+  for (let i = iL + 1; i < n; i++) {
+    const d = T[i] - T[i - 1];
+    v[i] = v[i - 1] + (a[i - 1] - zero - G) * d;
+    hI[i] = hI[i - 1] + v[i - 1] * d;
+  }
+  const r3 = (x) => +x.toFixed(3),
+    r1 = (x) => +x.toFixed(1);
+  const steps = (ta, tb, max) => {
+    const o = { t: [], a: [], v: [], h: [] },
+      dt = Math.max((tb - ta) / max, dtm);
+    for (let t = ta; t < tb - 1e-9; t += dt) {
+      const i = at(t),
+        j = Math.max(i + 1, at(t + dt));
+      o.t.push(r3((T[i] + T[Math.min(j, n - 1)]) / 2 - T[iL]));
+      o.a.push(r3(mean(i, j)));
+      o.v.push(r1(v[Math.min(n - 1, (i + j) >> 1)]));
+      o.h.push(r1(h[Math.min(n - 1, (i + j) >> 1)]));
+    }
+    return { ...o, dt };
+  };
+  const C = steps(T[iB] + 0.35, tA - 1.6, 120),
+    B = steps(T[iL], T[iB], 40);
+  if (C.t.length < 12) return { why: "too few samples in the coast" };
+  let vz = 0;
+  for (let i = z0; i < z1; i++) vz += v[i] / (z1 - z0);
+  return {
+    zero: r3(zero),
+    vz: r1(vz),
+    hz: r1(h[(z0 + z1) >> 1]),
+    t: C.t,
+    a: C.a,
+    v: C.v,
+    h: C.h,
+    bt: B.t,
+    ba: B.a,
+    bv: B.v,
+    bh: B.h,
+    bdt: r3(B.dt),
+    hIn: r1(hI[iA]),
+    tb: r3(T[iB] - T[iL]),
+    n: C.t.length,
   };
 }

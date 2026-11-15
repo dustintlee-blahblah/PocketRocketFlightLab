@@ -18,6 +18,7 @@ import { isThree, stackStability } from "../physics/staging.js";
 import { downloadsNS } from "../report/pdf-report.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender, supRender } from "./donate.js";
+import { renderDragHints } from "./drag-hints.js";
 import { TGT_NAME } from "./motor-tab.js";
 import { renderRSO, renderWindTable, resultFlags } from "./rso-checklist.js";
 import { fmt, fromDisp, speedAlso, uname } from "./units.js";
@@ -107,6 +108,7 @@ export function renderResults() {
     document.getElementById("stats").hidden = true;
     document.getElementById("apogee").textContent = "—";
     document.getElementById("flags").innerHTML = "";
+    renderDragHints();
     document.getElementById("orkref").hidden = true;
     document.getElementById("baroref").hidden = true;
     return;
@@ -147,6 +149,7 @@ export function renderResults() {
   const flags = resultFlags(st, SL, m, D);
   renderWindTable();
   document.getElementById("flags").innerHTML = flags.map(([c, t]) => `<span class="flag ${c}">${t}</span>`).join("");
+  renderDragHints();
   renderRSO();
   const ref = document.getElementById("orkref");
   if (D.orkApogee) {

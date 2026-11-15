@@ -45,6 +45,9 @@ jobs:
       - name: Save and reopen test (every builder part and field survives the app's own save and open)
         run: node tests/roundtrip.js
 
+      - name: Drag from an altimeter's accelerometer, and the drag hints
+        run: node tests/coast.js
+
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag
 

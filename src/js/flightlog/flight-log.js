@@ -10,6 +10,8 @@ import { applyCal, calGet, calKeyOld, calSet, calStale, solveDragScale } from ".
 import { altOpenFile, prIncomingGo, prPendingAlt } from "./xlsx.js";
 import { findMotor, flightFirst } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
+import { aero, cdParts } from "../physics/aerodynamics.js";
+import { atmosphere, baroReading } from "../physics/atmosphere.js";
 import { lastMC, MC_K68, MC_K95 } from "../physics/monte-carlo.js";
 import { simulate } from "../physics/simulate.js";
 import { isThree } from "../physics/staging.js";
@@ -288,6 +290,82 @@ function flSim(c, k) {
   }
 }
 /**
+ * The drag an altimeter's accelerometer measured in a flight's coast (see altCoast), as a multiple of this design's
+ * estimated drag (uncalibrated) at the same speeds and heights: least squares through zero of the deceleration read
+ * against the deceleration the estimate gives for the flight's weight, below Mach 0.8 where there are enough readings.
+ * Two checks say whether to trust it: the launch weight the boost implies with the motor's rated impulse, and the
+ * height the accelerometer makes of the climb against the barometer's.
+ * @param {object} f flight
+ * @param {object} c from flCtx
+ * @returns {object|null} {k, n, m0, m1 (Mach range), mass (boost-implied weight over the entered one, less 1), apo
+ *   (accelerometer height over barometer height, less 1), ok, why}, or null without accelerometer data
+ */
+function flCoast(f, c) {
+  const a = flAltis(f).find((x) => x.coast && x.coast.t && x.coast.t.length >= 12);
+  if (!a || !c || c.mb || !(a.apo > 0)) return null;
+  const C = a.coast,
+    Dd = { ...c.D, dragScale: 1 },
+    Ad = aero(Dd),
+    lift = flLiftMass(Dd, c.m, null),
+    mc = lift - (c.m.propMass || 0);
+  if (!(mc > 0)) return null;
+  // the barometer's height (standard atmosphere) to the true height in the day's air
+  const top = Math.max(a.apo, C.hIn, 10) * 1.3,
+    zs = [],
+    is = [];
+  for (let i = 0; i <= 60; i++) {
+    zs.push((top * i) / 60);
+    is.push(baroReading(c.L, zs[i]));
+  }
+  const tru = (ind) => {
+    let i = 1;
+    while (i < 60 && is[i] < ind) i++;
+    return zs[i - 1] + ((zs[i] - zs[i - 1]) * (ind - is[i - 1])) / (is[i] - is[i - 1] || 1);
+  };
+  /**
+   * The deceleration the estimate gives at a speed and (barometer) height, and the Mach number.
+   */
+  const X = (v, h) => {
+    const atm = atmosphere(c.L, Math.max(tru(h), 0)),
+      vv = Math.max(v, 0.5);
+    return [(0.5 * atm.rho * vv * vv * cdParts(Ad, vv, atm).cd * Ad.Aref) / mc, vv / atm.a];
+  };
+  const pts = C.t.map((_, i) => (C.v[i] > 8 ? [...X(C.v[i], C.h[i]), C.a[i]] : null)).filter(Boolean),
+    sub = pts.filter((p) => p[1] < 0.8),
+    use = sub.length >= 8 ? sub : pts,
+    xz = X(C.vz, C.hz)[0];
+  if (use.length < 8) return null;
+  let k = 1,
+    off = C.zero;
+  for (let it = 0; it < 6; it++) {
+    off = C.zero + k * xz; // the little drag left where the zero was read
+    let sxy = 0,
+      sxx = 0;
+    for (const [x, , y] of use) {
+      sxy += x * -(y - off);
+      sxx += x * x;
+    }
+    k = sxx > 0 ? sxy / sxx : NaN;
+  }
+  if (!isFinite(k)) return null;
+  let tot = 0;
+  C.bt.forEach((_, i) => {
+    tot += (C.ba[i] - off + k * X(C.bv[i], C.bh[i])[0]) * C.bdt;
+  });
+  const I = motorStats(c.m).I,
+    mass = tot > 0 ? (I / tot + (c.m.propMass || 0) / 2) / lift - 1 : NaN,
+    apo = C.hIn / tru(a.apo) - 1,
+    ms = use.map((p) => p[1]);
+  const why = !(k > 0.3 && k < 3)
+    ? "the reading doesn't look like drag"
+    : !(Math.abs(mass) <= 0.12)
+      ? `the boost says the rocket weighed ${Math.abs(mass * 100).toFixed(0)}% ${mass > 0 ? "more" : "less"} than entered (or the motor gave that much ${mass > 0 ? "less" : "more"}), so the accelerometer, the weight or the motor is off`
+      : !(Math.abs(apo) <= 0.08)
+        ? `the accelerometer makes the climb ${Math.abs(apo * 100).toFixed(0)}% ${apo > 0 ? "higher" : "lower"} than the barometer, so the flight wasn't straight enough or the sensor drifted`
+        : "";
+  return { k, n: use.length, m0: Math.min(...ms), m1: Math.max(...ms), mass, apo, ok: !why, why };
+}
+/**
  * The prediction for a logged flight now.
  * @param {object} f
  * @returns {object|null} flight summary
@@ -412,8 +490,15 @@ export function renderFlightLog() {
   if (flNow.when !== stamp) flNow = { when: stamp };
   list.slice(0, 12).forEach((f) => {
     if (!(f.id in flNow)) {
-      const r = flPredict(f);
-      flNow[f.id] = r ? { apo: r.maxAlt, land: r.landed ? flSimLand(r, f.windDir ?? lastSim.L.windDir) : null } : null;
+      const c = flCtx(f),
+        r = c ? flSim(c) : null;
+      let coast = null;
+      try {
+        coast = c ? flCoast(f, c) : null;
+      } catch (e) {}
+      flNow[f.id] = r
+        ? { apo: r.maxAlt, land: r.landed ? flSimLand(r, f.windDir ?? lastSim.L.windDir) : null, coast }
+        : null;
     }
   });
   const ds = list.map((f) => flDiff(f.apo, f.pred)).filter((d) => d != null),
@@ -449,7 +534,11 @@ export function renderFlightLog() {
       <div class="flhd"><b>${esc(flDate(f.date) || "No date")}</b>${f.motor ? ` · ${esc(f.motor)}${f.delay ? ` (${esc(f.delay)})` : ""}` : ""}${f.place ? ` · ${esc(f.place)}` : ""}</div>
       <div class="flnum"><span>Real <b>${f.apo > 0 ? fmt(f.apo, "alt") + " " + au : "—"}</b></span>${f.pred > 0 ? `<span>Predicted ${fmt(f.pred, "alt")} ${au} <b class="${flCls(d)}">${flPct(d)}</b></span>` : ""}${dn != null && Math.abs(now.apo - f.pred) > 0.5 ? `<span>Now ${fmt(now.apo, "alt")} ${au} <b class="${flCls(dn)}">${flPct(dn)}</b></span>` : ""}${f.vmax > 0 ? `<span>Top speed ${fmt(f.vmax, "speed")} ${uname("speed")}</span>` : ""}${f.mass > 0 ? `<span>${fmt(f.mass, "mass")} ${uname("mass")} at liftoff</span>` : ""}</div>
       ${alts}${A.length === 1 ? `<div class="flalt">${esc(a0.brand || "Altimeter")} data${a0.rateHigh != null ? ` · ${fmt(a0.rateHigh, "speed")} ${uname("speed")} under drogue` : ""}${a0.rateLow != null ? ` · ${fmt(a0.rateLow, "speed")} ${uname("speed")} near the ground` : ""}</div>` : ""}
-      ${evt ? `<div class="flalt">${esc(evt)}</div>` : ""}${landTxt}
+      ${evt ? `<div class="flalt">${esc(evt)}</div>` : ""}${landTxt}${
+        now && now.coast
+          ? `<div class="flalt">${now.coast.ok ? `Drag measured in the coast by the accelerometer: <b>×${now.coast.k.toFixed(2)}</b> this design's estimate (Mach ${now.coast.m0.toFixed(2)}–${now.coast.m1.toFixed(2)}), whatever the motor did.` : `The accelerometer's coast isn't used to measure drag: ${esc(now.coast.why)}.`}</div>`
+          : ""
+      }
       ${f.notes ? `<div class="flnote">${esc(f.notes)}</div>` : ""}
       <div class="flact">${A.some((a) => a.curve) ? `<button class="btn ghost" type="button" data-fl="show">${flShow === f.id ? "Hide from chart" : "Show on chart"}</button>` : ""}${
         f.apo > 0
@@ -566,8 +655,24 @@ async function flFit() {
    */
   const tick = () => new Promise((r) => setTimeout(r, 0));
   try {
-    let k = null;
-    if (use.length === 1) {
+    let k = null,
+      how = null,
+      spread = 0;
+    // flights whose altimeter measured the drag in the coast (see flCoast): that, not the apogee, when they all did
+    const co = use.map((x) => {
+      try {
+        return flCoast(x.f, x.c);
+      } catch (e) {
+        return null;
+      }
+    });
+    if (co.every((r) => r && r.ok)) {
+      const lg = co.map((r) => Math.log(r.k)),
+        mu = lg.reduce((a, b) => a + b, 0) / lg.length;
+      k = Math.exp(mu);
+      spread = Math.sqrt(lg.reduce((a, b) => a + (b - mu) ** 2, 0) / lg.length) * 100;
+      how = "coast";
+    } else if (use.length === 1) {
       await tick();
       const sol = solveDragScale(use[0].f.apo, use[0].c);
       if (sol.out) {
@@ -614,12 +719,13 @@ async function flFit() {
         const r = flSim(x.c, k);
         return r ? r.maxAlt / x.f.apo - 1 : 0;
       }),
-      rms = Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) * 100;
+      rms = how ? spread : Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) * 100;
     calSet({
       k,
       flights: use.map((x) => x.f.id),
       n: use.length,
       rms,
+      ...(how ? { how } : {}),
       skipped: skip,
       date: flToday(),
       dm: "test", // fitted with the current drag model (see calStale); the name is the one saved since build 288
@@ -684,7 +790,7 @@ function renderFlCal(list) {
       `<button class="btn ghost" type="button" id="flcalrm">Remove</button>`;
   else if (k && c.flights)
     h =
-      `<span id="flcalst">Drag calibrated <b>×${k.toFixed(2)}</b> (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%) from ${c.n > 1 ? `${c.n} flights, which fit within ±${(c.rms || 0).toFixed(1)}%` : "1 flight"}${c.skipped ? ` (${c.skipped} ticked flight${c.skipped > 1 ? "s" : ""} skipped: motor not on this device)` : ""}.</span>` +
+      `<span id="flcalst">Drag calibrated <b>×${k.toFixed(2)}</b> (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%) from ${c.how === "coast" ? `the drag ${c.n > 1 ? `${c.n} flights' accelerometers measured in the coast, which agree within ±${(c.rms || 0).toFixed(1)}%` : "1 flight's accelerometer measured in the coast"}` : c.n > 1 ? `${c.n} flights, which fit within ±${(c.rms || 0).toFixed(1)}%` : "1 flight"}${c.skipped ? ` (${c.skipped} ticked flight${c.skipped > 1 ? "s" : ""} skipped: motor not on this device)` : ""}.</span>` +
       `<button class="btn ghost" type="button" id="flrefit">Refit</button><button class="btn ghost" type="button" id="flcalrm">Remove</button>`;
   else if (k)
     h =

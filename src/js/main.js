@@ -84,6 +84,7 @@ import * as m70 from "./physics/flow-picture.js";
 import * as m71 from "./ui/wind-tunnel.js";
 import * as m72 from "./physics/flow-streams.js";
 import * as m73 from "./physics/drag-model.js";
+import * as m74 from "./ui/drag-hints.js";
 
 const modules = [
   m0,
@@ -160,6 +161,7 @@ const modules = [
   m71,
   m72,
   m73,
+  m74,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 
