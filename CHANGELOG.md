@@ -4,6 +4,20 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 307 (2026-11-15)
+
+**Drag**
+- **A step up in diameter no longer costs far too much**: a wider section behind a narrower one (a fin can's sleeve, a coupler band, a payload bay) was charged most of stagnation pressure on its face whatever its height, two to seven times what steps measure. It now takes the measured drag of a step against its height beside the boundary layer (NASA TN D-8040 above Mach 1.6, Hoerner below Mach 0.9). Designs with such a step fly higher than before; designs without one are unchanged.
+- **A short, steep flare can't cost more than a flat step**: the cone formula could give a short flare more than stagnation pressure.
+- **Fins through Mach 1**: the fins' pressure drag near Mach 1 now follows NACA Report 1253's chart of 22 wings, in which a stubby fin's drag rises later and stops far lower than a long one's. It was sized from one wind-tunnel model whose fins sit on a boattail. This touches sharp-edged fins only (beveled, double wedge, airfoil), and mostly ones thick for their chord.
+
+**Atmosphere**
+- **A hot or cold day at the pad no longer reaches the stratosphere**: the pad's temperature offset is carried up through the troposphere and fades out between 11 and 15 km above sea level (U.S. Standard Atmosphere Supplements, 1966). Only flights above about 36,000 ft above sea level change, by a percent or so. A loaded forecast is still used as it is.
+
+**Validation**
+- **Three new checks from flight recorders**: Qu8k's accelerometer in the coast (Mach 2.0–2.8), Proto's through its coast and fall (Mach 2.1–0.6; the app within about 8%), and how drag rises with height in four tracked two-stage flights to 70,000 ft (the app's rise matches within a few percent, so the boundary layer is turbulent up there as the app assumes).
+- **VALIDATION.md's measured-flights section is redone for the current model**: 6.5% mean apogee error on the 23 flights, with what is behind each of the large misses (Qu8k's is its predicted thrust curve and an uncorrected accelerometer; its drag is not too low).
+
 ## Build 306 (2026-11-15)
 
 **Rocket builder**
