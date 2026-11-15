@@ -4,6 +4,15 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 306 (2026-11-15)
+
+**Rocket builder**
+- **Chute release setting**: a parachute set to open at an altitude has a new switch, Held by a chute release (a Jolly Logic Chute Release, for one). Tick it when the motor's ejection charge puts the bundled chute out near apogee and the release opens it at the opening altitude. The setting is saved with the design.
+
+**Results and the RSO checklist**
+- **No caution for a chute release flying as intended**: with the switch ticked, the motor charge firing while the main is still closed is expected and isn't flagged. A caution remains only when the charge fires more than 1.5 s before apogee or with the rocket moving faster than about 100 ft/s (30 m/s), since coming apart then is hard on the rocket whatever holds the chute.
+- **The caution without the switch reads better**: when the charge fires after apogee and the main is set for a lower altitude, it says when the charge fires and when the main opens, that this is right with a chute release, and how to tick the switch or change the timing otherwise.
+
 ## Build 305 (2026-11-15)
 
 **Rocket builder**
