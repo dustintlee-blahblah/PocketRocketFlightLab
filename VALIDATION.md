@@ -7,7 +7,7 @@ each part of the model to its source and to these checks.
 
 **Build 288 changed the drag model, and build 304 the center of pressure above Mach 1.** The summary table below,
 "Apogee against measured flights" and "Weighed and logged hobby rockets" give the current model's figures (build
-306). The sections on OpenRocket, the center of pressure, and drag against wind-tunnel and free-flight data were
+307). The sections on OpenRocket, the center of pressure, and drag against wind-tunnel and free-flight data were
 worked out with the model before build 288 and have not been redone (that model was removed in build 303; the
 `v1.0-build302` tag is the last that can run it); for the current model against those measurements, case by case,
 see "How well each part is checked" in [AERODYNAMICS.md](AERODYNAMICS.md). The scripts score the current model.
