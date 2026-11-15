@@ -23,10 +23,10 @@ In short:
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.011 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8–5.9%, CP 0.7% of length, CNα 10% |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 1.2% |
-| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.6%, bias +3.1% (RASAero II: 5.2%, −3.5%) |
+| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.5%, bias +3.2% (RASAero II: 5.2%, −3.4%) |
 | Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high; the rocket bled tracking smoke into its base, which lowers its drag |
 | Drag from Mach 2.1 down measured in a flight | Proto's flight recorder, coasting and falling, shape from a photograph | app within 8%, a little high |
-| How drag changes with height in a supersonic coast | Four tracked two-stage flights, Mach 3.3–1.6, 28,000–70,000 ft | the app's rise is 0–8% more than the flights' |
+| How drag changes with height in a supersonic coast | Four tracked two-stage flights, Mach 3.3–1.6, 28,000–70,000 ft | the app's rise is 0–4% more than the flights' |
 | Apogee and coast drag of weighed, logged hobby rockets | 7 flights of 3 rockets, Harvey Mudd College data, Mach 0.3–0.9 | as their design files are set up (polished, no rail buttons): apogee 13.8% high, drag 15.7% low; with regular paint and rail buttons: apogee 3.5%, drag 6.3% |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
@@ -213,19 +213,19 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 | Rabia | 1.22 | 12,745 | barometric altimeter | −9.6% | +7.9% |
 | Torrent | 1.29 | 12,807 | barometric altimeter | +1.1% | +14.5% |
 | Kline-Rogers L500 rocket, USXRL-89 | 1.95 | 24,771 | optical tracking | +7.0% | −2.3% |
-| Kinsel A-601 (P4935) | 2.11 | 42,771 | GPS | −3.9% | +5.8% |
+| Kinsel A-601 (P4935) | 2.11 | 42,771 | GPS | −3.9% | +5.7% |
 | Full Metal Jacket, BALLS 005 | 2.28 | 37,981 | optical tracking | +2.1% | +1.8% |
 | Full Metal Jacket, Black Rock 6 | 2.44 | 30,038 | optical tracking | +8.4% | +3.1% |
 | Proteus 6 (P9381) | 2.95 | 85,067 | integrated accelerometers | −4.2% | +16.8% |
-| Don't Debate This (N5800 minimum diameter) | 3.04 | 56,573 | average of two barometric altimeters | −1.2% | −14.0% |
-| Qu8k (Q18000) | 3.57 | 121,478 | integrated accelerometer | −1.5% | +17.5% |
+| Don't Debate This (N5800 minimum diameter) | 3.04 | 56,573 | average of two barometric altimeters | +0.9% | −12.5% |
+| Qu8k (Q18000) | 3.57 | 121,478 | integrated accelerometer | −1.5% | +18.0% |
 
 | Mean absolute error (bias) | Flights | RASAero II | App |
 |---|---|---|---|
-| All | 23 | 5.2% (−3.5%) | 6.6% (+3.1%) |
+| All | 23 | 5.2% (−3.4%) | 6.5% (+3.2%) |
 | Below Mach 0.8 | 8 | 5.0% (−4.7%) | 3.8% (+1.6%) |
 | Mach 0.8–1.2 | 6 | 6.9% (−6.9%) | 6.1% (+1.3%) |
-| Above Mach 1.2 | 9 | 4.3% (−0.2%) | 9.3% (+5.7%) |
+| Above Mach 1.2 | 9 | 4.3% (0.0%) | 9.2% (+5.9%) |
 
 Compared as true heights the app is 9.4% off (+8.8%) and RASAero II 5.4% (+1.8%).
 
@@ -241,7 +241,7 @@ is real too: the three Test Pilot School rockets are the same airframe on the sa
 measured apogees spread over 7%.
 
 **What is left is mostly scatter.** Above Mach 1.2 three flights are within 3%, Kinsel A-601 and Rabia are 6–8%
-high, and the rest are Qu8k (+17.5%), Proteus 6 (+16.8%), Torrent (+14.5%) and Don't Debate This (−14.0%); just
+high, and the rest are Qu8k (+18.0%), Proteus 6 (+16.8%), Torrent (+14.5%) and Don't Debate This (−12.5%); just
 under Mach 1.2, Raven is +22%. Each of those has a reason of its own:
 
 - **Qu8k: the motor and the measurement, not the drag.** Its flight recorder is public, and
@@ -253,8 +253,9 @@ under Mach 1.2, Raven is +22%. Each of those has a reason of its own:
   the file has one (it is flown here without). So this flight cannot judge the drag model by its apogee.
 - **Proteus 6** was also measured by integrating accelerometers, and its recorder isn't public. The app's top speed
   (3,208 ft/s) matches the measured 3,201.
-- **Don't Debate This** reached 56,000 ft, read by barometric altimeters. Its −14.1% assumes the air that high was as
-  much warmer than standard as the air at the pad; as a true height it is −4.8%.
+- **Don't Debate This** reached 56,000 ft, read by barometric altimeters. Its −12.5% rests on how warm the air was
+  all the way up, which the pad's temperature only suggests (the offset is carried through the troposphere and
+  dropped above it; carried all the way up, as before build 307, it was −14.0%); as a true height it is −4.8%.
 - **Raven** is a single flight of a 1.75 in rocket 42 diameters long with rounded fins; with regular paint it is +7%.
 - **Torrent** has rounded fins too, and a 1/16 in step at its fin can. Until build 307 that step was charged most
   of stagnation pressure, two to seven times what steps measure (NASA TN D-8040), which hid about 7% of apogee;
@@ -266,9 +267,9 @@ were really finished isn't recorded:
 
 | Finish given to the "zero roughness" rockets | Mean error | Bias | Above Mach 1.2 |
 |---|---|---|---|
-| Polished, 2 µm (as the files say; the headline numbers) | 6.6% | +3.1% | 9.3% |
-| Smooth paint, 20 µm | 6.3% | +1.6% | 8.4% |
-| Regular paint, 60 µm | 8.8% | −5.5% | 10.7% |
+| Polished, 2 µm (as the files say; the headline numbers) | 6.5% | +3.2% | 9.2% |
+| Smooth paint, 20 µm | 6.2% | +1.7% | 8.3% |
+| Regular paint, 60 µm | 8.8% | −5.4% | 10.6% |
 
 Regular paint on all of them overshoots (the student rockets then come out 7–13% low, the L500 21% low), so the real
 finishes were probably mixed, and smoother on these rockets than on the weighed hobby rockets further down, which
@@ -294,9 +295,10 @@ height. The quarter-second means of the recording are in `validation/cases.js` (
 | 2.18 | 47,100 | 0.325 | 0.406 | +25% |
 | 2.03 | 53,500 | 0.310 | 0.435 | +40% |
 
-Over the whole stretch the app is **22% high** (measured 0.314, app 0.384) with the air aloft taken as warm as at the
-pad, which is what the app assumes from a pad temperature, and **12% high** (0.331 against 0.372) with standard air
-aloft; the day's upper air isn't known. With no zero correction it would be 33% and 23%. The measured coefficient
+Over the whole stretch the app is **23% high** (measured 0.305, app 0.375) with the air aloft as the app takes it
+from the pad's temperature (as much warmer than standard as the pad through the troposphere, standard above it),
+and **12% high** (0.331 against 0.372) with standard air all the way up; the day's upper air isn't known. With no
+zero correction it would be 34% and 23%. The measured coefficient
 stays near 0.31 as the rocket climbs and slows; the app's rises, with its skin friction (the Reynolds number falls
 with the thinning air) and its base drag (the Mach number falls).
 
@@ -326,13 +328,14 @@ beveled fins) at the same Mach numbers and heights. `validation/coast-trend.js`;
 
 | Flight | From | To | Flight's rise | App's rise |
 |---|---|---|---|---|
-| Stratospheric Express | Mach 2.6, 28,500 ft | Mach 1.7, 55,900 ft | 1.30–1.43 | 1.40–1.43 |
-| Anniversary Special | Mach 2.7, 27,700 ft | Mach 1.6, 56,100 ft | 1.35–1.50 | 1.49–1.52 |
-| A Money Pit | Mach 2.4, 46,600 ft | Mach 2.1, 60,200 ft | 1.14–1.21 | 1.19–1.20 |
-| SVJ2 | Mach 3.3, 39,300 ft | Mach 2.5, 70,300 ft | 1.39–1.57 | 1.39–1.41 |
+| Stratospheric Express | Mach 2.6, 28,500 ft | Mach 1.7, 55,900 ft | 1.28–1.43 | 1.37–1.43 |
+| Anniversary Special | Mach 2.7, 27,700 ft | Mach 1.5, 60,800 ft | 1.30–1.47 | 1.54–1.61 |
+| A Money Pit | Mach 2.5, 46,600 ft | Mach 2.1, 60,200 ft | 1.21 | 1.19–1.20 |
+| SVJ2 | Mach 3.3, 39,300 ft | Mach 2.5, 70,300 ft | 1.50–1.57 | 1.37–1.41 |
 
-Each range is from air aloft as warm as at the pad (the lower figure) to standard air aloft. Over the four coasts the
-app's rise is 8% more than the flights' with warm air aloft and the same as theirs with standard air. So up to
+Each range is from the air aloft as the app takes it from the pad's temperature (the lower figure) to standard air
+all the way up. Over the four coasts the app's rise is 4% more than the flights' with the first and the same as
+theirs with the second; flight by flight it is from 10% less (SVJ2) to 19% more (Anniversary Special). So up to
 60,000–70,000 ft these rockets' drag rose with height as a turbulent boundary layer's does, and the app's does; there
 is no sign of a laminar boundary layer to allow for. The limits: the stand-in is not these rockets (a longer or
 shorter body shifts the app's rise by a few points), the upper air on each day is bracketed, not known, and above
@@ -369,9 +372,9 @@ That is with smooth paint and standard air aloft. By finish and upper air, the a
 
 | Finish, air aloft | Coast above Mach 1.2 | Mach 0.75–1.2 | Falling, Mach 0.6–0.95 |
 |---|---|---|---|
-| Smooth paint, as warm as at the pad | 5.9% (+6%) | 6.1% (+1%) | 5.4% (+5%) |
+| Smooth paint, as warm as at the pad | 5.9% (+6%) | 6.1% (+1%) | 5.5% (+5%) |
 | Smooth paint, standard | 8.1% (+8%) | 4.4% (+4%) | 7.1% (+7%) |
-| Polished, as warm as at the pad | 1.2% (0%) | 5.7% (+1%) | 6.3% (+4%) |
+| Polished, as warm as at the pad | 1.2% (0%) | 5.7% (+1%) | 6.4% (+4%) |
 | Polished, standard | 1.7% (+2%) | 4.1% (+4%) | 5.6% (+6%) |
 
 So on this rocket the app is within about 8%, a little high, from Mach 2.1 to Mach 0.6, which is inside what the
