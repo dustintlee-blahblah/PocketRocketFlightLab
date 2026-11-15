@@ -2322,7 +2322,66 @@ const KATE_COASTS = [
   },
 ];
 
+/**
+ * "Proto" (Paul Gagnon, BALLS 2015): a 98 mm minimum-diameter rocket on an N4036 research motor, tracked by
+ * Multitronix's Kate system, whose page for the flight (multitronix.com, "40k flight") gives the recorder's
+ * spreadsheet. The recovery failed, so the record holds a coast from Mach 2.1 to apogee and a nose-first fall back
+ * through Mach 0.9. In both the accelerometer reads the drag over the mass.
+ *   rows: [seconds from liftoff, height above the pad (ft, GPS; before the GPS recovers at 9 s, the accelerometer's
+ *     less 2.5% for the tilt), speed (ft/s, GPS; the accelerometer's before 9 s), drag deceleration (g)], means over
+ *     0.8 to 4 s. The drag is the recorded acceleration plus 1 g, with the sensor's zero from apogee (−0.012 g).
+ *   burnoutKg: not weighed. The rocket was 46 lb on the pad; the accelerometer through the burn gives 16,200 N·s,
+ *     which is 7.4–8.0 kg of propellant at a specific impulse of 225–205 s, so 13.2 kg at burnout, give or take 0.3.
+ *   The shape is measured from the page's photograph of the rocket standing beside its builder, scaled by the 48 in
+ *     motor case that is its bare lower body: nose 25.4 in, body 88.7 in at 3.9 in diameter, three fins 13.1 in at
+ *     the root, 2.3 in at the tip, 4.8 in span, swept 10.5 in. The fin thickness (3/16 in plate assumed), the edges
+ *     and any step at the welded fin can's sleeve cannot be read from the photograph.
+ */
+const PROTO_COAST = {
+  title: "Proto (N4036), BALLS 2015",
+  site: 3921,
+  tF: 87,
+  burnoutKg: 13.2,
+  design: {
+    title: "Proto",
+    nose: { len: 25.4, shape: "ogive" },
+    parts: [
+      {
+        t: "tube",
+        len: 88.7,
+        d: 3.9,
+        fins: { n: 3, cr: 13.1, ct: 2.3, s: 4.8, sw: 10.5, t: 0.1875, loc: 13.1, edge: "beveled", le: 0.5, te: 0.3 },
+      },
+    ],
+    w: 46,
+    cg: 70,
+  },
+  rows: [
+    [5.7, 9871, 2236, 5.225],
+    [6.6, 11753, 2067, 4.442],
+    [7.6, 13693, 1903, 3.729],
+    [8.6, 15474, 1762, 3.088],
+    [9.5, 16986, 1653, 2.629],
+    [10.8, 18971, 1514, 2.155],
+    [12.2, 21020, 1379, 1.713],
+    [14.0, 23339, 1233, 1.312],
+    [16.0, 25650, 1096, 0.957],
+    [17.9, 27606, 984, 0.654],
+    [19.9, 29461, 887, 0.418],
+    [22.4, 31509, 779, 0.306],
+    [25.4, 33638, 660, 0.187],
+    [28.9, 35677, 531, 0.115],
+    [64.9, 33244, 615, 0.164],
+    [70.8, 29164, 758, 0.304],
+    [76.9, 24239, 874, 0.48],
+    [82.9, 18754, 952, 0.687],
+    [88.9, 12870, 989, 0.889],
+    [95.0, 6838, 990, 1.055],
+  ],
+};
+
 module.exports = {
+  PROTO_COAST,
   KATE_COASTS,
   QU8K_COAST,
   LOGGED,

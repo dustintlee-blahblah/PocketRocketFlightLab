@@ -25,6 +25,7 @@ In short:
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 1.2% |
 | Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.1%, bias +2.4% (RASAero II: 5.2%, −3.5%) |
 | Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high; the rocket bled tracking smoke into its base, which lowers its drag |
+| Drag from Mach 2.1 down measured in a flight | Proto's flight recorder, coasting and falling, shape from a photograph | app within 8%, a little high |
 | How drag changes with height in a supersonic coast | Four tracked two-stage flights, Mach 3.3–1.6, 28,000–70,000 ft | the app's rise is 0–8% more than the flights' |
 | Apogee and coast drag of weighed, logged hobby rockets | 7 flights of 3 rockets, Harvey Mudd College data, Mach 0.3–0.9 | as their design files are set up (polished, no rail buttons): apogee 13.8% high, drag 15.7% low; with regular paint and rail buttons: apogee 3.5%, drag 6.3% |
 
@@ -331,6 +332,52 @@ is no sign of a laminar boundary layer to allow for. The limits: the stand-in is
 shorter body shifts the app's rise by a few points), the upper air on each day is bracketed, not known, and above
 about 60,000 ft the drag is too small beside the rocket's tilt and the sensor's zero to read.
 
+### Drag from Mach 2.1 down measured in a flight: Proto's recorder
+
+"Proto" (Paul Gagnon, BALLS 2015) was a 98 mm minimum-diameter rocket on an N4036 research motor, tracked by
+Multitronix's Kate system; the page for the flight (multitronix.com) gives the recorder's spreadsheet. Its recovery
+failed, so the record holds a clean coast from Mach 2.1 to apogee at 39,700 ft and then a nose-first fall back
+through Mach 0.9, and in both the accelerometer reads the drag over the mass. The accelerometer's speed agrees with
+the GPS's within 1% once the GPS recovers. `validation/proto-coast.js`; the readings are in `validation/cases.js`
+(`PROTO_COAST`).
+
+Two things are not on the page and had to be worked out. **The burnout mass**: the rocket was 46 lb on the pad, and
+the accelerometer through the burn gives 16,200 N·s, which is 7.4–8.0 kg of propellant, so 13.2 kg at burnout, give
+or take 0.3 (2%). **The shape**: measured from the page's photograph of the rocket standing beside its builder,
+scaled by the 48 in motor case that is its bare lower body (nose 25.4 in, body 88.7 in, three fins 13.1 in at the root
+and 4.8 in span, taken as 3/16 in plate with beveled edges).
+
+| Mach | Height (ft) | Measured Cd | App | App against measured |
+|---|---|---|---|---|
+| 2.11 | 9,900 | 0.471 | 0.531 | +13% |
+| 1.82 | 13,700 | 0.526 | 0.571 | +8% |
+| 1.60 | 17,000 | 0.549 | 0.597 | +9% |
+| 1.36 | 21,000 | 0.592 | 0.622 | +5% |
+| 1.10 | 25,700 | 0.618 | 0.655 | +6% |
+| 0.90 | 29,500 | 0.475 | 0.486 | +2% |
+| 0.80 | 31,500 | 0.487 | 0.498 | +2% |
+| 0.87 (falling) | 24,200 | 0.463 | 0.480 | +4% |
+| 0.94 (falling) | 12,900 | 0.452 | 0.480 | +6% |
+
+That is with smooth paint and standard air aloft. By finish and upper air, the app's mean error is:
+
+| Finish, air aloft | Coast above Mach 1.2 | Mach 0.75–1.2 | Falling, Mach 0.6–0.95 |
+|---|---|---|---|
+| Smooth paint, as warm as at the pad | 5.9% (+6%) | 6.1% (+1%) | 5.4% (+5%) |
+| Smooth paint, standard | 8.1% (+8%) | 4.4% (+4%) | 7.1% (+7%) |
+| Polished, as warm as at the pad | 1.2% (0%) | 5.7% (+1%) | 6.3% (+4%) |
+| Polished, standard | 1.7% (+2%) | 4.1% (+4%) | 5.6% (+6%) |
+
+So on this rocket the app is within about 8%, a little high, from Mach 2.1 to Mach 0.6, which is inside what the
+burnout mass, the photograph and the unknown fin thickness allow (1/8 in fins would lower the app's figure by about
+10% above Mach 1). The drag measured rising and falling agrees with itself within 5% at the same Mach number.
+
+One thing it showed about the app: the fin can is a welded sleeve over the motor case, and how much of a step its
+forward edge makes can't be seen. Entered as a 0.19 in step (a short transition from 3.9 to 4.28 in), the app's drag
+comes out 40–50% above the measurement over Mach 1 and about 20% above it below. The app gives a short, steep
+increase in diameter the full pressure of the outer flow, though a step that small lies inside the boundary layer.
+The figures above are for a flush fin can.
+
 Hoerner's drag of surface imperfections (*Fluid-Dynamic Drag*, ch. V) was also tried and left out: a joint or step
 between airframe sections sits inside the boundary layer and feels only its slow air (q_eff ≈ 0.75·q·(h/δ)^1/3), so even
 a sharp 0.25 mm step adds about 0.2% to the drag.
@@ -407,6 +454,7 @@ npm run validate:accuracy                                # every measured rocket
 npm run validate:flights                                 # apogee against measured flights
 npm run validate:logged                                  # apogee and coast drag against weighed, logged flights
 npm run validate:qu8k                                    # drag above Mach 2 against Qu8k's flight recorder
+npm run validate:proto                                   # drag from Mach 2.1 down against Proto's flight recorder
 npm run validate:coast-trend                             # how drag changes with height in four tracked flights' coasts
 ```
 

@@ -23,6 +23,7 @@
     "validate:drag-factors": "node build.js && node validation/drag-factors.js",
     "validate:logged": "node build.js && node validation/logged-flights.js",
     "validate:qu8k": "node build.js && node validation/qu8k-coast.js",
+    "validate:proto": "node build.js && node validation/proto-coast.js",
     "validate:coast-trend": "node build.js && node validation/coast-trend.js"
   },
   "devDependencies": {
