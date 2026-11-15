@@ -1777,10 +1777,9 @@ const FLIGHTS = [
         d1: 6.7,
       },
     ],
-    rail: {
-      d: 1.021,
-      h: 1.021,
-    },
+    // RASAero II's file carries a 1.021 in rail guide; the rocket flew from a tower with none (the flight report:
+    // "most pads require use of a launch lug or rail guide ... the desire to keep drag low ... drove me to make my
+    // own launch tower"), so it is flown without
     finish: "smooth",
     noz: 6.0,
     motor: "Q18000",
@@ -2229,7 +2228,40 @@ ${f.parts.map(part).join("\n")}
 </subcomponents></stage></subcomponents></rocket></openrocket>`;
 }
 
+/**
+ * Qu8k's flight recorder (Derek Deville, Black Rock, 30 September 2011): the R-DAS's axial accelerometer, 200 Hz in
+ * 0.1 g steps, averaged over quarter seconds from liftoff to 40 s, in g. From the recorder file and the flight
+ * report on the builder's page (ddeville.com, Qu8k). The reading is the thrust less the drag over the mass; in the
+ * coast it is the drag alone.
+ *   zero: what the sensor reads with nothing acting on it. It read 1.1 g on the pad and averages +0.07 g from 60 to
+ *     88 s, above 100,000 ft, where the drag is under 0.01 g.
+ *   burnoutLb: the rocket weighed right after the flight (the report's table of weights).
+ *   from, to: the seconds of the coast used: after the motor's tail-off, and while the drag is over 0.5 g.
+ */
+const QU8K_COAST = {
+  title: "Qu8k (Q18000)",
+  dt: 0.25,
+  zero: 0.07,
+  burnoutLb: 154.5,
+  from: 13.5,
+  to: 26,
+  acc: [
+    12.422, 10.34, 9.818, 9.74, 9.572, 9.462, 9.53, 9.588, 9.564, 9.726, 9.816, 10.036, 10.294, 10.488, 10.3, 10.342,
+    10.342, 10.468, 10.54, 10.46, 10.572, 10.632, 10.78, 10.964, 11.162, 11.254, 11.502, 11.816, 12.056, 12.32, 12.612,
+    13.214, 13.662, 13.73, 13.4, 12.682, 11.662, 10.354, 9.008, 6.924, 4.806, 2.472, 0.54, -0.694, -1.474, -2.048,
+    -2.23, -2.58, -2.698, -2.552, -2.522, -2.488, -2.464, -2.592, -2.782, -2.602, -2.468, -2.366, -2.246, -2.178, -2.05,
+    -1.94, -1.942, -1.844, -1.754, -1.67, -1.596, -1.548, -1.446, -1.416, -1.354, -1.32, -1.272, -1.188, -1.136, -1.07,
+    -1.038, -0.97, -0.922, -0.912, -0.89, -0.844, -0.818, -0.8, -0.728, -0.764, -0.7, -0.652, -0.654, -0.628, -0.578,
+    -0.52, -0.494, -0.488, -0.484, -0.45, -0.442, -0.422, -0.394, -0.394, -0.374, -0.38, -0.37, -0.358, -0.344, -0.324,
+    -0.31, -0.302, -0.28, -0.264, -0.252, -0.236, -0.234, -0.26, -0.238, -0.176, -0.194, -0.15, -0.154, -0.13, -0.104,
+    -0.128, -0.152, -0.138, -0.112, -0.12, -0.106, -0.076, -0.064, -0.078, -0.076, -0.068, -0.06, -0.064, -0.036, -0.04,
+    -0.052, -0.024, -0.04, -0.036, -0.024, -0.016, -0.026, -0.026, -0.022, -0.022, -0.01, -0.02, -0.006, -0.008, -0.012,
+    -0.01, -0.01, 0.002, 0.008, -0.008, 0.008, -0.002, 0.016, 0.004,
+  ],
+};
+
 module.exports = {
+  QU8K_COAST,
   LOGGED,
   IN,
   LB,

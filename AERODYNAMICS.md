@@ -170,7 +170,8 @@ have no flight history, so they are scored with the skin fully heated (right for
 | Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.7% of length; CNα 10% on average: 11–19% low below Mach 1, within 4% at Mach 1.2–1.45, 7–16% high at Mach 1.6–3, within 4% at Mach 4–5. |
 | Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (check) | NACA RM L56G24, free flight | Drag 7.4% low (the model's instrument fairings, not in the app's design, are part of that); CP within 1% of length (6% forward before the supersonic body terms). |
 | Slender missile with small tail fins, Mach 0.6–3.95 (check) | NASA TM-2005-213541, configuration 3, wind tunnel (the report's digital data) | Drag less base 6–17% high outside Mach 0.9–1.2; 100% high at Mach 0.9 and 35% at 1.19 (gap 12); CP 4–9% of length forward; CNα within 4% to Mach 1.19, 17% high at Mach 1.7, within 10% above. |
-| Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 5.8% (bias +2.1%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.5%). Below Mach 0.8, 3.8%; Mach 0.8–1.2, 6.1%; above 1.2, 7.3%. As true heights: 8.6% and 5.4%. |
+| Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 6.1% (bias +2.4%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.5%). Below Mach 0.8, 3.8%; Mach 0.8–1.2, 6.1%; above 1.2, 7.3%. As true heights: 8.6% and 5.4%. |
+| Drag coasting at Mach 2.0–2.8, 27,000–54,000 ft (check) | Qu8k's flight recorder: its accelerometer in the coast, with the rocket weighed after the flight | App 22% high with the air aloft as warm as at the pad, 12% with standard air aloft (the day's upper air isn't known). One flight; nothing was changed on it. |
 | Nose drag to Mach 2 | NASA TR R-100 | These are the source curves, so this isn't an independent check. |
 | Apogee, 65 flights | OpenRocket 24.12 | Median +0.9%, typical ±1.5%, worked out before build 288 and not redone. Another program, not a measurement. |
 | Large angles of attack, rounded tips, pods, tube fins, drag above Mach 5 | — | Not checked against measurements. The app says so on any flight that passes Mach 5. |
@@ -191,14 +192,16 @@ standard the same pressure change spans more height, so the altimeter reads low:
 LDRS-26's 100 °F (Featherweight's Raven manual says 10% or more; Nakka's flights with GPS and a barometric altimeter
 side by side show the same). `validation/flights.js` compares those 17 with what the altimeter would have read at
 the simulated apogee, for both the app's and RASAero II's predictions; `--geometric` compares true heights instead.
-As the altimeter reads, the app is 5.8% off with a +2.1% bias and RASAero II 5.2% with −3.5%; as true heights the
-app would be 8.6% (+7.7%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
+As the altimeter reads, the app is 6.1% off with a +2.4% bias and RASAero II 5.2% with −3.5%; as true heights the
+app would be 8.9% (+8.0%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
 that the air aloft is as much warmer than standard as the air at the pad, which is doubtful for Don't Debate This
 (56,000 ft; 14% low on this reading). A well-mixed layer to 3 km above the pad with the standard tropopause, in
 place of a uniform shift, moves the 23 flights by a few tenths of a percent: the result does not hang on the
 profile; that one flight does. What is left below Mach 0.8 is the EZI-65 (+9%; its file says 70 °F, and it is flown at the
 100 °F of the other six LDRS-26 flights) and Thunder and Lightning (+6%); above it, Raven
-(+22%) and Proteus 6 (+17%, measured by accelerometer).
+(+22%), Proteus 6 (+17%, measured by accelerometer) and Qu8k (+17.5%: its recorder shows the motor delivered less
+than the file's thrust curve and that the reported apogee is the accelerometer integrated without a zero correction;
+VALIDATION.md, "Drag above Mach 2 measured in a flight").
 
 The Results tab says what a barometric altimeter would read for the predicted apogee when the day's air puts it 2%
 or more from the true height.
