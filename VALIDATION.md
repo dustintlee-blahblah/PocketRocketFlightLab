@@ -24,7 +24,8 @@ In short:
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8–5.9%, CP 0.7% of length, CNα 10% |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 1.2% |
 | Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.1%, bias +2.4% (RASAero II: 5.2%, −3.5%) |
-| Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high, depending on the upper air that day |
+| Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high; the rocket bled tracking smoke into its base, which lowers its drag |
+| How drag changes with height in a supersonic coast | Four tracked two-stage flights, Mach 3.3–1.6, 28,000–70,000 ft | the app's rise is 0–8% more than the flights' |
 | Apogee and coast drag of weighed, logged hobby rockets | 7 flights of 3 rockets, Harvey Mudd College data, Mach 0.3–0.9 | as their design files are set up (polished, no rail buttons): apogee 13.8% high, drag 15.7% low; with regular paint and rail buttons: apogee 3.5%, drag 6.3% |
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
@@ -290,13 +291,45 @@ Over the whole stretch the app is **22% high** (measured 0.314, app 0.384) with 
 pad, which is what the app assumes from a pad temperature, and **12% high** (0.331 against 0.372) with standard air
 aloft; the day's upper air isn't known. With no zero correction it would be 33% and 23%. The measured coefficient
 stays near 0.31 as the rocket climbs and slows; the app's rises, with its skin friction (the Reynolds number falls
-with the thinning air) and its base drag (the Mach number falls). Nothing has been changed on this one flight: it is
-the only supersonic drag measured in a hobby flight here, the wind-tunnel and free-flight cases above put the app
-within 6% from Mach 1.2 to 3 with no bias, and the upper air that day is a guess. It does say the app's high apogee
-for this rocket is not from too little drag.
+with the thinning air) and its base drag (the Mach number falls).
+
+**This is not a clean measurement of the airframe's drag, and nothing was changed on it.** Qu8k's motor carried a 6 in
+by 4 in grain of tracking smoke in its forward closure (the flight report, on the motor), which burned through the
+coast and vented through the nozzle into the base. Gas bled into a base raises the pressure there (it is how
+base-bleed artillery shells gain range), and the thinner the air, the larger the bleed is beside the flow around the
+base, so the base drag falls further the higher the rocket gets: the shape of the difference above. The four flights
+below, with nothing burning in the coast, rise as the app does. What Qu8k's recorder does show is that the app's high
+apogee for this rocket is not from too little drag: it comes from the thrust curve.
 
 The same integration gives the apogee the accelerometer implies: about 113,000 ft with the zero taken off (integrated
 to 40 s and coasting on from there), against the 121,478 ft reported from the uncorrected reading.
+
+### Does the drag coefficient rise with height as the app says? Four tracked two-stage flights
+
+The app takes the boundary layer as turbulent from the nose tip, so its skin-friction coefficient rises as a rocket
+climbs into thinner air, and its base drag rises as the rocket slows. If the boundary layer turned laminar in the
+thin air instead, a real rocket's drag coefficient would rise less than the app's, or fall. Four two-stage flights
+tracked by Multitronix's Kate system (BALLS 2014, 2017 and 2019; apogees from 90,000 to 142,000 ft) test that: their
+flight summaries (multitronix.com) plot the sustainer's accelerometer through the coast, and the plots are line work
+the numbers can be read from. Neither the sustainers' weights nor their shapes are published, so only the change
+along each coast can be compared: the drag deceleration over the dynamic pressure, as a ratio to its first point,
+against the app's drag coefficient for a stand-in sustainer (a 4 in body 100 in long, 5:1 von Kármán nose, four
+beveled fins) at the same Mach numbers and heights. `validation/coast-trend.js`; the readings are in
+`validation/cases.js` (`KATE_COASTS`).
+
+| Flight | From | To | Flight's rise | App's rise |
+|---|---|---|---|---|
+| Stratospheric Express | Mach 2.6, 28,500 ft | Mach 1.7, 55,900 ft | 1.30–1.43 | 1.40–1.43 |
+| Anniversary Special | Mach 2.7, 27,700 ft | Mach 1.6, 56,100 ft | 1.35–1.50 | 1.49–1.52 |
+| A Money Pit | Mach 2.4, 46,600 ft | Mach 2.1, 60,200 ft | 1.14–1.21 | 1.19–1.20 |
+| SVJ2 | Mach 3.3, 39,300 ft | Mach 2.5, 70,300 ft | 1.39–1.57 | 1.39–1.41 |
+
+Each range is from air aloft as warm as at the pad (the lower figure) to standard air aloft. Over the four coasts the
+app's rise is 8% more than the flights' with warm air aloft and the same as theirs with standard air. So up to
+60,000–70,000 ft these rockets' drag rose with height as a turbulent boundary layer's does, and the app's does; there
+is no sign of a laminar boundary layer to allow for. The limits: the stand-in is not these rockets (a longer or
+shorter body shifts the app's rise by a few points), the upper air on each day is bracketed, not known, and above
+about 60,000 ft the drag is too small beside the rocket's tilt and the sensor's zero to read.
 
 Hoerner's drag of surface imperfections (*Fluid-Dynamic Drag*, ch. V) was also tried and left out: a joint or step
 between airframe sections sits inside the boundary layer and feels only its slow air (q_eff ≈ 0.75·q·(h/δ)^1/3), so even
@@ -374,6 +407,7 @@ npm run validate:accuracy                                # every measured rocket
 npm run validate:flights                                 # apogee against measured flights
 npm run validate:logged                                  # apogee and coast drag against weighed, logged flights
 npm run validate:qu8k                                    # drag above Mach 2 against Qu8k's flight recorder
+npm run validate:coast-trend                             # how drag changes with height in four tracked flights' coasts
 ```
 
 The OpenRocket comparison also needs Java 17 or later and

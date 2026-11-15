@@ -2237,6 +2237,9 @@ ${f.parts.map(part).join("\n")}
  *     88 s, above 100,000 ft, where the drag is under 0.01 g.
  *   burnoutLb: the rocket weighed right after the flight (the report's table of weights).
  *   from, to: the seconds of the coast used: after the motor's tail-off, and while the drag is over 0.5 g.
+ * Not a clean drag measurement: the motor's forward closure held a 6 in by 4 in grain of tracking smoke (the flight
+ * report, on the motor), which burned through the coast and vented through the nozzle into the base. Gas bled into
+ * a base raises the pressure there, more so as the air thins, so the drag measured is below the airframe's own.
  */
 const QU8K_COAST = {
   title: "Qu8k (Q18000)",
@@ -2260,7 +2263,67 @@ const QU8K_COAST = {
   ],
 };
 
+/**
+ * Four two-stage flights tracked by Multitronix's Kate system, whose flight summaries (multitronix.com, "Flights")
+ * plot the sustainer's accelerometer through the coast. Read from the plots' line work: three-second means of the
+ * drag deceleration (the plotted acceleration less gravity, taken as vertical), with the accelerometer's speed and
+ * the GPS height at the middle of each, while the drag is over 0.4 g (below that the tilt of the rocket and the
+ * sensor's zero matter too much). Neither the sustainers' weights nor their shapes are published, so these give how
+ * the drag coefficient changes along a coast, not its size.
+ *   rows: [seconds from liftoff, height above the pad (ft), speed (ft/s), drag deceleration (g)]
+ */
+const KATE_COASTS = [
+  {
+    title: "Stratospheric Express (N5800 to N3301), BALLS 2017",
+    site: 3941,
+    tF: 78,
+    rows: [
+      [19.5, 28506, 2596, 2.951],
+      [22.5, 35356, 2275, 1.712],
+      [25.5, 42206, 2039, 1.172],
+      [28.5, 49056, 1860, 0.75],
+      [31.5, 55906, 1698, 0.506],
+    ],
+  },
+  {
+    title: "Anniversary Special (3 N2400 to N2400), BALLS 2014",
+    site: 3900,
+    tF: 80,
+    rows: [
+      [17, 27668, 2748, 4.692],
+      [20, 35068, 2294, 2.616],
+      [23, 42468, 2006, 1.582],
+      [26, 49869, 1786, 0.998],
+      [29, 56123, 1612, 0.65],
+      [32, 60773, 1465, 0.421],
+    ],
+  },
+  {
+    title: "A Money Pit (N5800 to N1560), BALLS 2014",
+    site: 3900,
+    tF: 80,
+    rows: [
+      [26.5, 46567, 2409, 1.092],
+      [29.5, 53558, 2230, 0.743],
+      [32.5, 60193, 2070, 0.507],
+    ],
+  },
+  {
+    title: "SVJ2 (P8535 to O6061), BALLS 2019",
+    site: 3900,
+    tF: 80,
+    rows: [
+      [32, 39348, 3223, 2.059],
+      [35, 47090, 2960, 1.214],
+      [38, 54832, 2771, 0.77],
+      [41, 62574, 2613, 0.551],
+      [44, 70316, 2469, 0.428],
+    ],
+  },
+];
+
 module.exports = {
+  KATE_COASTS,
   QU8K_COAST,
   LOGGED,
   IN,

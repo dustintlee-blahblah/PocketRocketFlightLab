@@ -11,6 +11,9 @@
  * second and as a mean, for the sensor's zero as found in the near-vacuum coast and for an uncorrected zero, and for
  * two columns of air: as warm aloft as at the pad (what the app assumes from a pad temperature), and standard.
  *
+ * Not a clean measurement of the airframe's drag: the motor bled tracking smoke into the base through the coast (see
+ * QU8K_COAST), which lowers the base drag, the more so the higher the rocket is.
+ *
  * The same integration gives the apogee the accelerometer implies for each zero, against the 121,478 ft reported.
  */
 "use strict";
