@@ -1151,7 +1151,7 @@ export function simulate(D, L, m, mb, opts = {}) {
               packed: !dual ? "chute" : aftMain ? "main" : "drogue",
             });
           else if (dual && aftMain && (phase === "drogue" || phase === "free") && !(mainAlt >= z))
-            ejLives.push({ t, alt: z, v: airSp(z, vx, vy, vz, t), packed: "main" });
+            ejLives.push({ t, alt: z, v: airSp(z, vx, vy, vz, t), packed: "main", mainAlt });
         }
       }
       if (phase === "flight" && ((tDep != null && t >= tDep - 1e-9) || (noChute && st.tApo != null))) {

@@ -408,7 +408,9 @@ function firstTiles(st) {
 // every ejection charge in the flight, in order: the motors' delay charges, and the altimeter, timer or apogee charge for each chute
 /* a live motor charge that fires while a chute set to open some other way (apogee, altitude, timer) is still packed: the
    simulation follows the design, as OpenRocket does, but in the real rocket the charge could blow that chute out early or
-   damage the rocket */
+   damage the rocket. One case is flown that way on purpose: a main held shut by a chute release (a Jolly Logic Chute
+   Release, say), which the motor's charge puts out at apogee and the release opens at its altitude. The app can't tell
+   whether the rocket has one, so a charge after apogee with the main set for a lower altitude is described both ways. */
 /**
  * The warning for a live motor charge that fires while a chute set to open another way is still packed.
  * @param {object} st
@@ -428,10 +430,18 @@ export function ejLiveFlag(st, stage) {
         : e.dt < 0
           ? `${(-e.dt).toFixed(1)} s before ${apo}`
           : `${e.dt.toFixed(1)} s after ${apo}`;
-  const fast = e.v > 30 || (e.packed === "main" && e.dt != null && e.dt > 0);
+  const at = `(${fmt(e.alt, "alt")} ${uname("alt")}, ${fmt(e.v, "speed")} ${uname("speed")})`,
+    fix =
+      "use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal";
+  // after apogee, with the main set for a lower altitude: how a chute release flies
+  if (e.packed === "main" && e.dt != null && e.dt > -0.1)
+    return [
+      e.v > 30 ? "bad" : "warn",
+      `The ${stage ? stage + " " : ""}motor’s ejection charge fires ${when} ${at}, but the ${what} is set to open later${e.mainAlt > 0 && isFinite(e.mainAlt) ? `, at ${fmt(e.mainAlt, "alt")} ${uname("alt")}` : ", at its lower altitude"}. That is right with a chute release (a Jolly Logic Chute Release, for one): the charge puts the bundled chute out and the release opens it at that altitude. Without a chute release the charge blows the main out when it fires, so ${fix}.${e.v > 30 ? " Either way, the rocket is moving fast when the charge fires: a delay nearer the ideal is easier on it." : ""}`,
+    ];
   return [
-    fast ? "bad" : "warn",
-    `The ${stage ? stage + " " : ""}motor’s ejection charge fires ${when} (${fmt(e.alt, "alt")} ${uname("alt")}, ${fmt(e.v, "speed")} ${uname("speed")}) while the ${what} is still packed${e.packed === "main" ? " for its lower altitude" : ""}. The simulation opens it as the design sets it, but a live charge can blow it out early or damage the rocket. Use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal.`,
+    e.v > 30 ? "bad" : "warn",
+    `The ${stage ? stage + " " : ""}motor’s ejection charge fires ${when} ${at} while the ${what} is still packed${e.packed === "main" ? " for its lower altitude" : ""}. The simulation opens it as the design sets it, but a live charge can blow it out early or damage the rocket. ${fix[0].toUpperCase() + fix.slice(1)}.`,
   ];
 }
 /**
