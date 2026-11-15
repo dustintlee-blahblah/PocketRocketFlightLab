@@ -63,17 +63,41 @@ function stagCp(M) {
 function tipCapCd(M) {
   return M <= 0.8 ? 0 : (stagCp(M) / 2) * smooth01((M - 0.8) / 0.5);
 }
-/* Transonic peak of a fin's wave drag over (t/c)^(5/3), against aspect ratio × (t/c)^(1/3): MIL-HDBK-762 figure 5-130
-   (rectangular fins), the highest point of each curve. Used for its trend only (see the fins in cdParts). */
-const FIN_PEAK_AR = [
-  [0, 0],
-  [0.25, 0.55],
-  [0.5, 1.15],
-  [1, 2.1],
-  [1.5, 2.65],
-  [2, 3.0],
-  [3, 3.25],
-];
+/* A fin's pressure drag through Mach 1: McDevitt, NACA Report 1253 (1955), figure 8, the summary of 22 rectangular
+   wings (NACA 63A sections 2 to 10% thick, aspect ratios 0.5 to 6) correlated by the transonic similarity rules. The
+   minimum pressure drag coefficient over (t/c)^(5/3), on the wing's area, against (M² − 1)/(t/c)^(2/3) (FIN_TR_X),
+   one row for each value of aspect ratio × (t/c)^(1/3) (FIN_TR_A). A stubby fin's drag rises later and stops far
+   lower than a long one's. */
+const FIN_TR_X = [-1.8, -1.6, -1.4, -1.2, -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1],
+  FIN_TR_A = [0, 0.25, 0.5, 1, 1.5, 2, 2.5, 3],
+  FIN_TR = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0.04, 0.07, 0.105, 0.145, 0.19, 0.255, 0.335, 0.42, 0.53, 0.69, 0.82, 0.94, 1.0, 1.05],
+    [0, 0.07, 0.14, 0.2, 0.255, 0.335, 0.46, 0.62, 0.855, 1.1, 1.32, 1.48, 1.56, 1.63, 1.7],
+    [0, 0.2, 0.37, 0.53, 0.655, 0.8, 1.05, 1.53, 1.95, 2.23, 2.39, 2.48, 2.53, 2.58, 2.63],
+    [0, 0.33, 0.59, 0.8, 0.99, 1.33, 1.77, 2.35, 2.73, 2.84, 2.88, 2.92, 2.95, 2.98, 2.99],
+    [0, 0.42, 0.7, 1.02, 1.49, 2.03, 2.57, 3.03, 3.05, 3.07, 3.06, 3.05, 3.1, 3.08, 3.07],
+    [0, 0.45, 0.78, 1.18, 1.9, 2.56, 3.02, 3.21, 3.21, 3.22, 3.19, 3.15, 3.1, 3.08, 3.07],
+    [0, 0.46, 0.78, 1.25, 2.01, 2.64, 3.07, 3.31, 3.29, 3.29, 3.24, 3.16, 3.1, 3.08, 3.07],
+  ];
+/**
+ * The chart above: pressure drag over (t/c)^(5/3) at a similarity Mach parameter and slenderness.
+ * @param {number} xi (M² − 1)/(t/c)^(2/3); held at the chart's last value past 1
+ * @param {number} as aspect ratio × (t/c)^(1/3); held at 3 past it
+ * @returns {number}
+ */
+function finTransonic(xi, as) {
+  if (xi <= FIN_TR_X[0]) return 0;
+  const x = Math.min(xi, 1),
+    a = Math.min(Math.max(as, 0), 3);
+  let i = 1,
+    j = 1;
+  while (i < FIN_TR_X.length - 1 && FIN_TR_X[i] < x) i++;
+  while (j < FIN_TR_A.length - 1 && FIN_TR_A[j] < a) j++;
+  const u = (x - FIN_TR_X[i - 1]) / (FIN_TR_X[i] - FIN_TR_X[i - 1]),
+    w = (a - FIN_TR_A[j - 1]) / (FIN_TR_A[j] - FIN_TR_A[j - 1]);
+  return mix(mix(FIN_TR[j - 1][i - 1], FIN_TR[j - 1][i], u), mix(FIN_TR[j][i - 1], FIN_TR[j][i], u), w);
+}
 /**
  * Base drag coefficient on the base area at Mach M (Fleeman's correlation). Kept for protuberances in crossflow
  * (rail buttons); the rocket's own bases use the TN 3819 curves below.
@@ -1701,31 +1725,32 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
       const tanL = Math.sqrt(Math.max(1 - c2, 0)) / Math.max(f.cosL, 1e-6),
         bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), tanL, 0.4),
         rise = smooth01((M - Mdd) / (1.05 - Mdd));
-      /* Near Mach 1 thin-airfoil theory is too low for fins with little sweep: by transonic similarity the drag there
-         goes as (t/c)^(5/3). The peak is 5.7·(t/c)^(5/3) times the fifth power of cos Λ / cos 30° (the sweep
-         rule fitted to the RM-10's fins, units-and-fin-edges.js), from the drag the Arcas model's 30° fins add (NASA TN D-4013, fins on minus fins off,
-         less their friction: 0.03 on the fin area from Mach 0.95 to 1.05, back to the linear value by Mach 1.2);
-         the 45° fins of TR R-100 figure 5 peak at 0.0055, and this gives 0.0057. Sweep past 30° also delays the
-         rise (those 45° fins show none below Mach 0.97). The larger of the two terms is used.
-         Both of those fins have about the same slenderness, aspect ratio × (t/c)^(1/3) = 0.54 and 0.61 (aspect
-         ratio of two panels joined at the root, 2·span²/area). Transonic similarity theory makes the peak depend on
-         that number: MIL-HDBK-762 figure 5-130 (rectangular fins) has peaks of 0.55, 1.15, 2.1, 2.65, 3.0 and 3.25
-         times (t/c)^(5/3) at 0.25, 0.5, 1, 1.5, 2 and 3. The measurements run several times the chart's level, so
-         only its trend is used: the peak is scaled by the chart's value over its value at 0.55, where it was
-         measured. A stubby fin (aspect ratio 0.8, 3% thick) gets 0.4 of the peak, a long one (3, 5% thick) 1.7.
-         The peak belongs to a sharp leading edge, which both measured fin sets had; a fin with a blunt front and a
-         tapered back has its leading edge's own rise through Mach 1 instead (above). Nothing measured says how a
-         blunt back changes the peak of a sharp-nosed fin, so it is left whole. */
+      /* Through Mach 1 thin-airfoil theory doesn't hold: the drag there goes as (t/c)^(5/3) and depends on how
+         stubby the fin is. It is read from NACA Report 1253's correlation of 22 rectangular wings (finTransonic),
+         with the aspect ratio of two panels joined at the root, 2·span²/area. Past the chart's end it eases back
+         toward the linear value; the larger of the two terms is used.
+         Sweep: the chart's wings are unswept. A fin swept past 30° takes the chart at M·√r and r⁵ of its drag,
+         r = cos Λ / cos 30° (the sweep rule fitted to the RM-10's 60° fins, units-and-fin-edges.js), which delays
+         and weakens the rise; the 45° fins of TR R-100 figure 5 show none below Mach 0.97.
+         Until build 307 the level was set from the drag the Arcas model's fins add near Mach 1 (NASA TN D-4013, 0.03
+         on the fin area) and only the chart's trend with aspect ratio was used. That is several times the chart, and
+         it put twice the measured drag on a slender missile model with stubby 7%-thick fins at Mach 0.9 (NASA
+         TM-2005-213541), where the chart agrees with the measurement. The Arcas fins sit on a 15° boattail and carry
+         grit strips, so what they add is more than their own wave drag.
+         The chart is for airfoil sections; a beveled plate or a double wedge is taken to follow it too. A fin with a
+         blunt front and a tapered back has its leading edge's own rise through Mach 1 instead (above). Nothing
+         measured says how a blunt back changes the rise of a sharp-nosed fin, so it is left whole. */
       const lin = (rise * finK(f, Math.max(M, 1.05), bEff, cb2, !leBlunt, te === "sharp") * f.tc * f.tc) / bEff,
+        tcT = Math.min(f.tc, 0.12),
+        sw = finSweepRatio(f.cosL),
+        t23 = Math.pow(tcT, 2 / 3),
+        mEnd = Math.sqrt(1 + t23) / Math.sqrt(sw), // where the chart ends, (M² − 1)/(t/c)^(2/3) = 1
         peak = leBlunt
           ? 0
-          : 5.7 *
-            Math.pow(Math.min(f.tc, 0.12), 5 / 3) *
-            (tblAt(FIN_PEAK_AR, Math.min(((2 * f.s * f.s) / f.area) * Math.cbrt(Math.min(f.tc, 0.12)), 3)) /
-              tblAt(FIN_PEAK_AR, 0.55)) *
-            Math.pow(finSweepRatio(f.cosL), FIN_SWEEP_N) *
-            smooth01((M - Math.min((Mdd - 0.03) / Math.sqrt(finSweepRatio(f.cosL)), 0.98)) / 0.09) *
-            (M > 1.05 ? Math.exp(-(M - 1.05) / 0.2) : 1);
+          : finTransonic((M * M * sw - 1) / t23, ((2 * f.s * f.s) / f.area) * Math.cbrt(tcT)) *
+            Math.pow(tcT, 5 / 3) *
+            Math.pow(sw, FIN_SWEEP_N) *
+            (M > mEnd ? Math.exp(-(M - mEnd) / 0.2) : 1);
       pressure += (Math.max(lin, peak) * f.n * f.area) / S;
     }
   }
