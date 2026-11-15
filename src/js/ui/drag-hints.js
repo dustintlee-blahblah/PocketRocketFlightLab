@@ -66,10 +66,10 @@ function dragHints() {
       if (p60 >= 0.02)
         out.push([
           "finish",
-          `The finish is set to polished or smoother. A painted rocket is rougher, and at this flight's speed that counts: smooth unsanded paint (20 µm) gives ${p20 < 0.005 ? "about the same drag" : pct(p20) + " more drag"}, regular paint (60 µm) ${pct(p60)} more. Choose the one the rocket really has.`,
+          `The finish is set to polished or smoother. A painted rocket is rougher, and at this flight's speed that counts: regular paint (60 µm, the usual choice for a painted rocket) gives ${pct(p60)} more drag; smooth paint (20 µm, glossy and wet-sanded) ${p20 < 0.005 ? "about the same as polished" : pct(p20) + " more"}. Choose the one the rocket really has.`,
           [
-            ["Smooth paint", () => hintFinish("smooth")],
             ["Regular paint", () => hintFinish("normal")],
+            ["Smooth paint", () => hintFinish("smooth")],
             ["Keep polished", () => hintKeep("finish")],
           ],
         ]);

@@ -82,15 +82,17 @@ export const BLD_BUMPS = [
  * Surface finishes offered: [OpenRocket name, label]. The names and roughness heights are OpenRocket's, kept so its
  * files open unchanged; the labels add what each height corresponds to in Missile DATCOM's table of equivalent sand
  * roughness (user's manual, table 5: polished metal 0.5–2 µm, carefully applied smooth matte paint 6 µm, average
- * camouflage paint 10 µm, production spray paint 30 µm), which puts paint well below OpenRocket's own words for it.
+ * camouflage paint 10 µm, production spray paint 30 µm). That table is for the paint film alone; a finished hobby rocket
+ * also has tube spirals, seams, decals and fillets, and the weighed, logged flights in VALIDATION.md fit the 60 µm
+ * choice (with their rail buttons), so that one is named as the usual choice for a painted rocket.
  */
 export const BLD_FINISH = [
   ["mirror", "Mirror (0 µm)"],
   ["finishpolished", "Finish-polished (0.5 µm)"],
   ["polished", "Polished (2 µm)"],
-  ["optimum", "Optimum paint: sanded smooth (5 µm)"],
-  ["smooth", "Smooth paint: sprayed, unsanded (20 µm)"],
-  ["normal", "Regular paint: rough or brushed (60 µm)"],
+  ["optimum", "Optimum paint: sanded and polished (5 µm)"],
+  ["smooth", "Smooth paint: glossy, wet-sanded (20 µm)"],
+  ["normal", "Regular paint: a typical painted rocket (60 µm)"],
   ["unfinished", "Unfinished (150 µm)"],
   ["roughunfinished", "Rough unfinished (250 µm)"],
   ["rough", "Rough (500 µm)"],

@@ -116,7 +116,7 @@ const { chromium } = require("playwright");
     runAll();
     const txt = () => [...document.querySelectorAll("#draghints .draghint")].map((d) => d.dataset.hint);
     const out = { first: txt(), finish0: lastSim.D.finish, rail0: lastSim.D.railPreset, apo0: lastSim.st.maxAlt };
-    const fb = document.querySelector('#draghints .draghint[data-hint="finish"] button:nth-child(2)');
+    const fb = document.querySelector('#draghints .draghint[data-hint="finish"] button');
     if (fb) fb.click();
     out.finish1 = lastSim.D.finish;
     out.afterFinish = txt();
