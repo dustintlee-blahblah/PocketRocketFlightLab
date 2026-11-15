@@ -23,7 +23,7 @@ In short:
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.011 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8–5.9%, CP 0.7% of length, CNα 10% |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 1.2% |
-| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.1%, bias +2.4% (RASAero II: 5.2%, −3.5%) |
+| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.6%, bias +3.1% (RASAero II: 5.2%, −3.5%) |
 | Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high; the rocket bled tracking smoke into its base, which lowers its drag |
 | Drag from Mach 2.1 down measured in a flight | Proto's flight recorder, coasting and falling, shape from a photograph | app within 8%, a little high |
 | How drag changes with height in a supersonic coast | Four tracked two-stage flights, Mach 3.3–1.6, 28,000–70,000 ft | the app's rise is 0–8% more than the flights' |
@@ -186,7 +186,7 @@ and Black Rock flights from J to Q motors, and the high-altitude Qu8k (121,478 f
 own thrust curve for the motor (`validation/flight-motors.eng`, from OpenRocket's motor database). The geometry and
 numbers are copied into `validation/cases.js` (`FLIGHTS`); the files themselves aren't in this repository.
 
-The figures are for the current drag model (build 306). Seventeen of the apogees were read by barometric altimeters,
+The figures are for the current drag model (build 307). Seventeen of the apogees were read by barometric altimeters,
 which read low in air warmer than standard, so those are compared with what the altimeter would have read at the
 simulated apogee, for the app and for RASAero II alike (`--geometric` compares true heights instead; see "Notes on
 the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
@@ -208,38 +208,38 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 | Rabia, short fin can | 0.90 | 10,584 | barometric altimeter | −10.2% | −0.6% |
 | Raven, LDRS-26 | 1.15 | 8,815 | barometric altimeter | −3.8% | +22.0% |
 | Rabia | 1.22 | 12,745 | barometric altimeter | −9.6% | +7.9% |
-| Torrent | 1.27 | 12,807 | barometric altimeter | +1.1% | +7.4% |
+| Torrent | 1.29 | 12,807 | barometric altimeter | +1.1% | +14.5% |
 | Kline-Rogers L500 rocket, USXRL-89 | 1.95 | 24,771 | optical tracking | +7.0% | −2.3% |
-| Kinsel A-601 (P4935) | 2.10 | 42,771 | GPS | −3.9% | +4.4% |
-| Full Metal Jacket, BALLS 005 | 2.27 | 37,981 | optical tracking | +2.1% | −2.9% |
-| Full Metal Jacket, Black Rock 6 | 2.43 | 30,038 | optical tracking | +8.4% | −0.2% |
+| Kinsel A-601 (P4935) | 2.11 | 42,771 | GPS | −3.9% | +5.8% |
+| Full Metal Jacket, BALLS 005 | 2.28 | 37,981 | optical tracking | +2.1% | +1.8% |
+| Full Metal Jacket, Black Rock 6 | 2.44 | 30,038 | optical tracking | +8.4% | +3.1% |
 | Proteus 6 (P9381) | 2.95 | 85,067 | integrated accelerometers | −4.2% | +16.8% |
-| Don't Debate This (N5800 minimum diameter) | 3.04 | 56,573 | average of two barometric altimeters | −1.2% | −14.1% |
+| Don't Debate This (N5800 minimum diameter) | 3.04 | 56,573 | average of two barometric altimeters | −1.2% | −14.0% |
 | Qu8k (Q18000) | 3.57 | 121,478 | integrated accelerometer | −1.5% | +17.5% |
 
 | Mean absolute error (bias) | Flights | RASAero II | App |
 |---|---|---|---|
-| All | 23 | 5.2% (−3.5%) | 6.1% (+2.4%) |
+| All | 23 | 5.2% (−3.5%) | 6.6% (+3.1%) |
 | Below Mach 0.8 | 8 | 5.0% (−4.7%) | 3.8% (+1.6%) |
 | Mach 0.8–1.2 | 6 | 6.9% (−6.9%) | 6.1% (+1.3%) |
-| Above Mach 1.2 | 9 | 4.3% (−0.2%) | 8.2% (+3.8%) |
+| Above Mach 1.2 | 9 | 4.3% (−0.2%) | 9.3% (+5.7%) |
 
-Compared as true heights the app is 8.9% off (+8.0%) and RASAero II 5.4% (+1.8%).
+Compared as true heights the app is 9.4% off (+8.8%) and RASAero II 5.4% (+1.8%).
 
 One more flight, shared by a flyer and not in this repository: a **CT Concept 98 with an external fin can** on a
 Cesaroni 6251M1400 (Mach 1.6, Black Rock), **GPS apogee about 17,400 ft**. With the launch conditions of its run saved in
 the app, the app gave 17,417 ft (+0.1%) and OpenRocket 24.12 16,875 ft (−3.0%); that was under the model before build 288
 and has not been rerun. It isn't in the averages above, which cover the RASAero II files only.
 
-**The app is 6% off on these flights, a little high, and 8% above Mach 1.2.** None of its constants were set from
+**The app is 7% off on these flights, a little high, and 9% above Mach 1.2.** None of its constants were set from
 these flights, and the comparison is not entirely independent of RASAero II either: these are the flights RASAero
 II's author chose to publish, and its own model is partly calibrated on flights like them. Flight-to-flight scatter
 is real too: the three Test Pilot School rockets are the same airframe on the same motor within 0.16 lb, and their
 measured apogees spread over 7%.
 
-**What is left is scatter, not a steady error.** Above Mach 1.2 three flights are within 3%, three are 4–8% high, and
-the rest are Qu8k (+17.5%), Proteus 6 (+16.8%) and Don't Debate This (−14.1%); just under Mach 1.2, Raven is +22%.
-Each of those has a reason of its own:
+**What is left is mostly scatter.** Above Mach 1.2 three flights are within 3%, Kinsel A-601 and Rabia are 6–8%
+high, and the rest are Qu8k (+17.5%), Proteus 6 (+16.8%), Torrent (+14.5%) and Don't Debate This (−14.0%); just
+under Mach 1.2, Raven is +22%. Each of those has a reason of its own:
 
 - **Qu8k: the motor and the measurement, not the drag.** Its flight recorder is public, and
   `validation/qu8k-coast.js` works through it (below). The thrust curve in the file is the pre-flight
@@ -253,6 +253,9 @@ Each of those has a reason of its own:
 - **Don't Debate This** reached 56,000 ft, read by barometric altimeters. Its −14.1% assumes the air that high was as
   much warmer than standard as the air at the pad; as a true height it is −4.8%.
 - **Raven** is a single flight of a 1.75 in rocket 42 diameters long with rounded fins; with regular paint it is +7%.
+- **Torrent** has rounded fins too, and a 1/16 in step at its fin can. Until build 307 that step was charged most
+  of stagnation pressure, two to seven times what steps measure (NASA TN D-8040), which hid about 7% of apogee;
+  the rockets with rounded fins need more drag than the app gives them (AERODYNAMICS.md, known gaps).
 
 **How the rockets were finished is the largest unknown.** The files describe most of these rockets as "Smooth (Zero
 Roughness)", RASAero II's own setting, so they fly here with the nearest OpenRocket finish, polished (2 µm). How they
@@ -260,9 +263,9 @@ were really finished isn't recorded:
 
 | Finish given to the "zero roughness" rockets | Mean error | Bias | Above Mach 1.2 |
 |---|---|---|---|
-| Polished, 2 µm (as the files say; the headline numbers) | 6.1% | +2.4% | 8.2% |
-| Smooth paint, 20 µm | 6.3% | +0.9% | 8.3% |
-| Regular paint, 60 µm | 9.0% | −6.0% | 11.2% |
+| Polished, 2 µm (as the files say; the headline numbers) | 6.6% | +3.1% | 9.3% |
+| Smooth paint, 20 µm | 6.3% | +1.6% | 8.4% |
+| Regular paint, 60 µm | 8.8% | −5.5% | 10.7% |
 
 Regular paint on all of them overshoots (the student rockets then come out 7–13% low, the L500 21% low), so the real
 finishes were probably mixed, and smoother on these rockets than on the weighed hobby rockets further down, which
@@ -374,9 +377,11 @@ burnout mass, the photograph and the unknown fin thickness allow (1/8 in fins wo
 
 One thing it showed about the app: the fin can is a welded sleeve over the motor case, and how much of a step its
 forward edge makes can't be seen. Entered as a 0.19 in step (a short transition from 3.9 to 4.28 in), the app's drag
-comes out 40–50% above the measurement over Mach 1 and about 20% above it below. The app gives a short, steep
-increase in diameter the full pressure of the outer flow, though a step that small lies inside the boundary layer.
-The figures above are for a flush fin can.
+came out 40–50% above the measurement over Mach 1 and about 20% above it below: it gave a short, steep increase in
+diameter most of stagnation pressure, though a step that small lies inside the boundary layer. Build 307 gives
+steps their measured drag (NASA TN D-8040; AERODYNAMICS.md, "Shoulders, flares and steps"), and with that the
+0.19 in step comes out 20–30% above the measurement, so Proto's real step was smaller than that. The figures above
+are for a flush fin can.
 
 Hoerner's drag of surface imperfections (*Fluid-Dynamic Drag*, ch. V) was also tried and left out: a joint or step
 between airframe sections sits inside the boundary layer and feels only its slow air (q_eff ≈ 0.75·q·(h/δ)^1/3), so even
