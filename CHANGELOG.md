@@ -4,6 +4,25 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 304 (2026-11-15)
+
+**Results**
+- **Notes on what usually makes the predicted drag too low**: when a design has a polished (or smoother) finish, or no rail buttons or launch lug, a note under the results says what each is worth on that flight, with a button to switch to smooth or regular paint, or to add a pair of 1010 rail buttons (a launch lug on small rockets). "Keep polished" or "It has none" hides the note for that design. Weighed, logged flights of ordinary kit rockets came out 4–23% below the apogee predicted for their design files set up that way, and within a few percent with regular paint and rail buttons; a pair of 1010 buttons adds about a fifth to the drag of a 1.6 in rocket.
+
+**Flight Log & Calibration**
+- **Drag measured by the altimeter's accelerometer**: importing a file with an acceleration column (Altus Metrum and Featherweight files have one) keeps the coast, between burnout and apogee, where an accelerometer reads the drag directly whatever the motor did. The log shows that drag as a multiple of the design's estimate, and a calibration uses it in place of the apogee when every ticked flight has it. It is used only when the boost agrees with the rocket's weight and motor (within 12%) and the accelerometer's climb agrees with the barometer's (within 8%); otherwise the log says why not. The column check has the acceleration column and its unit.
+- **Featherweight Interface Program exports open** (the classic Raven's CSV, with a time column for every channel).
+
+**Stability**
+- **Above Mach 1, the nose and the body behind it take their lift and center of pressure from measured charts** (MIL-HDBK-762 figures 5-4 to 5-7: ogive-cylinders, and cone-cylinders for conical noses), and **the lift the fins put on the body is added** (NACA Report 1307), faded in from Mach 0.9 to 1.5. On the measured rockets the supersonic lift error is roughly halved and a delta-fin missile's center of pressure goes from 6% of its length forward to within 1%; the Arcas's is 4–5% forward above Mach 3 (was 2–3%), the cautious direction. Nothing changes below Mach 0.9, so subsonic flights fly exactly as before. No measured rocket here has a conical nose, so the cone chart is unchecked.
+
+**Under the hood**
+- **Validation: seven weighed, logged flights** of three kit rockets (Harvey Mudd College's published data), apogee and coast drag: `npm run validate:logged`. As their design files are set up the app is 13.8% high in apogee and 15.7% low in drag; with regular paint and rail buttons 3.5% and 6.3%. VALIDATION.md has the table.
+- **Validation: the Arcas's normal-force slope**, with and without fins (NASA TN D-4013 and D-4014), is in the accuracy check.
+- **New test in the Check workflow** (`tests/coast.js`): a flight of known drag, written out as an altimeter file, must calibrate back to that drag from the coast; a file whose accelerometer reads low must be refused; the drag notes show and act.
+- AERODYNAMICS.md lists the two supersonic stability terms, their scores and what is still open (lift below Mach 1, boattail lift above it, the unchecked cone chart).
+- The regression test's results text is re-recorded for the notes (three of the shipped examples have a polished finish or no rail buttons) and its supersonic stability figures for the new terms; flights below Mach 0.9 are identical.
+
 ## Build 303 (2026-11-14)
 
 **Rocket builder**
