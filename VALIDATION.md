@@ -164,6 +164,9 @@ taken out, so it is compared with the app's drag without its base drag.
 | CP, mean error | 7.6% of length (app forward) | 9.7% forward | 4.7% forward | 4.0% forward |
 | CNα, mean error | 3.8% low | 14.5% low | 17.0% low | 25.5% low |
 
+(With build 307's drag the middle column is 25% high: the early rise was the fins', whose drag near Mach 1 is now
+read from NACA Report 1253's chart for stubby wings. The paragraph below describes the model before it.)
+
 Two things stand out. Through Mach 1 the app's drag rises far too early and too much on this body (+37% at Mach 0.9,
 where the tunnel measured no rise yet, and +60% at 1.19); its short nose and the cone behind it are what the app's
 transonic drag works from, so that is where to look. And with the Aerobee and RM L56G24, this is the third rocket where
