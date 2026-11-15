@@ -4,6 +4,17 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 305 (2026-11-15)
+
+**Rocket builder**
+- **The finish names say which one a painted rocket is**: Regular paint (60 µm) is now "a typical painted rocket", where it read as a rough or brushed coat and steered people away from the choice that fits. Smooth paint (20 µm) is a glossy, wet-sanded finish, and Optimum paint (5 µm) one sanded and polished. The roughness stands for the whole surface as it flies (tube spirals, seams, decals, fillets and the paint's texture), not the paint film alone; the weighed, logged flights matched with regular paint and their rail buttons counted. The finish field's help says so, and that the values are estimates.
+
+**Results**
+- **The finish note offers regular paint first**, as the usual choice for a painted rocket.
+
+**Under the hood**
+- The regression test's results text is re-recorded for the note's wording; every flight is identical.
+
 ## Build 304 (2026-11-15)
 
 **Results**
