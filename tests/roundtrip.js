@@ -29,6 +29,7 @@ const TYPES = [
   ["buttons", "kid"],
   ["fly-away guide", "kid", { type: "bump", set: { shape: "flyaway", h: 0.02, len: 0.06, mass: 0.1 } }],
   ["chute", "kid"],
+  ["chute on a release", "kid", { type: "chute", set: { deploy: "altitude", alt: 150 } }],
   ["streamer", "kid"],
   ["cord", "kid"],
   ["mass", "kid"],

@@ -247,6 +247,8 @@ export function bldInfo(F) {
     deploy:
       "When it opens: at apogee, by the motor’s ejection charge, at a set altitude on the way down (usually the main), or on a timer after liftoff.",
     alt: "Height above the pad where it opens on the way down.",
+    release:
+      "Tick this when the parachute is wrapped in a chute release (a Jolly Logic Chute Release, for one). The motor’s ejection charge puts the bundled chute out near apogee, the rocket comes down fast on the bundle, and the release lets the chute open at the opening altitude.\n\nWith it ticked, the motor charge firing while this chute is still closed is expected, and isn’t flagged unless the rocket is moving fast when it fires.",
     lines: "Number of shroud lines, used for the weight.",
     packLen: "Length of the packed chute, streamer or cord inside the airframe, used for its weight and balance point.",
     width: "Width of the streamer.",

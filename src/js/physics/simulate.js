@@ -1142,16 +1142,18 @@ export function simulate(D, L, m, mb, opts = {}) {
         });
         // the charge pushes on the compartment nearest the tail: what's packed there matters
         const aftMain = !dual || D.aftChute === "main" || !(drogueDia > 0);
+        // a main held by a chute release comes out bundled, and stays bundled until its opening altitude
+        const rel = dual && aftMain && D.chuteRelease;
         if (!noChute && depMode !== "motor") {
           if (phase === "flight")
             ejLives.push({
               t,
               alt: z,
               v: airSp(z, vx, vy, vz, t),
-              packed: !dual ? "chute" : aftMain ? "main" : "drogue",
+              packed: !dual ? "chute" : rel ? "release" : aftMain ? "main" : "drogue",
             });
           else if (dual && aftMain && (phase === "drogue" || phase === "free") && !(mainAlt >= z))
-            ejLives.push({ t, alt: z, v: airSp(z, vx, vy, vz, t), packed: "main", mainAlt });
+            ejLives.push({ t, alt: z, v: airSp(z, vx, vy, vz, t), packed: rel ? "release" : "main", mainAlt });
         }
       }
       if (phase === "flight" && ((tDep != null && t >= tDep - 1e-9) || (noChute && st.tApo != null))) {
@@ -1346,10 +1348,16 @@ export function simulate(D, L, m, mb, opts = {}) {
     st.tEjectX = XEJ.map((e) => ({ t: tIgn + e.rel, name: e.name, delay: e.ej, n: e.n })).filter(
       (e) => st.tLand == null || e.t <= st.tLand + 1e-6,
     );
-  // a charge within 1.5 s of apogee, pushing on a drogue or single chute, is the usual motor backup: no warning
+  /* a charge within 1.5 s of apogee, pushing on a drogue or single chute, is the usual motor backup: no warning. Nor
+     for a main held by a chute release, which is meant to come out on the motor charge: that one is flagged only
+     when the charge fires well before apogee, or late enough that the rocket is moving fast. */
   for (const e of ejLives) {
     e.dt = st.tApo != null ? e.t - st.tApo : null;
-    if (!(e.packed !== "main" && e.dt != null && Math.abs(e.dt) <= 1.5)) {
+    const ok =
+      e.packed === "release"
+        ? e.dt != null && e.dt >= -1.5 && !(e.v > 30)
+        : e.packed !== "main" && e.dt != null && Math.abs(e.dt) <= 1.5;
+    if (!ok) {
       st.ejLive = e;
       break;
     }

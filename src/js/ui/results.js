@@ -433,11 +433,17 @@ export function ejLiveFlag(st, stage) {
   const at = `(${fmt(e.alt, "alt")} ${uname("alt")}, ${fmt(e.v, "speed")} ${uname("speed")})`,
     fix =
       "use a plugged motor if an altimeter handles deployment, or set the chute to open at the motor ejection charge with a delay near the ideal";
+  // a main held by a chute release is meant to come out on this charge: only its timing is the trouble
+  if (e.packed === "release")
+    return [
+      "warn",
+      `The ${stage ? stage + " " : ""}motor’s ejection charge puts the main out in its chute release ${when} ${at}${e.dt != null && e.dt < -1.5 ? ", while the rocket is still climbing" : ", while the rocket is moving fast"}. The release holds the chute closed${e.mainAlt > 0 && isFinite(e.mainAlt) ? ` until ${fmt(e.mainAlt, "alt")} ${uname("alt")}` : " until its opening altitude"}, but coming apart then is hard on the shock cord and the airframe. Choose a motor delay nearer the ideal.`,
+    ];
   // after apogee, with the main set for a lower altitude: how a chute release flies
   if (e.packed === "main" && e.dt != null && e.dt > -0.1)
     return [
       e.v > 30 ? "bad" : "warn",
-      `The ${stage ? stage + " " : ""}motor’s ejection charge fires ${when} ${at}, but the ${what} is set to open later${e.mainAlt > 0 && isFinite(e.mainAlt) ? `, at ${fmt(e.mainAlt, "alt")} ${uname("alt")}` : ", at its lower altitude"}. That is right with a chute release (a Jolly Logic Chute Release, for one): the charge puts the bundled chute out and the release opens it at that altitude. Without a chute release the charge blows the main out when it fires, so ${fix}.${e.v > 30 ? " Either way, the rocket is moving fast when the charge fires: a delay nearer the ideal is easier on it." : ""}`,
+      `The ${stage ? stage + " " : ""}motor’s ejection charge fires ${when} ${at}, but the ${what} is set to open later${e.mainAlt > 0 && isFinite(e.mainAlt) ? `, at ${fmt(e.mainAlt, "alt")} ${uname("alt")}` : ", at its lower altitude"}. That is right with a chute release (a Jolly Logic Chute Release, for one): the charge puts the bundled chute out and the release opens it at that altitude. If it flies with one, tick Held by a chute release on the parachute in the design and this caution goes away. Without a chute release the charge blows the main out when it fires, so ${fix}.${e.v > 30 ? " Either way, the rocket is moving fast when the charge fires: a delay nearer the ideal is easier on it." : ""}`,
     ];
   return [
     e.v > 30 ? "bad" : "warn",

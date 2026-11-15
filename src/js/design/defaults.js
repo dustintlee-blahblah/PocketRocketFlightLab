@@ -74,6 +74,7 @@ export function defaultDesign() {
     mainDia: 48 * IN,
     mainCd: 0.8,
     mainAlt: 500 * FT,
+    chuteRelease: false,
     transitions: [],
     orkApogee: null,
     orkMotor: null,

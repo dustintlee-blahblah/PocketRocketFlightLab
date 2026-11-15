@@ -554,6 +554,8 @@ export function bldFromOrk(xml, info) {
                 dia: num(e, "diameter"),
                 cd: /auto/i.test(txt(e, "cd") || "") ? 0.8 : num(e, "cd", 0.8),
                 ...dep(e),
+                // the app's own switch: the chute is bundled in a chute release until its opening altitude
+                ...(/true/i.test(txt(e, "prflrelease") || "") ? { release: true } : {}),
                 lines: Math.round(num(e, "linecount", 6)),
                 // a file's line length of 0 means no shroud lines; the builder's 0 means as long as the chute is wide,
                 // which is how it is written, so lines exactly that long are read back as following the chute

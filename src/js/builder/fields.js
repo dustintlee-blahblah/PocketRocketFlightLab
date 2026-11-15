@@ -69,7 +69,10 @@ export function bldFields(p) {
       BLD_DEPLOY.some((d) => d[0] === p.deploy) ? BLD_DEPLOY : [...BLD_DEPLOY, [p.deploy, `From file (${p.deploy})`]],
     ],
     ...(p.deploy === "altitude"
-      ? [["alt", "Opening altitude", "num", "alt"]]
+      ? [
+          ["alt", "Opening altitude", "num", "alt"],
+          ...(p.type === "chute" ? [["release", "Held by a chute release", "check"]] : []),
+        ]
       : p.deploy === "apogee"
         ? [["delay", "Delay after apogee", "num", "time"]]
         : p.deploy === "ejection"

@@ -815,6 +815,7 @@ export function parseOrk(xml, opts = {}) {
         alt: da,
         dd,
         x,
+        rel: /true/i.test(txt(c, "prflrelease") || ""),
         si: curStage,
         oi: ord(c, "c", CHRE),
         ...(sbCur ? { sb: sbCur.i } : {}),
@@ -1542,6 +1543,7 @@ export function parseOrk(xml, opts = {}) {
     nd.mainDia = mn.d;
     nd.mainCd = mn.cd;
     nd.mainAlt = mn.alt;
+    nd.chuteRelease = !!mn.rel;
     nd.recovery = "dual";
     if (apo.length) {
       const dr = apo.reduce((a, b) => (b.d > a.d ? b : a));
