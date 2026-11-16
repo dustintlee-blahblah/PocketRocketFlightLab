@@ -233,9 +233,11 @@ more than one curve, the certification curve is used.
 == Parts catalog ==
 The builder's parts catalog (makers' body tubes, nose cones, transitions, couplers, rings, bulkheads, launch lugs,
 parachutes and streamers) is built from the component files distributed with OpenRocket: the openrocket-database
-project (https://github.com/dbcook/openrocket-database), Copyright 2014-2019 Dave Cook, licensed under the Apache
-License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), and OpenRocket's own older component lists
-(https://github.com/openrocket/openrocket), GNU GPL v3. The files were converted to the app's compact format
+project (https://github.com/dbcook/openrocket-database), Copyright 2014-2022 Dave Cook, licensed under the Apache
+License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), and OpenRocket's own component lists
+(https://github.com/openrocket/openrocket), GNU GPL v3. Among OpenRocket's own lists, the parachute files for b2
+Rocketry, Front Range Rocket Recovery, Fruity Chutes, Rocketman and Spherachutes are Copyright 2022 by H. Craig
+Miller, compiled from information those makers provided. The files were converted to the app's compact format
 (tools/parts-catalog/): sizes in millimetres, one entry per part number, impossible sizes left out, and a listed
 weight turned into the material density for tubes, couplers, rings and bulkheads. Part numbers and makers' names
 belong to their makers, who are not affiliated with this app.

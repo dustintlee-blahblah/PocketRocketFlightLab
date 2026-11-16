@@ -12,7 +12,8 @@ python3 tools/parts-catalog/build_catalog.py orc/datafiles/components           
 
 The source is OpenRocket's component files (`.orc`, XML): `database/` is Dave Cook's
 [openrocket-database](https://github.com/dbcook/openrocket-database) (Apache License 2.0), and `internal/` is
-OpenRocket's own older lists (GPL v3). See THIRD_PARTY_NOTICES.md.
+OpenRocket's own lists (GPL v3), among them the parachute makers' files compiled by H. Craig Miller. See
+THIRD_PARTY_NOTICES.md.
 
 How it chooses:
 
