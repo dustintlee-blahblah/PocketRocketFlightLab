@@ -7,8 +7,6 @@
 import { store } from "../core/storage.js";
 import { prFetchBytes } from "../weather/forecast.js";
 /** Half the width of each square on the ground, m, and the picture's size, px. */
-/** How many sites' photos and terrain the device keeps. */
-const PHOTO_KEEP = 8;
 const PHOTO_NEAR = 400,
   PHOTO_FAR = 6000,
   PHOTO_PX = 2048;
@@ -97,22 +95,8 @@ async function photoSaved(key) {
   });
 }
 /**
- * When each kept site was last used (by its key), so the one unused longest is the one to go.
- * @returns {Object<string, number>}
- */
-const photoUses = () => store.get("rfs-site-photo-used", {}) || {};
-/**
- * Notes that a site's photo has just been used.
- * @param {string} key the site
- */
-function photoUsed(key) {
-  const u = photoUses();
-  u[key] = Date.now();
-  store.set("rfs-site-photo-used", u);
-}
-/**
- * Keeps a site's pictures and heights on the device, and no more than PHOTO_KEEP sites' in all: past that, the sites
- * unused longest go.
+ * Keeps a site's pictures and heights on the device. Every site's are kept (about 2 MB each), until its saved site
+ * is deleted or the app's data is cleared.
  * @param {string} key the site
  * @param {{near:Uint8Array, far:Uint8Array, terrain?:Uint8Array[]}} rec
  */
@@ -120,20 +104,9 @@ async function photoKeep(key, rec) {
   const db = await photoDb();
   if (!db) return;
   try {
-    photoUsed(key);
-    const os = db.transaction("photo", "readwrite").objectStore("photo");
-    os.put({ ...rec, at: Date.now() }, key);
-    const all = os.getAllKeys();
-    all.onsuccess = () => {
-      const u = photoUses(),
-        keys = all.result.map(String).sort((a, b) => (u[b] || 0) - (u[a] || 0)); // latest used first
-      for (const k of keys.slice(PHOTO_KEEP)) {
-        db.transaction("photo", "readwrite").objectStore("photo").delete(k);
-        delete u[k];
-      }
-      for (const k of Object.keys(u)) if (!keys.includes(k)) delete u[k];
-      store.set("rfs-site-photo-used", u);
-    };
+    db.transaction("photo", "readwrite")
+      .objectStore("photo")
+      .put({ ...rec, at: Date.now() }, key);
   } catch (e) {}
 }
 /**
@@ -143,10 +116,7 @@ async function photoKeep(key, rec) {
  */
 export async function sitePhotoDrop(lat, lon) {
   if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon)) return;
-  const key = photoKey(lat, lon),
-    u = photoUses();
-  delete u[key];
-  store.set("rfs-site-photo-used", u);
+  const key = photoKey(lat, lon);
   if (PHOTO.key === key && !PHOTO.busy) PHOTO.key = null;
   const db = await photoDb();
   if (!db) return;
@@ -253,7 +223,6 @@ export function sitePhoto(lat, lon, onLoad) {
     (async () => {
       try {
         let rec = (await photoSaved(key)) || {};
-        if (rec.near && rec.far) photoUsed(key);
         if (!rec.near || !rec.far) {
           const [near, far] = await Promise.all([
             prFetchBytes(photoUrl(lat, lon, PHOTO_NEAR)),
