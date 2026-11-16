@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 312 (2026-11-15)
+
+**Flight animation**
+- **The flight in 3D**: Watch the flight now opens in 3D. The rocket is a solid model built from the design's own shape and fins, flying its simulated path with its simulated tilt and roll, with the pad and rail, the flame, a smoke trail that drifts with the wind, the path flown, a shadow, the drogue and main parachutes and dropped stages. Three cameras: Chase (the one it opens in), Flight line (a spectator near the pad who follows the rocket and zooms in) and Whole flight. In Chase and Whole flight, drag to look around and pinch or scroll to zoom. The play, speed and scrub controls and the readout, with the distance upwind or downwind of the pad, work as in 2D. The 2D view button brings back the side view, and the choice is remembered. Far off, the rocket is drawn larger than life so it can be seen, and the readout says by how much. Video export is for the 2D view.
+- **The launch site's photo and terrain**: with the launch site's coordinates set, the ground is an aerial photo of the site laid on the real shape of the land, with the hills and the skyline out to 40 km (U.S. Geological Survey imagery and elevation; United States only). Choosing a saved site or typing coordinates on the Range tab fetches them, once, and they are kept on the device for use at the field without a connection (up to four sites). Untick Site photo in the 3D view to do without. Without them the ground is plain, with a 100 m grid.
+- **Level-ground flight, drawn on the land**: the flight is still flown over level ground at the pad's height, so every figure is unchanged; in the 3D picture the last 150 m are eased onto the land's own height, so the rocket lands on it.
+
 ## Build 311 (2026-11-15)
 
 **Rocket builder**
