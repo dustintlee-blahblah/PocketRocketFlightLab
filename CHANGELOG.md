@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 314 (2026-11-16)
+
+**Launch sites**
+- **Four more built-in fields**: Clio, MI (Alkay Airport), Frank Hunt Field, UT, Manchester, MI (JMRC) and Mojave Desert, CA (FAR) join the saved sites the app starts with, each with its coordinates and field elevation.
+- **New built-in fields reach an app already in use**: the app used to add its built-in fields once, on first run. It now adds each newly listed field once after an update. A name you already use, or a field within about a mile of a site you've saved, is skipped, and a built-in field you deleted doesn't come back.
+
 ## Build 313 (2026-11-16)
 
 **Launch sites**
