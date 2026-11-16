@@ -4,6 +4,29 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 316 (2026-11-16)
+
+**Settings**
+- **Units is Imperial or Metric, with a Length and Weight choice under it**: Length and Weight replaces Rocket weight in. With Imperial it offers In/Lb and In/Oz; with Metric, m/kg and mm/g. Every length and weight field follows it, and the choice is remembered for each system.
+- **Part weights follow the choice too**: a part's weight was always in ounces or grams. It is now in the unit chosen (pounds with In/Lb, kilograms with m/kg), and so is the nose-weight advice in the results. Black powder charges stay in grams and motor diameters in millimetres.
+- **Ejection charge calculator**: its lengths follow the Length and Weight choice.
+
+**Results**
+- **A booster stage with no motor**: the results say it flew as dead weight.
+- **A launch site with no field elevation of its own**: the Range tab and the results say the elevation shown is left from before, until one is entered.
+
+**Builder**
+- **Swapping for a library part**: says when a weight you typed in was cleared or replaced.
+- **Importing a fin's DXF**: asks before replacing the fin's shape.
+- **Add a part**: the add button reads Add a part.
+
+**Launch sites**
+- **Importing sites**: asks before replacing sites of the same name: replace them, keep them, or cancel.
+
+**Flight animation**
+- **Flight line camera**: says the camera follows the rocket by itself.
+- **Export video from the 3D view**: the button stays, as Export 2D video, and switches to the 2D view to make it.
+
 ## Build 315 (2026-11-16)
 
 **Parts library**
