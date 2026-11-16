@@ -129,7 +129,9 @@ export function animOpen() {
   document.getElementById("animmodal").hidden = false;
   document.getElementById("animscrub").max = String(ANIM.tEnd);
   anim3dSet(V3.on);
-  animPlay(true);
+  // it opens standing on the pad, paused: Play starts the countdown (and the site's photo has time to arrive)
+  animPlay(false);
+  animShow();
 }
 /**
  * Closes the animation and stops playback.
