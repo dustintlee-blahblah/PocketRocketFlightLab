@@ -8,6 +8,7 @@ import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { IN } from "../core/units-and-fin-edges.js";
 import { curMotor, D, units } from "../design/defaults.js";
+import { noseR } from "../physics/geometry.js";
 import { fmt, uname } from "../ui/units.js";
 /* ---------- ejection charge: black powder for a recovery compartment ----------
    Ideal gas: m = P·V / (R·T), with R = 22.16 ft·lbf/(lbm·°R) = 265.9 in·lbf/(lbm·°R) and T = 3307 °R for black powder's
@@ -114,7 +115,9 @@ function bpAftTube() {
    The inside runs from the nose cone's base to the forward-most centering ring in the aft tube (or the front of the motor
    mount); nothing behind that counts. Each space between walls is a compartment: the nose cone's shoulder (or a coupler
    in the nose reaching back into the tube) is taken out of the one it reaches into. A sealed space with no parachute or
-   streamer in it, closed by bulkheads at both ends, gets no charge: inside a coupler it's an electronics bay. */
+   streamer in it, closed by bulkheads at both ends, gets no charge: inside a coupler it's an electronics bay.
+   A hollow nose cone with a parachute or streamer drawn inside it is the exception to "from the nose cone's base": its
+   own inside counts, from the tip, with whatever tube lies between its base and the first bulkhead (head-end deployment). */
 /**
  * The recovery compartments of the sustainer (see the note above).
  * @returns {object[]} compartments: kind, from/to (m), tubes, holds, label, key...
@@ -127,8 +130,19 @@ function bpCompartments() {
     if (!tubes.length) return [];
     const nose = bodies.find((b) => b.p.type === "nose"),
       kids = bodies.flatMap((b) => b.kids.map((kk) => ({ ...kk, b })));
-    const last = tubes[tubes.length - 1],
-      S = tubes[0].x;
+    const last = tubes[tubes.length - 1];
+    /* a hollow nose cone with a parachute or streamer drawn inside it (head-end deployment: the main rides in the nose
+       and a charge there pushes the nose off) is part of the inside too: its own inside, from the tip, joins the space
+       behind its base up to the first bulkhead. Any other nose cone is left out, as a closed shell ahead of the tube. */
+    const noseB = nose ? nose.x + nose.len : 0,
+      noseBay =
+        !!nose &&
+        !nose.p.filled &&
+        nose.p.wall > 0 &&
+        nose.kids.some((kk) => (kk.k.type === "chute" || kk.k.type === "streamer") && kk.x + kk.len / 2 < noseB),
+      S = noseBay ? nose.x : tubes[0].x;
+    const noseRi = (x) =>
+      Math.max(noseR(nose.p.shape, nose.p.param, Math.max(x - nose.x, 0), nose.p.dia / 2, nose.len) - nose.p.wall, 0);
     // the aft end: the forward-most centering ring in the aft tube, else the front of its motor mount, else the tube's end
     let E = last.x + last.len,
       endBy = null,
@@ -153,6 +167,7 @@ function bpCompartments() {
     }
     // inside radius at a point along the body (tubes can change size)
     const riAt = (x) => {
+      if (noseBay && x < noseB) return noseRi(x);
       const t = tubes.find((t) => x >= t.x - 1e-6 && x <= t.x + t.len + 1e-6);
       return t ? t.ri : tubes[0].ri;
     };
@@ -180,11 +195,23 @@ function bpCompartments() {
     // things that take up the forward end: the nose shoulder, or a coupler inside the nose reaching back into the tube
     const intr = [];
     if (nose) {
+      // with a parachute in the nose its shoulder is an open throat: only the shoulder's wall takes up room (hollow)
       const nb = nose.x + nose.len;
-      if (nose.p.shLen > 0) intr.push({ a: nb, b: nb + nose.p.shLen, r: nose.p.shR > 0 ? nose.p.shR : null });
+      if (nose.p.shLen > 0)
+        intr.push({
+          a: nb,
+          b: nb + nose.p.shLen,
+          r: nose.p.shR > 0 ? nose.p.shR : null,
+          hollow: noseBay ? nose.p.wall : 0,
+        });
       for (const kk of nose.kids)
         if (kk.k.type === "coupler" && kk.x + kk.len > nb)
-          intr.push({ a: Math.max(kk.x, nb), b: kk.x + kk.len, r: kk.k.od > 0 ? kk.k.od / 2 : null });
+          intr.push({
+            a: Math.max(kk.x, nb),
+            b: kk.x + kk.len,
+            r: kk.k.od > 0 ? kk.k.od / 2 : null,
+            hollow: noseBay ? kk.k.wall || 0.002 : 0,
+          });
     }
     const couplers = kids.filter((kk) => (kk.k.type === "coupler" || longRing(kk)) && kk.b !== nose);
     const segs = [];
@@ -290,13 +317,16 @@ function bpCompartments() {
         const a = Math.max(s0.a, g.x0),
           b = Math.min(s0.b, g.x1);
         if (b > a) {
-          const r = Math.min(s0.r ?? riAt(a), riAt(a));
-          shV += Math.PI * r * r * (b - a);
+          const r = Math.min(s0.r ?? riAt(a), riAt(a)),
+            ri = s0.hollow > 0 ? Math.max(r - s0.hollow, 0) : 0;
+          shV += Math.PI * (r * r - ri * ri) * (b - a);
         }
       }
       V = Math.max(V - shV, 0);
       if (V < 0.5 * IN ** 3) continue;
-      const mid = (g.x0 + g.x1) / 2,
+      // a space that takes in the nose cone: the joint the charge opens is the nose's, at the first tube's inside
+      const inNose = noseBay && g.x0 < noseB - 1e-6,
+        mid = inNose ? Math.max(tubes[0].x + 1e-4, (noseB + g.x1) / 2) : (g.x0 + g.x1) / 2,
         t = tubes.find((t) => mid >= t.x && mid <= t.x + t.len) || tubes[0];
       const holds = [];
       const inCoupler = !!g.implied || couplers.some((kk) => kk.x <= g.x0 + 0.003 && kk.x + kk.len >= g.x1 - 0.003);
@@ -306,9 +336,11 @@ function bpCompartments() {
       const kind0 = sealed && inCoupler ? "ebay" : sealed ? "sealed" : "empty";
       const span = [
         ...new Set(
-          tubes
-            .filter((tb) => tb.x < g.x1 - 0.003 && tb.x + tb.len > g.x0 + 0.003)
-            .map((tb) => tb.p.name || "Body tube"),
+          (inNose ? [nose.p.name || "Nose cone"] : []).concat(
+            tubes
+              .filter((tb) => tb.x < g.x1 - 0.003 && tb.x + tb.len > g.x0 + 0.003)
+              .map((tb) => tb.p.name || "Body tube"),
+          ),
         ),
       ];
       out.push({
@@ -318,6 +350,8 @@ function bpCompartments() {
         x0: g.x0,
         x1: g.x1,
         len: g.x1 - g.x0,
+        // the nose cone's own inside, and how much tube behind its base the space takes in
+        nose: inNose ? { V: volBetween(g.x0, Math.min(g.x1, noseB)), tube: Math.max(g.x1 - noseB, 0) } : null,
         d: 2 * riAt(mid),
         V,
         shV,
@@ -348,7 +382,10 @@ function bpCompartments() {
     }
     out.forEach((c) => (c.kind = c.holds.length ? "recovery" : c.kind0));
     // recovery compartments are named in order from the nose
-    const rec = out.filter((c) => c.kind === "recovery");
+    out.forEach((c) => {
+      if (c.kind === "recovery" && c.nose) c.name = "Nose cone bay";
+    });
+    const rec = out.filter((c) => c.kind === "recovery" && !c.nose);
     rec.forEach((c, k) => {
       c.name =
         rec.length === 1
@@ -563,7 +600,9 @@ function bpRenderComps(comps, v, out) {
             ? " between two bulkheads"
             : ` between the ${nm(c.from)} and the ${nm(c.to)}`
           : `${c.from ? ` from the ${nm(c.from)}` : " from the nose cone"}${c.to ? ` to the ${nm(c.to)}` : c.endBy ? ` to the forward ${c.endBy === "ring" ? "centering ring" : "end of the motor mount"}` : ""}`;
-      const where = `${smallTxt(c.d)} inside × ${lenTxt(c.len)}${ends}${c.shV > 0 ? `, less ${vol(c.shV)} of nose shoulder` : ""}`;
+      const where = c.nose
+        ? `Inside the nose cone (${vol(c.nose.V)})${c.nose.tube > 0.003 ? ` and ${lenTxt(c.nose.tube)} of tube behind it` : ""}${c.to ? `, to the ${nm(c.to)}` : c.endBy ? `, to the forward ${c.endBy === "ring" ? "centering ring" : "end of the motor mount"}` : ""}${c.shV > 0 ? `, less ${vol(c.shV)} of shoulder wall` : ""}; the joint is ${smallTxt(c.d)} across`
+        : `${smallTxt(c.d)} inside × ${lenTxt(c.len)}${ends}${c.shV > 0 ? `, less ${vol(c.shV)} of nose shoulder` : ""}`;
       if (c.kind !== "recovery")
         return `<div class="bpcard bpnone"><div class="bph"><b>${esc(c.name)}</b> · ${esc(c.kind === "ebay" ? c.tube : c.tubes.join(", "))}</div><div class="bpgeo">${where} = ${vol(c.V)}. ${c.kind === "ebay" ? (c.implied ? "The coupler between the two recovery bays, taken as sealed at both ends: no charge. If it isn’t sealed, add its bulkheads in the builder." : "Sealed by bulkheads at both ends, inside a coupler: no charge.") : c.kind === "sealed" ? "Sealed by bulkheads at both ends, with nothing to deploy: no charge." : "No parachute or streamer in it, so no charge is sized."}</div></div>`;
       const S = bpCompSet(v, c);
