@@ -20,7 +20,7 @@ export const V3 = {
   gl: null,
   bad: false,
   models: null,
-  mode: "ground",
+  mode: "chase",
   az: 0.6,
   el: 0.25,
   zoom: 1,
@@ -963,7 +963,7 @@ export function start() {
     redraw = () => {
       if (ANIM.on && V3.on && !ANIM.playing) anim3dDraw();
     };
-  V3.on = !!store.get("rfs-anim-3d", false);
+  V3.on = store.get("rfs-anim-3d", true) !== false; // 3D unless it has been switched to 2D
   document.querySelectorAll("#anim3dbar [data-cam]").forEach(
     (b) =>
       (b.onclick = () => {
