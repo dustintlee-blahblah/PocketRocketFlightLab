@@ -18,6 +18,7 @@ const FINISH_RS = {
   roughunfinished: 250e-6,
   unfinished: 150e-6,
   normal: 60e-6,
+  glossy: 40e-6, // this app's own (prflfinish), between OpenRocket's smooth and normal
   smooth: 20e-6,
   optimum: 5e-6,
   polished: 2e-6,
@@ -512,7 +513,8 @@ export function parseOrk(xml, opts = {}) {
     // returns nothing; x is absolute top of component
     const tag = c.tagName,
       len = lenOf(c);
-    const cfin = FINISH_RS[(txt(c, "finish") || "").trim().toLowerCase()];
+    // the app's own finish name when the part has one, otherwise OpenRocket's
+    const cfin = FINISH_RS[(txt(c, "prflfinish") || txt(c, "finish") || "").trim().toLowerCase()];
     let m = 0,
       cg = x + len / 2,
       ro = 0,
@@ -1386,9 +1388,11 @@ export function parseOrk(xml, opts = {}) {
     .find(Boolean);
   if (ocd) notes.push("Used the file’s Cd override for the whole rocket.");
   const FIN = FINISH_RS;
-  const finTag =
-    (rocket.getElementsByTagName("bodytube")[0] || rocket).getElementsByTagName("finish")[0] ||
-    rocket.getElementsByTagName("finish")[0];
+  const finTag0 =
+      (rocket.getElementsByTagName("bodytube")[0] || rocket).getElementsByTagName("finish")[0] ||
+      rocket.getElementsByTagName("finish")[0],
+    // the app's own finish name sits right after OpenRocket's on the same part
+    finTag = finTag0 && finTag0.nextElementSibling?.tagName === "prflfinish" ? finTag0.nextElementSibling : finTag0;
   /**
    * An edge type from the file, or square if this app doesn't know it.
    */

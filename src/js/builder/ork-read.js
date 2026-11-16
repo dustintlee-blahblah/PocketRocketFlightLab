@@ -151,7 +151,7 @@ export function bldFromOrk(xml, info) {
    */
   const common = (c) => {
     const o = { id: txt(c, "id") || bldId(), name: txt(c, "name") || BLD_NAMES.raw, ...mat(c) };
-    const f = txt(c, "finish");
+    const f = txt(c, "prflfinish") || txt(c, "finish");
     if (f) o.finish = f;
     if (kid(c, "overridemass")) {
       o.known = num(c, "overridemass");

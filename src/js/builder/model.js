@@ -85,13 +85,16 @@ export const BLD_BUMPS = [
  * camouflage paint 10 µm, production spray paint 30 µm). That table is for the paint film alone; a finished hobby rocket
  * also has tube spirals, seams, decals and fillets, and the weighed, logged flights in VALIDATION.md fit the 60 µm
  * choice (with their rail buttons), so that one is named as the usual choice for a painted rocket.
+ * "glossy" (40 µm) is this app's own, between OpenRocket's smooth and normal: the file names such a part "normal" for
+ * OpenRocket and carries the app's name beside it (prflfinish).
  */
 export const BLD_FINISH = [
   ["mirror", "Mirror (0 µm)"],
   ["finishpolished", "Finish-polished (0.5 µm)"],
   ["polished", "Polished (2 µm)"],
   ["optimum", "Optimum paint: sanded and polished (5 µm)"],
-  ["smooth", "Smooth paint: glossy, wet-sanded (20 µm)"],
+  ["smooth", "Smooth paint: wet-sanded (20 µm)"],
+  ["glossy", "Smooth paint: glossy (40 µm)"],
   ["normal", "Regular paint: a typical painted rocket (60 µm)"],
   ["unfinished", "Unfinished (150 µm)"],
   ["roughunfinished", "Rough unfinished (250 µm)"],

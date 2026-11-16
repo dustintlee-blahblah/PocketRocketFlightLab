@@ -62,7 +62,12 @@ export function bldToOrk(model, L, opts = {}) {
    */
   const fin = (k) => {
     const f = k.finish || S.finish;
-    return f ? `<finish>${e(f)}</finish>` : "";
+    // the app's own 40 µm finish isn't one OpenRocket knows: it reads the part as "normal", the app reads its own tag
+    return f === "glossy"
+      ? `<finish>normal</finish><prflfinish>glossy</prflfinish>`
+      : f
+        ? `<finish>${e(f)}</finish>`
+        : "";
   };
   /**
    * A part's overrides (drag, weight, CG). They are written only while they're switched on (an override switched off
