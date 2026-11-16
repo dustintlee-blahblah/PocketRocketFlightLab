@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 317 (2026-11-16)
+
+**Flight**
+- **Rail buttons and launch lugs on a part with a typed-in weight are flown**: when a part's weight was typed in to cover the parts on it, only its fins, parachutes and inner tubes were read for the flight. Rail buttons, launch lugs and anything else on it were dropped, so their drag was missing and the results said the design had none. Every part on it is now read; only its weight is left out, since the typed-in weight covers it. Designs set up that way fly a little lower than before (an Estes Partizon on an I205: 3,784 ft, was 3,967 ft).
+
 ## Build 316 (2026-11-16)
 
 **Settings**
