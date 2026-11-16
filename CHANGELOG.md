@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 319 (2026-11-16)
+
+**Builder**
+- **Surface finish: Smooth paint: glossy (40 µm)**: a new choice between the 20 µm and 60 µm ones, for a clean glossy paint job that hasn't been sanded afterward. OpenRocket has no 40 µm finish, so a design saved with it opens there as Regular paint (60 µm); this app reads its own marker in the file and brings back 40 µm.
+- **The 20 µm finish is named Smooth paint: wet-sanded**, so the two smooth-paint choices read apart.
+
 ## Build 318 (2026-11-16)
 
 **Flight**: read from the design the way OpenRocket flies it, each checked against OpenRocket 24.12
