@@ -443,7 +443,7 @@ function wtCharts() {
  * @returns {number}
  */
 function units2() {
-  return uname("len") === "mm" ? 0 : 2;
+  return uname("len") === "mm" ? 0 : uname("len") === "m" ? 3 : 2;
 }
 
 /* ---------- the test section ---------- */

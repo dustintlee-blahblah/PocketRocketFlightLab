@@ -8,11 +8,10 @@ import { PROFILE, units } from "../design/defaults.js";
 import { drawMC } from "../physics/monte-carlo.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender } from "./donate.js";
-import { setMassShown, setUnits } from "./events.js";
+import { lenWeightShow, setLenWeight, setUnits } from "./events.js";
 import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
 import { renderRSO } from "./rso-checklist.js";
-import { massUnit } from "./units.js";
 let rt = null;
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
@@ -48,8 +47,8 @@ export function start() {
     });
     document.getElementById("s-imp").onclick = () => setUnits("imp");
     document.getElementById("s-met").onclick = () => setUnits("met");
-    document.getElementById("s-lb").onclick = () => setMassShown("lb");
-    document.getElementById("s-oz").onclick = () => setMassShown("oz");
+    document.getElementById("s-lw1").onclick = () => setLenWeight(0);
+    document.getElementById("s-lw2").onclick = () => setLenWeight(1);
     /**
      * Follows the phone's light or dark setting, or always uses one.
      */
@@ -216,9 +215,7 @@ export function start() {
         .forEach((b) => b.setAttribute("aria-pressed", b.dataset.themeSet === t));
       document.getElementById("s-imp").setAttribute("aria-pressed", units === "imp");
       document.getElementById("s-met").setAttribute("aria-pressed", units === "met");
-      document.getElementById("s-massrow").hidden = units !== "imp";
-      for (const u of ["lb", "oz"]) document.getElementById("s-" + u).setAttribute("aria-pressed", massUnit === u);
-      document.getElementById("s-imp").textContent = `ft · ${massUnit}`;
+      lenWeightShow();
       sw.checked = store.get("rfs-swipe", true) !== false;
     }
     applyTheme(store.get("rfs-theme", "auto"));

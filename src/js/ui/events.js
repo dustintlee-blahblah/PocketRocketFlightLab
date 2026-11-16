@@ -10,7 +10,7 @@ import { renderForms } from "./forms.js";
 import { siteRender } from "./launch-sites.js";
 import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
-import { massUnit, setMassUnit } from "./units.js";
+import { lenUnit, massUnit, setLenUnit, setMassUnit } from "./units.js";
 /* ---------- events ---------- */
 /**
  * Shows one of the four tabs and draws what it needs.
@@ -52,24 +52,45 @@ export function setUnits(u) {
  * Redraws everything that shows a value with a unit.
  */
 function unitsRedraw() {
-  // the weight unit is a choice within imperial units
-  const row = document.getElementById("s-massrow");
-  if (row) row.hidden = units !== "imp";
-  for (const u of ["lb", "oz"]) document.getElementById("s-" + u)?.setAttribute("aria-pressed", massUnit === u);
-  // the Units button names the weight unit in use
-  const imp = document.getElementById("s-imp");
-  if (imp) imp.textContent = `ft · ${massUnit}`;
+  lenWeightShow();
   renderForms();
   renderResults();
   if (!document.getElementById("v-motor").hidden) renderMotors();
   if (typeof BLD !== "undefined" && BLD && typeof bldRender === "function") bldRender();
 }
 /**
- * Shows the rocket's weight in pounds or ounces (imperial units), and redraws.
- * @param {string} u "lb" or "oz"
+ * The two Length and Weight choices of the unit system in use: [label, is it the one chosen].
+ * @returns {Array<[string, boolean]>}
  */
-export function setMassShown(u) {
-  setMassUnit(u);
+function lenWeightChoices() {
+  return units === "imp"
+    ? [
+        ["In/Lb", massUnit === "lb"],
+        ["In/Oz", massUnit === "oz"],
+      ]
+    : [
+        ["m/kg", lenUnit === "m"],
+        ["mm/kg", lenUnit === "mm"],
+      ];
+}
+/**
+ * Labels the two Length and Weight buttons in Settings for the unit system in use, and marks the one chosen.
+ */
+export function lenWeightShow() {
+  lenWeightChoices().forEach(([label, on], i) => {
+    const b = document.getElementById("s-lw" + (i + 1));
+    if (!b) return;
+    b.textContent = label;
+    b.setAttribute("aria-pressed", on);
+  });
+}
+/**
+ * Chooses the first or second Length and Weight option of the unit system in use, and redraws every field.
+ * @param {number} i 0 or 1
+ */
+export function setLenWeight(i) {
+  if (units === "imp") setMassUnit(i ? "oz" : "lb");
+  else setLenUnit(i ? "mm" : "m");
   unitsRedraw();
 }
 /**

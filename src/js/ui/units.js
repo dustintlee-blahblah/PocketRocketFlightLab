@@ -11,8 +11,7 @@ import { units } from "../design/defaults.js";
  */
 export let DIMS;
 /**
- * The unit the rocket's weight is shown in with imperial units: "lb" or "oz" (chosen in Settings; small parts' weights
- * are in ounces either way).
+ * The unit weights are shown in with imperial units: "lb" or "oz" (chosen in Settings; the rocket's and each part's).
  */
 export let massUnit = "lb";
 /**
@@ -23,6 +22,22 @@ export function setMassUnit(u) {
   massUnit = u === "oz" ? "oz" : "lb";
   store.set("rfs-mass-unit", massUnit);
   DIMS.imp.mass = massUnit === "oz" ? ["oz", 0.028349523125, 1] : ["lb", LB, 2];
+  // a part's weight is in the same unit, with the decimals a light part needs
+  DIMS.imp.smass = massUnit === "oz" ? ["oz", 0.028349523125, 2] : ["lb", LB, 4];
+}
+/**
+ * The unit the rocket's lengths are shown in with metric units: "mm" or "m" (chosen in Settings).
+ */
+export let lenUnit = "mm";
+/**
+ * Sets the metric unit of the rocket's lengths.
+ * @param {string} u "mm" or "m"
+ */
+export function setLenUnit(u) {
+  lenUnit = u === "m" ? "m" : "mm";
+  store.set("rfs-len-unit", lenUnit);
+  DIMS.met.len = lenUnit === "m" ? ["m", 1, 3] : ["mm", 0.001, 0];
+  DIMS.met.small = lenUnit === "m" ? ["m", 1, 4] : ["mm", 0.001, 1];
 }
 /**
  * An SI value in the current display unit.
@@ -52,7 +67,9 @@ export function fromDisp(v, dim) {
  * @returns {string}
  */
 export function fmt(v, dim, dec) {
-  const d = dec ?? DIMS[units][dim][2] ?? 1;
+  let d = dec ?? DIMS[units][dim][2] ?? 1;
+  // a place that asks for 0 or 1 decimals was written for inches or millimetres: in metres that would lose the detail
+  if (DIMS[units][dim][0] === "m" && (dim === "len" || dim === "small")) d = Math.max(d, DIMS[units][dim][2]);
   const x = toDisp(v, dim);
   return isFinite(x) ? x.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 }
@@ -108,11 +125,12 @@ export function start() {
       time: ["s", 1, 1],
       moi: ["kg·m²", 1, 4],
       pct: ["%", 0.01, 0],
-      smass: ["g", 0.001, 1],
+      smass: ["kg", 1, 4],
       vis: ["km", 1000, 1],
     },
   };
   setMassUnit(store.get("rfs-mass-unit", "lb"));
+  setLenUnit(store.get("rfs-len-unit", "mm"));
 }
 /**
  * A result tile's speed in everyday units: under a value shown in ft/s or m/s, the same speed in mph or km/h, as a

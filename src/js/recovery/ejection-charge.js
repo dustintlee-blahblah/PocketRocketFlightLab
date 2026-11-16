@@ -9,7 +9,7 @@ import { store } from "../core/storage.js";
 import { IN } from "../core/units-and-fin-edges.js";
 import { curMotor, D, units } from "../design/defaults.js";
 import { noseR } from "../physics/geometry.js";
-import { fmt, uname } from "../ui/units.js";
+import { DIMS, fmt, uname } from "../ui/units.js";
 /* ---------- ejection charge: black powder for a recovery compartment ----------
    Ideal gas: m = P·V / (R·T), with R = 22.16 ft·lbf/(lbm·°R) = 265.9 in·lbf/(lbm·°R) and T = 3307 °R for black powder's
    combustion gas (the figures most rocketry ejection calculators use; 15 psi in a 1 in² × 1 in volume ≈ 0.0061 g).
@@ -468,9 +468,9 @@ export function bpRender() {
         };
     }
   }
-  const lenU = units === "imp" ? "in" : "mm",
+  const lenU = uname("len"),
     pU = units === "imp" ? "psi" : "kPa",
-    toL = (x) => (units === "imp" ? x / IN : x * 1000),
+    toL = (x) => x / DIMS[units].len[1],
     toP = (x) => (units === "imp" ? x / 6894.757 : x / 1000);
   document.querySelectorAll(".bpu-len").forEach((e) => (e.textContent = lenU));
   document.querySelectorAll(".bpu-p").forEach((e) => (e.textContent = pU));
@@ -478,8 +478,8 @@ export function bpRender() {
     const e = document.getElementById(id);
     if (e && document.activeElement !== e) e.value = +x.toFixed(dec);
   };
-  sv("bp-d", toL(v.d), units === "imp" ? 3 : 1);
-  sv("bp-l", toL(v.l), units === "imp" ? 2 : 0);
+  sv("bp-d", toL(v.d), DIMS[units].small[2]);
+  sv("bp-l", toL(v.l), DIMS[units].len[2]);
   sv("bp-p", toP(v.p), units === "imp" ? 1 : 0);
   {
     const n = document.getElementById("bp-n");
@@ -620,7 +620,7 @@ function bpRenderComps(comps, v, out) {
         g = ((Pt * toIn3(V)) / (265.92 * 3307)) * 453.592;
       return `<div class="bpcard" data-k="${esc(c.key)}"><div class="bph"><b>${esc(c.name)}</b> · ${esc(c.tubes.join(", "))}${c.holds.length ? ` · holds the ${c.holds.map(esc).join(" and ")}` : ""}</div>
       <div class="bpgeo">${where}${Vx > 0 ? `, plus ${vol(Vx)} of motor mount ahead of the motor` : ""} = <b>${vol(V)}</b> · ${pD(Pt * 6894.757).toFixed(units === "imp" ? 1 : 0)} ${pU}${pPin > 0 ? ` with ${S.n} pin${S.n > 1 ? "s" : ""}` : ""} · ${units === "imp" ? Math.round(Pt * A) + " lbf" : Math.round(Pt * A * 4.44822) + " N"} on the bulkhead</div>
-      ${c.split && !c.split.done ? ((c.split.done = true), `<div class="bpsplit"><label>Bays divide at <span class="in"><input type="number" inputmode="decimal" step="any" data-split="${esc(c.split.key)}" value="${units === "imp" ? (c.split.x / IN).toFixed(1) : (c.split.x * 1000).toFixed(0)}"><span class="u">${units === "imp" ? "in" : "mm"} from the nose tip</span></span></label><span class="note">${c.split.set ? "Your setting." : "Estimated: nothing in the design separates the two bays."} Set it to where your electronics bay or coupler sits. <button type="button" class="linkbtn" data-share="${esc(c.split.key)}">They share one bay (chute release)</button></span></div>`) : ""}
+      ${c.split && !c.split.done ? ((c.split.done = true), `<div class="bpsplit"><label>Bays divide at <span class="in"><input type="number" inputmode="decimal" step="any" data-split="${esc(c.split.key)}" value="${+(c.split.x / DIMS[units].len[1]).toFixed(Math.max(1, DIMS[units].len[2] - 1))}"><span class="u">${uname("len")} from the nose tip</span></span></label><span class="note">${c.split.set ? "Your setting." : "Estimated: nothing in the design separates the two bays."} Set it to where your electronics bay or coupler sits. <button type="button" class="linkbtn" data-share="${esc(c.split.key)}">They share one bay (chute release)</button></span></div>`) : ""}
       ${c.shared ? `<p class="note" style="margin:4px 0;font-size:.8rem">One charge deploys both, as with a chute release. <button type="button" class="linkbtn" data-unshare="${esc(c.shared.key)}">They deploy separately</button></p>` : ""}
       <div class="bpset">
         <label>Pressure <span class="in"><input type="number" inputmode="decimal" step="any" data-f="p" value="${+pD(S.p).toFixed(units === "imp" ? 1 : 0)}"><span class="u">${pU}</span></span></label>
@@ -650,7 +650,7 @@ function bpRenderComps(comps, v, out) {
       const x = parseFloat(el.value);
       if (!isFinite(x)) return;
       const w = bpDesign();
-      w.splits[el.dataset.split] = units === "imp" ? x * IN : x / 1000;
+      w.splits[el.dataset.split] = x * DIMS[units].len[1];
       bpDesignSave();
       bpRender();
     }),
@@ -708,7 +708,7 @@ export function start() {
         const x = parseFloat(e.target.value);
         if (isFinite(x) && x > 0) set(k, fromU(x));
       });
-    const L_ = (x) => (units === "imp" ? x * IN : x / 1000),
+    const L_ = (x) => x * DIMS[units].len[1],
       P_ = (x) => (units === "imp" ? x * 6894.757 : x * 1000);
     document.getElementById("bp-d").addEventListener("input", (e) => {
       const x = parseFloat(e.target.value);
