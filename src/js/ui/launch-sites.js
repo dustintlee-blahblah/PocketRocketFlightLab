@@ -46,11 +46,16 @@ const sitesGet = () => {
   return Array.isArray(v) ? v : [];
 };
 export let siteCur;
-/* well-known launch fields, added once to the saved sites (names you already use, and fields within about a mile of a
-   site you've saved, are skipped; a field you delete doesn't come back). Coordinates and elevations are from each club's
-   own site page where it gives them; elev null: looked up from map data the first time the site is chosen. */
+/* well-known launch fields, each added once to the saved sites (names you already use, and fields within about a
+   mile of a site you've saved, are skipped; a field you delete doesn't come back). Coordinates and elevations are from
+   each club's own site page where it gives them, or as flown from by the app's author; elev null: looked up from map
+   data the first time the site is chosen. A field added to this list in a later build carries that list's number, so
+   an app already in use picks up just the new ones. */
+/** The number of the list below: raised each time fields are added to it. */
+const SITE_PRESETS_VER = 2;
 /**
- * Well-known launch fields: [name, latitude, longitude, elevation m or null].
+ * Well-known launch fields: [name, latitude, longitude, elevation m or null, the list number it was added in (1 if
+ * not given)].
  */
 const SITE_PRESETS = [
   ["Argonia, KS (KLOUDBusters)", 37.170278, -97.736667, 384.0],
@@ -58,8 +63,12 @@ const SITE_PRESETS = [
   ["Bonneville Salt Flats, UT", 40.791281, -113.821553, 1316.7],
   ["Brothers, OR (OROC)", 43.799278, -120.650169, 1371.6],
   ["Church Hill, MD (MDRA Higgs Farm)", 39.078542, -75.876346, null],
+  ["Clio, MI (Alkay Airport)", 43.14434, -83.796643, 217.6, 2],
+  ["Frank Hunt Field, UT", 40.218224, -112.246072, 1542.9, 2],
   ["Jean Dry Lake, NV (Tripoli Vegas)", 35.786389, -115.25, 844.9],
   ["Lucerne Dry Lake, CA (ROC)", 34.495, -116.96, 868.7],
+  ["Manchester, MI (JMRC)", 42.1802, -83.9498, 304.8, 2],
+  ["Mojave Desert, CA (FAR)", 35.346945, -117.807858, 630.0, 2],
   ["Pueblo, CO (SCORE)", 38.155458, -104.808906, 1669.4],
   ["Seymour, TX (Tripoli North Texas)", 33.501037, -99.338722, null],
   ["Spaceport America, NM", 32.99028, -106.96972, 1400.6],
@@ -575,10 +584,11 @@ export function setSiteCur(v) {
 export function start() {
   siteCur = store.get("rfs-site", "");
   /**
-   * Adds the preset fields to the saved sites once.
+   * Adds the preset fields to the saved sites, each once.
    */
   (function sitePresetsAdd() {
-    if (store.get("rfs-site-presets", 0) >= 1) return;
+    const have = store.get("rfs-site-presets", 0) || 0;
+    if (have >= SITE_PRESETS_VER) return;
     const S = (() => {
         const v = store.get("rfs-sites", []);
         return Array.isArray(v) ? v : [];
@@ -586,12 +596,13 @@ export function start() {
       near = (a, b) =>
         a.lat != null && a.lon != null && Math.abs(a.lat - b[1]) < 0.015 && Math.abs(a.lon - b[2]) < 0.02;
     for (const P of SITE_PRESETS) {
+      if ((P[4] || 1) <= have) continue; // offered before: there already, or deleted since
       if (S.some((x) => x.name.toLowerCase() === P[0].toLowerCase() || near(x.v || {}, P))) continue;
       S.push({ name: P[0], v: { elev: P[3], lat: P[1], lon: P[2] }, preset: true });
     }
     S.sort((a, b) => a.name.localeCompare(b.name));
     store.set("rfs-sites", S);
-    store.set("rfs-site-presets", 1);
+    store.set("rfs-site-presets", SITE_PRESETS_VER);
   })();
   document.getElementById("sitesel").onchange = (e) => {
     if (e.target.value) siteApply(e.target.value);
