@@ -4,6 +4,25 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 315 (2026-11-16)
+
+**Parts library**
+- **Streamers and parachute cloth weigh what they should**: a library streamer of crepe paper added 2 kg to the rocket (the source lists paper as 90 where it means 90 g/m²); it now adds about 2 g. Some parachute cloth was a thousandth of its weight, which mattered for parachutes without a listed weight. Both are read in the right unit.
+- **Slips in listed weights are not passed on**: a few parts' listed weights are plainly wrong in the source (paper rings that weighed nothing, a paper motor tube denser than steel). A weight that makes a tube, ring or bulkhead less than a quarter or more than six times its material's density is not believed, and the material's density is used; a material with no believable density is left out and the part keeps the builder's own.
+- **A new motor mount fits the motor**: adding a motor mount from the library lists the tubes that hold the chosen motor (it listed every tube that goes inside the body).
+
+**Flight animation**
+- **Scrubbing the 3D view while paused**: the picture goes straight to the scrubbed time. It eased toward it one step at a time, so the camera trailed behind and could miss the rocket.
+- **Site photo box only where it does something**: it shows when the run has coordinates.
+
+**Results**
+- **Safety cone and Landing dispersion**: the Flight Performance graphs named Cone and Landing are now Safety cone and Landing dispersion.
+
+**Settings and launch sites**
+- **The Units button names the weight unit**: it reads ft · oz when the rocket's weight is shown in ounces.
+- **Saved sites on a narrow screen**: a site's Rename and Delete buttons go under its name, so the name isn't cut short.
+- **A new site whose elevation can't be looked up**: the message now says the elevation under Range is still the one from before, and what it is.
+
 ## Build 314 (2026-11-16)
 
 **Launch sites**
