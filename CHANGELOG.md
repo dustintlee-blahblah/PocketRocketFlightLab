@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 309 (2026-11-15)
+
+**Rocket builder**
+- **Add a part from Library**: the add button is now half the width, with Add a part from Library beside it. The library window opens with the kind of part to choose (body tube, nose cone, transition, motor mount, inner tube, coupler, centering ring, bulkhead, launch lug, parachute, streamer), then the search, the maker filter and the fit box. Picking a part adds it where the add button would, filled in from the library.
+- **Swap for a library part**: the link in a part's editor (it was Choose from the parts catalog) replaces the selected part's sizes with a library part's. A swapped tube keeps its length when the stock is long enough; a newly added one takes the library's length.
+- **Library, not catalog**: the app's wording is the same throughout.
+
 ## Build 308 (2026-11-15)
 
 **Rocket builder**
