@@ -193,9 +193,7 @@ function bldMountFilterFor(p) {
 export function bldRenderAdd() {
   const el = document.getElementById("bldadd");
   if (!el) return;
-  const f = bldSel ? bldFind(bldSel) : null;
-  const body = f && f.p ? f.parent || f.p : null;
-  const title = `Add a body part${body ? ` / Add to ${esc(body.name)}` : ""}`;
+  const title = "Add a part";
   el.innerHTML = `<div class="bldaddrow"><button type="button" class="bldaddtoggle" aria-haspopup="dialog"><span>＋ ${title}</span><span aria-hidden="true">▸</span></button><button type="button" class="bldaddtoggle" data-lib="1"><span>＋ Add a part from Library</span><span aria-hidden="true">▸</span></button></div>`;
   el.querySelector(".bldaddtoggle").onclick = bldAddBox;
   el.querySelector("[data-lib]").onclick = () => partPick();

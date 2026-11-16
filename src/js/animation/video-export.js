@@ -1,8 +1,9 @@
 /**
  * Saving the animation as a video (see the note below).
  */
-import { ANIM, animPlay } from "./animation.js";
+import { ANIM, animPlay, animShow } from "./animation.js";
 import { animDraw } from "./scenery.js";
+import { anim3dSet, V3 } from "./view3d.js";
 import { SOURCE } from "../files/save.js";
 import { isAndroidApp } from "../files/zip.js";
 import { bufToB64, downloadsNS } from "../report/pdf-report.js";
@@ -317,6 +318,11 @@ async function animExportVideo() {
  */
 export function start() {
   document.getElementById("animvideo").onclick = () => {
+    // the video is made from the 2D view
+    if (V3.on) {
+      anim3dSet(false);
+      animShow();
+    }
     document.getElementById("animvidcancel").textContent = "Cancel";
     animExportVideo();
   };

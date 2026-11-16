@@ -17,7 +17,7 @@ import { parseLatLon, prFetchText } from "../weather/forecast.js";
  *
  * A field's own settings (not the day's weather: the height the wind is measured at goes with the wind reading)
  */
-var SITEMGR = { open: false, edit: null, del: null, add: false, note: "" }; // the saved-sites manager (below)
+var SITEMGR = { open: false, edit: null, del: null, add: false, note: "", imp: null }; // the saved-sites manager (below)
 /**
  * The launch-condition keys a site keeps (see the note above).
  */
@@ -105,6 +105,8 @@ export function siteRender() {
       : "";
     const rb = document.getElementById("siterestore");
     if (rb) rb.onclick = () => siteApply(x.name);
+    // nothing else to say: an elevation that was never set is worth saying until it is
+    if (!diff && siteElevStale()) msg.textContent = siteElevStale();
   }
   siteBtnUpdate();
 }
@@ -137,6 +139,18 @@ function siteBase(x) {
     v[k] = x.v[k] != null ? x.v[k] : b && b.name === x.name && k in b.v ? b.v[k] : (L[k] ?? null);
   if (!b || b.name !== x.name) store.set("rfs-site-base", { name: x.name, v });
   return v;
+}
+/**
+ * What to say when the chosen site has no field elevation of its own and the one under Range is still what was there
+ * before the site was chosen (its lookup failed, or it has no coordinates to look up): the air's density, and so the
+ * flight, would be worked out for the wrong height.
+ * @returns {string} "" when there is nothing to say
+ */
+export function siteElevStale() {
+  const b = store.get("rfs-site-elev-stale", null),
+    x = siteCur && sitesGet().find((s) => s.name === siteCur);
+  if (!b || !x || b.name !== x.name || x.v.elev != null || (L.elev ?? null) !== b.elev) return "";
+  return `${x.name} has no field elevation set: the ${fmt(L.elev || 0, "alt")} ${uname("alt")} under Range is left from before. Enter this field’s elevation there and tap Save Changes.`;
 }
 /**
  * Shows Save Changes only when there is something to save: the chosen site's settings were changed on this tab.
@@ -203,6 +217,8 @@ function siteApply(name) {
         ? `Using ${name}: coordinates${x.v.elev != null ? " and field elevation" : ""} are set. Set the waiver and recovery area for the launch you’re going to, then Save Changes to keep them with it.`
         : `Using ${name}: field elevation, coordinates, waiver, recovery area and rail are set.`;
     siteBaseSet(name);
+    // a site saved without an elevation: until one is set, the one under Range is whatever was there before
+    if (x.v.elev == null) store.set("rfs-site-elev-stale", { name, elev: L.elev ?? null });
     if (x.v.elev == null && x.v.lat != null) siteElevLookup(x);
     // the site's aerial photo, for the 3D flight view
     sitePhotoReady(L.lat, L.lon);
@@ -352,9 +368,8 @@ async function sitesImport(file) {
     list = null;
   }
   if (!list) return say("That isn’t a sites file exported from this app.");
-  const S = sitesGet();
-  let added = 0,
-    updated = 0;
+  // read the file's sites, taking only a site's own settings
+  const read = [];
   for (const it of list.slice(0, 500)) {
     const name = it && typeof it.name === "string" ? it.name.trim().slice(0, 40) : "",
       src = it && it.v && typeof it.v === "object" ? it.v : null;
@@ -370,21 +385,45 @@ async function sitesImport(file) {
     if (v.lat != null && !(typeof v.lat === "number" && Math.abs(v.lat) <= 90)) delete v.lat;
     if (v.lon != null && !(typeof v.lon === "number" && Math.abs(v.lon) <= 180)) delete v.lon;
     if (v.lat == null || v.lon == null) v.lat = v.lon = null;
+    read.push({ name, v });
+  }
+  if (!read.length) return say("No sites were found in that file.");
+  const mine = new Set(sitesGet().map((s) => s.name.toLowerCase())),
+    same = read.filter((x) => mine.has(x.name.toLowerCase())).length;
+  // sites of the same name as ones already saved: asked about first, never replaced unasked
+  if (same) {
+    SITEMGR.imp = { read, same };
+    SITEMGR.note = "";
+    siteRender();
+    return;
+  }
+  sitesImportDo(read, false);
+}
+/**
+ * Adds the sites read from a file to the saved sites.
+ * @param {{name:string, v:object}[]} read
+ * @param {boolean} replace whether a site with the name of one already saved replaces it (else it is left out)
+ */
+function sitesImportDo(read, replace) {
+  const S = sitesGet();
+  let added = 0,
+    updated = 0,
+    kept = 0;
+  for (const { name, v } of read) {
     const i = S.findIndex((s) => s.name.toLowerCase() === name.toLowerCase());
-    if (i >= 0) {
-      S[i] = { name: S[i].name, v };
-      updated++;
-    } else {
+    if (i < 0) {
       S.push({ name, v });
       added++;
-    }
+    } else if (replace) {
+      S[i] = { name: S[i].name, v };
+      updated++;
+    } else kept++;
   }
-  if (!added && !updated) return say("No sites were found in that file.");
   S.sort((a, b) => a.name.localeCompare(b.name));
   store.set("rfs-sites", S);
-  say(
-    `Imported ${added + updated} site${added + updated === 1 ? "" : "s"}: ${added} new${updated ? `, ${updated} replaced one of the same name` : ""}. Today’s settings weren’t changed.`,
-  );
+  SITEMGR.imp = null;
+  SITEMGR.note = `Imported ${added + updated} site${added + updated === 1 ? "" : "s"}: ${added} new${updated ? `, ${updated} replaced` : ""}${kept ? `; ${kept} of yours kept as ${kept === 1 ? "it was" : "they were"}` : ""}. Today’s settings weren’t changed.`;
+  siteRender();
 }
 /* managing saved sites: add one, export or import them all, rename or delete each one. Deleting takes two steps
    (Delete, then confirm), so it can't happen by a stray tap */
@@ -396,6 +435,7 @@ function siteMgrToggle(open) {
   SITEMGR.open = open;
   SITEMGR.edit = SITEMGR.del = null;
   SITEMGR.add = false;
+  SITEMGR.imp = null;
   SITEMGR.note = "";
   const b = document.getElementById("sitemanage");
   b.setAttribute("aria-expanded", String(open));
@@ -419,6 +459,8 @@ function siteMgrRender() {
   let top = `<div class="stools"><button type="button" class="btn" data-t="add">Add site</button><button type="button" class="btn ghost" data-t="export">Export sites</button><label class="file btn ghost" for="siteimport">Import sites<input type="file" id="siteimport" accept=".json,application/json,text/plain"></label></div>`;
   if (SITEMGR.add)
     top += `<div class="sadd"><div class="fld"><label for="siteaddname">Site name</label><div class="in"><input id="siteaddname" type="text" maxlength="40" placeholder="Field name, e.g. Bonneville" autocomplete="off"></div></div><div class="fld"><label for="siteaddcoord">Latitude, longitude (optional)</label><div class="in"><input id="siteaddcoord" type="text" autocomplete="off" spellcheck="false" placeholder="40.218224, -112.246072" value="${L.lat != null && L.lon != null ? esc(`${(+L.lat).toFixed(6)}, ${(+L.lon).toFixed(6)}`) : ""}"></div></div><p class="note" style="margin:0">The waiver, recovery area and rail start as they are set now; change them under Range and tap Save Changes.</p><div class="sconf"><button type="button" class="btn" data-t="addsave">Add</button><button type="button" class="btn ghost" data-t="addcancel">Cancel</button><span class="serr" role="alert"></span></div></div>`;
+  if (SITEMGR.imp)
+    top += `<div class="sadd"><p class="note" style="margin:0">${SITEMGR.imp.same} of the file’s ${SITEMGR.imp.read.length} site${SITEMGR.imp.read.length === 1 ? "" : "s"} ${SITEMGR.imp.same === 1 ? "has" : "have"} the name of a site you already have. Replace yours with the file’s?</p><div class="sconf"><button type="button" class="btn" data-t="imprep">Replace mine</button><button type="button" class="btn ghost" data-t="impkeep">Keep mine</button><button type="button" class="btn ghost" data-t="impcancel">Cancel</button></div></div>`;
   if (SITEMGR.note) top += `<p class="note snote" aria-live="polite">${esc(SITEMGR.note)}</p>`;
   if (!S.length) top += `<p class="note" style="margin:8px 0">No saved sites yet.</p>`;
   box.innerHTML =
@@ -438,6 +480,12 @@ function siteMgrRender() {
       (b.onclick = () => {
         const t = b.dataset.t;
         if (t === "export") return void sitesExport();
+        if (t === "imprep" || t === "impkeep") return sitesImportDo(SITEMGR.imp.read, t === "imprep");
+        if (t === "impcancel") {
+          SITEMGR.imp = null;
+          SITEMGR.note = "Nothing was imported.";
+          return siteMgrRender();
+        }
         SITEMGR.note = "";
         if (t === "add" || t === "addcancel") {
           SITEMGR.add = t === "add";

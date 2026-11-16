@@ -1110,7 +1110,8 @@ export function anim3dSet(on) {
   document.getElementById("anim3d").hidden = !on;
   document.getElementById("animcv").hidden = on;
   document.getElementById("anim3dbar").hidden = !on;
-  document.getElementById("animvideo").hidden = on;
+  // the video is of the 2D view: from 3D the button says so, and switches to it
+  document.getElementById("animvideo").textContent = on ? "Export 2D video" : "Export video";
   if (!V3.bad) document.getElementById("anim3dbtn").textContent = on ? "2D view" : "3D view";
   V3.jump = true;
   anim3dModes();
@@ -1123,7 +1124,13 @@ function anim3dModes() {
     .querySelectorAll("#anim3dbar [data-cam]")
     .forEach((b) => b.setAttribute("aria-pressed", b.dataset.cam === V3.mode));
   const hint = document.getElementById("anim3dhint");
-  if (hint) hint.hidden = V3.mode === "ground";
+  if (hint) {
+    hint.hidden = false;
+    hint.textContent =
+      V3.mode === "ground"
+        ? "The camera follows the rocket from the flight line"
+        : "Drag to look around · pinch or scroll to zoom";
+  }
 }
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).

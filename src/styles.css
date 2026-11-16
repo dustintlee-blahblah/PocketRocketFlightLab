@@ -2591,7 +2591,14 @@ html.typing .runbar {
 }
 .animtopbtns {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.animtopbtns .btn {
+  padding: 7px 10px;
+  min-height: 0;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 .anim3dbar {
   position: absolute;

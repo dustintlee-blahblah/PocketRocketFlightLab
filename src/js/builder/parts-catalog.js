@@ -204,8 +204,16 @@ function partApply(p, e, fresh) {
   if (!fresh && p.type in TUBES && p.len > 0 && p.len <= e.len + 1e-6) delete v.len;
   Object.assign(p, v);
   // a listed weight (nose cones, transitions, parachutes) is the part's weight; without one it is worked out as usual
+  const had = !fresh && p.knownOn && p.known > 0 ? p.known : 0;
   if (e.mass > 0) Object.assign(p, { known: e.mass, knownOn: true });
   else Object.assign(p, { known: 0, knownOn: false });
+  // a weight that was typed in for the part this replaces went with it: said, since it is easy to miss
+  if (had && window.prToast)
+    window.prToast(
+      e.mass > 0
+        ? `The weight you entered (${fmt(had, "smass")} ${uname("smass")}) was replaced by the library’s ${fmt(e.mass, "smass")} ${uname("smass")}.`
+        : `The weight you entered (${fmt(had, "smass")} ${uname("smass")}) was cleared: the library lists none for this part, so it is calculated. Undo brings it back.`,
+    );
   // a balance point set for the part this one replaces doesn't carry over
   if (p.knownCgOn !== undefined || p.knownCg > 0) p.knownCgOn = false;
   delete p.knownCalc;

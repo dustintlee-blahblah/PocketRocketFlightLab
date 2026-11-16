@@ -438,13 +438,33 @@ export async function finDxfLoad(k, file, as, changed) {
     if (msg) msg.textContent = finDxfSaid.text;
     return;
   }
-  k.shape = "freeform";
-  k.pts = R.pts.map((p) => `${+p[0].toFixed(5)},${+p[1].toFixed(5)}`).join("\n");
-  finDxfSaid = {
-    id: k.id,
-    text: `Imported ${file.name}: ${fmt(R.root, "len")} ${uname("len")} along the root, ${fmt(R.span, "len")} ${uname("len")} tall, ${R.pts.length} corners, read in ${R.unit}${R.said || as ? "" : " (the file doesn’t say its unit)"}. The root is ${R.seat}. Check the drawing above: if the size is wrong choose the unit and import again, and if the fin is back to front, flip it.`,
+  // asked first: it replaces the fin's shape
+  const msg = document.getElementById("bldfindxfmsg");
+  const apply = () => {
+    k.shape = "freeform";
+    k.pts = R.pts.map((p) => `${+p[0].toFixed(5)},${+p[1].toFixed(5)}`).join("\n");
+    finDxfSaid = {
+      id: k.id,
+      text: `Imported ${file.name}: ${fmt(R.root, "len")} ${uname("len")} along the root, ${fmt(R.span, "len")} ${uname("len")} tall, ${R.pts.length} corners, read in ${R.unit}${R.said || as ? "" : " (the file doesn’t say its unit)"}. The root is ${R.seat}. Check the drawing above: if the size is wrong choose the unit and import again, and if the fin is back to front, flip it.`,
+    };
+    changed();
   };
-  changed();
+  if (!msg) return apply();
+  finDxfSaid = null;
+  msg.textContent = `${file.name}: a fin ${fmt(R.root, "len")} ${uname("len")} along the root and ${fmt(R.span, "len")} ${uname("len")} tall, read in ${R.unit}${R.said || as ? "" : " (the file doesn’t say its unit)"}. Replace this fin’s shape with it? `;
+  const mk = (label, cls, fn) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.textContent = label;
+    b.style.marginLeft = "6px";
+    b.onclick = fn;
+    msg.appendChild(b);
+  };
+  mk("Replace", "btn", apply);
+  mk("Cancel", "btn ghost", () => {
+    msg.textContent = "Nothing was imported.";
+  });
 }
 /**
  * Turns a free-form fin back to front: its leading edge becomes its trailing edge.

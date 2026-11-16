@@ -14,7 +14,7 @@ import { aero } from "../physics/aerodynamics.js";
 import { apoRange, lastMC, mcFar95 } from "../physics/monte-carlo.js";
 import { fullStack } from "../physics/staging.js";
 import { coneWindNote } from "./charts.js";
-import { siteRender } from "./launch-sites.js";
+import { siteElevStale, siteRender } from "./launch-sites.js";
 import { motorFit } from "./motor-tab.js";
 import { bigDist, compass, driftDir, ejLiveFlag, lastSim, nosePlan, noseWeightText } from "./results.js";
 import { renderDragTable } from "./state.js";
@@ -933,6 +933,17 @@ export function resultFlags(st, S, m, D) {
   if (st.error) flags.push(["bad", st.error]);
   // a stand-in motor is named when the file is opened; it's said again here so the numbers aren't read as the file's own
   for (const s of standIns()) flags.push(["warn", s]);
+  // a booster stage with no motor to fly it
+  if (BLD && BLD.stages && BLD.stages.length > 1 && !D.twoStage && !st.staged)
+    flags.push([
+      "warn",
+      "The design has a booster stage, but no motor is chosen for it, so this flight carried the booster as dead weight on the upper stage’s motor alone. Choose the booster’s motor on the Motor tab, or remove the stage.",
+    ]);
+  // a launch site whose field elevation was never set
+  {
+    const s = siteElevStale();
+    if (s) flags.push(["warn", s]);
+  }
   if (st.tumble)
     flags.push([
       "bad",
