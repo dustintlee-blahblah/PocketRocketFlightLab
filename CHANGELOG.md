@@ -4,6 +4,11 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 311 (2026-11-15)
+
+**Rocket builder**
+- **Add a body part opens a window**: the add button now opens a window with the parts in it, as Add a part from Library does: the body parts, the parts that go on the selected body part, and adding or removing a stage. Picking one adds it and closes the window; Cancel, Escape or a tap outside closes it without adding anything.
+
 ## Build 310 (2026-11-15)
 
 **Rocket builder**
