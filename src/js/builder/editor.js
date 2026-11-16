@@ -5,6 +5,7 @@
 import { BLD, BLD_ROOT, bldChanged, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
 import { bldCalcOv, bldCalcPartMass } from "./derive.js";
 import { BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
+import { finDxfSave } from "./fin-dxf.js";
 import {
   BLD_BODY,
   BLD_BULK,
@@ -33,6 +34,7 @@ import { store } from "../core/storage.js";
 import {
   allMotors,
   boostId,
+  D,
   firstId,
   motorId,
   setBoostId,
@@ -435,7 +437,7 @@ export function bldRenderEdit() {
   }
   h += `</div><div class="row" style="margin-top:12px;gap:8px">${body ? `<button class="btn ghost" data-act="up">Move forward</button><button class="btn ghost" data-act="down">Move aft</button>` : ""}<button class="btn ghost" data-act="dup">Duplicate</button><button class="btn ghost" data-act="del">Delete</button></div>`;
   if (p.type === "fins")
-    h += `<canvas id="bldfinview" aria-label="This fin drawn to scale, with the sizes that set its shape"></canvas><p class="note" id="bldfinnote"></p>`;
+    h += `<canvas id="bldfinview" aria-label="This fin drawn to scale, with the sizes that set its shape"></canvas><p class="note" id="bldfinnote"></p><div class="row" style="margin-top:10px;gap:8px;align-items:center"><button type="button" class="btn ghost" data-findxf="1">Export fin outline (DXF)</button></div><p class="note" id="bldfindxfmsg" aria-live="polite">A full-size drawing of one fin for a laser cutter, a CNC router or a printed template.</p>`;
   el.innerHTML = h;
   bldWire(el, p, "part");
   if (p.type === "fins") requestAnimationFrame(bldDrawFinEdit);
@@ -449,6 +451,7 @@ export function bldRenderEdit() {
       }
     }),
   );
+  el.querySelector("[data-findxf]")?.addEventListener("click", () => finDxfSave(p, BLD.name || D.name));
   el.querySelector("[data-gomotor]")?.addEventListener("click", (e) => {
     e.preventDefault();
     if (typeof mountFilter === "function") {

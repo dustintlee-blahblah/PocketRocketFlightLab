@@ -37,6 +37,7 @@ function browserDownloads() {
     mp4: "video/mp4",
     webm: "video/webm",
     csv: "text/csv",
+    dxf: "application/dxf",
     json: "application/json",
     png: "image/png",
     eng: "text/plain",
