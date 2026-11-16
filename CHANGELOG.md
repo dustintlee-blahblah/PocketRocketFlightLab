@@ -4,6 +4,23 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 308 (2026-11-15)
+
+**Rocket builder**
+- **Parts catalog**: about 3,800 makers' parts (LOC Precision, Madcow, Public Missiles, Estes, Giant Leap, Fruity Chutes and 15 more): body tubes, nose cones, transitions, couplers, centering rings, bulkheads, launch lugs, parachutes and streamers. Select a part and tap Choose from the parts catalog: the list is searchable, filters by maker, and starts narrowed to what fits (a nose cone that matches the body, a ring that fits the tube's inside, a mount tube for the motor). Picking one fills in the part's sizes, material and listed weight; the part stays editable and keeps its maker and part number, saved in the design file. A tube keeps its length when it can be cut from the stock length. The data comes from the component files distributed with OpenRocket (Dave Cook's openrocket-database, Apache License 2.0).
+
+**Ejection charges**
+- **A parachute in the nose cone gets its own bay**: for head-end deployment (a main packed in a hollow nose cone with its own charge), the calculator now measures the nose cone's inside from its shape and wall thickness, adds the tube between its base and the first bulkhead, and sizes the charge and shear pins on the nose joint. It was counting only the tube space behind the nose cone.
+
+**Settings**
+- **Rocket weight in ounces**: with imperial units, the rocket's weight can be shown in pounds or ounces (Settings, Rocket weight in).
+
+**Results**
+- **Flight data file**: Download flight data saves the last run as a CSV, one row for each recorded moment: altitude, speeds, Mach number, acceleration, thrust, drag and drag coefficient, weight, CG, CP and stability margin, angle of attack, tilt, roll rate, drift, and the air's temperature, pressure and density, in the units the app is showing.
+
+**Validation**
+- **Each check is graded by what its source records** (VALIDATION.md, How much weight each check can bear): wind-tunnel and flight cases are marked 1 to 3 by how much of the rocket, motor and day their source gives, and the accuracy figures are reported by grade.
+
 ## Build 307 (2026-11-15)
 
 **Drag**
