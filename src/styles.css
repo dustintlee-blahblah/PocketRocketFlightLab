@@ -1518,6 +1518,67 @@ h2 + .subh {
 .runitem:has(input:checked) {
   background: var(--field);
 }
+.modal .mbox.partbox {
+  max-width: 520px;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+.partbox h3 {
+  margin: 0 0 10px;
+}
+.partctl {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 10px;
+}
+.partfit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.partfit[hidden] {
+  display: none;
+}
+.partbox .partlist {
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: none;
+  margin: 10px 0 8px;
+}
+.partitem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.partitem:last-child {
+  border-bottom: 0;
+}
+.partitem:hover,
+.partitem:focus-visible {
+  background: var(--field);
+}
+.partitem .note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+.modal .mbox.partbox p.note {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+}
 .runhead {
   padding: 7px 11px 5px;
   font-size: 0.78rem;

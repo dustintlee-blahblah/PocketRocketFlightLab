@@ -17,6 +17,7 @@ const { chromium } = require("playwright");
 const TYPES = [
   ["nose", "part"],
   ["tube", "part"],
+  ["catalog tube", "part", { type: "tube", set: { cat: { mk: "LOC Precision", pn: "BT-3.00" } } }],
   ["transition", "part"],
   ["fins", "kid"],
   ["mount", "kid"],

@@ -23,7 +23,9 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
   build-up, wind with height and gusts, and the earth's rotation
 - Single, two- and three-stage rockets, motor clusters and airstarts
 - Opens OpenRocket and RockSim files and saves OpenRocket files, keeping everything the app doesn't edit
-- Rocket builder, motor comparison, landing dispersion (Monte Carlo), fin flutter checks
+- Rocket builder with a catalog of about 3,800 makers' parts, motor comparison, landing dispersion (Monte Carlo),
+  fin flutter checks
+- The simulated flight as a data file (CSV), and a PDF flight report
 - Flight log with altimeter imports (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile
   Works, Apogee) and drag calibration to real flights, from the apogee or from the drag an altimeter's
   accelerometer measured in the coast
@@ -65,6 +67,7 @@ tools/set-build.js                  sets the build number everywhere it appears
 tools/screenshots.js                takes the screenshots in docs/images from the built app
 tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
 tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
+tools/parts-catalog/                builds src/data/parts-catalog.js from OpenRocket's component files
 tools/unused-exports.js             lint: module exports nothing uses
 tools/check-module-tops.js          lint: modules only define things when they load
 tools/relink.js, tools/move-code.js rewrite imports from what each module uses; move code between modules

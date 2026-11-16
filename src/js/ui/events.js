@@ -3,13 +3,14 @@
  */
 import { BLD, bldRender } from "../builder/builder-ui.js";
 import { store } from "../core/storage.js";
-import { setUnitsValue } from "../design/defaults.js";
+import { setUnitsValue, units } from "../design/defaults.js";
 import { drawMC } from "../physics/monte-carlo.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { renderForms } from "./forms.js";
 import { siteRender } from "./launch-sites.js";
 import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
+import { massUnit, setMassUnit } from "./units.js";
 /* ---------- events ---------- */
 /**
  * Shows one of the four tabs and draws what it needs.
@@ -45,10 +46,28 @@ export function setUnits(u) {
     const b = document.getElementById(id);
     if (b) b.setAttribute("aria-pressed", u === v);
   }
+  unitsRedraw();
+}
+/**
+ * Redraws everything that shows a value with a unit.
+ */
+function unitsRedraw() {
+  // the weight unit is a choice within imperial units
+  const row = document.getElementById("s-massrow");
+  if (row) row.hidden = units !== "imp";
+  for (const u of ["lb", "oz"]) document.getElementById("s-" + u)?.setAttribute("aria-pressed", massUnit === u);
   renderForms();
   renderResults();
   if (!document.getElementById("v-motor").hidden) renderMotors();
   if (typeof BLD !== "undefined" && BLD && typeof bldRender === "function") bldRender();
+}
+/**
+ * Shows the rocket's weight in pounds or ounces (imperial units), and redraws.
+ * @param {string} u "lb" or "oz"
+ */
+export function setMassShown(u) {
+  setMassUnit(u);
+  unitsRedraw();
 }
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).

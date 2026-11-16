@@ -80,6 +80,12 @@ export function bldToOrk(model, L, opts = {}) {
       ? `<overridecg>${n(k.knownCg)}</overridecg><overridesubcomponentscg>${!!k.knownAll}</overridesubcomponentscg>`
       : "");
   /**
+   * The catalog part a part was filled in from (this app's tags; OpenRocket's own preset element would overwrite
+   * sizes changed since).
+   */
+  const cat = (k) =>
+    k.cat && k.cat.pn ? `<prflmaker>${e(k.cat.mk || "")}</prflmaker><prflpartno>${e(k.cat.pn)}</prflpartno>` : "";
+  /**
    * A part's position element.
    */
   const pos = (k) =>
@@ -87,7 +93,7 @@ export function bldToOrk(model, L, opts = {}) {
   /**
    * The name, id and position every part starts with.
    */
-  const head = (k) => `<name>${e(k.name)}</name><id>${k.id}</id>${pos(k)}${known(k)}`;
+  const head = (k) => `<name>${e(k.name)}</name><id>${k.id}</id>${pos(k)}${known(k)}${cat(k)}`;
   const sep = model.stages.length > 1;
   /**
    * A recovery part's deployment elements.
@@ -208,7 +214,7 @@ export function bldToOrk(model, L, opts = {}) {
   const bodyXml = (b) => {
     const p = b.p,
       kids = b.kids.map((c) => kidXml(c, b)).join(""),
-      base = `<name>${e(p.name)}</name><id>${p.id}</id>${known(p)}${fin(p)}${bulk(p)}`;
+      base = `<name>${e(p.name)}</name><id>${p.id}</id>${known(p)}${cat(p)}${fin(p)}${bulk(p)}`;
     if (p.type === "nose") {
       const sr = p.shR != null && p.shR >= 0 && p.shLen > 0 && p.shR > 0 ? p.shR : Math.max(p.dia / 2 - p.wall, 0.001);
       return `<nosecone>${base}<length>${n(p.len)}</length><thickness>${n(p.filled ? p.dia / 2 : p.wall)}</thickness><shape>${p.shape}</shape><shapeclipped>${!!p.clipped}</shapeclipped><shapeparameter>${n(p.param)}</shapeparameter><aftradius>${n(p.dia / 2)}</aftradius><aftshoulderradius>${n(p.shLen > 0 ? sr : 0)}</aftshoulderradius><aftshoulderlength>${n(p.shLen || 0)}</aftshoulderlength><aftshoulderthickness>${n(p.shLen > 0 ? (p.shT != null ? Math.min(p.shT, sr) : p.filled ? sr : Math.min(p.wall, sr)) : 0)}</aftshoulderthickness><aftshouldercapped>${!!p.shCap}</aftshouldercapped><isflipped>false</isflipped><subcomponents>${kids}</subcomponents></nosecone>`;

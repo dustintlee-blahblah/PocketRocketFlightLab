@@ -167,6 +167,12 @@ export function bldFromOrk(xml, info) {
       o.knownCg = num(c, "overridecg");
       if (txt(c, "overridesubcomponentscg") === "true") o.knownAll = true;
     }
+    // the catalog part it was filled in from: this app's tags, or else OpenRocket's own preset label
+    const pn = (txt(c, "prflpartno") || "").trim(),
+      ps = kid(c, "preset");
+    if (pn) o.cat = { mk: (txt(c, "prflmaker") || "").trim(), pn };
+    else if (ps && ps.getAttribute("partno"))
+      o.cat = { mk: ps.getAttribute("manufacturer") || "", pn: ps.getAttribute("partno") };
     return o;
   };
   const cfgEl = [...rocket.children].filter((c) => c.tagName === "motorconfiguration");

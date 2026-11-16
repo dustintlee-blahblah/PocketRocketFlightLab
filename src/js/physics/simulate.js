@@ -804,6 +804,25 @@ export function simulate(D, L, m, mb, opts = {}) {
     az: [],
     roll: [],
   };
+  /* the rest of each moment's state, for the flight data file: speeds, Mach number, weight, balance, drag and the
+     air. Kept beside the series above without being one of them (not enumerable), so the charts, the report and
+     anything that copies or compares the series are untouched. */
+  const more = {
+    speed: [],
+    hspeed: [],
+    mach: [],
+    mass: [],
+    cg: [],
+    cp: [],
+    cd: [],
+    drag: [],
+    q: [],
+    temp: [],
+    press: [],
+    rho: [],
+    phase: [],
+  };
+  Object.defineProperty(out, "more", { value: more });
   const st = {
     maxAlt: 0,
     maxV: 0,
@@ -857,6 +876,37 @@ export function simulate(D, L, m, mb, opts = {}) {
     out.ax.push(s[6]);
     out.az.push(s[8]);
     out.roll.push(s[12]);
+    {
+      const atm = atmosphere(L, Math.max(z, 0)),
+        W = windVec(z, t),
+        vr = Math.hypot(vx - W[0], vy - W[1], vz),
+        fly = (phase === "rail" || phase === "flight") && !tumbling;
+      let cg = NaN,
+        cp = NaN,
+        cd = NaN;
+      if (fly) {
+        const G = Gat(t);
+        cg = inertia(t).cg;
+        cd = cdParts(G, vr, atm, thrust(t) > 0 ? nozzleAt(t) : 0, skin.T).cd;
+        if (vr > 5) {
+          const C = cnaPartsM(G, vr / atm.a);
+          cp = cpWithBodyLift(G, C.cn, C.cp);
+        }
+        more.drag.push(0.5 * atm.rho * vr * vr * cd * G.Aref);
+      } else more.drag.push(NaN);
+      more.speed.push(Math.hypot(vx, vy, vz));
+      more.hspeed.push(Math.hypot(vx, vy));
+      more.mach.push(vr / atm.a);
+      more.mass.push(mass(t));
+      more.cg.push(cg);
+      more.cp.push(cp);
+      more.cd.push(cd);
+      more.q.push(0.5 * atm.rho * vr * vr);
+      more.temp.push(atm.T - 273.15);
+      more.press.push(atm.p);
+      more.rho.push(atm.rho);
+      more.phase.push(tumbling && phase === "flight" ? "tumbling" : phase);
+    }
     lastRec = t; // drift: upwind positive, downwind negative
   }
   /**

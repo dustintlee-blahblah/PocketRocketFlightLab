@@ -2,6 +2,7 @@
  * Display units: imperial or metric, chosen in Settings. Values are kept in SI everywhere; these convert them for the
  * screen. Each dimension (len, alt, mass, speed...) has a unit name, the size of one unit in SI, and decimals shown.
  */
+import { store } from "../core/storage.js";
 import { FT, IN, LB } from "../core/units-and-fin-edges.js";
 import { units } from "../design/defaults.js";
 /* ---------- units ---------- */
@@ -9,6 +10,20 @@ import { units } from "../design/defaults.js";
  * For each unit system, each dimension's [unit name, SI value of one unit, decimals shown].
  */
 export let DIMS;
+/**
+ * The unit the rocket's weight is shown in with imperial units: "lb" or "oz" (chosen in Settings; small parts' weights
+ * are in ounces either way).
+ */
+export let massUnit = "lb";
+/**
+ * Sets the imperial unit of the rocket's weight.
+ * @param {string} u "lb" or "oz"
+ */
+export function setMassUnit(u) {
+  massUnit = u === "oz" ? "oz" : "lb";
+  store.set("rfs-mass-unit", massUnit);
+  DIMS.imp.mass = massUnit === "oz" ? ["oz", 0.028349523125, 1] : ["lb", LB, 2];
+}
 /**
  * An SI value in the current display unit.
  * @param {number} v SI value (temperatures in °C)
@@ -97,6 +112,7 @@ export function start() {
       vis: ["km", 1000, 1],
     },
   };
+  setMassUnit(store.get("rfs-mass-unit", "lb"));
 }
 /**
  * A result tile's speed in everyday units: under a value shown in ft/s or m/s, the same speed in mph or km/h, as a

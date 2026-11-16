@@ -138,6 +138,9 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
   writing and merging OpenRocket files (`ork-read.js`, `ork-export.js`, `ork-merge.js`), and the tab itself
   (`builder-ui.js`).
 
+- **Parts catalog** (`builder/parts-catalog.js`): makers' parts (`data/parts-catalog.js`, generated; see
+  `tools/parts-catalog/`), the picker that lists the ones that fit the selected part, and filling the part in from
+  one. The part keeps its maker and part number (`cat`), saved in the design file as `prflmaker` and `prflpartno`.
 - **Motors** (`motors/`): the built-in catalog (`data/motor-catalog.js`, generated; see `tools/motor-catalog/`), RASP
   `.eng` and RockSim `.rse` files, and clusters and airstarts combined into one motor per stage.
 - **Wind Tunnel** (`ui/wind-tunnel.js`, on the Rocket tab): the design's drag, normal force and CP against Mach number
@@ -269,6 +272,8 @@ graphs, drift by wind speed, landing dispersion, the safety terms).
 | a Launch warning or RSO checklist item | `ui/state.js` (`runNow`), `ui/launch-warnings.js`, `ui/rso-checklist.js` |
 | a Range tab field | `ui/forms.js`, and its help in `ui/field-help.js` |
 | the motor list | `tools/motor-catalog/` (the list is generated; don't edit `data/motor-catalog.js`) |
+| the parts catalog | `tools/parts-catalog/` (generated; don't edit `data/parts-catalog.js`), `builder/parts-catalog.js` |
+| a column of the flight data file | `report/flight-data.js`, and `more` in `physics/simulate.js` |
 | the motor filters | `ui/motor-tab.js`, `motors/catalog-lookup.js` |
 
 After any change: `npm test` (nothing that shouldn't move has moved), `npm run lint`, `npm run format:check`,

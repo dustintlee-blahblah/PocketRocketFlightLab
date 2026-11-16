@@ -27,6 +27,7 @@ import {
   bldRailLug,
   bldRodFor,
 } from "./model.js";
+import { partAsListed, partKind, partPick } from "./parts-catalog.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import {
@@ -389,6 +390,11 @@ export function bldRenderEdit() {
       h += `<p class="note" style="margin:0 0 10px">Motor: <b>${esc(host.motor ? (host.motor.mfr ? host.motor.mfr + " " : "") + host.motor.name : "none")}</b>${primary ? ` · <a href="#" data-gomotor="1">choose it on the Motor tab</a>` : " · from the file"}</p>`;
     }
   }
+  // a part the catalog covers: which catalog part it is, and the way in to pick one
+  if (partKind(p))
+    h += p.cat
+      ? `<p class="note" style="margin:0 0 10px">Catalog part: <b>${esc(`${p.cat.mk || ""} ${p.cat.pn}`.trim())}</b>${partAsListed(p) ? "" : " (sizes changed since)"} · <a href="#" data-cat="pick">Change</a> · <a href="#" data-cat="clear">Remove the label</a></p>`
+      : `<p class="note" style="margin:0 0 10px"><a href="#" data-cat="pick">Choose from the parts catalog</a></p>`;
   if (p.type === "raw")
     h += `<p class="note" style="margin:0 0 10px">This part came from the file and the builder can’t change its shape, but it still counts in the weight, balance and drag, and it’s kept when you save. You can rename or move it.</p>`;
   h += `<div class="grid">`;
@@ -429,6 +435,16 @@ export function bldRenderEdit() {
   el.innerHTML = h;
   bldWire(el, p, "part");
   if (p.type === "fins") requestAnimationFrame(bldDrawFinEdit);
+  el.querySelectorAll("[data-cat]").forEach((a) =>
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (a.dataset.cat === "pick") partPick(p.id);
+      else {
+        delete p.cat;
+        bldChanged(true);
+      }
+    }),
+  );
   el.querySelector("[data-gomotor]")?.addEventListener("click", (e) => {
     e.preventDefault();
     if (typeof mountFilter === "function") {
@@ -544,7 +560,7 @@ function bldFieldHtml(F, val) {
     case "line": {
       const list = F.kind === "bulk" ? BLD_BULK : F.kind === "surf" ? BLD_SURF : BLD_LINE,
         std = list.some((x) => x[0] === val);
-      inp = `<div class="in"><select id="${id}">${std ? "" : `<option value="${esc(val || "")}" selected>${esc(val || "From file")} (from file)</option>`}${list.map(([nm]) => `<option ${nm === val ? "selected" : ""}>${esc(nm)}</option>`).join("")}</select></div>`;
+      inp = `<div class="in"><select id="${id}">${std ? "" : `<option value="${esc(val || "")}" selected>${esc(val || "From file")}${F.p && F.p.cat ? "" : " (from file)"}</option>`}${list.map(([nm]) => `<option ${nm === val ? "selected" : ""}>${esc(nm)}</option>`).join("")}</select></div>`;
       break;
     }
     case "pts": {

@@ -127,6 +127,11 @@ function orkMerge3(od, oRocket, bRocket, nRocket, cfg) {
       if (ser(b) === ser(n)) continue; // not changed in the app: the file's own value stays
       changed = true;
       const t = k.split(/[#@~]/)[0];
+      // a different catalog part (or none now): OpenRocket's own preset label would bring the old part's sizes back
+      if (t === "prflpartno")
+        K(oEl)
+          .filter((c) => tag(c) === "preset")
+          .forEach((c) => oEl.removeChild(c));
       // containers are merged field by field too, so their own extra settings stay
       if (o && b && n && (NESTED.has(t) || NESTED_CFG.has(t))) {
         // a different motor: the old one's thrust-curve fingerprint no longer applies
@@ -383,6 +388,11 @@ export function bldMergeOrk(origXml, newXml, cfg, baseXml) {
             }
           }
           continue;
+        }
+        // OpenRocket's preset label stays only while it is still the part's catalog part
+        if (t === "preset") {
+          const pn = kids(n).find((x) => x.tagName === "prflpartno");
+          if (pn && pn.textContent.trim() !== (c.getAttribute("partno") || "").trim()) continue;
         }
         if (KEEP.has(t) && !have.has(t))
           n.insertBefore(nd.importNode(c, true), kids(n).find((x) => x.tagName === "subcomponents") || null);

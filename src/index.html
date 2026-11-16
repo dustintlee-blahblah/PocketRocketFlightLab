@@ -87,6 +87,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
         <p class="setnote">Used by the RSO Checklist to check each motor against your certification, and printed on flight reports. Kept on this device only.</p>
       </div>
       <div class="setrow"><span>Units</span><div class="seg2" role="group" aria-label="Units"><button type="button" id="s-imp" aria-pressed="true">ft · lb</button><button type="button" id="s-met" aria-pressed="false">m · kg</button></div></div>
+      <div class="setrow" id="s-massrow"><span>Rocket weight in</span><div class="seg2" role="group" aria-label="Rocket weight unit"><button type="button" id="s-lb" aria-pressed="true">lb</button><button type="button" id="s-oz" aria-pressed="false">oz</button></div></div>
       <div class="setrow"><span>Appearance</span><div class="seg2" role="group" aria-label="Appearance"><button type="button" data-theme-set="auto">Auto</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button></div></div>
       <button type="button" class="setrow setitem" id="s-colorbtn" aria-expanded="false" aria-controls="s-colors"><span>App Color</span><span class="setdots"><i style="background:var(--accent)"></i><i style="background:var(--gulf)"></i><b aria-hidden="true">›</b></span></button>
       <div class="setsub" id="s-colors" hidden>
@@ -204,6 +205,10 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="row" style="justify-content:space-between">
         <div style="min-width:0;flex:1"><h2 style="margin:0">Flight report</h2><p class="note" style="margin:2px 0 0">A PDF of the last run: the rocket’s configuration, results, checks, graphs, drift by wind speed, and the safety disclaimer.</p></div>
         <button class="btn" id="exportbtn">Export PDF report</button>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-top:12px">
+        <div style="min-width:0;flex:1"><h2 style="margin:0">Flight data</h2><p class="note" style="margin:2px 0 0">The last run as a spreadsheet file (CSV): height, speeds, Mach number, thrust, drag, weight, stability and more at each moment of the flight.</p></div>
+        <button class="btn ghost" id="exportcsvbtn">Download flight data</button>
       </div>
       <p class="note" id="exportprof" style="margin:6px 0 0" hidden>Your name, club and certification won’t be on the report: this copy of the app doesn’t have your profile yet. Each copy (the Android app, each web browser) keeps its own settings. <button type="button" class="linkbtn" id="exportprofbtn">Add them in Settings → Profile</button></p>
       <p class="note" id="exportmsg" aria-live="polite"></p>
@@ -424,6 +429,15 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
 <div class="modal" id="infobox" role="dialog" aria-modal="true" aria-labelledby="infottl" hidden><div class="mbox">
   <h3 id="infottl"></h3><p id="infotxt"></p>
   <div class="row mrow"><button class="btn" id="infook" type="button">Got it</button></div></div></div>
+<div class="modal" id="partpick" role="dialog" aria-modal="true" aria-labelledby="partttl" hidden><div class="mbox partbox">
+  <h3 id="partttl">Parts catalog</h3>
+  <div class="partctl"><div class="fld"><label for="partq">Search part number or description</label><div class="in"><input id="partq" type="search" autocomplete="off" placeholder="BT-80, 4 in ogive"></div></div>
+  <div class="fld"><label for="partmk">Maker</label><div class="in"><select id="partmk"></select></div></div></div>
+  <label class="partfit" id="partfitrow"><input type="checkbox" id="partfit"><span id="partfittxt"></span></label>
+  <div class="runlist partlist" id="partlist"></div>
+  <p class="note" id="partcount"></p>
+  <p class="note" id="partnote">A tube keeps the length it has now when the stock length is long enough to cut it from.</p>
+  <div class="row mrow"><button class="btn ghost" id="partcancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="runpick" role="dialog" aria-modal="true" aria-labelledby="runttl" hidden><div class="mbox">
   <h3 id="runttl">Open</h3><p class="note">Open only the design, or the design with one of its stored runs: that run’s motors and launch conditions.</p>
   <div class="runlist" id="runlist" role="radiogroup" aria-labelledby="runttl"></div>
@@ -525,11 +539,13 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
         <li>Sutherland's law for air viscosity; U.S. Standard Atmosphere, 1976.</li>
       </ul>
       <h3>Design files and altimeter files</h3>
-      <p>Opens OpenRocket (.ork) and RockSim (.rkt) design files and saves designs as OpenRocket (.ork) files; RockSim files are only read, never changed. It also reads flight data files exported from altimeters, so they can be used alongside those programs and devices. File support was written independently from the files themselves; no part of OpenRocket, RockSim or any altimeter software is included in this app. Simulations this app saves into a design file are labeled “Pocket Rocket”, so they aren’t mistaken for that program’s own results.</p>
+      <p>Opens OpenRocket (.ork) and RockSim (.rkt) design files and saves designs as OpenRocket (.ork) files; RockSim files are only read, never changed. It also reads flight data files exported from altimeters, so they can be used alongside those programs and devices. File support was written independently from the files themselves; no program code from OpenRocket, RockSim or any altimeter software is included in this app (the motor data and parts catalog described below are data files). Simulations this app saves into a design file are labeled “Pocket Rocket”, so they aren’t mistaken for that program’s own results.</p>
       <h3>Trademarks</h3>
       <p>RockSim is a trademark of Apogee Components, Inc. OpenRocket, Featherweight, Blue Raven, Altus Metrum, Eggtimer, PerfectFlite, StratoLogger, Missile Works, Apogee Components, AeroTech, Cesaroni Technology, Loki Research and ThrustCurve are names or trademarks of their respective owners, used here only to identify the files, devices and motors the app works with. Pocket Rocket Flight Lab is not affiliated with, sponsored by or endorsed by any of them.</p>
       <h3>Motor data</h3>
       <p>The built-in motors are every motor in OpenRocket's motor database (1,127 motors from 27 makers): the curves published on ThrustCurve.org, most of them from official motor certification tests, and the older motors in the RASAero motor list. Where a motor has more than one curve, the one closest to its certified figures is used, certification curves first. Other motors can be loaded from .eng, .rse or .zip files. <a href="https://www.thrustcurve.org/" target="_blank" rel="noopener">thrustcurve.org</a></p>
+      <h3>Parts catalog</h3>
+      <p>The builder’s parts catalog (about 3,800 body tubes, nose cones, transitions, couplers, rings, bulkheads, launch lugs, parachutes and streamers from 21 makers) is built from the component data files distributed with OpenRocket: the openrocket-database project, © 2014–2019 Dave Cook, Apache License 2.0, and OpenRocket’s older component lists, GNU GPL v3. Sizes and weights are the makers’ published or measured figures as those files record them and can be wrong; check a part against the one in your hand. Makers’ names and part numbers belong to their makers. <a href="https://github.com/dbcook/openrocket-database" target="_blank" rel="noopener">github.com/dbcook/openrocket-database</a></p>
       <h3>Copyright and license</h3>
       <p>Pocket Rocket Flight Lab © 2026 Dustin Lee.</p>
       <p>This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.</p>
