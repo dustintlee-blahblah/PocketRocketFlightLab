@@ -44,7 +44,7 @@ uniform vec3 eye, fwd, right, up, sun;
 uniform vec2 tanv;
 uniform float dark;
 uniform sampler2D nearT, farT;
-uniform vec3 nearB, farB;
+uniform vec3 nearB, farB, base;
 vec3 sky(vec3 d){
   float e = clamp(d.y, 0.0, 1.0);
   vec3 c = mix(vec3(0.80, 0.88, 0.95), vec3(0.22, 0.45, 0.78), pow(e, 0.55));
@@ -59,7 +59,7 @@ void main(){
   vec2 gr = abs(fract(g / 100.0) - 0.5) * 100.0; // lines 100 m apart, the pad in the middle of a square
   float px = s * tanv.y * 0.004;
   float line = 1.0 - smoothstep(px * 0.6 + 0.04, px * 1.6 + 0.12, min(gr.x, gr.y));
-  vec3 c = mix(vec3(0.42, 0.50, 0.33), vec3(0.50, 0.57, 0.40), 0.5 + 0.5 * sin(g.x * 0.013) * sin(g.y * 0.017));
+  vec3 c = base * (1.0 + 0.08 * sin(g.x * 0.013) * sin(g.y * 0.017));
   c = mix(c, c * 0.84, line * clamp(1.0 - s / 4000.0, 0.0, 1.0));
   vec2 uf = (g - farB.xy) / farB.z * 0.5 + 0.5;
   if (farB.z > 0.0 && uf.x > 0.0 && uf.x < 1.0 && uf.y > 0.0 && uf.y < 1.0) {
@@ -502,12 +502,18 @@ function drawMesh(M, m, tint = [1, 1, 1, 1], lit = 1) {
   gl.drawArrays(gl.TRIANGLES, 0, M.n);
 }
 /**
+ * A picture of the site photo has arrived: show it, if the animation is standing still in 3D.
+ */
+function photoArrived() {
+  if (ANIM.on && V3.on && !ANIM.playing) anim3dDraw();
+}
+/**
  * The site photo as textures, once it has arrived (see site-photo.js): a near, sharp square and a far, coarse one.
  */
 function photoTextures() {
   const gl = V3.gl,
     L = lastSim.L,
-    ph = sitePhoto(L.lat, L.lon, () => ANIM.on && V3.on && !ANIM.playing && anim3dDraw());
+    ph = sitePhoto(L.lat, L.lon, photoArrived);
   for (const k of ["near", "far"]) {
     const img = ph && ph[k];
     if (!img) {
@@ -524,6 +530,24 @@ function photoTextures() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     V3.tex[k] = { t, img, half: ph[k + "Half"] };
+    // the far picture's overall colour, for the ground beyond it
+    if (k === "far")
+      try {
+        const cv = document.createElement("canvas");
+        cv.width = cv.height = 4;
+        const c2 = cv.getContext("2d");
+        c2.drawImage(img, 0, 0, 4, 4);
+        const d = c2.getImageData(0, 0, 4, 4).data;
+        let r = 0,
+          g = 0,
+          b = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          r += d[i];
+          g += d[i + 1];
+          b += d[i + 2];
+        }
+        V3.tex.far.avg = [r / 16 / 255, g / 16 / 255, b / 16 / 255];
+      } catch (e) {}
   }
   const note = document.getElementById("anim3dcredit");
   if (note) note.hidden = !(V3.tex.near || V3.tex.far);
@@ -690,6 +714,7 @@ export function anim3dDraw() {
     gl.uniform3fv(P.u.up, C.u);
     gl.uniform3fv(P.u.sun, sun);
     gl.uniform2f(P.u.tanv, tanY * aspect, tanY);
+    gl.uniform3fv(P.u.base, (V3.tex.far && V3.tex.far.avg) || [0.46, 0.535, 0.365]);
     gl.uniform1f(P.u.dark, Math.min(1, Math.max(0, (eye[1] - 12000) / 60000)));
     for (const [k, unit] of [
       ["near", 0],
@@ -877,6 +902,7 @@ export function anim3dDraw() {
   }
   // readout
   const vz = landed ? 0 : animAt(out.t, out.vel, t),
+    dw = -animAt(out.t, out.drift, t), // distance from the pad along the wind, as the 2D view gives it
     phase = landed
       ? "Landed"
       : mainOpen
@@ -894,7 +920,7 @@ export function anim3dDraw() {
                 : "Falling";
   document.getElementById("animhud").innerHTML = ANIM.countEnd
     ? ""
-    : `${t > 0 ? `<b>${phase}</b>` : ""}<span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span>${big > 1.5 ? `<span>Rocket drawn ${big >= 10 ? Math.round(big) : big.toFixed(1)}× size</span>` : ""}`;
+    : `${t > 0 ? `<b>${phase}</b>` : ""}<span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span><span>${Math.abs(dw) < 0.5 ? "Over the pad" : `${fmt(Math.abs(dw), "alt")} ${uname("alt")} ${dw > 0 ? "downwind" : "upwind"}`}</span>${big > 1.5 ? `<span>Rocket drawn ${big >= 10 ? Math.round(big) : big.toFixed(1)}× size</span>` : ""}`;
   const sc = document.getElementById("animscrub");
   if (document.activeElement !== sc) sc.value = String(t);
 }

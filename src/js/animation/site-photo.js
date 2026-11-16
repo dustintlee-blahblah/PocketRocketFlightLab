@@ -24,6 +24,8 @@ const PHOTO = {
   busy: false,
   failed: false,
 };
+/** Those to tell when a picture of the photo arrives. */
+let photoWaiting = [];
 /**
  * Whether the site photo is wanted (the 3D view's Site photo box; on until it is unticked).
  * @returns {boolean}
@@ -129,7 +131,13 @@ function photoDecode(bytes) {
 export function sitePhoto(lat, lon, onLoad) {
   if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon) || !sitePhotoOn()) return null;
   const key = `${(+lat).toFixed(4)},${(+lon).toFixed(4)}`;
-  if (PHOTO.key !== key) Object.assign(PHOTO, { key, near: null, far: null, busy: false, failed: false });
+  if (PHOTO.key !== key) {
+    Object.assign(PHOTO, { key, near: null, far: null, busy: false, failed: false, fresh: false });
+    photoWaiting = [];
+  }
+  // whoever asks while it is on its way is told when it arrives
+  if (onLoad && !PHOTO.failed && !(PHOTO.near && PHOTO.far) && !photoWaiting.includes(onLoad))
+    photoWaiting.push(onLoad);
   if (!PHOTO.busy && !PHOTO.failed && !(PHOTO.near && PHOTO.far)) {
     PHOTO.busy = true;
     (async () => {
@@ -144,20 +152,39 @@ export function sitePhoto(lat, lon, onLoad) {
           // only a real picture is kept: the service answers a failed request with a page of text
           await Promise.all([photoDecode(near), photoDecode(far)]);
           photoKeep(key, rec);
+          if (PHOTO.key === key) PHOTO.fresh = true; // just fetched, not from the device's store
         }
         for (const k of ["far", "near"]) {
           const img = await photoDecode(rec[k]);
           if (PHOTO.key !== key) return;
           PHOTO[k] = img;
-          if (onLoad) onLoad();
+          for (const f of photoWaiting.slice()) f();
         }
       } catch (e) {
         // no connection, no coverage or no store: plain ground, and no second try until the site changes
         if (PHOTO.key === key) PHOTO.failed = true;
       } finally {
-        if (PHOTO.key === key) PHOTO.busy = false;
+        if (PHOTO.key === key) {
+          photoWaiting = [];
+          PHOTO.busy = false;
+        }
       }
     })();
   }
   return PHOTO;
+}
+/**
+ * Gets a launch site's photo ready ahead of time, when the site is chosen or its coordinates are typed on the Range
+ * tab: fetched and kept on the device while there is a connection, so the 3D view has it at the field. Says so once
+ * it has just been fetched.
+ * @param {number|null} lat degrees
+ * @param {number|null} lon degrees
+ */
+export function sitePhotoReady(lat, lon) {
+  sitePhoto(lat, lon, () => {
+    if (PHOTO.near && PHOTO.far && PHOTO.fresh) {
+      PHOTO.fresh = false;
+      if (window.prToast) window.prToast("Site photo saved for the 3D flight view.");
+    }
+  });
 }

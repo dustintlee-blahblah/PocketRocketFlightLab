@@ -1,6 +1,7 @@
 /**
  * The weather forecast for the site (see the note below), the site's coordinates, and directions to it.
  */
+import { sitePhotoReady } from "../animation/site-photo.js";
 import { BLD, BLD_ROOT, bldRender, bldSave, setBLD, setBldSel } from "../builder/builder-ui.js";
 import { bldDerive } from "../builder/derive.js";
 import { bldDefault } from "../builder/model.js";
@@ -219,6 +220,7 @@ function siteCoordSet() {
   m.textContent = `${Math.abs(r.lat).toFixed(5)}° ${r.lat >= 0 ? "N" : "S"}, ${Math.abs(r.lon).toFixed(5)}° ${r.lon >= 0 ? "E" : "W"}. North and east are positive.`;
   changed();
   if (typeof siteRender === "function") siteRender();
+  sitePhotoReady(L.lat, L.lon);
   wxSiteNote();
   return true;
 }

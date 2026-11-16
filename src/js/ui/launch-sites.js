@@ -2,6 +2,7 @@
  * Saved launch sites: each one keeps a field's own settings (location, elevation, rail, waiver, cone...), not the day's
  * weather. The chosen site stays in force when another rocket is opened.
  */
+import { sitePhotoReady } from "../animation/site-photo.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { L } from "../design/defaults.js";
@@ -197,6 +198,8 @@ function siteApply(name) {
         : `Using ${name}: field elevation, coordinates, waiver, recovery area and rail are set.`;
     siteBaseSet(name);
     if (x.v.elev == null && x.v.lat != null) siteElevLookup(x);
+    // the site's aerial photo, for the 3D flight view
+    sitePhotoReady(L.lat, L.lon);
   }
   siteRender();
   delete m.dataset.keep;
