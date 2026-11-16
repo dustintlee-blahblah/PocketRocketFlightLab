@@ -141,6 +141,10 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
 - **Parts catalog** (`builder/parts-catalog.js`): makers' parts (`data/parts-catalog.js`, generated; see
   `tools/parts-catalog/`), the picker that lists the ones that fit the selected part, and filling the part in from
   one. The part keeps its maker and part number (`cat`), saved in the design file as `prflmaker` and `prflpartno`.
+- **3D flight view** (`animation/view3d.js`): the animation drawn with WebGL, with no library: one pass for the sky and
+  the ground, then the rocket's model (built from the 2D animation's outline), rail, flame, smoke, parachute and
+  dropped stages. `animation/site-photo.js` fetches the launch site's aerial photo from the USGS and keeps it on the
+  device.
 - **Motors** (`motors/`): the built-in catalog (`data/motor-catalog.js`, generated; see `tools/motor-catalog/`), RASP
   `.eng` and RockSim `.rse` files, and clusters and airstarts combined into one motor per stage.
 - **Wind Tunnel** (`ui/wind-tunnel.js`, on the Rocket tab): the design's drag, normal force and CP against Mach number

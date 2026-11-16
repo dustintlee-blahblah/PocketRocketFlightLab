@@ -3,8 +3,11 @@
  * Positions in the world are meters; K is pixels per meter, CX the world x at the center of the view, gy the ground's
  * screen y.
  */
-import { ANIM, animAt, animClose, animCount, animOpen, animPlay } from "./animation.js";
+import { ANIM, animAt, animClose, animCount, animOpen, animPlay, animShow } from "./animation.js";
+import { sitePhotoOn } from "./site-photo.js";
 import { VID } from "./video-export.js";
+import { anim3dSet, V3 } from "./view3d.js";
+import { store } from "../core/storage.js";
 import { css, niceTicks, setupCanvas } from "../ui/charts.js";
 import { chargeEvents, lastSim } from "../ui/results.js";
 import { fmt, fromDisp, toDisp, uname } from "../ui/units.js";
@@ -872,6 +875,18 @@ export function start() {
     return false;
   };
   document.getElementById("animclose").onclick = animClose;
+  document.getElementById("anim3dbtn").onclick = () => {
+    anim3dSet(!V3.on);
+    if (!ANIM.playing) animShow();
+  };
+  {
+    const box = document.getElementById("anim3dphoto");
+    box.checked = sitePhotoOn();
+    box.onchange = () => {
+      store.set("rfs-site-photo", box.checked);
+      if (!ANIM.playing) animShow();
+    };
+  }
   document.getElementById("animplay").onclick = () => animPlay(!ANIM.playing);
   document.getElementById("animrestart").onclick = () => {
     ANIM.t = 0;
@@ -889,7 +904,7 @@ export function start() {
     }
     ANIM.t = parseFloat(e.target.value) || 0;
     ANIM.cam = null;
-    if (!ANIM.playing) animDraw();
+    if (!ANIM.playing) animShow();
   });
   document.addEventListener("keydown", (e) => {
     if (!ANIM.on) return;
@@ -900,6 +915,6 @@ export function start() {
     }
   });
   window.addEventListener("resize", () => {
-    if (ANIM.on && !ANIM.playing && !VID.busy) animDraw();
+    if (ANIM.on && !ANIM.playing && !VID.busy && !V3.on) animDraw();
   });
 }

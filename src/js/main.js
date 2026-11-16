@@ -89,6 +89,8 @@ import * as m75 from "../data/parts-catalog.js";
 import * as m76 from "./builder/parts-catalog.js";
 import * as m77 from "./report/flight-data.js";
 import * as m78 from "./builder/fin-dxf.js";
+import * as m79 from "./animation/site-photo.js";
+import * as m80 from "./animation/view3d.js";
 
 const modules = [
   m0,
@@ -170,6 +172,8 @@ const modules = [
   m76,
   m77,
   m78,
+  m79,
+  m80,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

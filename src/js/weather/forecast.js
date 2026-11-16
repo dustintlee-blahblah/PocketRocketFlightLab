@@ -60,6 +60,30 @@ const WX_LEVELS = [
   425, 400, 375, 350, 325, 300, 275, 250, 225, 200, 175, 150, 125, 100, 70, 50, 40, 30, 20, 15, 10,
 ];
 /**
+ * Fetches a URL as bytes (a picture, say), the same way prFetchText fetches text.
+ * @param {string} url
+ * @returns {Promise<Uint8Array>}
+ */
+export function prFetchBytes(url) {
+  const A = window.PocketRocketApp;
+  if (A && typeof A.fetchText === "function")
+    return new Promise((res, rej) => {
+      const id = "f" + ++prFetchN;
+      PR_FETCH[id] = { res, rej, bytes: true };
+      setTimeout(() => {
+        if (PR_FETCH[id]) {
+          delete PR_FETCH[id];
+          rej(new Error("No answer in time."));
+        }
+      }, 60000);
+      A.fetchText(id, url);
+    });
+  return fetch(url).then((r) => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.arrayBuffer().then((b) => new Uint8Array(b));
+  });
+}
+/**
  * Web requests waiting for the Android app's answer, by id.
  */
 const PR_FETCH = {};
@@ -680,6 +704,15 @@ export function start() {
     const p = PR_FETCH[id];
     if (!p) return;
     delete PR_FETCH[id];
+    if (p.bytes) {
+      try {
+        if (!ok) throw new Error("request failed");
+        p.res(Uint8Array.from(atob(b64 || ""), (c) => c.charCodeAt(0)));
+      } catch (e) {
+        p.rej(e);
+      }
+      return;
+    }
     let t = "";
     try {
       t = new TextDecoder().decode(Uint8Array.from(atob(b64 || ""), (c) => c.charCodeAt(0)));

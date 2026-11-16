@@ -821,6 +821,7 @@ export function simulate(D, L, m, mb, opts = {}) {
     press: [],
     rho: [],
     phase: [],
+    ay: [],
   };
   Object.defineProperty(out, "more", { value: more });
   const st = {
@@ -906,6 +907,7 @@ export function simulate(D, L, m, mb, opts = {}) {
       more.press.push(atm.p);
       more.rho.push(atm.rho);
       more.phase.push(tumbling && phase === "flight" ? "tumbling" : phase);
+      more.ay.push(s[7]); // the axis's crosswind part (ax and az are series of their own), for the 3D view
     }
     lastRec = t; // drift: upwind positive, downwind negative
   }

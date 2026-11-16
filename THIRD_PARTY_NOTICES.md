@@ -240,6 +240,12 @@ License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), and OpenRock
 weight turned into the material density for tubes, couplers, rings and bulkheads. Part numbers and makers' names
 belong to their makers, who are not affiliated with this app.
 
+== Launch site photo ==
+The 3D flight view's ground photo comes from the U.S. Geological Survey's imagery service (The National Map,
+https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer). USGS-authored data and maps are in
+the U.S. public domain; the app credits the USGS on the picture. Map services and data available from U.S. Geological
+Survey, National Geospatial Program.
+
 == Design file compatibility ==
 The app opens and saves OpenRocket (.ork) and RockSim (.rkt) design files for compatibility. OpenRocket and RockSim are separate programs and are not affiliated with this app.
 

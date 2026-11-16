@@ -193,6 +193,31 @@ const { chromium } = require("playwright");
   need("Results tab: drift-by-wind table rows", m.windRows, 4);
   need("Results tab: flight log panel", m.log, 1);
   need("Results tab: an apogee", m.apogee, 10);
+  // the flight animation, in 2D and (where this browser has WebGL) in 3D, in each camera
+  await step("animation", () => {
+    animOpen();
+    animPlay(false);
+    animCount(null);
+    ANIM.t = 2;
+    animShow();
+  });
+  await step("animation 3D", () => {
+    if (!V3.on) document.getElementById("anim3dbtn").click();
+    for (const b of document.querySelectorAll("#anim3dbar [data-cam]")) {
+      b.click();
+      animShow();
+    }
+  });
+  m = await look("animation", () => ({
+    shown: document.getElementById("animmodal").hidden ? 0 : 1,
+    hud: document.getElementById("animhud").textContent.length,
+  }));
+  need("Animation: open", m.shown, 1);
+  need("Animation: its readout", m.hud, 10);
+  await step("animation closed", () => {
+    if (V3.on) document.getElementById("anim3dbtn").click();
+    animClose();
+  });
   const info = await p.evaluate(() => ({
     apo: lastSim && Math.round(lastSim.st.maxAlt),
     forms: Object.keys(FIELDS).map((g) => [g, document.getElementById(g)?.children.length]),

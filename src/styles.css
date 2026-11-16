@@ -2554,6 +2554,68 @@ html.typing .runbar {
   border-radius: 10px;
   display: block;
 }
+#anim3d {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border-radius: 10px;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+.animtopbtns {
+  display: flex;
+  gap: 8px;
+}
+.anim3dbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.anim3dbar > * {
+  pointer-events: auto;
+}
+.anim3dbar .seg2,
+.anim3dphoto {
+  background: rgba(255, 255, 255, 0.86);
+  color: #15202a;
+  border-radius: 8px;
+}
+.anim3dbar .seg2 button {
+  color: #45525e;
+}
+.anim3dbar .seg2 button[aria-pressed="true"] {
+  background: #15202a;
+  color: #fff;
+}
+.anim3dphoto {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  font: 600 0.8rem var(--f-body);
+  cursor: pointer;
+}
+.anim3dnote {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 500 0.72rem var(--f-body);
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
 .animhud {
   display: flex;
   flex-wrap: wrap;

@@ -3,6 +3,7 @@
  */
 import { animDraw } from "./scenery.js";
 import { VID } from "./video-export.js";
+import { anim3dDraw, anim3dSet, V3 } from "./view3d.js";
 import { esc } from "../core/helpers.js";
 import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
 import { isThree, stackDesign, stackDesign3 } from "../physics/staging.js";
@@ -127,6 +128,7 @@ export function animOpen() {
   ANIM.on = true;
   document.getElementById("animmodal").hidden = false;
   document.getElementById("animscrub").max = String(ANIM.tEnd);
+  anim3dSet(V3.on);
   animPlay(true);
 }
 /**
@@ -205,8 +207,15 @@ function animTick(now) {
     ANIM.last = now;
     if (ANIM.t >= ANIM.tEnd) animPlay(false);
   }
-  animDraw();
+  animShow();
   if (ANIM.playing) ANIM.raf = requestAnimationFrame(animTick);
+}
+/**
+ * Draws the animation's current moment, in whichever view is showing (2D side view or 3D).
+ */
+export function animShow() {
+  if (V3.on) anim3dDraw();
+  else animDraw();
 }
 /**
  * Straight-line interpolation of a recorded series at a time (held at its ends).
