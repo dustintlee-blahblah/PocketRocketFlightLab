@@ -1260,8 +1260,8 @@ export const SERIES = {
   drift: ["Drift", "alt"],
   pitch: ["Pitch", "deg"],
   aoa: ["AoA", "deg"],
-  cone: ["Cone", "alt"],
-  land: ["Landing", "alt"],
+  cone: ["Safety cone", "alt"],
+  land: ["Landing dispersion", "alt"],
 };
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
