@@ -998,15 +998,15 @@ export function parseOrk(xml, opts = {}) {
     } else if (!skipKids) for (const k of kids) walk(k, place(k, me), me);
     else
       for (const k of kids) {
-        if (/finset/.test(k.tagName) || k.tagName === "parachute" || k.tagName === "innertube") {
-          const tm = totalMass,
-            mo = moment,
-            np = massPts.length;
-          walk(k, place(k, me), me);
-          totalMass = tm;
-          moment = mo;
-          massPts.length = np;
-        }
+        // the parent's weight stands in for theirs, but the parts are still there: fins, rail buttons, launch lugs,
+        // parachutes and motor mounts keep their shape, drag and place; only their weight is left out
+        const tm = totalMass,
+          mo = moment,
+          np = massPts.length;
+        walk(k, place(k, me), me);
+        totalMass = tm;
+        moment = mo;
+        massPts.length = np;
       }
     if (tag === "parallelstage") parDepth--;
     if (tag === "podset" || tag === "parallelstage") R.last = lastR;
