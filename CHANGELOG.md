@@ -4,6 +4,16 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 318 (2026-11-16)
+
+**Flight**: read from the design the way OpenRocket flies it, each checked against OpenRocket 24.12
+- **A CG override that covers the parts on it**: the part and everything on it now balance at that point. It moved only the part itself, which changed the stability margin.
+- **A Cd override that covers the parts on it**: it now replaces the drag of those parts too. The setting was ignored.
+- **A Cd override on the last body part**: it now replaces the base drag behind that part as well, as in OpenRocket. Base drag used to be added on top. The note shown when the file opens says so.
+- **Fin fillets and fin tabs are weighed**: fillets as OpenRocket sizes them, and through-the-wall tabs in the fin's own material. The builder keeps both as the file wrote them and saves them back.
+- **Engine blocks**: weighed as a ring of their own thickness, not a solid disc.
+- **Stage weights**: parts on a part whose typed-in weight covers them no longer add to their stage's own weight.
+
 ## Build 317 (2026-11-16)
 
 **Flight**
