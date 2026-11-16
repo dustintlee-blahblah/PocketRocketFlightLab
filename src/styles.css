@@ -2603,6 +2603,16 @@ html.typing .runbar {
   font: 600 0.8rem var(--f-body);
   cursor: pointer;
 }
+.anim3dstate {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 44px;
+  font: 600 0.78rem var(--f-body);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+}
 .anim3dnote {
   position: absolute;
   left: 10px;

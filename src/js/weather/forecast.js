@@ -79,10 +79,15 @@ export function prFetchBytes(url) {
       }, 60000);
       A.fetchText(id, url);
     });
-  return fetch(url).then((r) => {
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.arrayBuffer().then((b) => new Uint8Array(b));
-  });
+  // an answer that never comes is a failure after 90 s, not a wait without end
+  const stop = typeof AbortController === "function" ? new AbortController() : null,
+    timer = setTimeout(() => stop && stop.abort(), 90000);
+  return fetch(url, stop ? { signal: stop.signal } : undefined)
+    .then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.arrayBuffer().then((b) => new Uint8Array(b));
+    })
+    .finally(() => clearTimeout(timer));
 }
 /**
  * Web requests waiting for the Android app's answer, by id.

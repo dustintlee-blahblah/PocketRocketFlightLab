@@ -7,7 +7,7 @@
  * of downwind, z up) are turned into these by the wind's direction, so the picture has north where the photo has it.
  */
 import { ANIM, animAt } from "./animation.js";
-import { sitePhoto } from "./site-photo.js";
+import { sitePhoto, sitePhotoAgain, sitePhotoState } from "./site-photo.js";
 import { store } from "../core/storage.js";
 import { lastSim } from "../ui/results.js";
 import { fmt, uname } from "../ui/units.js";
@@ -660,6 +660,19 @@ function photoTextures() {
   const T = ph && ph.terrain;
   if (!T) V3.land = null;
   else if (!V3.land || V3.land.T !== T) V3.land = { T, levels: landModels(T) };
+  const state = document.getElementById("anim3dstate");
+  if (state) {
+    const s = sitePhotoState(L.lat, L.lon);
+    state.hidden = !s;
+    state.textContent =
+      s === "loading"
+        ? "Fetching the site photo and terrain…"
+        : s === "failed"
+          ? "The site photo couldn’t be fetched (no connection?). It is tried again each time this opens."
+          : s === "flat"
+            ? "The terrain couldn’t be fetched: flat ground for now. It is tried again each time this opens."
+            : "";
+  }
   const note = document.getElementById("anim3dcredit");
   if (note) {
     note.hidden = !(V3.tex.near || V3.tex.far);
@@ -1088,6 +1101,7 @@ export function anim3dSet(on) {
     b.textContent = "3D not available";
   }
   V3.on = on;
+  if (on) sitePhotoAgain(); // a photo or terrain that couldn't be fetched last time is tried again
   store.set("rfs-anim-3d", on);
   document.getElementById("anim3d").hidden = !on;
   document.getElementById("animcv").hidden = on;

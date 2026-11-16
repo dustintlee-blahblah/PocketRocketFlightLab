@@ -7,6 +7,8 @@
 import { store } from "../core/storage.js";
 import { prFetchBytes } from "../weather/forecast.js";
 /** Half the width of each square on the ground, m, and the picture's size, px. */
+/** How many sites' photos and terrain the device keeps. */
+const PHOTO_KEEP = 8;
 const PHOTO_NEAR = 400,
   PHOTO_FAR = 6000,
   PHOTO_PX = 2048;
@@ -95,25 +97,70 @@ async function photoSaved(key) {
   });
 }
 /**
- * Keeps a site's pictures on the device, and no more than four sites' in all (the oldest go).
+ * When each kept site was last used (by its key), so the one unused longest is the one to go.
+ * @returns {Object<string, number>}
+ */
+const photoUses = () => store.get("rfs-site-photo-used", {}) || {};
+/**
+ * Notes that a site's photo has just been used.
  * @param {string} key the site
- * @param {{near:Uint8Array, far:Uint8Array}} rec
+ */
+function photoUsed(key) {
+  const u = photoUses();
+  u[key] = Date.now();
+  store.set("rfs-site-photo-used", u);
+}
+/**
+ * Keeps a site's pictures and heights on the device, and no more than PHOTO_KEEP sites' in all: past that, the sites
+ * unused longest go.
+ * @param {string} key the site
+ * @param {{near:Uint8Array, far:Uint8Array, terrain?:Uint8Array[]}} rec
  */
 async function photoKeep(key, rec) {
   const db = await photoDb();
   if (!db) return;
   try {
+    photoUsed(key);
     const os = db.transaction("photo", "readwrite").objectStore("photo");
     os.put({ ...rec, at: Date.now() }, key);
     const all = os.getAllKeys();
     all.onsuccess = () => {
-      const extra = all.result.filter((k) => k !== key);
-      if (extra.length > 3)
-        for (const k of extra.slice(0, extra.length - 3))
-          db.transaction("photo", "readwrite").objectStore("photo").delete(k);
+      const u = photoUses(),
+        keys = all.result.map(String).sort((a, b) => (u[b] || 0) - (u[a] || 0)); // latest used first
+      for (const k of keys.slice(PHOTO_KEEP)) {
+        db.transaction("photo", "readwrite").objectStore("photo").delete(k);
+        delete u[k];
+      }
+      for (const k of Object.keys(u)) if (!keys.includes(k)) delete u[k];
+      store.set("rfs-site-photo-used", u);
     };
   } catch (e) {}
 }
+/**
+ * Forgets a site's photo and terrain (its saved site has been deleted).
+ * @param {number} lat degrees
+ * @param {number} lon degrees
+ */
+export async function sitePhotoDrop(lat, lon) {
+  if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon)) return;
+  const key = photoKey(lat, lon),
+    u = photoUses();
+  delete u[key];
+  store.set("rfs-site-photo-used", u);
+  if (PHOTO.key === key && !PHOTO.busy) PHOTO.key = null;
+  const db = await photoDb();
+  if (!db) return;
+  try {
+    db.transaction("photo", "readwrite").objectStore("photo").delete(key);
+  } catch (e) {}
+}
+/**
+ * The name a site's photo is kept under: its coordinates to four decimal places (about 11 m).
+ * @param {number} lat degrees
+ * @param {number} lon degrees
+ * @returns {string}
+ */
+export const photoKey = (lat, lon) => `${(+lat).toFixed(4)},${(+lon).toFixed(4)}`;
 /**
  * A JPEG's bytes as a picture the graphics card can take.
  * @param {Uint8Array} bytes
@@ -184,7 +231,7 @@ function terrainDecode(raw) {
  */
 export function sitePhoto(lat, lon, onLoad) {
   if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon) || !sitePhotoOn()) return null;
-  const key = `${(+lat).toFixed(4)},${(+lon).toFixed(4)}`;
+  const key = photoKey(lat, lon);
   if (PHOTO.key !== key) {
     Object.assign(PHOTO, {
       key,
@@ -206,6 +253,7 @@ export function sitePhoto(lat, lon, onLoad) {
     (async () => {
       try {
         let rec = (await photoSaved(key)) || {};
+        if (rec.near && rec.far) photoUsed(key);
         if (!rec.near || !rec.far) {
           const [near, far] = await Promise.all([
             prFetchBytes(photoUrl(lat, lon, PHOTO_NEAR)),
@@ -239,8 +287,11 @@ export function sitePhoto(lat, lon, onLoad) {
         }
         if (PHOTO.key === key) for (const f of photoWaiting.slice()) f();
       } catch (e) {
-        // no connection, no coverage or no store: plain ground, and no second try until the site changes
-        if (PHOTO.key === key) PHOTO.failed = true;
+        // no connection or no answer: plain ground for now; tried again when the site is chosen or the 3D view opens
+        if (PHOTO.key === key) {
+          PHOTO.failed = true;
+          for (const f of photoWaiting.slice()) f();
+        }
       } finally {
         if (PHOTO.key === key) {
           photoWaiting = [];
@@ -259,11 +310,37 @@ export function sitePhoto(lat, lon, onLoad) {
  * @param {number|null} lon degrees
  */
 export function sitePhotoReady(lat, lon) {
+  sitePhotoAgain();
+  const say = (t) => window.prToast && window.prToast(t);
   sitePhoto(lat, lon, () => {
-    if (PHOTO.near && PHOTO.far && (PHOTO.terrain || PHOTO.flat) && PHOTO.fresh) {
+    if (PHOTO.failed) say("The site photo couldn’t be fetched. It will be tried again when the 3D view opens.");
+    else if (PHOTO.near && PHOTO.far && (PHOTO.terrain || PHOTO.flat) && PHOTO.fresh) {
       PHOTO.fresh = false;
-      if (window.prToast)
-        window.prToast(`Site photo${PHOTO.terrain ? " and terrain" : ""} saved for the 3D flight view.`);
+      say(
+        PHOTO.terrain
+          ? "Site photo and terrain saved for the 3D flight view."
+          : "Site photo saved for the 3D flight view. The terrain couldn’t be fetched; it will be tried again.",
+      );
     }
   });
+}
+/**
+ * Lets a photo or terrain that couldn't be fetched be tried again (when a site is chosen, or the 3D view opens): one
+ * failure is remembered only until then.
+ */
+export function sitePhotoAgain() {
+  if (PHOTO.busy) return;
+  PHOTO.failed = false;
+  if (!PHOTO.terrain) PHOTO.flat = false;
+}
+/**
+ * Where the site photo stands, for the 3D view's note: "" (nothing to say: none wanted, or all there), "loading",
+ * "failed" (no photo could be fetched) or "flat" (the photo is there but its terrain could not be fetched).
+ * @param {number|null} lat degrees
+ * @param {number|null} lon degrees
+ * @returns {string}
+ */
+export function sitePhotoState(lat, lon) {
+  if (lat == null || lon == null || !sitePhotoOn() || PHOTO.key !== photoKey(lat, lon)) return "";
+  return PHOTO.failed ? "failed" : PHOTO.busy ? "loading" : PHOTO.flat && !PHOTO.terrain ? "flat" : "";
 }

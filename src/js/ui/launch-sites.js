@@ -2,7 +2,7 @@
  * Saved launch sites: each one keeps a field's own settings (location, elevation, rail, waiver, cone...), not the day's
  * weather. The chosen site stays in force when another rocket is opened.
  */
-import { sitePhotoReady } from "../animation/site-photo.js";
+import { photoKey, sitePhotoDrop, sitePhotoReady } from "../animation/site-photo.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { L } from "../design/defaults.js";
@@ -343,6 +343,13 @@ function siteMgrRender() {
             if (siteCur === x.name) {
               siteCur = "";
               store.set("rfs-site", "");
+            }
+            // its photo and terrain go with it, unless another saved site or today's settings are at the same place
+            if (x.v.lat != null && x.v.lon != null) {
+              const k = photoKey(x.v.lat, x.v.lon),
+                same = (la, lo) => la != null && lo != null && photoKey(la, lo) === k;
+              if (!same(L.lat, L.lon) && !sitesGet().some((s) => same(s.v.lat, s.v.lon)))
+                sitePhotoDrop(x.v.lat, x.v.lon);
             }
             SITEMGR.del = null;
             m.dataset.keep = "1";
