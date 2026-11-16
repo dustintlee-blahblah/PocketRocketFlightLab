@@ -4,6 +4,20 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 313 (2026-11-16)
+
+**Launch sites**
+- **Add site, in Manage**: new sites are added from Manage (Add site: a name and, if wanted, coordinates). The field-name box under Range is gone. The new site becomes the one in use, with the waiver, recovery area and rail as they are set now; with coordinates other than today's, its field elevation is looked up. Save Changes stays, appears when the chosen site's settings have changed, and saves them to that site. Manage is always there, with or without saved sites.
+- **Export sites and Import sites**: Export sites saves every saved site as a file (pocket-rocket-launch-sites.json), to back them up or take them to another device. Import sites adds the sites in such a file; one with the name of a site already saved replaces it. Photos and terrain aren't in the file: each device fetches its own.
+
+**Flight animation**
+- **Opens paused**: the animation opens standing on the pad; Play starts the countdown. Meanwhile the site's photo and terrain have time to arrive.
+- **Site photo and terrain tried again**: a photo or terrain that couldn't be fetched is tried again each time the site is chosen or the 3D view opens (it waited for the site to change or the app to restart), and the Range tab and the 3D view say what happened: fetching, photo not fetched, or photo on flat ground until the terrain arrives. A request that gets no answer gives up after 90 seconds.
+- **Every site's photo and terrain are kept**: there is no limit on the number of sites (it was four, dropped in coordinate order). A site's photo and terrain go when its saved site is deleted, unless another site is at the same place.
+
+**About**
+- **Parts library credits**: the About text and third-party notices name H. Craig Miller as the copyright holder of the parachute makers' files (b2 Rocketry, Front Range Rocket Recovery, Fruity Chutes, Rocketman, Spherachutes), give Dave Cook's years as his files do, and say the makers are not affiliated with the app.
+
 ## Build 312 (2026-11-15)
 
 **Flight animation**
