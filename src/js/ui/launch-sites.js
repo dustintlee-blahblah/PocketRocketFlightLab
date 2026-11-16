@@ -6,17 +6,18 @@ import { photoKey, sitePhotoDrop, sitePhotoReady } from "../animation/site-photo
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { L } from "../design/defaults.js";
+import { downloadsNS } from "../report/pdf-report.js";
 import { renderForms } from "./forms.js";
 import { changed } from "./state.js";
 import { fmt, uname } from "./units.js";
-import { prFetchText } from "../weather/forecast.js";
+import { parseLatLon, prFetchText } from "../weather/forecast.js";
 /* ---------- launch sites and field-day mode ---------- */
 /**
  * The saved-sites manager's state: open, the site being renamed, the site waiting for delete confirmation.
  *
  * A field's own settings (not the day's weather: the height the wind is measured at goes with the wind reading)
  */
-var SITEMGR = { open: false, edit: null, del: null }; // the saved-sites manager (below)
+var SITEMGR = { open: false, edit: null, del: null, add: false, note: "" }; // the saved-sites manager (below)
 /**
  * The launch-condition keys a site keeps (see the note above).
  */
@@ -80,9 +81,8 @@ export function siteRender() {
     );
   sel.disabled = !S.length;
   {
-    const mb = document.getElementById("sitemanage");
-    mb.hidden = !S.length;
-    if (!S.length && SITEMGR.open) siteMgrToggle(false);
+    // always there: new sites are added from it
+    document.getElementById("sitemanage").hidden = false;
   }
   if (SITEMGR.open) siteMgrRender();
   // the site's settings changed on this tab since it was chosen
@@ -130,21 +130,18 @@ function siteBase(x) {
   return v;
 }
 /**
- * Shows Save Changes only when there's something to save (see the note above).
- *
- * Save Changes shows only when there is something to save: the chosen site's settings were changed, or a name was typed for a new site
+ * Shows Save Changes only when there is something to save: the chosen site's settings were changed on this tab.
  */
 function siteBtnUpdate() {
-  const btn = document.getElementById("sitesave"),
-    inp = document.getElementById("sitename");
-  if (!btn || !inp) return;
+  const btn = document.getElementById("sitesave");
+  if (!btn) return;
   const x = siteCur && sitesGet().find((s) => s.name === siteCur);
   let diff = false;
   if (x) {
     const b = siteBase(x);
     diff = SITE_DIFF_KEYS.some((k) => JSON.stringify(b[k] ?? null) !== JSON.stringify(L[k] ?? null));
   }
-  btn.hidden = !(diff || inp.value.trim());
+  btn.hidden = !diff;
 }
 /**
  * Which of your saved launch sites a set of launch settings is at: the one with this name, else one within about 100 m
@@ -240,33 +237,148 @@ async function siteElevLookup(x) {
   }
 }
 /**
- * Saves the current settings as the typed site name (a new site, or the chosen one updated).
+ * Saves the current settings to the chosen site (Save Changes).
  */
 function siteSave() {
-  const inp = document.getElementById("sitename"),
-    name = (inp.value || siteCur || "").trim().slice(0, 40),
+  const name = siteCur,
     m = document.getElementById("sitemsg");
-  if (!name) {
-    m.textContent = "Type a name for this field first.";
-    inp.focus();
-    return;
-  }
-  const S = sitesGet().filter((x) => x.name !== name),
-    v = {};
+  if (!name || !sitesGet().some((x) => x.name === name)) return;
+  const v = {};
   for (const k of SITE_KEYS) v[k] = L[k];
-  S.push({ name, v });
-  S.sort((a, b) => a.name.localeCompare(b.name));
+  const S = sitesGet().map((x) => (x.name === name ? { ...x, v } : x));
   store.set("rfs-sites", S);
-  siteCur = name;
-  store.set("rfs-site", siteCur);
   siteBaseSet(name);
-  inp.value = "";
   m.dataset.keep = "1";
   m.textContent = `Saved ${name}.`;
   siteRender();
   delete m.dataset.keep;
 }
-/* managing saved sites: rename or delete each one. Deleting takes two steps (Delete, then confirm), so it can't happen by a stray tap */
+/**
+ * Adds a site from the manager's Add site form: a name and, if given, coordinates. The rest of the site (waiver,
+ * recovery area, rail) starts as today's settings; with coordinates other than today's its field elevation is left to
+ * be looked up. The new site is then the one in use.
+ * @param {string} name
+ * @param {string} coord "latitude, longitude", or "" for a site without coordinates
+ * @returns {string} "" if added, else what is wrong
+ */
+function siteAdd(name, coord) {
+  name = (name || "").trim().slice(0, 40);
+  if (!name) return "Type a name for the site.";
+  if (sitesGet().some((s) => s.name.toLowerCase() === name.toLowerCase()))
+    return `There's already a site called ${name}.`;
+  const v = siteSnap();
+  if (!coord.trim()) v.lat = v.lon = null;
+  else {
+    const r = parseLatLon(coord);
+    if (!r)
+      return "Couldn’t read the coordinates. Enter latitude, then longitude, separated by a comma, or leave them empty.";
+    const moved = !(
+      L.lat != null &&
+      L.lon != null &&
+      Math.abs(L.lat - r.lat) < 0.001 &&
+      Math.abs(L.lon - r.lon) < 0.001
+    );
+    v.lat = r.lat;
+    v.lon = r.lon;
+    if (moved) v.elev = null; // another place: its own elevation, looked up when it is chosen
+  }
+  const S = sitesGet();
+  S.push({ name, v });
+  S.sort((a, b) => a.name.localeCompare(b.name));
+  store.set("rfs-sites", S);
+  SITEMGR.add = false;
+  siteApply(name);
+  return "";
+}
+/**
+ * Saves every saved site as a file, to keep or to take to another device.
+ */
+async function sitesExport() {
+  const S = sitesGet(),
+    say = (t) => {
+      SITEMGR.note = t;
+      siteMgrRender();
+    };
+  if (!S.length) return say("There are no saved sites to export.");
+  if (!downloadsNS) return say("Saving files isn’t available in this view.");
+  const text = JSON.stringify(
+    {
+      app: "Pocket Rocket Flight Lab",
+      kind: "launch-sites",
+      version: 1,
+      sites: S.map((x) => ({ name: x.name, v: x.v })),
+    },
+    null,
+    1,
+  );
+  try {
+    const res = await downloadsNS.save({
+      filename: "pocket-rocket-launch-sites.json",
+      data: new TextEncoder().encode(text).buffer,
+    });
+    say(
+      res.status === "saved"
+        ? `Saved ${S.length} site${S.length === 1 ? "" : "s"} as pocket-rocket-launch-sites.json.`
+        : "Choose where to save the sites file.",
+    );
+  } catch (e) {
+    say(e && e.code === "declined" ? "Save cancelled." : "Couldn’t save the sites file.");
+  }
+}
+/**
+ * Adds the sites in an exported file to the saved sites. A site with the name of one already saved replaces it; the
+ * rest are added. Only a site's own settings are read from the file.
+ * @param {File} file
+ */
+async function sitesImport(file) {
+  const say = (t) => {
+    SITEMGR.note = t;
+    siteRender();
+  };
+  let list;
+  try {
+    const d = JSON.parse(await file.text());
+    list = Array.isArray(d) ? d : d && Array.isArray(d.sites) ? d.sites : null;
+  } catch (e) {
+    list = null;
+  }
+  if (!list) return say("That isn’t a sites file exported from this app.");
+  const S = sitesGet();
+  let added = 0,
+    updated = 0;
+  for (const it of list.slice(0, 500)) {
+    const name = it && typeof it.name === "string" ? it.name.trim().slice(0, 40) : "",
+      src = it && it.v && typeof it.v === "object" ? it.v : null;
+    if (!name || !src) continue;
+    const v = {};
+    for (const k of SITE_KEYS) {
+      const x = src[k];
+      if (x == null) continue;
+      // numbers, short words and yes/no only: nothing else belongs in a site
+      if ((typeof x === "number" && isFinite(x)) || typeof x === "boolean" || (typeof x === "string" && x.length <= 40))
+        v[k] = x;
+    }
+    if (v.lat != null && !(typeof v.lat === "number" && Math.abs(v.lat) <= 90)) delete v.lat;
+    if (v.lon != null && !(typeof v.lon === "number" && Math.abs(v.lon) <= 180)) delete v.lon;
+    if (v.lat == null || v.lon == null) v.lat = v.lon = null;
+    const i = S.findIndex((s) => s.name.toLowerCase() === name.toLowerCase());
+    if (i >= 0) {
+      S[i] = { name: S[i].name, v };
+      updated++;
+    } else {
+      S.push({ name, v });
+      added++;
+    }
+  }
+  if (!added && !updated) return say("No sites were found in that file.");
+  S.sort((a, b) => a.name.localeCompare(b.name));
+  store.set("rfs-sites", S);
+  say(
+    `Imported ${added + updated} site${added + updated === 1 ? "" : "s"}: ${added} new${updated ? `, ${updated} replaced one of the same name` : ""}. Today’s settings weren’t changed.`,
+  );
+}
+/* managing saved sites: add one, export or import them all, rename or delete each one. Deleting takes two steps
+   (Delete, then confirm), so it can't happen by a stray tap */
 /**
  * Opens or closes the saved-sites manager.
  * @param {boolean} open
@@ -274,6 +386,8 @@ function siteSave() {
 function siteMgrToggle(open) {
   SITEMGR.open = open;
   SITEMGR.edit = SITEMGR.del = null;
+  SITEMGR.add = false;
+  SITEMGR.note = "";
   const b = document.getElementById("sitemanage");
   b.setAttribute("aria-expanded", String(open));
   b.textContent = open ? "Done" : "Manage";
@@ -287,25 +401,66 @@ function siteMgrRender() {
   const box = document.getElementById("sitemgr"),
     S = sitesGet();
   if (!box) return;
-  if (!S.length) {
-    box.innerHTML = `<p class="note" style="margin:8px 0">No saved sites.</p>`;
-    return;
-  }
   /**
    * A latitude or longitude as text.
    */
   const ll = (v) =>
     v.lat != null && v.lon != null ? `${(+v.lat).toFixed(4)}, ${(+v.lon).toFixed(4)}` : "no coordinates";
-  box.innerHTML = S.map((x, i) => {
-    const cur = x.name === siteCur;
-    let h = `<div class="srow" data-i="${i}"><div class="stop"><div style="min-width:0"><div class="snm">${esc(x.name)}</div><div class="smeta">${cur ? "In use · " : ""}${x.v.elev != null ? `${fmt(x.v.elev, "alt")} ${uname("alt")}` : "elevation not set"} · ${ll(x.v)}</div></div>`;
-    h += `<div class="sact"><button type="button" class="btn ghost" data-a="ren">Rename</button><button type="button" class="btn ghost" data-a="del">Delete</button></div></div>`;
-    if (SITEMGR.edit === x.name)
-      h += `<div class="sconf"><input type="text" maxlength="40" class="sren" value="${esc(x.name)}" aria-label="New name for ${esc(x.name)}"><button type="button" class="btn" data-a="rsave">Save</button><button type="button" class="btn ghost" data-a="cancel">Cancel</button><p class="note serr" style="margin:0;width:100%"></p></div>`;
-    if (SITEMGR.del === x.name)
-      h += `<div class="sconf"><span>Delete <b>${esc(x.name)}</b>? This can’t be undone.</span><button type="button" class="btn danger" data-a="dyes">Delete</button><button type="button" class="btn ghost" data-a="cancel">Keep it</button></div>`;
-    return h + `</div>`;
-  }).join("");
+  // across the top: add a site, and take the whole list to a file and back
+  let top = `<div class="stools"><button type="button" class="btn" data-t="add">Add site</button><button type="button" class="btn ghost" data-t="export">Export sites</button><label class="file btn ghost" for="siteimport">Import sites<input type="file" id="siteimport" accept=".json,application/json,text/plain"></label></div>`;
+  if (SITEMGR.add)
+    top += `<div class="sadd"><div class="fld"><label for="siteaddname">Site name</label><div class="in"><input id="siteaddname" type="text" maxlength="40" placeholder="Field name, e.g. Bonneville" autocomplete="off"></div></div><div class="fld"><label for="siteaddcoord">Latitude, longitude (optional)</label><div class="in"><input id="siteaddcoord" type="text" autocomplete="off" spellcheck="false" placeholder="40.218224, -112.246072" value="${L.lat != null && L.lon != null ? esc(`${(+L.lat).toFixed(6)}, ${(+L.lon).toFixed(6)}`) : ""}"></div></div><p class="note" style="margin:0">The waiver, recovery area and rail start as they are set now; change them under Range and tap Save Changes.</p><div class="sconf"><button type="button" class="btn" data-t="addsave">Add</button><button type="button" class="btn ghost" data-t="addcancel">Cancel</button><span class="serr" role="alert"></span></div></div>`;
+  if (SITEMGR.note) top += `<p class="note snote" aria-live="polite">${esc(SITEMGR.note)}</p>`;
+  if (!S.length) top += `<p class="note" style="margin:8px 0">No saved sites yet.</p>`;
+  box.innerHTML =
+    top +
+    S.map((x, i) => {
+      const cur = x.name === siteCur;
+      let h = `<div class="srow" data-i="${i}"><div class="stop"><div style="min-width:0"><div class="snm">${esc(x.name)}</div><div class="smeta">${cur ? "In use · " : ""}${x.v.elev != null ? `${fmt(x.v.elev, "alt")} ${uname("alt")}` : "elevation not set"} · ${ll(x.v)}</div></div>`;
+      h += `<div class="sact"><button type="button" class="btn ghost" data-a="ren">Rename</button><button type="button" class="btn ghost" data-a="del">Delete</button></div></div>`;
+      if (SITEMGR.edit === x.name)
+        h += `<div class="sconf"><input type="text" maxlength="40" class="sren" value="${esc(x.name)}" aria-label="New name for ${esc(x.name)}"><button type="button" class="btn" data-a="rsave">Save</button><button type="button" class="btn ghost" data-a="cancel">Cancel</button><p class="note serr" style="margin:0;width:100%"></p></div>`;
+      if (SITEMGR.del === x.name)
+        h += `<div class="sconf"><span>Delete <b>${esc(x.name)}</b>? This can’t be undone.</span><button type="button" class="btn danger" data-a="dyes">Delete</button><button type="button" class="btn ghost" data-a="cancel">Keep it</button></div>`;
+      return h + `</div>`;
+    }).join("");
+  box.querySelectorAll("[data-t]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const t = b.dataset.t;
+        if (t === "export") return void sitesExport();
+        SITEMGR.note = "";
+        if (t === "add" || t === "addcancel") {
+          SITEMGR.add = t === "add";
+          SITEMGR.edit = SITEMGR.del = null;
+          siteMgrRender();
+          if (SITEMGR.add) document.getElementById("siteaddname").focus();
+          return;
+        }
+        const err = siteAdd(
+          document.getElementById("siteaddname").value,
+          document.getElementById("siteaddcoord").value,
+        );
+        if (err) box.querySelector(".sadd .serr").textContent = err;
+      }),
+  );
+  box.querySelectorAll(".sadd input").forEach((inp) =>
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        box.querySelector('[data-t="addsave"]').click();
+      }
+    }),
+  );
+  {
+    const imp = document.getElementById("siteimport");
+    if (imp)
+      imp.onchange = () => {
+        const f = imp.files && imp.files[0];
+        imp.value = "";
+        if (f) sitesImport(f);
+      };
+  }
   box.querySelectorAll(".srow").forEach((row) => {
     const x = S[+row.dataset.i];
     row.querySelectorAll("[data-a]").forEach(
@@ -447,17 +602,10 @@ export function start() {
     }
   };
   document.getElementById("sitesave").onclick = siteSave;
-  document.getElementById("sitename").addEventListener("input", siteBtnUpdate);
   try {
     siteRender();
   } catch (e) {
     siteBtnUpdate();
   }
-  document.getElementById("sitename").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      siteSave();
-    }
-  });
   document.getElementById("sitemanage").onclick = () => siteMgrToggle(!SITEMGR.open);
 }

@@ -148,7 +148,7 @@ function wxDefaultWhen() {
  * @param {string} t
  * @returns {{lat:number, lon:number}|null}
  */
-function parseLatLon(t) {
+export function parseLatLon(t) {
   t = String(t || "")
     .trim()
     .replace(/[\u2212\u2013]/g, "-")

@@ -768,6 +768,27 @@ h2 + .subh {
   padding: 4px 12px;
   margin: -4px 0 12px;
 }
+.sitemgr .stools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sitemgr .stools .btn {
+  padding: 7px 12px;
+  min-height: 0;
+  font-size: 0.85rem;
+}
+.sitemgr .sadd {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sitemgr .snote {
+  margin: 8px 0;
+}
 .sitemgr .srow {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);

@@ -220,10 +220,10 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <!-- FLIGHT -->
   <section class="view" id="v-flight" hidden>
     <div class="panel" id="sitepanel">
-      <h2>Launch site<button class="ib" type="button" data-title="Launch site" data-info="Save the settings that belong to a field under the field's name, then choose it from Saved sites next time. A site keeps everything in this section (coordinates, field elevation, waiver ceiling, recovery area and the rest of the Range settings) plus the rail length, angle and lean and the safety cone from Launch pad.\n\nChoosing a site doesn't change today's weather, and opening another rocket keeps the chosen site.">i</button></h2>
+      <h2>Launch site<button class="ib" type="button" data-title="Launch site" data-info="Keep the settings that belong to a field under the field's name, then choose it from Saved sites next time. To add a field, tap Manage, then Add site. Change a site's settings here and tap Save Changes to keep them with it. Manage also renames and deletes sites, and exports them all to a file or imports them from one (to back them up, or take them to another device). A site keeps everything in this section (coordinates, field elevation, waiver ceiling, recovery area and the rest of the Range settings) plus the rail length, angle and lean and the safety cone from Launch pad.\n\nChoosing a site doesn't change today's weather, and opening another rocket keeps the chosen site.">i</button></h2>
       <div class="sitegrid" style="margin-bottom:12px">
         <div class="fld"><label for="sitesel">Saved sites</label><div class="in"><select id="sitesel"></select></div></div>
-        <button class="btn ghost" id="sitemanage" type="button" aria-expanded="false" aria-controls="sitemgr" hidden>Manage</button>
+        <button class="btn ghost" id="sitemanage" type="button" aria-expanded="false" aria-controls="sitemgr">Manage</button>
       </div>
       <div class="sitemgr" id="sitemgr" hidden></div>
       <div class="fld"><label for="sitecoord">Latitude, longitude</label><div class="in"><input id="sitecoord" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="40.218224, -112.246072"></div></div>
@@ -232,8 +232,8 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <p class="subh">Range</p>
       <div class="grid" id="g-range"></div>
       <div class="sitegrid" style="margin-top:8px">
-        <div class="fld"><label for="sitename">Type a field name and Save Changes to create a new launch site</label><div class="in"><input id="sitename" type="text" maxlength="40" placeholder="Field name, e.g. Bonneville" autocomplete="off"></div></div>
-        <button class="btn ghost" id="sitesave" type="button" hidden>Save Changes</button>
+        <span></span>
+        <button class="btn" id="sitesave" type="button" hidden>Save Changes</button>
       </div>
       <p class="note" id="sitemsg" aria-live="polite" style="margin:6px 0 0"></p>
     </div>
