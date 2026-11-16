@@ -143,15 +143,14 @@ const { chromium } = require("playwright");
   need("Motor tab: that maker's motors listed", m.list, 5);
   await step("all makers", () => document.querySelectorAll("#fbrand button")[0].click());
   await step("screen rocket", 'showTab("rocket")');
-  await step("add list", () => {
-    if (!count("#bldadd [data-add]")) document.querySelector(".bldaddtoggle").click();
-  });
   await step("pick fins", () =>
     [...document.querySelectorAll("#bldtree .bldrow")].find((r) => /fin/i.test(r.textContent))?.click(),
   );
+  // the parts that can be added open in their own window
+  await step("add list", () => document.querySelector(".bldaddtoggle").click());
   m = await look("rocket tab", () => ({
     tree: count("#bldtree .bldrow"),
-    add: count("#bldadd [data-add]"),
+    add: document.getElementById("addpick").hidden ? 0 : count("#addpick [data-add]"),
     fields: count("#bldedit [id^=bf-]"),
     help: count("#bldedit .info, #bldedit [data-help], #bldedit .helpbtn"),
     drawing: inked("bldcv"),
@@ -160,6 +159,7 @@ const { chromium } = require("playwright");
   need("Rocket tab: add-a-part buttons", m.add, 15);
   need("Rocket tab: fields in the fin editor", m.fields, 8);
   need("Rocket tab: side view drawn", m.drawing, 3);
+  await step("close add list", () => document.getElementById("addcancel").click());
   await step("screen range", 'showTab("flight")');
   m = await look("range tab", () => ({
     groups: Object.keys(FIELDS).map((g) => [

@@ -1331,6 +1331,17 @@ h2 + .subh {
   text-align: left;
   cursor: pointer;
 }
+.addlist {
+  overflow-y: auto;
+  margin: 0 0 14px;
+}
+.addlist .bldh:first-child {
+  margin-top: 0;
+}
+.addlist .bldadds .btn {
+  padding: 9px 12px;
+  font-size: 0.9rem;
+}
 .finunit {
   padding: 8px 10px;
   border: 1px solid var(--line);

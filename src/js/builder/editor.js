@@ -168,7 +168,6 @@ export function bldRenderTree() {
       }),
   );
 }
-let bldAddOpen = false;
 /** The unit chosen for imported fin drawings ("" = as the file says), kept while the app is open. */
 let finDxfUnit = "";
 /**
@@ -195,20 +194,24 @@ export function bldRenderAdd() {
   const el = document.getElementById("bldadd");
   if (!el) return;
   const f = bldSel ? bldFind(bldSel) : null;
+  const body = f && f.p ? f.parent || f.p : null;
+  const title = `Add a body part${body ? ` / Add to ${esc(body.name)}` : ""}`;
+  el.innerHTML = `<div class="bldaddrow"><button type="button" class="bldaddtoggle" aria-haspopup="dialog"><span>＋ ${title}</span><span aria-hidden="true">▸</span></button><button type="button" class="bldaddtoggle" data-lib="1"><span>＋ Add a part from Library</span><span aria-hidden="true">▸</span></button></div>`;
+  el.querySelector(".bldaddtoggle").onclick = bldAddBox;
+  el.querySelector("[data-lib]").onclick = () => partPick();
+}
+/**
+ * Opens the window of parts that can be added where the selection is: body parts, the parts that go on the selected
+ * body part, and adding or removing a stage. Picking one closes it.
+ */
+function bldAddBox() {
+  const box = document.getElementById("addpick"),
+    el = document.getElementById("addlist");
+  const f = bldSel ? bldFind(bldSel) : null;
   const body = f && f.p ? f.parent || f.p : null,
     si = f && f.si != null ? f.si : 0,
     hasNose = BLD.stages[0].parts.some((p) => p.type === "nose");
-  const title = `Add a body part${body ? ` / Add to ${esc(body.name)}` : ""}`;
-  if (!bldAddOpen) {
-    el.innerHTML = `<div class="bldaddrow"><button type="button" class="bldaddtoggle" aria-expanded="false"><span>＋ ${title}</span><span aria-hidden="true">▸</span></button><button type="button" class="bldaddtoggle" data-lib="1"><span>＋ Add a part from Library</span><span aria-hidden="true">▸</span></button></div>`;
-    el.querySelector(".bldaddtoggle").onclick = () => {
-      bldAddOpen = true;
-      bldRenderAdd();
-    };
-    el.querySelector("[data-lib]").onclick = () => partPick();
-    return;
-  }
-  let h = `<button type="button" class="bldaddtoggle" aria-expanded="true"><span>${title}</span><span aria-hidden="true">▾</span></button><div class="bldh">Add a body part${BLD.stages.length > 1 ? ` to ${esc(BLD.stages[si].name)}` : ""}</div><div class="bldadds">`;
+  let h = `<div class="bldh">Add a body part${BLD.stages.length > 1 ? ` to ${esc(BLD.stages[si].name)}` : ""}</div><div class="bldadds">`;
   if (!hasNose && si === 0) h += `<button class="btn ghost" data-add="nose">Nose cone</button>`;
   h += `<button class="btn ghost" data-add="tube">Body tube</button><button class="btn ghost" data-add="transition">Transition</button></div>`;
   if (body)
@@ -220,15 +223,27 @@ export function bldRenderAdd() {
     h += `<div class="bldadds" style="margin-top:12px">${n < 3 ? `<button class="btn ghost" data-stage="add">Add a ${n < 2 ? "booster" : "first"} stage</button>` : ""}${n > 1 ? `<button class="btn ghost" data-stage="del">Remove the ${n > 2 ? "first" : "booster"} stage</button>` : ""}</div>`;
   }
   el.innerHTML = h;
-  el.querySelector(".bldaddtoggle").onclick = () => {
-    bldAddOpen = false;
-    bldRenderAdd();
+  const done = () => {
+    box.hidden = true;
+    box.onclick = document.getElementById("addcancel").onclick = null;
+    document.removeEventListener("keydown", onKey);
   };
-  // the section folds up again once a part is added
+  /**
+   * Escape closes the window.
+   */
+  const onKey = (ev) => {
+    if (ev.key === "Escape") done();
+  };
+  document.getElementById("addcancel").onclick = done;
+  box.onclick = (ev) => {
+    if (ev.target === box) done();
+  };
+  document.addEventListener("keydown", onKey);
+  box.hidden = false;
   el.querySelectorAll("[data-add]").forEach(
     (b) =>
       (b.onclick = () => {
-        bldAddOpen = false;
+        done();
         bldAdd(b.dataset.add);
       }),
   );
@@ -266,7 +281,7 @@ export function bldRenderAdd() {
           BLD.stages.length = BLD.stages.length - 1;
           setBldSel(BLD.stages[0].parts[0]?.id || BLD_ROOT);
         }
-        bldAddOpen = false;
+        done();
         bldChanged(true);
       }),
   );
