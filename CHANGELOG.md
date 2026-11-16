@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 310 (2026-11-15)
+
+**Rocket builder**
+- **Export a fin as a DXF**: Export DXF, under the fin drawing, saves one fin's outline at full size (trapezoid, elliptical or free-form) for a laser cutter, a CNC router or a printed template. The drawing is in millimetres, one closed outline on a layer named FIN.
+- **Import a fin from a DXF**: Import DXF, beside it, reads a full-size drawing's outline (polylines with their arcs, lines and arcs that join up, ellipses, splines) and makes the fin that shape as a free-form fin. The number of fins, their thickness, edges, cant, position and material stay as they are. The root is the edge along the bottom of the drawing (or along its top or a side, or its longest straight edge); the unit is the file's, millimetres if it doesn't say, or the one chosen beside the button. The result is reported under the buttons with the root and span it read.
+- **Flip front to back**: a free-form fin can be turned around, for a drawing that came in with its trailing edge forward.
+- **Curved free-form fins draw cleanly**: an outline with more than 16 points is drawn without its corner numbers.
+
 ## Build 309 (2026-11-15)
 
 **Rocket builder**
