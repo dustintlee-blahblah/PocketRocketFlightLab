@@ -70,7 +70,7 @@ function lenWeightChoices() {
       ]
     : [
         ["m/kg", lenUnit === "m"],
-        ["mm/kg", lenUnit === "mm"],
+        ["mm/g", lenUnit === "mm"],
       ];
 }
 /**

@@ -26,7 +26,8 @@ export function setMassUnit(u) {
   DIMS.imp.smass = massUnit === "oz" ? ["oz", 0.028349523125, 2] : ["lb", LB, 4];
 }
 /**
- * The unit the rocket's lengths are shown in with metric units: "mm" or "m" (chosen in Settings).
+ * The unit lengths are shown in with metric units: "mm" (weights in grams) or "m" (weights in kilograms), chosen in
+ * Settings.
  */
 export let lenUnit = "mm";
 /**
@@ -38,6 +39,9 @@ export function setLenUnit(u) {
   store.set("rfs-len-unit", lenUnit);
   DIMS.met.len = lenUnit === "m" ? ["m", 1, 3] : ["mm", 0.001, 0];
   DIMS.met.small = lenUnit === "m" ? ["m", 1, 4] : ["mm", 0.001, 1];
+  // weights go with the lengths: kilograms with metres, grams with millimetres
+  DIMS.met.mass = lenUnit === "m" ? ["kg", 1, 3] : ["g", 0.001, 0];
+  DIMS.met.smass = lenUnit === "m" ? ["kg", 1, 4] : ["g", 0.001, 1];
 }
 /**
  * An SI value in the current display unit.
