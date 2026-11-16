@@ -148,11 +148,28 @@ const KIND = {
           ).join(""),
       );
     }
+  // the check cases' drag again, by how much their sources record (grade, cases.js)
+  console.log(
+    "\nCheck cases, total drag and drag less base, by grade (1: every input recorded; 2: one assumed; 3: more):\n",
+  );
+  for (const g of [1, 2, 3]) {
+    const sel = rows.filter((r) => r.c.role === "check" && /^cd(Fore)?$/.test(r.c.quantity) && r.c.grade === g);
+    if (!sel.length) continue;
+    console.log(
+      `grade ${g}`.padEnd(30) +
+        BANDS.map(([, lo, hi]) =>
+          fmt(
+            "cd",
+            sel.filter((r) => r.M >= lo && r.M < hi).map((r) => r.e),
+          ),
+        ).join(""),
+    );
+  }
   console.log("\nCases:");
   for (const c of CASES) {
     const e = rows.filter((r) => r.c === c).map((r) => r.e);
     console.log(
-      `  ${c.role.padEnd(6)} ${c.title} [${c.tier}]: ${mean(e).toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)}${KIND[c.quantity].unit} mean, ${bias(e) >= 0 ? "+" : ""}${bias(e).toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)} bias`,
+      `  ${c.role.padEnd(6)} ${c.title} [${c.tier}; grade ${c.grade}]: ${mean(e).toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)}${KIND[c.quantity].unit} mean, ${bias(e) >= 0 ? "+" : ""}${bias(e).toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)} bias`,
     );
   }
 })();

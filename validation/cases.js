@@ -601,6 +601,7 @@ const ALLEN_PTS = [
 const CASES = [
   {
     id: "a53d02-cd",
+    grade: 1,
     title: "NACA RM A53D02, fineness-10 body with 72° fins: total drag",
     tier: "free flight",
     role: "tuned",
@@ -610,6 +611,7 @@ const CASES = [
   },
   {
     id: "rm10-fins",
+    grade: 1,
     title: "NACA RM E50D28, RM-10: drag of its 60° fins",
     tier: "wind tunnel",
     role: "tuned",
@@ -621,6 +623,7 @@ const CASES = [
   },
   {
     id: "arcas-short-cp",
+    grade: 1,
     title: "NASA TN D-4013/4014, Arcas short model: CP",
     tier: "wind tunnel",
     role: "tuned",
@@ -630,6 +633,7 @@ const CASES = [
   },
   {
     id: "arcas-long-cp",
+    grade: 1,
     title: "NASA TN D-4013, Arcas long model: CP",
     tier: "wind tunnel",
     role: "tuned",
@@ -639,6 +643,7 @@ const CASES = [
   },
   {
     id: "arcas-short-cna",
+    grade: 1,
     title: "NASA TN D-4013/4014, Arcas short model: normal-force slope",
     tier: "wind tunnel",
     role: "check",
@@ -648,6 +653,7 @@ const CASES = [
   },
   {
     id: "arcas-short-body-cna",
+    grade: 1,
     title: "NASA TN D-4013/4014, Arcas short model without fins: normal-force slope",
     tier: "wind tunnel",
     role: "check",
@@ -657,6 +663,7 @@ const CASES = [
   },
   {
     id: "l55g28a-cd",
+    grade: 1,
     title: "NACA RM L55G28a, fin-stabilized cone-cylinder: total drag",
     tier: "free flight",
     role: "check",
@@ -666,6 +673,7 @@ const CASES = [
   },
   {
     id: "arcas-short-cd",
+    grade: 1,
     title: "NASA TN D-4013, Arcas short model (boattailed): total drag",
     tier: "wind tunnel",
     role: "check",
@@ -675,6 +683,7 @@ const CASES = [
   },
   {
     id: "arcas-short-cd-sup",
+    grade: 1,
     title: "NASA TN D-4014, Arcas short model, Mach 1.5–4.63: total drag",
     tier: "wind tunnel",
     role: "check",
@@ -684,6 +693,7 @@ const CASES = [
   },
   {
     id: "arcas-short-body-sup",
+    grade: 1,
     title: "NASA TN D-4014, Arcas short model without fins, Mach 1.5–4.63: total drag",
     tier: "wind tunnel",
     role: "check",
@@ -693,6 +703,7 @@ const CASES = [
   },
   {
     id: "arcas-short-fins-sup",
+    grade: 1,
     title: "NASA TN D-4014, Arcas short model, Mach 1.5–4.63: drag its four fins add",
     tier: "wind tunnel",
     role: "check",
@@ -704,6 +715,7 @@ const CASES = [
   },
   {
     id: "r100-11-cd",
+    grade: 1,
     title: "NASA TR R-100 configuration 11, ogive body with an 8° boattail: total drag",
     tier: "free flight",
     role: "check",
@@ -715,6 +727,8 @@ const CASES = [
   },
   {
     id: "r100-36-cd",
+    grade: 2,
+    unknown: "the report suspects laminar flow over part of its model",
     title: "NASA TR R-100 configuration 36, body with a 4° boattail: total drag",
     tier: "free flight",
     role: "check",
@@ -726,6 +740,7 @@ const CASES = [
   },
   {
     id: "boattail-1",
+    grade: 1,
     title: "MIL-HDBK-762 figure 5-144, 6.4° boattail to 0.82 of the diameter: its pressure drag",
     tier: "wind tunnel",
     role: "tuned",
@@ -740,6 +755,7 @@ const CASES = [
   },
   {
     id: "boattail-2",
+    grade: 1,
     title: "MIL-HDBK-762 figure 5-144, 9.5° boattail to 0.73 of the diameter: its pressure drag",
     tier: "wind tunnel",
     role: "tuned",
@@ -754,6 +770,7 @@ const CASES = [
   },
   {
     id: "boattail-3",
+    grade: 1,
     title: "MIL-HDBK-762 figure 5-144, 4.3° boattail to 0.82 of the diameter: its pressure drag",
     tier: "wind tunnel",
     role: "tuned",
@@ -768,6 +785,7 @@ const CASES = [
   },
   {
     id: "boattail-4",
+    grade: 1,
     title: "MIL-HDBK-762 figure 5-144, 6.5° boattail to 0.73 of the diameter: its pressure drag",
     tier: "wind tunnel",
     role: "tuned",
@@ -782,6 +800,7 @@ const CASES = [
   },
   {
     id: "r100-fin-a",
+    grade: 1,
     title: "NASA TR R-100 figure 5, 45° untapered fins 2.8% thick: fin pressure drag",
     tier: "free flight",
     role: "check",
@@ -796,6 +815,8 @@ const CASES = [
   },
   {
     id: "aerobee-cd-on",
+    grade: 3,
+    unknown: "neither the finish nor the Reynolds number is given",
     title: "Aerobee 150A sustainer: drag while thrusting",
     tier: "manufacturer (from wind-tunnel tests)",
     role: "check",
@@ -806,6 +827,8 @@ const CASES = [
   },
   {
     id: "aerobee-cd-jet",
+    grade: 3,
+    unknown: "neither the finish nor the Reynolds number is given",
     title: "Aerobee 150A sustainer: drag coasting less drag thrusting (what the exhaust removes)",
     tier: "manufacturer (from wind-tunnel tests)",
     role: "check",
@@ -817,6 +840,8 @@ const CASES = [
   },
   {
     id: "aerobee-cd-off",
+    grade: 3,
+    unknown: "neither the finish nor the Reynolds number is given",
     title: "Aerobee 150A sustainer: drag coasting",
     tier: "manufacturer (from wind-tunnel tests)",
     role: "check",
@@ -826,6 +851,8 @@ const CASES = [
   },
   {
     id: "aerobee-cp",
+    grade: 2,
+    unknown: "a manufacturer's curve, its tests not described",
     title: "Aerobee 150A sustainer: CP",
     tier: "manufacturer (from wind-tunnel tests)",
     role: "check",
@@ -835,6 +862,8 @@ const CASES = [
   },
   {
     id: "aerobee-cna",
+    grade: 2,
+    unknown: "a manufacturer's curve, its tests not described",
     title: "Aerobee 150A sustainer: normal-force slope",
     tier: "manufacturer (from wind-tunnel tests)",
     role: "check",
@@ -844,6 +873,8 @@ const CASES = [
   },
   {
     id: "l56g24-cd",
+    grade: 2,
+    unknown: "the fairings on its body aren't dimensioned",
     title: "NACA RM L56G24, fineness-16.9 missile with 60° delta fins: drag coasting",
     tier: "free flight",
     role: "check",
@@ -854,6 +885,7 @@ const CASES = [
   },
   {
     id: "l56g24-cp",
+    grade: 1,
     title: "NACA RM L56G24, fineness-16.9 missile with 60° delta fins: CP",
     tier: "free flight",
     role: "check",
@@ -864,6 +896,7 @@ const CASES = [
   },
   {
     id: "tm2005-cdfore",
+    grade: 1,
     title: "NASA TM-2005-213541, configuration 3: drag without the base",
     tier: "wind tunnel",
     role: "check",
@@ -873,6 +906,7 @@ const CASES = [
   },
   {
     id: "tm2005-cp",
+    grade: 1,
     title: "NASA TM-2005-213541, configuration 3: CP",
     tier: "wind tunnel",
     role: "check",
@@ -882,6 +916,7 @@ const CASES = [
   },
   {
     id: "tm2005-cna",
+    grade: 1,
     title: "NASA TM-2005-213541, configuration 3: normal-force slope",
     tier: "wind tunnel",
     role: "check",
@@ -906,9 +941,18 @@ const CASES = [
 const LB = 0.45359237,
   FT = 0.3048,
   MPH = 0.44704;
+/* grade (CASES and FLIGHTS): how much weight a case can bear, from what its source records, not from how well the
+   app does on it.
+     1  everything that decides the result is recorded: the shape from a drawing, the conditions (Reynolds number or
+        the day's air), the state of the surface or boundary layer, and for a flight the weight and a measured
+        thrust curve; the quantity itself measured directly.
+     2  one of those had to be assumed, and the assumption moves the result by several percent (unknown: which).
+     3  two or more assumed, or the measurement itself is in doubt. A sanity check, not evidence for a few percent. */
 const FLIGHTS = [
   {
     title: "Blister",
+    grade: 2,
+    unknown: "the finish",
     file: "Blister.CDX1",
     nose: {
       len: 13.0,
@@ -964,6 +1008,8 @@ const FLIGHTS = [
   },
   {
     title: "Gary Byrum, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "Byrum.CDX1",
     nose: {
       len: 13.0,
@@ -1008,6 +1054,8 @@ const FLIGHTS = [
   },
   {
     title: "USAF TPS 2004, Team 3",
+    grade: 2,
+    unknown: "the finish",
     file: "CalIsp1.CDX1",
     nose: {
       len: 11.25,
@@ -1054,6 +1102,8 @@ const FLIGHTS = [
   },
   {
     title: "USAF TPS 2004, Team 1",
+    grade: 2,
+    unknown: "the finish",
     file: "CalIsp2.CDX1",
     nose: {
       len: 11.25,
@@ -1100,6 +1150,8 @@ const FLIGHTS = [
   },
   {
     title: "USAF TPS 2004, Team 2",
+    grade: 2,
+    unknown: "the finish",
     file: "CalIsp3.CDX1",
     nose: {
       len: 11.25,
@@ -1146,6 +1198,8 @@ const FLIGHTS = [
   },
   {
     title: "Cal Poly Pomona 2005, Team Columbia",
+    grade: 2,
+    unknown: "the finish",
     file: "CalIsp4.CDX1",
     nose: {
       len: 11.25,
@@ -1192,6 +1246,8 @@ const FLIGHTS = [
   },
   {
     title: "Cal Poly Pomona 2005, Team Discovery",
+    grade: 2,
+    unknown: "the finish",
     file: "CalIsp5.CDX1",
     nose: {
       len: 11.25,
@@ -1238,6 +1294,8 @@ const FLIGHTS = [
   },
   {
     title: "Cancer Descending, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "CancerDescending.CDX1",
     nose: {
       len: 24.0,
@@ -1282,6 +1340,8 @@ const FLIGHTS = [
   },
   {
     title: "Don't Debate This (N5800 minimum diameter)",
+    grade: 3,
+    unknown: "the finish; a barometric reading at 56,000 ft, where the correction for the day's air is a guess",
     file: "DontDebateThisN5800MinDia.CDX1",
     nose: {
       len: 18.0,
@@ -1336,6 +1396,8 @@ const FLIGHTS = [
   },
   {
     title: "LOC/Precision EZI-65, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "EZI65-1.CDX1",
     nose: {
       len: 13.0,
@@ -1382,6 +1444,8 @@ const FLIGHTS = [
   },
   {
     title: "Full Metal Jacket, BALLS 005",
+    grade: 3,
+    unknown: "the finish; an experimental motor's thrust curve",
     file: "Full Metal Jacket1.CDX1",
     nose: {
       len: 16.0,
@@ -1436,6 +1500,8 @@ const FLIGHTS = [
   },
   {
     title: "Full Metal Jacket, Black Rock 6",
+    grade: 3,
+    unknown: "the finish; an experimental motor's thrust curve",
     file: "Full Metal Jacket2.CDX1",
     nose: {
       len: 5.75,
@@ -1490,6 +1556,8 @@ const FLIGHTS = [
   },
   {
     title: "Gibb, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "Gibb.CDX1",
     nose: {
       len: 13.0,
@@ -1531,6 +1599,8 @@ const FLIGHTS = [
   },
   {
     title: "Ion Drive, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "IonDrive.CDX1",
     nose: {
       len: 19.0,
@@ -1583,6 +1653,8 @@ const FLIGHTS = [
   },
   {
     title: "Kinsel A-601 (P4935)",
+    grade: 3,
+    unknown: "the finish; an experimental motor's thrust curve",
     file: "Kinsel_P4935_A-601_Rocket.CDX1",
     nose: {
       len: 35.0,
@@ -1640,6 +1712,8 @@ const FLIGHTS = [
   },
   {
     title: "Kline-Rogers L500 rocket, USXRL-89",
+    grade: 3,
+    unknown: "the finish; an experimental motor's thrust curve",
     file: "L500Roc.CDX1",
     nose: {
       len: 10.0,
@@ -1683,6 +1757,8 @@ const FLIGHTS = [
   },
   {
     title: "Proteus 6 (P9381)",
+    grade: 3,
+    unknown: "the finish; an experimental motor's thrust curve; the apogee is an accelerometer integrated twice",
     file: "Proteus6.CDX1",
     nose: {
       len: 28.5,
@@ -1735,6 +1811,9 @@ const FLIGHTS = [
   },
   {
     title: "Qu8k (Q18000)",
+    grade: 3,
+    unknown:
+      "the finish; the thrust curve is the pre-flight prediction; the apogee is an accelerometer integrated twice with no zero correction",
     file: "Qu8k.CDX1",
     nose: {
       len: 42.0,
@@ -1797,6 +1876,8 @@ const FLIGHTS = [
   },
   {
     title: "Rabia, short fin can",
+    grade: 2,
+    unknown: "the finish",
     file: "Rabia-ShortFinCan.CDX1",
     nose: {
       len: 13.25,
@@ -1852,6 +1933,8 @@ const FLIGHTS = [
   },
   {
     title: "Rabia",
+    grade: 2,
+    unknown: "the finish",
     file: "Rabia.CDX1",
     nose: {
       len: 14.75,
@@ -1904,6 +1987,8 @@ const FLIGHTS = [
   },
   {
     title: "Raven, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "Raven.CDX1",
     nose: {
       len: 8.5,
@@ -1948,6 +2033,8 @@ const FLIGHTS = [
   },
   {
     title: "Thunder and Lightning, LDRS-26",
+    grade: 2,
+    unknown: "the finish",
     file: "Thunder&Lightning.CDX1",
     nose: {
       len: 15.25,
@@ -1992,6 +2079,8 @@ const FLIGHTS = [
   },
   {
     title: "Torrent",
+    grade: 2,
+    unknown: "the finish",
     file: "Torrent.CDX1",
     nose: {
       len: 20.0,

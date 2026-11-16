@@ -31,6 +31,79 @@ In short:
 
 "Typical" is the median of the absolute differences: half the flights are closer than that, half further.
 
+## How much weight each check can bear
+
+The checks on this page do not agree with one another to better than several percent, and they can't: almost none
+of them tests the drag model alone. Each also depends on something its source didn't record, most often how the
+surface was finished, sometimes the motor's real thrust or how the apogee was measured. So each case carries a
+grade, set from what its source records and not from how well the app does on it (`grade` and `unknown` in
+`validation/cases.js`; `validation/accuracy.js` and `validation/flights.js` print the results by grade):
+
+- **Grade 1: every input that decides the result is recorded.** The shape from a drawing, the conditions (Reynolds
+  number or the day's air), the state of the surface or boundary layer, for a flight the weight and a measured
+  thrust curve, and the quantity itself measured directly.
+- **Grade 2: one of those had to be assumed**, and the assumption moves the result by several percent.
+- **Grade 3: two or more assumed, or the measurement itself is in doubt.** A sanity check, not evidence for a few
+  percent either way.
+
+**Drag against wind-tunnel and free-flight data** (check cases: total drag and drag less base; mean error, bias in
+brackets, number of points):
+
+| Grade | Below Mach 0.8 | Mach 0.8–1.2 | Mach 1.2–3 | Mach 3–5 |
+|---|---|---|---|---|
+| 1 | 13.6% (+13.6), 3 | 16.4% (−5.7), 10 | 4.6% (+1.4), 27 | 4.8% (+4.2), 9 |
+| 2 | | 15.1% (+15.1), 4 | 8.8% (+0.4), 14 | |
+| 3 | 7.6% (+3.9), 4 | 6.6% (−4.2), 4 | 5.9% (+5.9), 8 | 4.3% (+4.0), 10 |
+
+Grade 1 is the NACA and NASA models with their conditions stated (RM L55G28a, TN D-4013 and D-4014, TR R-100
+configuration 11, TM-2005-213541). Grade 2 is TR R-100 configuration 36 (its report suspects laminar flow on the
+model) and RM L56G24 (fairings not dimensioned). Grade 3 is the Aerobee 150A (a manufacturer's curve with neither
+finish nor Reynolds number).
+
+**Apogee against measured flights** (the 23 RASAero II files):
+
+| Grade | Flights | RASAero II | App |
+|---|---|---|---|
+| 1 | none | | |
+| 2: only the finish unrecorded | 16 | 5.8% (−5.5%) | 5.6% (+2.7%) |
+| 3: the motor or the measurement in doubt as well | 7 | 4.0% (+1.3%) | 8.6% (+4.4%) |
+
+No flight here is grade 1: none records its finish. Grade 3 is the flights on experimental motors (Kinsel A-601,
+the L500, Full Metal Jacket twice, Proteus 6, Qu8k), two of them with an apogee from an accelerometer integrated
+twice, and Don't Debate This, a barometric reading at 56,000 ft.
+
+**Flight recorders:**
+
+| Check | Grade | What had to be assumed | App |
+|---|---|---|---|
+| Seven weighed, logged hobby flights | 2 | regular paint and rail buttons (the files say polished, with no launch hardware) | apogee 3.5%, drag in the coast 6.3% |
+| Proto, Mach 2.1–0.6 | 2 | the shape from a photograph, the fins' thickness, the finish; the burnout mass is worked out to 2% | drag 1–8% high |
+| Four tracked two-stage coasts | 2 | a stand-in shape, so only the change along the coast is compared | rise with height 0–4% more than the flights' |
+| Qu8k, Mach 2.0–2.8 | 3 | tracking smoke bled into the base through the coast | drag 12–23% high |
+
+**How to read this.**
+
+- **Above Mach 1.2 the best data put the app within 5%, with little bias** (36 grade 1 points), and the lower grades
+  don't contradict that.
+- **Below Mach 1.2 the grade 1 points are two wind-tunnel models, and they are not the last word for a rocket in
+  flight.** Both ran at a Reynolds number of about 5 million with the boundary layer tripped near the nose, and the
+  app reads 10–15% high on them at Mach 0.6–0.7, nearly all of it skin friction. Whether that is the app's friction
+  at so low a Reynolds number or the models' boundary layers not being fully turbulent behind their strips can't be
+  told from the reports. A rocket in flight is at ten to a hundred times that Reynolds number, where the question
+  doesn't arise, so the flights are the better guide here: 3.5% on the weighed hobby rockets, 3.8% on the eight
+  RASAero II flights below Mach 0.8. From Mach 0.9 to 1.2 the two models pull opposite ways (AERODYNAMICS.md, gap
+  12).
+- **A flight's apogee can't be judged closer than its finish allows.** Between polished and regular paint the 23
+  flights' mean error moves from 6.5% to 8.8% and the bias from +3% to −5%; the truth for each rocket is somewhere
+  between and unrecorded.
+- **The cases that miss by 15% or more each have a named unknown**, and across the grades the misses fall on both
+  sides at every speed. A fault in the model would show as the well-recorded cases all missing the same way in one
+  band. Only the two wind-tunnel models below Mach 0.8 do that, at a Reynolds number flights don't see.
+
+So from a design file alone the app's drag is good to about 5–8%, and no case here can show better than that. For
+a rocket that has flown once with an altimeter, calibrating the drag from that flight's coast (README, "Flight
+log") removes the finish, the hardware and most of what is left.
+
 ## Apogee against OpenRocket
 
 [OpenRocket](https://openrocket.info) is the most widely used open-source rocket simulator, and most hobby designs

@@ -113,6 +113,15 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
         `  ${label.padEnd(15)} ${String(sel.length).padStart(2)} flights   RASAero II ${sum(sel, (r) => r.ras)}   app ${sum(sel, (r) => r.app)}`,
       );
   }
+  // by how much each flight's source records (grade, cases.js)
+  console.log("\nby grade (2: only the finish unrecorded; 3: the motor or the measurement in doubt as well):");
+  for (const g of [1, 2, 3]) {
+    const sel = rows.filter((r) => r.f.grade === g);
+    if (sel.length)
+      console.log(
+        `  grade ${g}         ${String(sel.length).padStart(2)} flights   RASAero II ${sum(sel, (r) => r.ras)}   app ${sum(sel, (r) => r.app)}`,
+      );
+  }
   if (verbose) for (const { f } of rows) console.log(`  ${f.title}: ${f.file}`);
   if (csvOut) {
     const q = (s) => `"${String(s).replace(/"/g, '""')}"`;

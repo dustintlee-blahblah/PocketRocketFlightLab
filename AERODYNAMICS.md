@@ -196,6 +196,9 @@ standard the same pressure change spans more height, so the altimeter reads low:
 LDRS-26's 100 °F (Featherweight's Raven manual says 10% or more; Nakka's flights with GPS and a barometric altimeter
 side by side show the same). `validation/flights.js` compares those 17 with what the altimeter would have read at
 the simulated apogee, for both the app's and RASAero II's predictions; `--geometric` compares true heights instead.
+The cases differ in how much their sources record, and so in how much weight they can bear: VALIDATION.md, "How
+much weight each check can bear", grades each one and gives these figures by grade.
+
 As the altimeter reads, the app is 6.5% off with a +3.2% bias and RASAero II 5.2% with −3.4%; as true heights the
 app would be 9.4% (+8.8%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
 that the air is as much warmer than standard as the air at the pad all through the troposphere and standard above
