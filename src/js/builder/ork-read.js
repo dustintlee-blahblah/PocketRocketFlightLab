@@ -633,6 +633,15 @@ export function bldFromOrk(xml, info) {
           }
           if (/^(parachute|streamer|shockcord|masscomponent)$/.test(et) && /auto/i.test(txt(e, "packedradius") || ""))
             k.packAuto = true;
+          // fin tabs and fillets: kept as the file wrote them (the builder has no fields for them), so they are still
+          // weighed in the flight and saved back
+          if (k.type === "fins") {
+            const x = [...e.children]
+              .filter((q) => /^(filletradius|filletmaterial|tabheight|tablength|tabposition)$/.test(q.tagName))
+              .map(ser)
+              .join("");
+            if (x) k.finXtra = x;
+          }
           p.kids.push(k);
           // what was inside an inner tube or coupler now sits on the body part, at the same place
           if (et === "innertube" || et === "tubecoupler" || et === "bodytube") {

@@ -433,15 +433,20 @@ export function parseOrk(xml, opts = {}) {
     bumps = [],
     cdComp = false,
     segments = [];
-  let cdCount = 0;
+  let cdCount = 0,
+    cdCovered = false;
   /**
    * A part's Cd override (an override of 0 is kept as 1e-12 so it still counts as set), or 0 for none.
    */
-  const odc = (c) => {
+  const odcOwn = (c) => {
     const e = kid(c, "overridecd");
     const v = e ? parseFloat(e.textContent) : 0;
     return !isFinite(v) || v < 0 ? 0 : v > 0 ? v : e ? 1e-12 : 0;
   }; // an override of 0 (OpenRocket: the part adds no drag) is kept as 1e-12
+  // inside a part whose Cd override covers the parts on it, those parts add no drag of their own (as OpenRocket
+  // flies it): the override stands for all of them
+  let cdCover = 0;
+  const odc = (c) => (cdCover > 0 ? 1e-12 : odcOwn(c));
   let compUid = 0; // numbers each component, so fin sets know which body they're on
   let curStage = 0,
     parDepth = 0;
@@ -700,6 +705,9 @@ export function parseOrk(xml, opts = {}) {
       ro = isAuto(c, "outerradius") ? parent.ri || 0 : num(c, "outerradius");
       ri = isAuto(c, "innerradius") ? parent.innerOR || 0 : num(c, "innerradius");
       if (tag === "bulkhead") ri = 0;
+      // an engine block is a ring given by its thickness (it has no inner radius of its own in the file)
+      if (tag === "engineblock" && kid(c, "thickness") && !kid(c, "innerradius"))
+        ri = Math.max(ro - num(c, "thickness"), 0);
       m = rho * Math.PI * Math.max(ro * ro - ri * ri, 0) * len;
     } else if (tag === "trapezoidfinset" || tag === "ellipticalfinset" || tag === "freeformfinset") {
       const n = num(c, "fincount", 3),
@@ -747,11 +755,45 @@ export function parseOrk(xml, opts = {}) {
         if (!notes.includes(FF_NOTE)) notes.push(FF_NOTE);
       }
       m = rho * area * t * n;
+      // fin tabs (through-the-wall): a rectangle of the fin's own material inside the body
+      const tabH = num(c, "tabheight", 0),
+        tabL = Math.min(num(c, "tablength", 0), root);
+      let tabM = 0,
+        tabX = 0;
+      if (tabH > 0 && tabL > 0) {
+        const tp = [...c.children].filter((e) => e.tagName === "tabposition").pop(),
+          rel = (tp?.getAttribute("relativeto") || "top").toLowerCase(),
+          off = tp ? parseFloat(tp.textContent) || 0 : 0;
+        const x0t =
+          rel === "middle" || rel === "center"
+            ? (root - tabL) / 2 + off
+            : rel === "bottom" || rel === "end"
+              ? root - tabL + off
+              : off;
+        tabM = rho * tabH * tabL * t * n;
+        tabX = x0t + tabL / 2;
+      }
+      // fin fillets: the wedge between each side of a fin and the body, as OpenRocket sizes it (the fillet's arc,
+      // tangent to the fin and to the round body), along the root, in the fillet's own material
+      const filR = num(c, "filletradius", 0),
+        bodyR = parent.ro || 0;
+      let filM = 0;
+      if (filR > 0 && bodyR > 0) {
+        const hyp = filR + bodyR,
+          ia = Math.asin(filR / hyp),
+          oa = Math.acos(filR / hyp),
+          sec = (Math.tan(oa) * filR * filR) / 2 - (oa * filR * filR) / 2 - (ia * bodyR * bodyR) / 2;
+        filM = Math.max(sec, 0) * 2 * root * (dens(c, "filletmaterial") || rho) * n;
+      }
       const xbar =
         xcen != null
           ? xcen
           : (sweep * (root + 2 * tip) + (root * root + root * tip + tip * tip)) / (3 * (root + tip || 1));
       cg = x + (isFinite(xbar) ? xbar : root / 2);
+      if (tabM + filM > 0) {
+        cg = (m * cg + tabM * (x + tabX) + filM * (x + root / 2)) / (m + tabM + filM);
+        m += tabM + filM;
+      }
       fins.push({
         n,
         root,
@@ -870,8 +912,10 @@ export function parseOrk(xml, opts = {}) {
     }
     if (parent.top && ["nosecone", "bodytube", "transition"].includes(tag))
       bodyEls.push({ tag, oi: ord(c, tag, new RegExp("^" + tag + "$")), x, len, si: curStage });
-    if (
-      odc(c) > 0 &&
+    if (cdCover > 0) {
+      // covered by a parent's Cd override: counted with the parent
+    } else if (
+      odcOwn(c) > 0 &&
       [
         "nosecone",
         "bodytube",
@@ -884,7 +928,9 @@ export function parseOrk(xml, opts = {}) {
       ].includes(tag)
     )
       cdCount++;
-    else if (odc(c) > 0) cdComp = true;
+    else if (odcOwn(c) > 0) cdComp = true;
+    const cdAll = cdCover === 0 && odcOwn(c) > 0 && txt(c, "overridesubcomponentscd") === "true";
+    if (cdAll) cdCovered = true;
     const om = kid(c, "overridemass"),
       oc = kid(c, "overridecg");
     let skipKids = false;
@@ -922,14 +968,17 @@ export function parseOrk(xml, opts = {}) {
       const rp = num(c, "radialposition", 0);
       k2 = rp * rp + 0.25 * pin * pin;
     } else k2 = 0.25 * pin * pin;
-    if (!skipKids || !om) addMass(m, cg, spread, k2);
-    else addMass(m, cg, spread, k2);
+    // where the sums stood before this part, to place it and the parts on it as one when its CG override covers them
+    const cgAll = !!oc && txt(c, "overridesubcomponentscg") === "true",
+      at0 = { tm: totalMass, mo: moment, np: massPts.length };
+    addMass(m, cg, spread, k2);
     if (ro > 0 && ["nosecone", "bodytube", "transition"].includes(tag)) maxR = Math.max(maxR, ro);
     if (tag === "bodytube") {
       R.last = ro;
     }
     // children
     const kids = subs(c);
+    if (cdAll) cdCover++;
     const innerOR = Math.max(0, ...kids.filter((k) => k.tagName === "innertube").map((k) => num(k, "outerradius")));
     const me = { x, len, ri: ri || ro, ro: ro || (parent && parent.ro) || 0, innerOR, uid: ++compUid };
     // pods and side boosters have their own outline: they don't change what an automatic size on the main body follows
@@ -1002,12 +1051,39 @@ export function parseOrk(xml, opts = {}) {
         // parachutes and motor mounts keep their shape, drag and place; only their weight is left out
         const tm = totalMass,
           mo = moment,
-          np = massPts.length;
+          np = massPts.length,
+          sm = sMass.slice(),
+          so = sMom.slice(),
+          sb = sideBoosters.map((b) => [b.mass, b.mom]);
         walk(k, place(k, me), me);
         totalMass = tm;
         moment = mo;
         massPts.length = np;
+        sMass.length = 0;
+        sMass.push(...sm);
+        sMom.length = 0;
+        sMom.push(...so);
+        sb.forEach(([bm, bo], i) => {
+          sideBoosters[i].mass = bm;
+          sideBoosters[i].mom = bo;
+        });
       }
+    if (cdAll) cdCover--;
+    // a CG override that covers the parts on it: the part and everything on it balance at that point (OpenRocket's
+    // "override CG of all subcomponents"). Each weight moves by the same amount, so the spread along the body is kept.
+    if (cgAll) {
+      const ma = totalMass - at0.tm;
+      if (ma > 0) {
+        const d = cg - (moment - at0.mo) / ma;
+        moment += ma * d;
+        for (let i = at0.np; i < massPts.length; i++) {
+          const pt = massPts[i];
+          pt.x += d;
+          sMom[pt.si] = (sMom[pt.si] || 0) + pt.m * d;
+        }
+        if (sbCur) sbCur.mom += ma * d;
+      }
+    }
     if (tag === "parallelstage") parDepth--;
     if (tag === "podset" || tag === "parallelstage") R.last = lastR;
   }
@@ -1302,7 +1378,7 @@ export function parseOrk(xml, opts = {}) {
   if (!nose) notes.push("No nose cone was found; a 3:1 ogive was assumed.");
   if (cdCount)
     notes.push(
-      `Used the file’s Cd override on ${cdCount} part${cdCount > 1 ? "s" : ""}; it replaces the calculated drag of ${cdCount > 1 ? "those parts" : "that part"} (base drag is still calculated).`,
+      `Used the file’s Cd override on ${cdCount} part${cdCount > 1 ? "s" : ""}; it replaces the calculated drag of ${cdCount > 1 ? "those parts" : "that part"}${cdCovered ? ", and of the parts on it where the override covers them" : ""}. On the last body part that includes the base drag behind it.`,
     );
   if (cdComp) notes.push("Cd overrides on inner parts were ignored, since inner parts have no drag of their own.");
   const ocd = [rocket, ...subs(rocket).filter((e) => e.tagName === "stage")]

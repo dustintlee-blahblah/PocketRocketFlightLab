@@ -1653,7 +1653,10 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
   for (const it of A.aft) {
     if (!skip(it)) base += (it.k * cb * it.area) / S;
   }
-  if (A.baseArea > 0) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
+  // a Cd override on the last body part stands for all of that part's drag, the base behind it included (as
+  // OpenRocket flies it)
+  const lastOvr = A.segs.length > 0 && A.segs[A.segs.length - 1].cdo > 0;
+  if (A.baseArea > 0 && !lastOvr) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
   /* The pressure (wave) drag of a boattail ending at the base, above Mach 1. TR R-100's
      equation 1 for conical afterbodies: (0.0010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)^n] on the
      maximum cross-section, θ the afterbody's slope in degrees, n = 4 below Mach 3.5 and 3 above. Its first part
@@ -1671,7 +1674,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
      theory chart, figure 5-122, is this without the reduction, up to 1.5 times the measurements; TR R-100 also
      found theory overestimating as slopes near 15°). The two are blended from Mach 2 to 2.5, so each is used where
      it was measured. */
-  if (M > 0.88 && A.baseB && A.baseB.attT > 0) {
+  if (M > 0.88 && A.baseB && A.baseB.attT > 0 && !lastOvr) {
     const B = A.baseB,
       th = Math.min(B.btDeg, 15),
       h = Math.min(Math.max(B.hD, 0), 1),
