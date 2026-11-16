@@ -33,34 +33,24 @@ const V3_SKY = `
 attribute vec2 p; varying vec2 v; void main(){ v = p; gl_Position = vec4(p, 0.9999, 1.0); }`;
 /* each pixel's line of sight: above the horizon the sky, below it the ground where that line meets it: the site's
    photo where there is one (a near, sharp square inside a far, coarse one), else a plain field with a 100 m grid */
-const V3_SKY_F = `
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-varying vec2 v;
-uniform vec3 eye, fwd, right, up, sun;
-uniform vec2 tanv;
-uniform float dark;
+const V3_GROUND = `
+uniform vec3 sun, base;
+uniform float dark, grid;
 uniform sampler2D nearT, farT;
-uniform vec3 nearB, farB, base;
+uniform vec3 nearB, farB;
 vec3 sky(vec3 d){
   float e = clamp(d.y, 0.0, 1.0);
   vec3 c = mix(vec3(0.80, 0.88, 0.95), vec3(0.22, 0.45, 0.78), pow(e, 0.55));
   c += vec3(1.0, 0.95, 0.8) * pow(max(dot(d, sun), 0.0), 600.0) * 2.0;
   return mix(c, vec3(0.02, 0.04, 0.10), dark * (0.35 + 0.65 * e));
 }
-void main(){
-  vec3 d = normalize(fwd + v.x * tanv.x * right + v.y * tanv.y * up);
-  if (d.y >= -0.0005) { gl_FragColor = vec4(sky(d), 1.0); return; }
-  float s = eye.y / -d.y;
-  vec2 g = eye.xz + d.xz * s;
+/* the ground's colour at a place g (x east, z south), seen from s metres away: the site's photo where there is one (a
+   near, sharp square inside a far, coarse one), else plain ground in the photo's overall colour with a 100 m grid */
+vec3 ground(vec2 g, float s, float px){
   vec2 gr = abs(fract(g / 100.0) - 0.5) * 100.0; // lines 100 m apart, the pad in the middle of a square
-  float px = s * tanv.y * 0.004;
   float line = 1.0 - smoothstep(px * 0.6 + 0.04, px * 1.6 + 0.12, min(gr.x, gr.y));
-  vec3 c = base * (1.0 + 0.08 * sin(g.x * 0.013) * sin(g.y * 0.017));
-  c = mix(c, c * 0.84, line * clamp(1.0 - s / 4000.0, 0.0, 1.0));
+  vec3 c = base * (1.0 + 0.08 * grid * sin(g.x * 0.013) * sin(g.y * 0.017));
+  c = mix(c, c * 0.84, grid * line * clamp(1.0 - s / 4000.0, 0.0, 1.0));
   vec2 uf = (g - farB.xy) / farB.z * 0.5 + 0.5;
   if (farB.z > 0.0 && uf.x > 0.0 && uf.x < 1.0 && uf.y > 0.0 && uf.y < 1.0) {
     float edge = smoothstep(0.0, 0.08, min(min(uf.x, 1.0 - uf.x), min(uf.y, 1.0 - uf.y)));
@@ -71,8 +61,51 @@ void main(){
     float edge = smoothstep(0.0, 0.06, min(min(un.x, 1.0 - un.x), min(un.y, 1.0 - un.y)));
     c = mix(c, texture2D(nearT, un).rgb, edge);
   }
-  float fog = 1.0 - exp(-s / 30000.0);
+  return c;
+}
+`;
+const V3_SKY_F = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v;
+uniform vec3 eye, fwd, right, up;
+uniform vec2 tanv;
+${V3_GROUND}
+void main(){
+  vec3 d = normalize(fwd + v.x * tanv.x * right + v.y * tanv.y * up);
+  if (d.y >= -0.0005) { gl_FragColor = vec4(sky(d), 1.0); return; }
+  float s = eye.y / -d.y;
+  vec3 c = ground(eye.xz + d.xz * s, s, s * tanv.y * 0.004);
+  float fog = 1.0 - exp(-s / 50000.0);
   gl_FragColor = vec4(mix(c, sky(vec3(d.x, 0.0, d.z)), fog), 1.0);
+}`;
+/* the terrain: the same ground, on the land's own shape, lit so that slopes show */
+const V3_LAND = `
+attribute vec3 p, n;
+uniform mat4 vp;
+varying vec3 w, vn;
+void main(){ w = p; vn = n; gl_Position = vp * vec4(p, 1.0); }`;
+const V3_LAND_F = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec3 w, vn;
+uniform vec3 eye;
+uniform float tany;
+${V3_GROUND}
+void main(){
+  vec3 d = w - eye;
+  float s = length(d);
+  vec3 c = ground(w.xz, s, s * tany * 0.004);
+  // level ground keeps the photo's own brightness; a slope is lighter facing the sun and darker facing away
+  c *= clamp(0.35 + 0.65 * max(dot(normalize(vn), sun), 0.0) / sun.y, 0.4, 1.3);
+  float fog = 1.0 - exp(-s / 50000.0);
+  gl_FragColor = vec4(mix(c, sky(normalize(vec3(d.x, 0.0, d.z))), fog), 1.0);
 }`;
 const V3_MESH = `
 attribute vec3 p, n, c;
@@ -423,6 +456,7 @@ function glStart() {
     V3.sky = prog(V3_SKY, V3_SKY_F);
     V3.mesh = prog(V3_MESH, V3_MESH_F);
     V3.puff = prog(V3_PUFF, V3_PUFF_F);
+    V3.landP = prog(V3_LAND, V3_LAND_F);
   } catch (e) {
     V3.bad = true;
     return false;
@@ -502,6 +536,79 @@ function drawMesh(M, m, tint = [1, 1, 1, 1], lit = 1) {
   gl.drawArrays(gl.TRIANGLES, 0, M.n);
 }
 /**
+ * The terrain as models on the graphics card, one for each square of heights (finest first). A coarser square leaves
+ * out the ground a finer one covers.
+ * @param {{half:number, n:number, h:Float32Array}[]} T from sitePhoto
+ * @returns {{b:WebGLBuffer, ib:WebGLBuffer, count:number}[]}
+ */
+function landModels(T) {
+  const gl = V3.gl;
+  return T.map((q, k) => {
+    const { half, n, h } = q,
+      at = (j) => -half + ((j + 0.5) / n) * 2 * half,
+      cell = (2 * half) / n,
+      d = new Float32Array(n * n * 6);
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const H = (ii, jj) => h[Math.min(n - 1, Math.max(0, ii)) * n + Math.min(n - 1, Math.max(0, jj))],
+          nx = (H(i, j - 1) - H(i, j + 1)) / (2 * cell),
+          nz = (H(i - 1, j) - H(i + 1, j)) / (2 * cell),
+          l = Math.hypot(nx, 1, nz);
+        d.set([at(j), h[i * n + j], at(i), nx / l, 1 / l, nz / l], (i * n + j) * 6);
+      }
+    // the part a finer square covers: everything inside its outermost heights
+    const inner = k > 0 ? T[k - 1].half * (1 - 1 / T[k - 1].n) : -1,
+      inside = (i, j) => Math.abs(at(j)) < inner && Math.abs(at(i)) < inner,
+      ix = [];
+    for (let i = 0; i + 1 < n; i++)
+      for (let j = 0; j + 1 < n; j++) {
+        if (inside(i, j) && inside(i + 1, j) && inside(i, j + 1) && inside(i + 1, j + 1)) continue;
+        const a = i * n + j;
+        ix.push(a, a + n, a + 1, a + 1, a + n, a + n + 1);
+      }
+    const b = gl.createBuffer(),
+      ib = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, d, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(ix), gl.STATIC_DRAW);
+    return { b, ib, count: ix.length };
+  });
+}
+/**
+ * The ground's height at a place, above the pad's (0 without terrain): from the finest square of heights that covers
+ * it.
+ * @param {number} x m east of the pad
+ * @param {number} z m south of it
+ * @returns {number} m
+ */
+function groundAt(x, z) {
+  const T = V3.land && V3.land.T;
+  if (!T) return 0;
+  for (const q of T) {
+    const fj = ((x + q.half) / (2 * q.half)) * q.n - 0.5,
+      fi = ((z + q.half) / (2 * q.half)) * q.n - 0.5;
+    if (fj < 0 || fi < 0 || fj > q.n - 1 || fi > q.n - 1) continue;
+    const j = Math.min(q.n - 2, Math.floor(fj)),
+      i = Math.min(q.n - 2, Math.floor(fi)),
+      u = fj - j,
+      v = fi - i,
+      a = i * q.n + j;
+    return (q.h[a] * (1 - u) + q.h[a + 1] * u) * (1 - v) + (q.h[a + q.n] * (1 - u) + q.h[a + q.n + 1] * u) * v;
+  }
+  return 0;
+}
+/**
+ * A point of the flight in the picture, set on the land: the flight is flown over level ground at the pad's height,
+ * so near the ground (the last 150 m) its height is eased onto the land's own there, and it lands on it.
+ * @param {number[]} p [x, height above the pad's level, z]
+ * @returns {number[]}
+ */
+function onLand(p) {
+  if (!V3.land || p[1] >= 150) return p;
+  return [p[0], p[1] + groundAt(p[0], p[2]) * (1 - Math.max(p[1], 0) / 150), p[2]];
+}
+/**
  * A picture of the site photo has arrived: show it, if the animation is standing still in 3D.
  */
 function photoArrived() {
@@ -549,8 +656,15 @@ function photoTextures() {
         V3.tex.far.avg = [r / 16 / 255, g / 16 / 255, b / 16 / 255];
       } catch (e) {}
   }
+  // the terrain under it
+  const T = ph && ph.terrain;
+  if (!T) V3.land = null;
+  else if (!V3.land || V3.land.T !== T) V3.land = { T, levels: landModels(T) };
   const note = document.getElementById("anim3dcredit");
-  if (note) note.hidden = !(V3.tex.near || V3.tex.far);
+  if (note) {
+    note.hidden = !(V3.tex.near || V3.tex.far);
+    note.textContent = V3.land ? "Imagery and terrain: U.S. Geological Survey" : "Imagery: U.S. Geological Survey";
+  }
 }
 /* ---------- the flight in the picture's axes ---------- */
 /**
@@ -572,7 +686,7 @@ function stateAt(t) {
   const ax = animAt(out.t, out.ax, t),
     az = animAt(out.t, out.az, t),
     ay = X.ay ? animAt(out.t, X.ay, t) : 0;
-  return { pos, dir: norm(w(ax, ay, az)) };
+  return { pos: onLand(pos), alt: pos[1], dir: norm(w(ax, ay, az)) };
 }
 /**
  * Builds the models of the flight that is open (each stage, the parachutes), once for each run.
@@ -623,7 +737,7 @@ export function anim3dDraw() {
     M = models();
   photoTextures();
   const S = stateAt(t),
-    z = S.pos[1];
+    z = S.alt; // height above the pad's level, as flown
   // what is flying: every stage, then fewer; and what has been dropped
   const full = !!(st.three && st.tSep1 != null && t < st.tSep1),
     sepd = st.staged && st.tSep != null && t >= st.tSep,
@@ -655,9 +769,9 @@ export function anim3dDraw() {
       d = Math.max(len * 5, 4, canopy * 4.5) * V3.zoom;
     at = add(S.pos, canopy ? [0, len + canopy * 0.6, 0] : mul(dir, len * 0.5));
     eye = add(at, [d * Math.cos(V3.el) * Math.sin(V3.az), d * Math.sin(V3.el), d * Math.cos(V3.el) * Math.cos(V3.az)]);
-    eye[1] = Math.max(eye[1], 0.3);
+    eye[1] = Math.max(eye[1], groundAt(eye[0], eye[2]) + 0.4);
     fov = 0.9;
-    near = Math.max(0.05, len * 0.05);
+    near = Math.max(0.1, d * 0.03);
   } else if (V3.mode === "over") {
     const R = V3.reach,
       span = Math.max(R.far, R.top, 60),
@@ -665,20 +779,21 @@ export function anim3dDraw() {
       c = mul(add(S.pos, [0, R.top * 0.45 - S.pos[1], 0]), 0.5);
     at = [c[0], R.top * 0.45, c[2]];
     eye = add(at, [d * Math.cos(V3.el) * Math.sin(V3.az), d * Math.sin(V3.el), d * Math.cos(V3.el) * Math.cos(V3.az)]);
-    eye[1] = Math.max(eye[1], 2);
+    eye[1] = Math.max(eye[1], groundAt(eye[0], eye[2]) + 2);
     fov = 0.8;
     near = Math.max(0.5, d * 0.01);
   } else {
     // a spectator at the flight line: beside the pad, eye height, following the rocket and zooming in as it goes
     const { ey } = flightAxes(),
       back = Math.max(30, len * 18);
-    eye = add(add(mul(ey, -back), mul(ex, -back * 0.35)), [0, 1.7, 0]);
+    eye = add(mul(ey, -back), mul(ex, -back * 0.35));
+    eye[1] = groundAt(eye[0], eye[2]) + 1.7;
     at = add(S.pos, mul(dir, len * 0.5));
     const dist = Math.hypot(...sub(at, eye));
     // wide while the rocket is near, so the pad and the field are in the picture; narrowing to follow it away
     fov = Math.min(0.95, Math.max(0.1, 2 * Math.atan((back * 0.62) / Math.max(dist, back))));
     if (z < len * 3) at = [at[0], Math.max(at[1], len * 1.4), at[2]];
-    near = 0.3;
+    near = 0.5;
   }
   // easing, so the picture doesn't jump when the view or the time changes
   if (V3.cam && V3.cam.mode === V3.mode && !V3.jump) {
@@ -690,7 +805,7 @@ export function anim3dDraw() {
   V3.jump = false;
   V3.cam = { eye, at, fov, mode: V3.mode };
   const dist = Math.hypot(...sub(at, eye)),
-    C = viewProj(eye, at, fov, aspect, near, Math.max(60000, dist * 4)),
+    C = viewProj(eye, at, fov, aspect, near, Math.max(120000, dist * 4)),
     tanY = Math.tan(fov / 2);
   // far off, the rocket is drawn larger than life so it can still be seen
   const px = (len * H) / (2 * tanY * Math.max(dist, 1e-3)),
@@ -712,10 +827,43 @@ export function anim3dDraw() {
     gl.uniform3fv(P.u.fwd, C.f);
     gl.uniform3fv(P.u.right, C.r);
     gl.uniform3fv(P.u.up, C.u);
-    gl.uniform3fv(P.u.sun, sun);
     gl.uniform2f(P.u.tanv, tanY * aspect, tanY);
+    groundUniforms(P);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  // the land
+  if (V3.land) {
+    const P = V3.landP;
+    gl.useProgram(P.p);
+    gl.enable(gl.DEPTH_TEST);
+    gl.uniformMatrix4fv(P.u.vp, false, C.vp);
+    gl.uniform3fv(P.u.eye, eye);
+    gl.uniform1f(P.u.tany, tanY);
+    groundUniforms(P);
+    // coarsest first; a coarser square sits a shade behind a finer one where they overlap
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    for (let k = V3.land.levels.length - 1; k >= 0; k--) {
+      const Lv = V3.land.levels[k];
+      gl.polygonOffset(2 * k, 300 * k);
+      gl.bindBuffer(gl.ARRAY_BUFFER, Lv.b);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Lv.ib);
+      gl.enableVertexAttribArray(P.a.p);
+      gl.vertexAttribPointer(P.a.p, 3, gl.FLOAT, false, 24, 0);
+      gl.enableVertexAttribArray(P.a.n);
+      gl.vertexAttribPointer(P.a.n, 3, gl.FLOAT, false, 24, 12);
+      gl.drawElements(gl.TRIANGLES, Lv.count, gl.UNSIGNED_SHORT, 0);
+    }
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.disable(gl.DEPTH_TEST);
+  }
+  /**
+   * Sets what the ground's colour needs (sun, sky, the photo's textures and extents) on a program that draws ground.
+   */
+  function groundUniforms(P) {
+    gl.uniform3fv(P.u.sun, sun);
     gl.uniform3fv(P.u.base, (V3.tex.far && V3.tex.far.avg) || [0.46, 0.535, 0.365]);
     gl.uniform1f(P.u.dark, Math.min(1, Math.max(0, (eye[1] - 12000) / 60000)));
+    gl.uniform1f(P.u.grid, V3.tex.near || V3.tex.far ? 0 : 1); // the 100 m grid only on plain ground
     for (const [k, unit] of [
       ["near", 0],
       ["far", 1],
@@ -727,7 +875,6 @@ export function anim3dDraw() {
       // north is up in the photo: east runs with x, and south (the picture's z) runs down it
       gl.uniform3f(P.u[k + "B"], 0, 0, T ? T.half : 0);
     }
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
   // solid things
   const Pm = V3.mesh;
@@ -741,7 +888,12 @@ export function anim3dDraw() {
     const sh = Math.max(len * big * 0.8, 0.4),
       a = 0.32 * Math.max(0, 1 - z / Math.max(400, len * 150));
     if (a > 0.01)
-      drawMesh(V3.fixed.disc, place([S.pos[0], 0.01, S.pos[2]], [0, 1, 0], 0, [sh, 1, sh * 0.5]), [0, 0, 0, a], 0);
+      drawMesh(
+        V3.fixed.disc,
+        place([S.pos[0], groundAt(S.pos[0], S.pos[2]) + 0.03, S.pos[2]], [0, 1, 0], 0, [sh, 1, sh * 0.5]),
+        [0, 0, 0, a],
+        0,
+      );
   }
   gl.enable(gl.DEPTH_TEST);
   // pad and rail
@@ -766,13 +918,13 @@ export function anim3dDraw() {
     if (!m || !T || !T.length || t < T[0]) continue;
     const { ex: X0 } = flightAxes(),
       alt = Math.max(0, animAt(T, out[key + "alt"], t)),
-      p = add(mul(X0, animAt(T, out[key + "xp"] || T.map(() => 0), t)), [0, alt, 0]),
+      p = onLand(add(mul(X0, animAt(T, out[key + "xp"] || T.map(() => 0), t)), [0, alt, 0])),
       a = alt > 0 ? (t - T[0]) * 3.1 : 0;
     drawMesh(m, place(p, alt > 0 ? [Math.cos(a), Math.sin(a) * 0.9, 0.3] : [1, 0.03, 0], 0, big));
   }
   // the rocket (after its smoke, so it shows through its own trail)
   const tail = S.pos,
-    lying = landed ? [tail[0], body.R * big, tail[2]] : tail;
+    lying = landed ? [tail[0], tail[1] + body.R * big, tail[2]] : tail;
   gl.depthMask(false);
   // smoke: puffs left along the path while the motor burned, spreading, thinning and drifting with the wind
   {
@@ -846,7 +998,7 @@ export function anim3dDraw() {
       stepN = Math.max(1, Math.floor(n / 1500)),
       { ex: X0, ey: Y0 } = flightAxes();
     for (let i = 0; i < n && out.t[i] <= t; i += stepN) {
-      const q = add(add(mul(X0, -out.drift[i]), mul(Y0, out.cross[i])), [0, Math.max(0, out.alt[i]), 0]);
+      const q = onLand(add(add(mul(X0, -out.drift[i]), mul(Y0, out.cross[i])), [0, Math.max(0, out.alt[i]), 0]));
       pts.push(q[0], q[1], q[2]);
     }
     pts.push(tail[0], tail[1], tail[2]);

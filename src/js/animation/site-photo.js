@@ -10,6 +10,17 @@ import { prFetchBytes } from "../weather/forecast.js";
 const PHOTO_NEAR = 400,
   PHOTO_FAR = 6000,
   PHOTO_PX = 2048;
+/**
+ * The terrain's squares of ground heights, finest first: [half the square's width on the ground (m), heights along
+ * each side]. The finest covers the field around the pad, the next the far photo, the last the skyline.
+ */
+const TERRAIN = [
+  [800, 129],
+  [6000, 193],
+  [40000, 161],
+];
+/** The USGS elevation service's heights-of-an-area request (3D Elevation Program). */
+const TERRAIN_URL = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage";
 /** The USGS imagery service's picture-of-an-area request. */
 const PHOTO_URL = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/export";
 /**
@@ -23,6 +34,9 @@ const PHOTO = {
   farHalf: PHOTO_FAR,
   busy: false,
   failed: false,
+  fresh: false,
+  terrain: null,
+  flat: false,
 };
 /** Those to tell when a picture of the photo arrives. */
 let photoWaiting = [];
@@ -120,35 +134,84 @@ function photoDecode(bytes) {
   });
 }
 /**
- * The launch site's photo: what has arrived so far of its two pictures. The first call for a site starts getting it
- * (from the device if it was kept, otherwise from the USGS service), and onLoad is called as each picture arrives.
+ * The request for a square of ground heights around a place (USGS 3D Elevation Program): n by n heights in metres, as
+ * plain numbers (32-bit floats, row by row from the north).
+ * @param {number} lat degrees
+ * @param {number} lon degrees
+ * @param {number} half half the square's width on the ground, m
+ * @param {number} n heights along each side
+ * @returns {string}
+ */
+function terrainUrl(lat, lon, half, n) {
+  const R = 6378137,
+    x = (R * lon * Math.PI) / 180,
+    y = R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)),
+    h = half / Math.cos((lat * Math.PI) / 180);
+  return `${TERRAIN_URL}?bbox=${(x - h).toFixed(1)},${(y - h).toFixed(1)},${(x + h).toFixed(1)},${(y + h).toFixed(1)}&bboxSR=3857&imageSR=3857&size=${n},${n}&format=bsq&pixelType=F32&interpolation=RSP_BilinearInterpolation&f=image`;
+}
+/**
+ * The terrain's squares of heights from the service's bytes, measured from the pad's own height (the middle of the
+ * finest square), so the pad is at zero. A height the service has none for (sea, outside its cover) counts as the
+ * pad's.
+ * @param {Uint8Array[]} raw one answer for each square of TERRAIN
+ * @returns {{half:number, n:number, h:Float32Array}[]}
+ */
+function terrainDecode(raw) {
+  const sq = raw.map((b, k) => {
+    const [half, n] = TERRAIN[k];
+    if (!b || b.length < n * n * 4) throw new Error("no heights");
+    const dv = new DataView(b.buffer, b.byteOffset, n * n * 4),
+      h = new Float32Array(n * n);
+    for (let i = 0; i < n * n; i++) h[i] = dv.getFloat32(i * 4, true);
+    return { half, n, h };
+  });
+  const a = sq[0],
+    pad = a.h[((a.n - 1) / 2) * a.n + (a.n - 1) / 2];
+  if (!isFinite(pad) || Math.abs(pad) > 9000) throw new Error("no heights");
+  for (const q of sq)
+    for (let i = 0; i < q.h.length; i++) q.h[i] = isFinite(q.h[i]) && Math.abs(q.h[i]) < 9000 ? q.h[i] - pad : 0;
+  return sq;
+}
+/**
+ * The launch site's photo and terrain: what has arrived so far. The first call for a site starts getting them (from
+ * the device if they were kept, otherwise from the USGS services), the photo first; onLoad is called as each part
+ * arrives.
  * @param {number|null} lat launch site latitude, degrees (null: no site set)
  * @param {number|null} lon longitude
  * @param {function():void} [onLoad]
- * @returns {{near:object|null, far:object|null, nearHalf:number, farHalf:number}|null} null with no site, or with the
- *   site photo switched off
+ * @returns {{near:object|null, far:object|null, nearHalf:number, farHalf:number, terrain:object[]|null}|null} null
+ *   with no site, or with the site photo switched off
  */
 export function sitePhoto(lat, lon, onLoad) {
   if (lat == null || lon == null || !isFinite(lat) || !isFinite(lon) || !sitePhotoOn()) return null;
   const key = `${(+lat).toFixed(4)},${(+lon).toFixed(4)}`;
   if (PHOTO.key !== key) {
-    Object.assign(PHOTO, { key, near: null, far: null, busy: false, failed: false, fresh: false });
+    Object.assign(PHOTO, {
+      key,
+      near: null,
+      far: null,
+      terrain: null,
+      flat: false,
+      busy: false,
+      failed: false,
+      fresh: false,
+    });
     photoWaiting = [];
   }
+  const done = () => PHOTO.near && PHOTO.far && (PHOTO.terrain || PHOTO.flat);
   // whoever asks while it is on its way is told when it arrives
-  if (onLoad && !PHOTO.failed && !(PHOTO.near && PHOTO.far) && !photoWaiting.includes(onLoad))
-    photoWaiting.push(onLoad);
-  if (!PHOTO.busy && !PHOTO.failed && !(PHOTO.near && PHOTO.far)) {
+  if (onLoad && !PHOTO.failed && !done() && !photoWaiting.includes(onLoad)) photoWaiting.push(onLoad);
+  if (!PHOTO.busy && !PHOTO.failed && !done()) {
     PHOTO.busy = true;
     (async () => {
       try {
-        let rec = await photoSaved(key);
-        if (!rec || !rec.near || !rec.far) {
+        let rec = (await photoSaved(key)) || {};
+        if (!rec.near || !rec.far) {
           const [near, far] = await Promise.all([
             prFetchBytes(photoUrl(lat, lon, PHOTO_NEAR)),
             prFetchBytes(photoUrl(lat, lon, PHOTO_FAR)),
           ]);
-          rec = { near, far };
+          rec = { ...rec, near, far };
           // only a real picture is kept: the service answers a failed request with a page of text
           await Promise.all([photoDecode(near), photoDecode(far)]);
           photoKeep(key, rec);
@@ -160,6 +223,21 @@ export function sitePhoto(lat, lon, onLoad) {
           PHOTO[k] = img;
           for (const f of photoWaiting.slice()) f();
         }
+        // the terrain under it: without it (no cover, no connection) the photo lies on flat ground
+        try {
+          let T = rec.terrain ? terrainDecode(rec.terrain) : null;
+          if (!T) {
+            const raw = await Promise.all(TERRAIN.map(([half, n]) => prFetchBytes(terrainUrl(lat, lon, half, n))));
+            T = terrainDecode(raw);
+            photoKeep(key, { ...rec, terrain: raw });
+            if (PHOTO.key === key) PHOTO.fresh = true;
+          }
+          if (PHOTO.key !== key) return;
+          PHOTO.terrain = T;
+        } catch (e) {
+          if (PHOTO.key === key) PHOTO.flat = true;
+        }
+        if (PHOTO.key === key) for (const f of photoWaiting.slice()) f();
       } catch (e) {
         // no connection, no coverage or no store: plain ground, and no second try until the site changes
         if (PHOTO.key === key) PHOTO.failed = true;
@@ -182,9 +260,10 @@ export function sitePhoto(lat, lon, onLoad) {
  */
 export function sitePhotoReady(lat, lon) {
   sitePhoto(lat, lon, () => {
-    if (PHOTO.near && PHOTO.far && PHOTO.fresh) {
+    if (PHOTO.near && PHOTO.far && (PHOTO.terrain || PHOTO.flat) && PHOTO.fresh) {
       PHOTO.fresh = false;
-      if (window.prToast) window.prToast("Site photo saved for the 3D flight view.");
+      if (window.prToast)
+        window.prToast(`Site photo${PHOTO.terrain ? " and terrain" : ""} saved for the 3D flight view.`);
     }
   });
 }

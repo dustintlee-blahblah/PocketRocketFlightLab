@@ -240,9 +240,10 @@ License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), and OpenRock
 weight turned into the material density for tubes, couplers, rings and bulkheads. Part numbers and makers' names
 belong to their makers, who are not affiliated with this app.
 
-== Launch site photo ==
+== Launch site photo and terrain ==
 The 3D flight view's ground photo comes from the U.S. Geological Survey's imagery service (The National Map,
-https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer). USGS-authored data and maps are in
+https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer), and the shape of the land under it
+from the USGS 3D Elevation Program (https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer). USGS-authored data and maps are in
 the U.S. public domain; the app credits the USGS on the picture. Map services and data available from U.S. Geological
 Survey, National Geospatial Program.
 
