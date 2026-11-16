@@ -1331,6 +1331,14 @@ h2 + .subh {
   text-align: left;
   cursor: pointer;
 }
+.finunit {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--ink);
+  font: 500 0.85rem var(--f-body);
+}
 .bldaddrow {
   display: grid;
   grid-template-columns: 1fr 1fr;

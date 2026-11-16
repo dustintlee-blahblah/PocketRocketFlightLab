@@ -5,7 +5,7 @@
 import { BLD, BLD_ROOT, bldChanged, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
 import { bldCalcOv, bldCalcPartMass } from "./derive.js";
 import { BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
-import { finDxfSave } from "./fin-dxf.js";
+import { finDxfFlip, finDxfLoad, finDxfNote, finDxfSave } from "./fin-dxf.js";
 import {
   BLD_BODY,
   BLD_BULK,
@@ -80,9 +80,11 @@ export function bldDrawFinEdit() {
     FS.s = Math.max(0, ...P.map((p) => p[1]));
     FS.b = 0;
     FS.sw = 0;
-    FS.showPts = true;
-    FS.note =
-      " Free-form: the numbered corners are the outline points above, in order. Root and span are measured from them.";
+    // an outline with curves in it (an imported drawing) has too many corners to number
+    FS.showPts = P.length <= 16;
+    FS.note = FS.showPts
+      ? " Free-form: the numbered corners are the outline points above, in order. Root and span are measured from them."
+      : ` Free-form: ${P.length} outline points. Root and span are measured from them.`;
   } else if (k.shape === "elliptical") {
     const N = 60,
       a = k.root,
@@ -167,6 +169,8 @@ export function bldRenderTree() {
   );
 }
 let bldAddOpen = false;
+/** The unit chosen for imported fin drawings ("" = as the file says), kept while the app is open. */
+let finDxfUnit = "";
 /**
  * Which Motor tab target a builder stage is: sustainer (top), booster, or a three-stage rocket's first stage.
  * @param {number} si stage index
@@ -437,7 +441,7 @@ export function bldRenderEdit() {
   }
   h += `</div><div class="row" style="margin-top:12px;gap:8px">${body ? `<button class="btn ghost" data-act="up">Move forward</button><button class="btn ghost" data-act="down">Move aft</button>` : ""}<button class="btn ghost" data-act="dup">Duplicate</button><button class="btn ghost" data-act="del">Delete</button></div>`;
   if (p.type === "fins")
-    h += `<canvas id="bldfinview" aria-label="This fin drawn to scale, with the sizes that set its shape"></canvas><p class="note" id="bldfinnote"></p><div class="row" style="margin-top:10px;gap:8px;align-items:center"><button type="button" class="btn ghost" data-findxf="1">Export fin outline (DXF)</button></div><p class="note" id="bldfindxfmsg" aria-live="polite">A full-size drawing of one fin for a laser cutter, a CNC router or a printed template.</p>`;
+    h += `<canvas id="bldfinview" aria-label="This fin drawn to scale, with the sizes that set its shape"></canvas><p class="note" id="bldfinnote"></p><div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn ghost" data-findxf="1">Export DXF</button><label class="file btn ghost" for="bldfindxfin">Import DXF<input type="file" id="bldfindxfin" accept=".dxf,.DXF,application/dxf,image/vnd.dxf,application/octet-stream,text/plain"></label><select id="bldfindxfunit" class="finunit" aria-label="The imported drawing’s unit"><option value="">Unit: as the file says</option><option value="mm">Unit: mm</option><option value="in">Unit: inches</option></select>${p.shape === "freeform" ? `<button type="button" class="btn ghost" data-finflip="1">Flip front to back</button>` : ""}</div><p class="note" id="bldfindxfmsg" aria-live="polite">${esc(finDxfNote(p.id))}</p>`;
   el.innerHTML = h;
   bldWire(el, p, "part");
   if (p.type === "fins") requestAnimationFrame(bldDrawFinEdit);
@@ -452,6 +456,23 @@ export function bldRenderEdit() {
     }),
   );
   el.querySelector("[data-findxf]")?.addEventListener("click", () => finDxfSave(p, BLD.name || D.name));
+  {
+    const inp = el.querySelector("#bldfindxfin"),
+      unit = el.querySelector("#bldfindxfunit");
+    if (inp) {
+      unit.value = finDxfUnit;
+      unit.onchange = () => (finDxfUnit = unit.value);
+      inp.onchange = () => {
+        const file = inp.files && inp.files[0];
+        inp.value = "";
+        if (file) finDxfLoad(p, file, unit.value, () => bldChanged(true));
+      };
+    }
+  }
+  el.querySelector("[data-finflip]")?.addEventListener("click", () => {
+    finDxfFlip(p);
+    bldChanged(true);
+  });
   el.querySelector("[data-gomotor]")?.addEventListener("click", (e) => {
     e.preventDefault();
     if (typeof mountFilter === "function") {
