@@ -4,8 +4,9 @@
  * from one. A part filled in from the catalog remembers its maker and part number (p.cat) and stays editable.
  */
 import { PARTS_DB } from "../../data/parts-catalog.js";
-import { BLD, bldChanged, bldFind } from "./builder-ui.js";
-import { BLD_NAMES, bldRodFor } from "./model.js";
+import { BLD, bldChanged, bldFind, bldSel } from "./builder-ui.js";
+import { bldAdd } from "./editor.js";
+import { BLD_BODY, BLD_NAMES, bldRodFor } from "./model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { fmt, uname } from "../ui/units.js";
@@ -193,12 +194,13 @@ export function partAsListed(p) {
  * still has its starting name) and everything the catalog doesn't cover are left alone.
  * @param {object} p builder part
  * @param {object} e catalog part, from partList
+ * @param {boolean} [fresh] the part was just added: it takes the library part's length too
  */
-function partApply(p, e) {
+function partApply(p, e, fresh) {
   const was = p.cat ? `${p.cat.mk} ${p.cat.pn}`.trim() : null,
     v = partValues(partKind(p), e);
   // tube is sold in stock lengths and cut: the part keeps its length when the stock is at least that long
-  if (p.type in TUBES && p.len > 0 && p.len <= e.len + 1e-6) delete v.len;
+  if (!fresh && p.type in TUBES && p.len > 0 && p.len <= e.len + 1e-6) delete v.len;
   Object.assign(p, v);
   // a listed weight (nose cones, transitions, parachutes) is the part's weight; without one it is worked out as usual
   if (e.mass > 0) Object.assign(p, { known: e.mass, knownOn: true });
@@ -211,20 +213,20 @@ function partApply(p, e) {
   p.cat = { mk: e.mk, pn: e.pn };
 }
 /**
- * The diameter a part has to match to fit where it is in the design, and what that is, or null when nothing fixes it.
- * @param {object} f the part as bldFind gives it
+ * The diameter a part of a type has to match to fit a place in the design, and what that is, or null when nothing
+ * fixes it.
+ * @param {string} type builder part type
+ * @param {{prev?:object, next?:object, parent?:object, motor?:object}} at the body parts before and after it (a body
+ *   part), or the body part it is on (any other part), and the motor a mount holds
  * @returns {{d:number, key:string, inside?:boolean, motor?:boolean, text:string}|null}
  */
-function partFit(f) {
-  const p = f.p,
-    kind = partKind(p),
+function partFit(type, at) {
+  const kind = PART_KIND[type],
     dia = (d) => `${fmt(d, "small")} ${uname("small")}`;
   const front = (q) => (q.type === "tube" ? q.od : q.type === "transition" ? q.dia1 : q.dia),
     aft = (q) => (q.type === "tube" ? q.od : q.type === "transition" ? q.dia2 : q.dia);
-  if (!f.parent) {
-    const parts = BLD.stages[f.si].parts,
-      prev = parts[f.pi - 1],
-      next = parts[f.pi + 1];
+  if (!at.parent) {
+    const { prev, next } = at;
     if (kind === "nose") return next ? { d: front(next), key: "od", text: `match the ${dia(front(next))} body` } : null;
     if (kind === "transition")
       return prev
@@ -238,10 +240,10 @@ function partFit(f) {
       : null;
   }
   // a mount that holds a motor: tube the motor slides into
-  if (p.type === "mount" && p.motor && p.motor.dia > 0)
-    return { d: p.motor.dia, key: "id", motor: true, text: `hold the ${Math.round(p.motor.dia * 1000)} mm motor` };
-  if (f.parent.type !== "tube" || !["tube", "coupler", "ring", "bulkhead"].includes(kind)) return null;
-  const inner = f.parent.od - 2 * f.parent.wall;
+  if (type === "mount" && at.motor && at.motor.dia > 0)
+    return { d: at.motor.dia, key: "id", motor: true, text: `hold the ${Math.round(at.motor.dia * 1000)} mm motor` };
+  if (at.parent.type !== "tube" || !["tube", "coupler", "ring", "bulkhead"].includes(kind)) return null;
+  const inner = at.parent.od - 2 * at.parent.wall;
   if (!(inner > 0)) return null;
   return kind === "tube"
     ? { d: inner, key: "od", inside: true, text: `go inside the ${dia(inner)} tube` }
@@ -277,39 +279,57 @@ function partSizes(kind, e) {
   }
 }
 /**
- * Opens the catalog for a part: a searchable list of its kind of part, by maker, narrowed to what fits where the part
- * is. Picking one fills the part in and closes the list.
- * @param {string} id the builder part's id
+ * The library window: a searchable list of one kind of part, by maker, narrowed to what fits. It works two ways. For
+ * an existing part (id given) it lists that part's kind, and picking one fills the part in. With no id it adds a part:
+ * the kind is chosen in the window, and picking one adds it where the builder's own add button would (a body part
+ * after the selection, any other part on the selected body part), filled in from the library.
+ * @param {string} [id] the builder part to fill in; none to add a part
  */
 export function partPick(id) {
-  const f = bldFind(id);
-  if (!f || !f.p || !partKind(f.p)) return;
-  const kind = partKind(f.p),
-    all = partList(kind),
-    fit = partFit(f);
+  const swap = id ? bldFind(id) : null;
+  if (id && (!swap || !swap.p || !partKind(swap.p))) return;
+  // where an added part goes: as bldAdd places it
+  const sel = bldSel ? bldFind(bldSel) : null,
+    si = sel && sel.si != null ? sel.si : 0,
+    st = BLD.stages[si],
+    body = sel && sel.p ? sel.parent || sel.p : st.parts.find((q) => q.type === "tube") || st.parts[0] || null,
+    after = sel && sel.p ? sel.pi + 1 : st.parts.length;
+  /**
+   * The place a part of a type takes (see partFit).
+   */
+  const place = (type) => {
+    if (swap)
+      return swap.parent
+        ? { parent: swap.parent, motor: swap.p.motor }
+        : { prev: BLD.stages[swap.si].parts[swap.pi - 1], next: BLD.stages[swap.si].parts[swap.pi + 1] };
+    if (type === "nose") return { next: st.parts[0] };
+    if (BLD_BODY.includes(type)) return { prev: st.parts[after - 1], next: st.parts[after] };
+    return { parent: body };
+  };
+  const types = swap
+    ? [swap.p.type]
+    : [
+        "tube",
+        ...(si === 0 && !st.parts.some((q) => q.type === "nose") ? ["nose"] : []),
+        "transition",
+        ...(body ? ["mount", "inner", "coupler", "ring", "bulkhead", "lug", "chute", "streamer"] : []),
+      ];
   const box = document.getElementById("partpick"),
+    kindSel = document.getElementById("partkind"),
     q = document.getElementById("partq"),
     mk = document.getElementById("partmk"),
     fitBox = document.getElementById("partfit"),
     list = document.getElementById("partlist"),
     count = document.getElementById("partcount");
-  document.getElementById("partttl").textContent = `${PART_TITLE[kind]} from the catalog`;
-  const makers = [...new Set(all.map((e) => e.mk))].sort((a, b) => a.localeCompare(b));
-  const last = store.get("rfs-part-maker", "");
-  mk.innerHTML =
-    `<option value="">All makers</option>` +
-    makers.map((m) => `<option${m === last ? " selected" : ""}>${esc(m)}</option>`).join("");
-  q.value = "";
-  document.getElementById("partfitrow").hidden = !fit;
-  document.getElementById("partnote").hidden = !(f.p.type in TUBES);
-  fitBox.checked = !!fit;
-  if (fit) document.getElementById("partfittxt").textContent = `Only parts that ${fit.text}`;
+  document.getElementById("partkindrow").hidden = !!swap;
+  kindSel.innerHTML = types.map((t) => `<option value="${t}">${esc(BLD_NAMES[t])}</option>`).join("");
+  let type, kind, all, fit;
+  let shown = [];
   const fits = (e) => {
     const tol = Math.max(0.0008, 0.012 * fit.d);
     if (fit.motor) return e.id >= fit.d - 0.0002 && e.id <= fit.d + 0.002;
     return fit.inside ? e[fit.key] < fit.d - 0.0005 : Math.abs(e[fit.key] - fit.d) <= tol;
   };
-  let shown = [];
   /**
    * Lists the parts that match the search, the maker and the fit.
    */
@@ -334,20 +354,44 @@ export function partPick(id) {
         ? `Showing the first ${shown.length} of ${hits.length.toLocaleString()}. Search or pick a maker to narrow the list.`
         : `${hits.length.toLocaleString()} part${hits.length === 1 ? "" : "s"}`;
   };
+  /**
+   * Sets the window up for the kind of part chosen: its list, its makers and what fits.
+   */
+  const setKind = () => {
+    type = kindSel.value;
+    kind = PART_KIND[type];
+    all = partList(kind);
+    fit = partFit(type, place(type));
+    document.getElementById("partttl").textContent = swap
+      ? `${PART_TITLE[kind]} from the library`
+      : `Add a part from the library${body && !BLD_BODY.includes(type) ? ` to ${body.name}` : ""}`;
+    const makers = [...new Set(all.map((e) => e.mk))].sort((a, b) => a.localeCompare(b)),
+      last = store.get("rfs-part-maker", "");
+    mk.innerHTML =
+      `<option value="">All makers</option>` +
+      makers.map((m) => `<option${m === last ? " selected" : ""}>${esc(m)}</option>`).join("");
+    document.getElementById("partfitrow").hidden = !fit;
+    fitBox.checked = !!fit;
+    if (fit) document.getElementById("partfittxt").textContent = `Only parts that ${fit.text}`;
+    document.getElementById("partnote").hidden = !(swap && type in TUBES);
+    draw();
+  };
   const done = () => {
     box.hidden = true;
-    q.oninput = mk.onchange = fitBox.onchange = list.onclick = box.onclick = null;
+    q.oninput = mk.onchange = fitBox.onchange = kindSel.onchange = list.onclick = box.onclick = null;
     document.getElementById("partcancel").onclick = null;
     document.removeEventListener("keydown", onKey);
   };
   /**
-   * Escape closes the list.
+   * Escape closes the window.
    */
   const onKey = (ev) => {
     if (ev.key === "Escape") done();
   };
+  q.value = "";
   q.oninput = draw;
   fitBox.onchange = draw;
+  kindSel.onchange = setKind;
   mk.onchange = () => {
     store.set("rfs-part-maker", mk.value);
     draw();
@@ -355,10 +399,16 @@ export function partPick(id) {
   list.onclick = (ev) => {
     const b = ev.target.closest(".partitem");
     if (!b) return;
-    const e = shown[+b.dataset.i],
-      now = bldFind(id);
+    const e = shown[+b.dataset.i];
     done();
-    if (!e || !now || !now.p) return;
+    if (!e) return;
+    if (!swap) {
+      // a new part takes the library part whole, its length too
+      bldAdd(type, (p) => partApply(p, e, true));
+      return;
+    }
+    const now = bldFind(id);
+    if (!now || !now.p) return;
     partApply(now.p, e);
     bldChanged(true);
   };
@@ -367,6 +417,6 @@ export function partPick(id) {
     if (ev.target === box) done();
   };
   document.addEventListener("keydown", onKey);
-  draw();
+  setKind();
   box.hidden = false;
 }

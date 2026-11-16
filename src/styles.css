@@ -1331,6 +1331,11 @@ h2 + .subh {
   text-align: left;
   cursor: pointer;
 }
+.bldaddrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 .bldaddtoggle:hover {
   border-color: var(--gulf-ink);
 }

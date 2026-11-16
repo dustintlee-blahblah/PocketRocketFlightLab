@@ -194,11 +194,12 @@ export function bldRenderAdd() {
     hasNose = BLD.stages[0].parts.some((p) => p.type === "nose");
   const title = `Add a body part${body ? ` / Add to ${esc(body.name)}` : ""}`;
   if (!bldAddOpen) {
-    el.innerHTML = `<button type="button" class="bldaddtoggle" aria-expanded="false"><span>＋ ${title}</span><span aria-hidden="true">▸</span></button>`;
+    el.innerHTML = `<div class="bldaddrow"><button type="button" class="bldaddtoggle" aria-expanded="false"><span>＋ ${title}</span><span aria-hidden="true">▸</span></button><button type="button" class="bldaddtoggle" data-lib="1"><span>＋ Add a part from Library</span><span aria-hidden="true">▸</span></button></div>`;
     el.querySelector(".bldaddtoggle").onclick = () => {
       bldAddOpen = true;
       bldRenderAdd();
     };
+    el.querySelector("[data-lib]").onclick = () => partPick();
     return;
   }
   let h = `<button type="button" class="bldaddtoggle" aria-expanded="true"><span>${title}</span><span aria-hidden="true">▾</span></button><div class="bldh">Add a body part${BLD.stages.length > 1 ? ` to ${esc(BLD.stages[si].name)}` : ""}</div><div class="bldadds">`;
@@ -267,8 +268,9 @@ export function bldRenderAdd() {
 /**
  * Adds a part: a body part after the selection, or an attached part on the selected body part.
  * @param {string} type
+ * @param {function(object):void} [fill] sets the new part up before it is drawn (a part from the library)
  */
-function bldAdd(type) {
+export function bldAdd(type, fill) {
   const f = bldSel ? bldFind(bldSel) : null,
     si = f && f.si != null ? f.si : 0,
     st = BLD.stages[si];
@@ -279,6 +281,7 @@ function bldAdd(type) {
     const p = bldNew(type, R);
     if (type === "nose") st.parts.unshift(p);
     else st.parts.splice(at, 0, p);
+    if (fill) fill(p);
     setBldSel(p.id);
   } else if (type === "flyaway") {
     /* a fly-away rail guide: a cage around the body that rides the rail and falls away at its end. It is kept as a
@@ -312,6 +315,7 @@ function bldAdd(type) {
     if (!body) return;
     const k = bldNew(type, bldBodyR(body));
     if (type === "ring" || type === "bulkhead" || type === "coupler") k.od = 0;
+    if (fill) fill(k);
     if (type === "mount" && BLD.stages.indexOf(st) === 0 && !bldMounts(st).length) {
       const m = findMotor(motorId);
       if (m && Math.abs(m.dia - (k.od - 2 * k.wall)) < 0.002)
@@ -393,8 +397,8 @@ export function bldRenderEdit() {
   // a part the catalog covers: which catalog part it is, and the way in to pick one
   if (partKind(p))
     h += p.cat
-      ? `<p class="note" style="margin:0 0 10px">Catalog part: <b>${esc(`${p.cat.mk || ""} ${p.cat.pn}`.trim())}</b>${partAsListed(p) ? "" : " (sizes changed since)"} · <a href="#" data-cat="pick">Change</a> · <a href="#" data-cat="clear">Remove the label</a></p>`
-      : `<p class="note" style="margin:0 0 10px"><a href="#" data-cat="pick">Choose from the parts catalog</a></p>`;
+      ? `<p class="note" style="margin:0 0 10px">Library part: <b>${esc(`${p.cat.mk || ""} ${p.cat.pn}`.trim())}</b>${partAsListed(p) ? "" : " (sizes changed since)"} · <a href="#" data-cat="pick">Swap for another</a> · <a href="#" data-cat="clear">Remove the label</a></p>`
+      : `<p class="note" style="margin:0 0 10px"><a href="#" data-cat="pick">Swap for a library part</a></p>`;
   if (p.type === "raw")
     h += `<p class="note" style="margin:0 0 10px">This part came from the file and the builder can’t change its shape, but it still counts in the weight, balance and drag, and it’s kept when you save. You can rename or move it.</p>`;
   h += `<div class="grid">`;
