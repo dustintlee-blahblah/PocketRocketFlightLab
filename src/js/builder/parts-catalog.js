@@ -9,6 +9,7 @@ import { bldAdd } from "./editor.js";
 import { BLD_BODY, BLD_NAMES, bldRodFor } from "./model.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
+import { curMotor } from "../design/defaults.js";
 import { fmt, uname } from "../ui/units.js";
 /**
  * Which catalog list a builder part type is filled from (a motor mount and an inner tube are body tubes).
@@ -304,7 +305,9 @@ export function partPick(id) {
         : { prev: BLD.stages[swap.si].parts[swap.pi - 1], next: BLD.stages[swap.si].parts[swap.pi + 1] };
     if (type === "nose") return { next: st.parts[0] };
     if (BLD_BODY.includes(type)) return { prev: st.parts[after - 1], next: st.parts[after] };
-    return { parent: body };
+    // a new motor mount is for the motor that is chosen
+    const mot = type === "mount" ? curMotor() : null;
+    return { parent: body, motor: mot && mot.dia > 0 ? mot : undefined };
   };
   const types = swap
     ? [swap.p.type]

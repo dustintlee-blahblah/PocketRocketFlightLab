@@ -56,6 +56,9 @@ function unitsRedraw() {
   const row = document.getElementById("s-massrow");
   if (row) row.hidden = units !== "imp";
   for (const u of ["lb", "oz"]) document.getElementById("s-" + u)?.setAttribute("aria-pressed", massUnit === u);
+  // the Units button names the weight unit in use
+  const imp = document.getElementById("s-imp");
+  if (imp) imp.textContent = `ft · ${massUnit}`;
   renderForms();
   renderResults();
   if (!document.getElementById("v-motor").hidden) renderMotors();

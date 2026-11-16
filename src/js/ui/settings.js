@@ -218,6 +218,7 @@ export function start() {
       document.getElementById("s-met").setAttribute("aria-pressed", units === "met");
       document.getElementById("s-massrow").hidden = units !== "imp";
       for (const u of ["lb", "oz"]) document.getElementById("s-" + u).setAttribute("aria-pressed", massUnit === u);
+      document.getElementById("s-imp").textContent = `ft · ${massUnit}`;
       sw.checked = store.get("rfs-swipe", true) !== false;
     }
     applyTheme(store.get("rfs-theme", "auto"));

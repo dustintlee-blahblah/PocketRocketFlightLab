@@ -93,8 +93,13 @@ def read_materials(root):
             d = float(text(m, "Density"))
         except ValueError:
             continue
-        if (m.get("UnitsOfMeasure") or "").startswith("g/"):
+        # the files' UnitsOfMeasure is not to be trusted (OpenRocket itself ignores it): the numbers are kg and metres,
+        # but for a cloth or paper weight entered in grams per square metre (90 for paper: no sheet weighs 90 kg/m²)
+        if kind == "SURFACE" and d > 5:
             d /= 1000
+        # nor is a paper, wood or plastic heavier than aluminium: such an entry is a slip, and is left out
+        if kind == "BULK" and d > 3000 and not re.search(r"brass|copper|steel|alumin|lead|tungsten|titan|bronze|iron", name, re.I):
+            continue
         if name and d > 0:
             out[(name, kind)] = d
     return out
@@ -121,6 +126,14 @@ def main():
     makers, mats, rows = [], [], {k: [] for k in ORDER}
     seen, dropped, main_makers = set(), {}, set()
     drop = lambda why: dropped.__setitem__(why, dropped.get(why, 0) + 1)
+
+    def listed(from_weight, of_material):
+        """The density a listed weight implies, unless the weight is plainly a slip (a part many times heavier or
+        lighter than its material makes it: a weight in the wrong unit); then the material's own density stands."""
+        if of_material > 0 and not (of_material / 4 <= from_weight <= of_material * 6):
+            drop("listed weight not believed (the material's density used)")
+            return of_material
+        return from_weight
 
     def idx(lst, v):
         if v not in lst:
@@ -165,7 +178,7 @@ def main():
                 # a listed weight sets the density, so the weight follows the length if the part is cut
                 vol = math.pi / 4 * (od * od - idd * idd) * ln
                 if m > 0 and vol > 0 and kind != "lug":
-                    dens = m / vol
+                    dens = listed(m / vol, dens)
                 row = [mm(od), mm(idd), mm(ln)]
             elif kind == "bulkhead":
                 if not (od > 0 and ln > 0):
@@ -173,7 +186,7 @@ def main():
                     continue
                 vol = math.pi / 4 * od * od * ln
                 if m > 0:
-                    dens = m / vol
+                    dens = listed(m / vol, dens)
                 row = [mm(od), mm(ln)]
             elif kind == "nose":
                 shape = SHAPES.get(text(c, "Shape").upper())
@@ -211,7 +224,8 @@ def main():
                     dens = dens * th
                 mkind = "SURFACE"
                 row = [mm(ln), mm(w)]
-            if not dens > 0:
+            # a material without a believable density is left out: the part keeps the builder's own material
+            if not (dens >= 20 if mkind == "BULK" else dens > 0.001):
                 mname = ""
             mi = idx(mats, (mname, round(dens, 4 if mkind != "BULK" else 1), mkind[0])) if mname else -1
             seen.add(key)

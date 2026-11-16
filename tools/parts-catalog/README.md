@@ -27,5 +27,10 @@ How it chooses:
 - **Weights.** A tube, coupler, ring or bulkhead with a listed weight gets the density that gives that weight, so the
   weight follows the length when the part is cut. A nose cone, transition or parachute keeps its listed weight. A
   streamer's material becomes a weight per area.
+- **Slips in the source are not passed on.** The files' material units are not to be trusted (OpenRocket ignores
+  them), so densities are read as kg and metres; a cloth weight over 5 kg/m² is taken as grams per square metre. A
+  listed weight that makes a tube, ring or bulkhead less than a quarter or more than six times its material's
+  density is not believed, and the material's density is used. A material with no believable density is left out,
+  and the part keeps the builder's own.
 - **Units.** Sizes are stored in mm and weights in g; the app converts them to metres and kg when it unpacks a list
   (`src/js/builder/parts-catalog.js`).

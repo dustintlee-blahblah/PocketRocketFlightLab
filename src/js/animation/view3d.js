@@ -660,6 +660,9 @@ function photoTextures() {
   const T = ph && ph.terrain;
   if (!T) V3.land = null;
   else if (!V3.land || V3.land.T !== T) V3.land = { T, levels: landModels(T) };
+  // the Site photo box is there only when the run has a place to fetch one for
+  const box = document.querySelector(".anim3dphoto");
+  if (box) box.hidden = L.lat == null || L.lon == null;
   const state = document.getElementById("anim3dstate");
   if (state) {
     const s = sitePhotoState(L.lat, L.lon);
@@ -809,7 +812,8 @@ export function anim3dDraw() {
     near = 0.5;
   }
   // easing, so the picture doesn't jump when the view or the time changes
-  if (V3.cam && V3.cam.mode === V3.mode && !V3.jump) {
+  // (only while playing: paused, the picture goes straight to where the time or the drag puts it)
+  if (V3.cam && V3.cam.mode === V3.mode && !V3.jump && ANIM.playing && !ANIM.countEnd) {
     const k = 0.18;
     eye = add(V3.cam.eye, mul(sub(eye, V3.cam.eye), V3.mode === "ground" ? 1 : k * 2.5));
     at = add(V3.cam.at, mul(sub(at, V3.cam.at), V3.mode === "ground" ? 0.25 : 0.6));

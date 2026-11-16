@@ -240,7 +240,7 @@ async function siteElevLookup(x) {
     delete m.dataset.keep;
   } catch (e) {
     m.dataset.keep = "1";
-    m.textContent = `Using ${x.name}: coordinates set. Its field elevation couldn’t be looked up (it needs an internet connection), so enter it under Range and tap Save Changes.`;
+    m.textContent = `Using ${x.name}: coordinates set. Its field elevation couldn’t be looked up (it needs an internet connection), so the elevation under Range is still the one from before (${fmt(L.elev || 0, "alt")} ${uname("alt")}): enter this field’s and tap Save Changes.`;
     siteRender();
     delete m.dataset.keep;
   }

@@ -802,6 +802,11 @@ h2 + .subh {
   align-items: center;
   gap: 8px;
 }
+@media (max-width: 400px) {
+  .sitemgr .stop {
+    flex-wrap: wrap;
+  }
+}
 .sitemgr .snm {
   font-weight: 600;
   min-width: 0;
@@ -2633,6 +2638,9 @@ html.typing .runbar {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   pointer-events: none;
+}
+.anim3dphoto[hidden] {
+  display: none;
 }
 .anim3dnote {
   position: absolute;
