@@ -35,6 +35,7 @@ function boosterFinSets(D) {
       edge: D.bFinEdge,
       edgeTE: D.bFinEdgeTE || "",
       bevLE: D.bFinBevLE || 0,
+      ler: D.bFinLER || 0,
       bevTE: D.bFinBevTE || 0,
       rs: D.bFinFinish ?? D.finish,
       cdo: D.bFinCdOverride || 0,

@@ -763,6 +763,8 @@ function readFins(rd, c, x, parent, { tag, cfin, rho }) {
     // the app's own bevel lengths (beveled fins; not part of OpenRocket's format)
     bevLE: elNum(c, "prflbevelle", 0),
     bevTE: elNum(c, "prflbevelte", 0),
+    // the app's own leading-edge radius on a sharp section (not part of OpenRocket's format)
+    ler: elNum(c, "prflleradius", 0),
     rs: cfin,
     si: rd.curStage,
     cdo: odc(rd, c),

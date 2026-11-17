@@ -173,6 +173,7 @@ export function bldNew(type, R = 0.0333) {
         edgeTE: "",
         bevLE: 0,
         bevTE: 0,
+        ler: 0,
         pts: "",
         ref: "bottom",
         pos: 0,

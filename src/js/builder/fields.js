@@ -153,6 +153,8 @@ export function bldFields(p) {
         (p.edgeTE === "sharp" && (p.edge === "beveled" || p.edge === "square" || p.edge === "rounded"))
           ? [["bevTE", "Trailing-edge bevel length", "num", "small"]]
           : []),
+        // a round on the front of a sharp section
+        ...(p.edge === "beveled" || p.edge === "doublewedge" ? [["ler", "Leading-edge radius", "num", "small"]] : []),
         ["cant", "Cant angle", "num", "deg"],
         ...posF,
         ...mat(),

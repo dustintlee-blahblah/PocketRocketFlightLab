@@ -543,14 +543,15 @@ export async function saveDesignFile(asNew, opts = {}) {
           for (const k of pp.kids || []) {
             if (k.type === "fins" && k.id && !["square", "rounded", "airfoil"].includes(k.edge || "square"))
               fe[k.id] = k.edge;
-            // bevel lengths of beveled fins (OpenRocket's format has no place for them)
+            // bevel lengths of beveled fins and the leading-edge radius of sharp ones (OpenRocket's format has no place
+            // for them)
+            const ler = (k.edge === "beveled" || k.edge === "doublewedge") && +k.ler > 0 ? +k.ler : 0;
             if (
               k.type === "fins" &&
               k.id &&
-              (k.edge === "beveled" || k.edgeTE === "sharp") &&
-              (+k.bevLE > 0 || +k.bevTE > 0)
+              (((k.edge === "beveled" || k.edgeTE === "sharp") && (+k.bevLE > 0 || +k.bevTE > 0)) || ler > 0)
             )
-              fb[k.id] = { le: +k.bevLE || 0, te: +k.bevTE || 0 };
+              fb[k.id] = { le: +k.bevLE || 0, te: +k.bevTE || 0, ...(ler > 0 ? { ler } : {}) };
             // a trailing edge set apart from the section (OpenRocket's format has one edge type for the whole fin)
             if (k.type === "fins" && k.id && finTeEdge(k.edgeTE)) ft[k.id] = k.edgeTE;
           }

@@ -181,9 +181,12 @@ function cdxFins(F, fin, notes) {
     default:
       notes.push(`RASAero’s fin section “${sec}” isn’t known here; square edges were used.`);
   }
-  if (cdxNum(F, "LERadius") > 0 && edge !== "rounded" && edge !== "square")
-    notes.push("The fins’ leading edge radius isn’t modeled: their leading edges are sharp here.");
-  return `<trapezoidfinset><name>Fins</name><axialoffset method="bottom">${-(cdxNum(F, "Location") - cr) * IN}</axialoffset>${fin}<fincount>${n}</fincount><rotation>0</rotation><thickness>${cdxNum(F, "Thickness") * IN}</thickness><crosssection>${edge}</crosssection><cant>0</cant>${bev}<rootchord>${cr * IN}</rootchord><tipchord>${cdxNum(F, "TipChord") * IN}</tipchord><sweeplength>${cdxNum(F, "SweepDistance") * IN}</sweeplength><height>${s * IN}</height></trapezoidfinset>`;
+  // the leading edge's round, on the sections it applies to (RASAero: any but NACA, Rounded and Square)
+  const ler = cdxNum(F, "LERadius") * IN,
+    lerXml = ler > 0 && (edge === "beveled" || edge === "doublewedge") ? `<prflleradius>${ler}</prflleradius>` : "";
+  if (ler > 0 && !lerXml && edge !== "rounded" && edge !== "square")
+    notes.push(`The fins’ leading edge radius isn’t used on a “${sec}” section here.`);
+  return `<trapezoidfinset><name>Fins</name><axialoffset method="bottom">${-(cdxNum(F, "Location") - cr) * IN}</axialoffset>${fin}<fincount>${n}</fincount><rotation>0</rotation><thickness>${cdxNum(F, "Thickness") * IN}</thickness><crosssection>${edge}</crosssection><cant>0</cant>${bev}${lerXml}<rootchord>${cr * IN}</rootchord><tipchord>${cdxNum(F, "TipChord") * IN}</tipchord><sweeplength>${cdxNum(F, "SweepDistance") * IN}</sweeplength><height>${s * IN}</height></trapezoidfinset>`;
 }
 /**
  * The launch guides and protuberances RASAero puts on a tube (it models two of each guide), as OpenRocket parts.

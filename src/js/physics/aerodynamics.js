@@ -879,6 +879,7 @@ export function finSetsOf(D) {
       edge: D.finEdge,
       edgeTE: D.finEdgeTE || "",
       bevLE: D.finBevLE || 0,
+      ler: D.finLER || 0,
       bevTE: D.finBevTE || 0,
       rs: D.finFinish ?? D.finish,
       cdo: D.finCdOverride || 0,
@@ -912,6 +913,7 @@ export function xfinSets(list, rs) {
     edgeTE: f.edgeTE || "",
     bevLE: f.bevLE || 0,
     bevTE: f.bevTE || 0,
+    ler: f.ler || 0,
     rs,
     cdo: f.cdo || 0,
     pts: f.pts || null,
@@ -1056,6 +1058,7 @@ export function aero(D) {
     D.finEdge,
     D.finEdgeTE,
     D.finBevLE,
+    D.finLER,
     D.finBevTE,
     D.finish,
     D.railPreset,
@@ -1533,6 +1536,32 @@ function finTeCp(M, cb, cf, f) {
   const cfx = (cf * 2 * f.mac) / f.t;
   return Math.max(cb, (0.135 / Math.cbrt(cfx)) * (1 - w));
 }
+/**
+ * A round of radius r on the leading edge of a sharp section (a beveled fin or a double wedge), tangent to the section's
+ * faces, which meet at a half-angle δ: δ = atan((t/2)/(bevel length)) for a beveled fin (a fifth of the chord when the
+ * bevel isn't given), atan(t/c) for a double wedge. Modified Newtonian theory (Lees) puts Cp,max·cos²θ on the round, θ
+ * from the stagnation line: out to where the round meets the faces (θ = 90° − δ) that is k·Cp,max on its height 2r,
+ * k = cos δ − cos³δ/3, where the sharp wedge it replaces had Cp,max·sin²δ on that height, cos δ of it. What the round
+ * adds is the difference, (2/3)·cos³δ·Cp,max on 2r: never negative, nothing for r = 0, and for a very thin wedge the
+ * rounded edge's own (2/3)·Cp,max. Both sides are taken by the same theory: the section's wave drag, by thin-airfoil
+ * theory and held to the square edge's at the front (finK), is left as it is. Sweep by the independence principle:
+ * cos²Λ on the frontal area span × 2r, with the Mach number normal to the edge. Like the rounded edge it adds nothing
+ * below the drag rise (Hoerner, Fluid-Dynamic Drag, ch. III). The same construction as a spherically blunted nose
+ * (tipCapCd).
+ * Checked: (2/3)·Cp,max is within 1% of Barrowman's cylinder formula (OpenRocket's) from Mach 1.1 to 6.9 and about 3%
+ * under what Gowen and Perkins measured on the front of a cylinder at Mach 2.9 (NACA TN 2960: 1.34 in all, about a
+ * tenth of it on the back). On NASA TM X-27's 45° wing, whose leading-edge radius was raised from about 0.17% to 0.36%
+ * of the chord over the outer 40% of the span, this gives 0.0006 at Mach 2 to 2.2, where the report measured less than
+ * 0.001 to 0.0015.
+ * @param {object} f fin set (t, mac, edge, bevLE, ler: the radius, m)
+ * @returns {{r:number, add:number}} the radius (no more than half the thickness) and the drag it adds over Cp,max on 2r
+ */
+function finLeRound(f) {
+  const r = Math.min(f.ler, f.t / 2),
+    run = f.edge === "doublewedge" ? f.mac / 2 : f.bevLE > 0 ? f.bevLE : 0.2 * f.mac,
+    cd = Math.cos(Math.atan2(f.t / 2, Math.max(run, 1e-9)));
+  return { r, add: (2 / 3) * cd * cd * cd };
+}
 /* Wave drag of a beveled fin from its bevel lengths. Ackeret's thin-airfoil theory for a flat plate whose leading and
    trailing edges are beveled over fractions e1 and e3 of the chord gives Cd = (t/c)²/β · (1/e1 + 1/e3) (a double wedge,
    e1 = e3 = 0.5, gives the familiar 4; the default 20% bevels give 10). A short bevel is a steep wedge, where linear
@@ -1713,6 +1742,10 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
       pressure += (0.4 + 0.4 * trF) * stagCp(Mn) * c2 * edge;
     } else if (f.edge === "rounded") {
       pressure += (2 / 3) * stagCp(Mn) * trF * c2 * edge;
+    } else if (f.ler > 0 && (f.edge === "beveled" || f.edge === "doublewedge")) {
+      // a round of radius r on the front of a sharp section (finLeRound)
+      const lr = finLeRound(f);
+      pressure += lr.add * stagCp(Mn) * trF * c2 * ((f.n * f.s * 2 * lr.r) / S);
     }
     if (te === "square") base += finTeCp(M, cb2, finCf.get(f), f) * edge;
     else if (te === "rounded") base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;

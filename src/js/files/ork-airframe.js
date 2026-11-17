@@ -125,6 +125,7 @@ function airframeFins(rd, fl, pre, x0) {
     edgeTE: finTeEdge(g.edgeTE),
     bevLE: g.bevLE || 0,
     bevTE: g.bevTE || 0,
+    ler: g.ler || 0,
     cdo: g.cdo || 0,
     oi: g.oi,
     par: g.par || 0,

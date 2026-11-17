@@ -12,7 +12,7 @@ const IN = 0.0254,
   FT = 0.3048,
   LB = 0.45359237;
 const fin = (loc) =>
-  `<Fin><Count>3</Count><Chord>6</Chord><Span>3</Span><SweepDistance>4</SweepDistance><TipChord>2</TipChord><Thickness>0.125</Thickness><LERadius>0</LERadius><Location>${loc}</Location><AirfoilSection>Hexagonal</AirfoilSection><FX1>0.5</FX1><FX3>0.75</FX3></Fin>`;
+  `<Fin><Count>3</Count><Chord>6</Chord><Span>3</Span><SweepDistance>4</SweepDistance><TipChord>2</TipChord><Thickness>0.125</Thickness><LERadius>0.02</LERadius><Location>${loc}</Location><AirfoilSection>Hexagonal</AirfoilSection><FX1>0.5</FX1><FX3>0.75</FX3></Fin>`;
 const guides =
   "<LaunchLugDiameter>0</LaunchLugDiameter><LaunchLugLength>0</LaunchLugLength><RailGuideDiameter>0.5</RailGuideDiameter><RailGuideHeight>0.5</RailGuideHeight><LaunchShoeArea>0</LaunchShoeArea>";
 /**
@@ -81,6 +81,8 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
         mounts: BLD.stages.map((st) => bldMounts(st)[0] && bldMounts(st)[0].motor),
         stages: BLD.stages.length,
         fin: [BLD.settings.finish, BLD.settings.finishUm],
+        ler: BLD.stages[0].parts.flatMap((q) => q.kids || []).find((k) => k.type === "fins").ler,
+        lerSaved: +(bldToOrk(BLD, L).match(/<prflleradius>([^<]+)</) || [0, 0])[1],
       };
     }, cdx(booster));
     await p.close();
@@ -110,6 +112,9 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
     // the root's trailing edge is 1 in. ahead of the tube's aft end, and the 2 in. boattail is behind that
     near(`${t}: fins' trailing edge from the aft end (m)`, D.finAft, 3 * IN);
     same(`${t}: fin section`, D.finEdge, "beveled");
+    near(`${t}: fins' leading-edge radius (m)`, D.finLER, 0.02 * IN);
+    near(`${t}: leading-edge radius in the builder (m)`, r.ler, 0.02 * IN);
+    near(`${t}: leading-edge radius in the saved .ork (m)`, r.lerSaved, 0.02 * IN);
     near(`${t}: fin leading bevel (m)`, D.finBevLE, 0.5 * IN);
     near(`${t}: fin trailing bevel (m)`, D.finBevTE, 0.75 * IN);
     near(`${t}: boattail length (m)`, D.tailLen, 2 * IN);
@@ -158,6 +163,7 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
         50 * IN,
       );
       same(`${t}: booster fins`, D.bFinCount, 3);
+      near(`${t}: booster fins' leading-edge radius (m)`, D.bFinLER, 0.02 * IN);
       near(`${t}: booster fin root (m)`, D.bFinRoot, 6 * IN);
       near(`${t}: booster fins' trailing edge at its aft end (m)`, D.bFinAft, 0, 1e-6);
       near(`${t}: booster drops 1 s after burnout (s)`, D.sepDelay, 1);

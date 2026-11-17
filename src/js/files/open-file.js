@@ -509,6 +509,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
                   if (b) {
                     k.bevLE = isFinite(b.le) && b.le > 0 ? +b.le : 0;
                     k.bevTE = isFinite(b.te) && b.te > 0 ? +b.te : 0;
+                    if (isFinite(b.ler) && b.ler > 0) k.ler = +b.ler;
                   }
                 }
           }

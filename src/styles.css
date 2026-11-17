@@ -3006,11 +3006,45 @@ html.typing .runbar {
   cursor: pointer;
 }
 .legal .accept input {
-  width: 20px;
-  height: 20px;
-  margin: 1px 0 0;
+  /* drawn here rather than by the browser: a ticked box can't be unticked, so it is disabled, and browsers grey out a
+     disabled checkbox. Ticked, it is the theme's orange, and so is the box around it */
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
   flex: none;
-  accent-color: var(--accent);
+  border: 2px solid var(--muted);
+  border-radius: 5px;
+  background: var(--panel);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+.legal .accept input::before {
+  content: "";
+  width: 12px;
+  height: 7px;
+  margin-top: -3px;
+  border-left: 3px solid var(--accent-ink);
+  border-bottom: 3px solid var(--accent-ink);
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.12s ease-out;
+}
+.legal .accept input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.legal .accept input:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+.legal .accept input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.legal .accept:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .legal .accept input:disabled {
   opacity: 1;
