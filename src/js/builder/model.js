@@ -86,7 +86,9 @@ export const BLD_BUMPS = [
  * also has tube spirals, seams, decals and fillets, and the weighed, logged flights in VALIDATION.md fit the 60 µm
  * choice (with their rail buttons), so that one is named as the usual choice for a painted rocket.
  * "glossy" (40 µm) is this app's own, between OpenRocket's smooth and normal: the file names such a part "normal" for
- * OpenRocket and carries the app's name beside it (prflfinish).
+ * OpenRocket and carries the app's name beside it (prflfinish). "custom" is a roughness typed in (the settings'
+ * finishUm, µm; a part of its own: finishRs, m): the file names the nearest OpenRocket finish and carries the number
+ * (prflroughness).
  */
 export const BLD_FINISH = [
   ["mirror", "Mirror (0 µm)"],
@@ -99,6 +101,7 @@ export const BLD_FINISH = [
   ["unfinished", "Unfinished (150 µm)"],
   ["roughunfinished", "Rough unfinished (250 µm)"],
   ["rough", "Rough (500 µm)"],
+  ["custom", "Custom roughness"],
 ];
 /**
  * A new random part id (OpenRocket requires every part id to be a UUID).

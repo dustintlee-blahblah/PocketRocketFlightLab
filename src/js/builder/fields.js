@@ -337,6 +337,7 @@ export function bldRootFields() {
   return [
     ["name", "Rocket name", "text"],
     ["finish", "Surface finish", "finish"],
+    ...(BLD.settings.finish === "custom" ? [["finishUm", "Roughness (µm)", "num", "none", BLD.settings]] : []),
     ...(two
       ? []
       : [

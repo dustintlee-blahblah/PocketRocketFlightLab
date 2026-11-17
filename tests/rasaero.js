@@ -80,6 +80,7 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
         tip: nose && nose.tipR,
         mounts: BLD.stages.map((st) => bldMounts(st)[0] && bldMounts(st)[0].motor),
         stages: BLD.stages.length,
+        fin: [BLD.settings.finish, BLD.settings.finishUm],
       };
     }, cdx(booster));
     await p.close();
@@ -113,7 +114,9 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
     near(`${t}: fin trailing bevel (m)`, D.finBevTE, 0.75 * IN);
     near(`${t}: boattail length (m)`, D.tailLen, 2 * IN);
     near(`${t}: boattail aft diameter (m)`, D.tailDia, 2.5 * IN);
-    near(`${t}: surface roughness, the nearest finish to RASAero's 6.4 µm (m)`, D.finish, 5e-6, 1e-9);
+    near(`${t}: surface roughness, RASAero's own for smooth paint (m)`, D.finish, 0.00025 * IN, 1e-9);
+    same(`${t}: finish in the builder`, r.fin.join(), "custom,6.35");
+    near(`${t}: fins' roughness (m)`, D.finFinish, 0.00025 * IN, 1e-9);
     // the weight and CG in the file are with the motor loaded, its aft end at the rocket's
     near(`${t}: weight without motor (kg)`, D.dryMass, 8 * LB - r.m.mass);
     near(

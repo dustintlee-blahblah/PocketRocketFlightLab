@@ -38,6 +38,32 @@ export const FINISH_RS = {
   mirror: 0,
 };
 /**
+ * The OpenRocket finish nearest a roughness (on a log scale; 0 is the mirror finish), for a part whose own roughness
+ * OpenRocket has no name for.
+ * @param {number} rs roughness height, m
+ * @returns {string} OpenRocket's finish name
+ */
+export function finishNear(rs) {
+  if (!(rs > 0)) return "mirror";
+  return Object.entries(FINISH_RS)
+    .filter(([k, r]) => r > 0 && k !== "glossy")
+    .sort((a, b) => Math.abs(Math.log(a[1] / rs)) - Math.abs(Math.log(b[1] / rs)))[0][0];
+}
+/**
+ * A part's surface roughness: its own number (this app's custom finish: prflfinish "custom" with prflroughness), else
+ * the app's own finish name when the part has one, else OpenRocket's.
+ * @param {Element} c the part
+ * @returns {number|undefined} roughness height, m; undefined if the part names no finish known here
+ */
+export function orkFinishRs(c) {
+  const own = (elTxt(c, "prflfinish") || "").trim().toLowerCase();
+  if (own === "custom") {
+    const r = elNum(c, "prflroughness", -1);
+    if (r >= 0) return r;
+  }
+  return FINISH_RS[((own !== "custom" && own) || elTxt(c, "finish") || "").trim().toLowerCase()];
+}
+/**
  * The notes about fin shapes kept as drawn (each said once).
  */
 const ORK_FF_NOTE =
@@ -1106,7 +1132,7 @@ function orkWalk(rd, c, x, parent) {
   const tag = c.tagName,
     len = orkLenOf(c);
   // the app's own finish name when the part has one, otherwise OpenRocket's
-  const cfin = FINISH_RS[(elTxt(c, "prflfinish") || elTxt(c, "finish") || "").trim().toLowerCase()];
+  const cfin = orkFinishRs(c);
   const rho = elDens(c);
   // the part's own reader: its weight, balance point and radii
   const read = ORK_READ[tag];

@@ -43,6 +43,7 @@ import {
   setMotorTarget,
   units,
 } from "../design/defaults.js";
+import { FINISH_RS } from "../files/ork-parts.js";
 import { renderTitle } from "../files/unsaved-changes.js";
 import { findMotor } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
@@ -746,12 +747,19 @@ function bldWire(el, p, mode, si) {
             .join("\n");
         }
       } else if (kind === "finish") {
+        // a custom roughness starts from the finish it replaces
+        if (inp.value === "custom" && BLD.settings.finish !== "custom")
+          BLD.settings.finishUm = +((FINISH_RS[BLD.settings.finish] ?? 60e-6) * 1e6).toPrecision(6);
         BLD.settings.finish = inp.value || null;
         if (inp.value)
           for (const st of BLD.stages)
             for (const q of st.parts) {
               delete q.finish;
-              for (const c of q.kids || []) delete c.finish;
+              delete q.finishRs;
+              for (const c of q.kids || []) {
+                delete c.finish;
+                delete c.finishRs;
+              }
             }
         full = true;
       } else if (kind === "bulk" || kind === "surf" || kind === "line") {

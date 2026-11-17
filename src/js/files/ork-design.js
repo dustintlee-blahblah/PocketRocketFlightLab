@@ -1,7 +1,7 @@
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { D } from "../design/defaults.js";
 import { orkEdge } from "./ork-airframe.js";
-import { FINISH_RS } from "./ork-parts.js";
+import { orkFinishRs } from "./ork-parts.js";
 import { elKid, elSubs, elTxt } from "./ork-xml.js";
 /*
  * The parts of a design read from an OpenRocket file that depend on how it is flown: the booster's and first stage's
@@ -22,12 +22,10 @@ export function orkSustainer(rd, S, twoStage, motor) {
     .map((e) => elKid(e, "overridecd"))
     .find(Boolean);
   if (ocd) rd.notes.push("Used the file’s Cd override for the whole rocket.");
-  const FIN = FINISH_RS;
-  const finTag0 =
-      (rd.rocket.getElementsByTagName("bodytube")[0] || rd.rocket).getElementsByTagName("finish")[0] ||
-      rd.rocket.getElementsByTagName("finish")[0],
-    // the app's own finish name sits right after OpenRocket's on the same part
-    finTag = finTag0 && finTag0.nextElementSibling?.tagName === "prflfinish" ? finTag0.nextElementSibling : finTag0;
+  // the rocket's finish: the first body tube's (the app's own finish name or roughness, beside OpenRocket's on the part)
+  const finTag =
+    (rd.rocket.getElementsByTagName("bodytube")[0] || rd.rocket).getElementsByTagName("finish")[0] ||
+    rd.rocket.getElementsByTagName("finish")[0];
   const f = S.f;
   const nd = {
     ...D,
@@ -83,7 +81,7 @@ export function orkSustainer(rd, S, twoStage, motor) {
       rd.sMountAft[0] != null && Math.abs(rd.sMountAft[0] - (rd.sX0[0] || 0) - S.length) > 0.002
         ? rd.sMountAft[0] - (rd.sX0[0] || 0)
         : null,
-    finish: FIN[(finTag?.textContent || "normal").trim().toLowerCase()] ?? 60e-6,
+    finish: (finTag && orkFinishRs(finTag.parentElement)) ?? 60e-6,
     finFinish: f.rs ?? null,
     buttons: S.buttons,
     lugs: S.lugs,

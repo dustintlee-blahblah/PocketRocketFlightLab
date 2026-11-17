@@ -16,6 +16,7 @@ import {
 } from "./model.js";
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { allMotors } from "../design/defaults.js";
+import { finishNear } from "../files/ork-parts.js";
 import { findMotor } from "../motors/clusters.js";
 /* ---------- the .ork file ---------- */
 /**
@@ -63,6 +64,11 @@ export function bldToOrk(model, L, opts = {}) {
   const fin = (k) => {
     const f = k.finish || S.finish;
     // the app's own 40 µm finish isn't one OpenRocket knows: it reads the part as "normal", the app reads its own tag
+    // a roughness typed in: OpenRocket reads the nearest finish it has, the app reads the number
+    if (f === "custom") {
+      const rs = k.finish ? k.finishRs || 0 : +(Math.max(+S.finishUm || 0, 0) * 1e-6).toPrecision(9);
+      return `<finish>${finishNear(rs)}</finish><prflfinish>custom</prflfinish><prflroughness>${rs}</prflroughness>`;
+    }
     return f === "glossy"
       ? `<finish>normal</finish><prflfinish>glossy</prflfinish>`
       : f

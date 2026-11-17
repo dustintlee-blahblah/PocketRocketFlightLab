@@ -13,7 +13,7 @@
 import { esc } from "../core/helpers.js";
 import { FT, IN, LB } from "../core/units-and-fin-edges.js";
 import { parseOrk } from "./openrocket-import.js";
-import { FINISH_RS } from "./ork-parts.js";
+import { finishNear } from "./ork-parts.js";
 import { matchMotor } from "./rocksim-import.js";
 import { ORK_SIM } from "./save.js";
 
@@ -113,30 +113,24 @@ export function cdxRuns(doc) {
   });
 }
 /**
- * The OpenRocket finish nearest a RASAero surface (by roughness, on a log scale), as the finish elements of a part.
+ * A RASAero surface as the finish elements of a part: a perfectly smooth one is the mirror finish, the rest keep
+ * RASAero's own roughness (this app's custom finish, beside the nearest finish OpenRocket has).
  * @param {string} surface RASAero's name for it
  * @param {string[]} notes
  * @returns {string}
  */
 function cdxFinish(surface, notes) {
-  const rs = CDX_SURFACE[(surface || "").toLowerCase()];
-  if (rs == null) {
+  const inches = CDX_SURFACE[(surface || "").toLowerCase()];
+  if (inches == null) {
     if (surface) notes.push(`RASAero’s surface finish “${surface}” isn’t known here; regular paint was used.`);
     return "<finish>normal</finish>";
   }
-  const um = rs * IN * 1e6,
-    // (a perfectly smooth surface is the mirror finish; the rest go to the nearest on a log scale)
-    best =
-      rs === 0
-        ? "mirror"
-        : Object.entries(FINISH_RS)
-            .filter(([, r]) => r > 0)
-            .sort((a, b) => Math.abs(Math.log(a[1] / (rs * IN))) - Math.abs(Math.log(b[1] / (rs * IN))))[0][0];
+  if (inches === 0) return "<finish>mirror</finish>";
+  const rs = +(inches * IN).toPrecision(6);
   notes.push(
-    `RASAero’s surface finish “${surface}” (${um < 10 ? um.toFixed(1) : um.toFixed(0)} µm) was read as the nearest finish here, ${(FINISH_RS[best] * 1e6).toFixed(FINISH_RS[best] < 1e-6 ? 1 : 0)} µm. Change it under Surface finish.`,
+    `Surface finish: RASAero’s “${surface}”, at its own roughness of ${+(rs * 1e6).toPrecision(3)} µm (Custom roughness under Surface finish).`,
   );
-  // "glossy" is this app's own finish: OpenRocket reads the part as regular paint
-  return best === "glossy" ? "<finish>normal</finish><prflfinish>glossy</prflfinish>" : `<finish>${best}</finish>`;
+  return `<finish>${finishNear(rs)}</finish><prflfinish>custom</prflfinish><prflroughness>${rs}</prflroughness>`;
 }
 /**
  * A RASAero fin set as an OpenRocket trapezoidal fin set on the aft end of its tube.

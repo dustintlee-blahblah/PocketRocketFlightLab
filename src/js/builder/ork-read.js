@@ -153,6 +153,8 @@ export function bldFromOrk(xml, info) {
     const o = { id: txt(c, "id") || bldId(), name: txt(c, "name") || BLD_NAMES.raw, ...mat(c) };
     const f = txt(c, "prflfinish") || txt(c, "finish");
     if (f) o.finish = f;
+    // a roughness of the part's own (this app's custom finish)
+    if (f === "custom") o.finishRs = Math.max(num(c, "prflroughness"), 0);
     if (kid(c, "overridemass")) {
       o.known = num(c, "overridemass");
       o.knownAll = txt(c, "overridesubcomponentsmass") === "true";
@@ -790,6 +792,18 @@ export function bldFromOrk(xml, info) {
     const cnt = {};
     fins.forEach((f) => (cnt[f] = (cnt[f] || 0) + 1));
     model.settings.finish = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0][0];
+    // a custom roughness: the first such part's is the rocket's, and parts with that same roughness follow the
+    // rocket's from here on (so changing it in the builder changes them)
+    if (model.settings.finish === "custom") {
+      const all = model.stages.flatMap((s) => s.parts.flatMap((p) => [p, ...(p.kids || [])])),
+        rs = all.find((p) => p.finish === "custom").finishRs;
+      model.settings.finishUm = +(rs * 1e6).toPrecision(6);
+      for (const p of all)
+        if (p.finish === "custom" && p.finishRs === rs) {
+          delete p.finish;
+          delete p.finishRs;
+        }
+    }
   }
   // a stage whose mounts have no motor in this flight configuration (when the file sets motors per configuration) flies
   // without one: the Motor tab's choice isn't put into it
