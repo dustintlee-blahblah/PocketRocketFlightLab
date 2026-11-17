@@ -328,9 +328,10 @@ function addMass(rd, m, x, len = 0, k2 = 0) {
  */
 function readNose(rd, c, x, parent, { len, cfin, rho }) {
   let m = 0,
-    cg = x + len / 2,
-    ro = 0;
-  ro = elIsAuto(c, "aftradius") ? rd.R.last || nextExplicit(rd, c) || elAutoNum(c, "aftradius") : elNum(c, "aftradius");
+    cg = x + len / 2;
+  const ro = elIsAuto(c, "aftradius")
+    ? rd.R.last || nextExplicit(rd, c) || elAutoNum(c, "aftradius")
+    : elNum(c, "aftradius");
   const shape = (elTxt(c, "shape") || "ogive").toLowerCase();
   // OpenRocket marks a solid nose by a wall as thick as the radius
   const filled =
@@ -395,12 +396,9 @@ function readNose(rd, c, x, parent, { len, cfin, rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readTube(rd, c, x, parent, { len, cfin, rho }) {
-  let m = 0,
-    ro = 0,
-    ri = 0;
-  ro = elIsAuto(c, "radius") ? rd.R.last || nextExplicit(rd, c) || elAutoNum(c, "radius") : elNum(c, "radius");
-  ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
-  m = rho * Math.PI * (ro * ro - ri * ri) * len;
+  const ro = elIsAuto(c, "radius") ? rd.R.last || nextExplicit(rd, c) || elAutoNum(c, "radius") : elNum(c, "radius");
+  const ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
+  const m = rho * Math.PI * (ro * ro - ri * ri) * len;
   // wt, wd: the wall's thickness and density, for the skin's heating in flight (drag-model.js)
   if (parent.top)
     rd.segments.push({
@@ -433,8 +431,7 @@ function readTube(rd, c, x, parent, { len, cfin, rho }) {
  */
 function readTransition(rd, c, x, parent, { len, cfin, rho }) {
   let m = 0,
-    cg = x + len / 2,
-    ro = 0;
+    cg = x + len / 2;
   const r1 = elIsAuto(c, "foreradius") ? rd.R.last || elAutoNum(c, "foreradius") : elNum(c, "foreradius"),
     r2 = elIsAuto(c, "aftradius") ? nextExplicit(rd, c) || elAutoNum(c, "aftradius") || r1 : elNum(c, "aftradius");
   const t = elNum(c, "thickness", 0.002);
@@ -471,7 +468,7 @@ function readTransition(rd, c, x, parent, { len, cfin, rho }) {
         m += pm;
       }
   }
-  ro = Math.max(r1, r2);
+  const ro = Math.max(r1, r2);
   rd.transitions.push({ x, len, d1: 2 * r1, d2: 2 * r2 });
   rd.R.last = r2;
   if (parent.top)
@@ -502,13 +499,10 @@ function readTransition(rd, c, x, parent, { len, cfin, rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readLug(rd, c, x, parent, { len, rho }) {
-  let m = 0,
-    ro = 0,
-    ri = 0;
-  ro = elNum(c, "radius", elNum(c, "outerradius", 0.003));
-  ri = Math.max(ro - elNum(c, "thickness", 0.0005), 0);
+  const ro = elNum(c, "radius", elNum(c, "outerradius", 0.003));
+  const ri = Math.max(ro - elNum(c, "thickness", 0.0005), 0);
   const cnt = Math.max(1, elNum(c, "instancecount", 1));
-  m = rho * Math.PI * (ro * ro - ri * ri) * len * cnt;
+  const m = rho * Math.PI * (ro * ro - ri * ri) * len * cnt;
   // a rail-type lug (this app's): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail
   // a rail-type lug the app saved (tagged): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail. An
   // untagged solid lug keeps the file's own shape (a solid cylinder), as OpenRocket flies it
@@ -536,8 +530,6 @@ function readLug(rd, c, x, parent, { len, rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readButtons(rd, c, x, parent, { len, rho }) {
-  let m = 0,
-    cg = x + len / 2;
   const od = elNum(c, "outerdiameter", 0.0097),
     id = elNum(c, "innerdiameter", 0.008),
     h = elNum(c, "height", 0.0097),
@@ -547,8 +539,8 @@ function readButtons(rd, c, x, parent, { len, rho }) {
     sep = elNum(c, "instanceseparation", 0);
   // weight as OpenRocket works it out: the base and flange discs at the outside diameter and the waist at the
   // inside diameter, in the button's material (Delrin when the file names none)
-  m = (rho || 1150) * Math.PI * ((od / 2) ** 2 * (bs + fl) + (id / 2) ** 2 * Math.max(h - fl - bs, 0)) * cnt;
-  cg = x + od / 2 + ((cnt - 1) * sep) / 2;
+  const m = (rho || 1150) * Math.PI * ((od / 2) ** 2 * (bs + fl) + (id / 2) ** 2 * Math.max(h - fl - bs, 0)) * cnt;
+  const cg = x + od / 2 + ((cnt - 1) * sep) / 2;
   for (let i = 0; i < cnt; i++)
     rd.buttons.push({
       x: x + i * sep,
@@ -571,12 +563,9 @@ function readButtons(rd, c, x, parent, { len, rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readInnerTube(rd, c, x, parent, { tag, len, rho }) {
-  let m = 0,
-    ro = 0,
-    ri = 0;
-  ro = elIsAuto(c, "outerradius") ? parent.ri || 0 : elNum(c, "outerradius");
-  ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
-  m = rho * Math.PI * (ro * ro - ri * ri) * len;
+  const ro = elIsAuto(c, "outerradius") ? parent.ri || 0 : elNum(c, "outerradius");
+  const ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
+  const m = rho * Math.PI * (ro * ro - ri * ri) * len;
   if (tag === "innertube") motorMountIn(rd, c, ri, true, x + len);
   return { m, ro, ri };
 }
@@ -590,32 +579,26 @@ function readInnerTube(rd, c, x, parent, { tag, len, rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readRing(rd, c, x, parent, { tag, len, rho }) {
-  let m = 0,
-    ro = 0,
-    ri = 0;
-  ro = elIsAuto(c, "outerradius") ? parent.ri || 0 : elNum(c, "outerradius");
+  let ri = 0;
+  const ro = elIsAuto(c, "outerradius") ? parent.ri || 0 : elNum(c, "outerradius");
   ri = elIsAuto(c, "innerradius") ? parent.innerOR || 0 : elNum(c, "innerradius");
   if (tag === "bulkhead") ri = 0;
   // an engine block is a ring given by its thickness (it has no inner radius of its own in the file)
   if (tag === "engineblock" && elKid(c, "thickness") && !elKid(c, "innerradius"))
     ri = Math.max(ro - elNum(c, "thickness"), 0);
-  m = rho * Math.PI * Math.max(ro * ro - ri * ri, 0) * len;
+  const m = rho * Math.PI * Math.max(ro * ro - ri * ri, 0) * len;
   return { m, ro, ri };
 }
 /**
- * A fin set (trapezoidal, elliptical or free-form): its shape, and its weight with its tabs and fillets.
- * @param {object} rd the reading
- * @param {Element} c the part
- * @param {number} x its forward end from the nose tip, m
- * @param {object} parent the part it is on: its position, length and radii
- * @param {{tag:string, len:number, cfin:number, rho:number}} p the part's tag, length, finish roughness and material density
- * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
+ * A fin set's shape: root and tip chords, span, sweep and area. An elliptical or free-form set also keeps its outline,
+ * and is given the trapezoid of equal area and span that stands in for it where a trapezoid is needed.
+ * @param {object} rd the reading (for the note that the exact shape is kept)
+ * @param {Element} c the fin set
+ * @param {string} tag its tag
+ * @returns {{root:number, tip:number, span:number, sweep:number, area:number, outline:number[][]|null,
+ *   xcen:number|null}} outline: the fin's points from its root's leading edge; xcen: its centroid behind that edge
  */
-function readFins(rd, c, x, parent, { tag, len, cfin, rho }) {
-  let m = 0,
-    cg = x + len / 2;
-  const n = elNum(c, "fincount", 3),
-    t = elNum(c, "thickness", 0.003);
+function finShape(rd, c, tag) {
   let root,
     tip,
     span,
@@ -658,8 +641,18 @@ function readFins(rd, c, x, parent, { tag, len, cfin, rho }) {
     sweep = Math.min(Math.max(sweep, -tip), root);
     if (!rd.notes.includes(ORK_FF_NOTE)) rd.notes.push(ORK_FF_NOTE);
   }
-  m = rho * area * t * n;
-  // fin tabs (through-the-wall): a rectangle of the fin's own material inside the body
+  return { root, tip, span, sweep, area, outline, xcen };
+}
+/**
+ * The weight of a fin set's tabs (through-the-wall): a rectangle of the fin's own material inside the body.
+ * @param {Element} c the fin set
+ * @param {number} root its root chord, m
+ * @param {number} rho its material's density, kg/m³
+ * @param {number} t its thickness, m
+ * @param {number} n how many fins
+ * @returns {{m:number, x:number}} the tabs' weight, kg, and their middle behind the root's leading edge, m
+ */
+function finTabs(c, root, rho, t, n) {
   const tabH = elNum(c, "tabheight", 0),
     tabL = Math.min(elNum(c, "tablength", 0), root);
   let tabM = 0,
@@ -677,10 +670,20 @@ function readFins(rd, c, x, parent, { tag, len, cfin, rho }) {
     tabM = rho * tabH * tabL * t * n;
     tabX = x0t + tabL / 2;
   }
-  // fin fillets: the wedge between each side of a fin and the body, as OpenRocket sizes it (the fillet's arc,
-  // tangent to the fin and to the round body), along the root, in the fillet's own material
-  const filR = elNum(c, "filletradius", 0),
-    bodyR = parent.ro || 0;
+  return { m: tabM, x: tabX };
+}
+/**
+ * The weight of a fin set's fillets: the wedge between each side of a fin and the body, as OpenRocket sizes it (the
+ * fillet's arc, tangent to the fin and to the round body), along the root, in the fillet's own material.
+ * @param {Element} c the fin set
+ * @param {number} root its root chord, m
+ * @param {number} rho the fins' own density, used when the fillet names no material, kg/m³
+ * @param {number} n how many fins
+ * @param {number} bodyR the radius of the body the fins are on, m
+ * @returns {number} kg
+ */
+function finFillets(c, root, rho, n, bodyR) {
+  const filR = elNum(c, "filletradius", 0);
   let filM = 0;
   if (filR > 0 && bodyR > 0) {
     const hyp = filR + bodyR,
@@ -689,9 +692,29 @@ function readFins(rd, c, x, parent, { tag, len, cfin, rho }) {
       sec = (Math.tan(oa) * filR * filR) / 2 - (oa * filR * filR) / 2 - (ia * bodyR * bodyR) / 2;
     filM = Math.max(sec, 0) * 2 * root * (elDens(c, "filletmaterial") || rho) * n;
   }
+  return filM;
+}
+/**
+ * A fin set (trapezoidal, elliptical or free-form): its shape, and its weight with its tabs and fillets.
+ * @param {object} rd the reading
+ * @param {Element} c the part
+ * @param {number} x its forward end from the nose tip, m
+ * @param {object} parent the part it is on: its position, length and radii
+ * @param {{tag:string, len:number, cfin:number, rho:number}} p the part's tag, length, finish roughness and material density
+ * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
+ */
+function readFins(rd, c, x, parent, { tag, cfin, rho }) {
+  const n = elNum(c, "fincount", 3),
+    t = elNum(c, "thickness", 0.003);
+  const { root, tip, span, sweep, area, outline, xcen } = finShape(rd, c, tag);
+  let m = rho * area * t * n;
+  const tab = finTabs(c, root, rho, t, n),
+    tabM = tab.m,
+    tabX = tab.x,
+    filM = finFillets(c, root, rho, n, parent.ro || 0);
   const xbar =
     xcen != null ? xcen : (sweep * (root + 2 * tip) + (root * root + root * tip + tip * tip)) / (3 * (root + tip || 1));
-  cg = x + (isFinite(xbar) ? xbar : root / 2);
+  let cg = x + (isFinite(xbar) ? xbar : root / 2);
   if (tabM + filM > 0) {
     cg = (m * cg + tabM * (x + tabX) + filM * (x + root / 2)) / (m + tabM + filM);
     m += tabM + filM;
@@ -729,13 +752,10 @@ function readFins(rd, c, x, parent, { tag, len, cfin, rho }) {
  * @param {object} rd the reading
  * @param {Element} c the part
  * @param {number} x its forward end from the nose tip, m
- * @param {object} parent the part it is on: its position, length and radii
- * @param {{tag:string, len:number, cfin:number, rho:number}} p the part's tag, length, finish roughness and material density
- * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
+ * @returns {{m:number}} its weight
  */
-function readMass(rd, c, x, parent, p) {
-  let m = 0;
-  m = elNum(c, "mass");
+function readMass(rd, c, x) {
+  const m = elNum(c, "mass");
   // a protuberance on the outside of the body: this app's tags on an OpenRocket mass (see the builder's "bump")
   if (elTxt(c, "prflbump"))
     rd.bumps.push({
@@ -763,11 +783,10 @@ function readMass(rd, c, x, parent, p) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readChute(rd, c, x, parent, { rho }) {
-  let m = 0;
   const d = elNum(c, "diameter"),
     lc = elNum(c, "linecount"),
     ll = elNum(c, "linelength");
-  m = rho * Math.PI * (d / 2) ** 2 + lc * ll * elDens(c, "linematerial");
+  const m = rho * Math.PI * (d / 2) ** 2 + lc * ll * elDens(c, "linematerial");
   const cdS = elTxt(c, "cd");
   const cd = cdS && !/auto/i.test(cdS) ? parseFloat(cdS) : 0.8;
   const dc = [...c.children]
@@ -800,8 +819,7 @@ function readChute(rd, c, x, parent, { rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readStreamer(rd, c, x, parent, { rho }) {
-  let m = 0;
-  m = rho * elNum(c, "striplength") * elNum(c, "stripwidth");
+  const m = rho * elNum(c, "striplength") * elNum(c, "stripwidth");
   const L_ = elNum(c, "striplength"),
     W_ = elNum(c, "stripwidth");
   // streamer: modeled as a parachute with the same drag area (streamer Cd about 0.7 of strip area)
@@ -830,8 +848,7 @@ function readStreamer(rd, c, x, parent, { rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readCord(rd, c, x, parent, { rho }) {
-  let m = 0;
-  m = rho * elNum(c, "cordlength");
+  const m = rho * elNum(c, "cordlength");
   return { m };
 }
 /**
@@ -844,18 +861,15 @@ function readCord(rd, c, x, parent, { rho }) {
  * @returns {object} what it worked out of the part's weight m, balance point cg and outside and inside radii ro, ri
  */
 function readTubeFins(rd, c, x, parent, { len, cfin, rho }) {
-  let m = 0,
-    ro = 0,
-    ri = 0;
   /* tube fins: short tubes around the body, touching it. "auto" outer radius: as OpenRocket sizes them, so that
      neighbors touch each other and the body (fewer than 3: the body's radius) */
   const n = Math.max(1, elNum(c, "fincount", elNum(c, "instancecount", 6))),
     rb = parent.ro || 0;
   const sinH = Math.sin(Math.PI / n);
-  ro =
+  const ro =
     elIsAuto(c, "radius") || elTxt(c, "radius") == null ? (n < 3 ? rb : (rb * sinH) / (1 - sinH)) : elNum(c, "radius");
-  ri = Math.max(ro - elNum(c, "thickness", 0.0005), 0);
-  m = rho * Math.PI * (ro * ro - ri * ri) * len * n;
+  const ri = Math.max(ro - elNum(c, "thickness", 0.0005), 0);
+  const m = rho * Math.PI * (ro * ro - ri * ri) * len * n;
   rd.tubeFinSets.push({
     n: n * rd.podK,
     len,
