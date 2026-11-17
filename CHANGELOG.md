@@ -4,6 +4,20 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 321 (2026-11-17)
+
+**Opening files**
+- **RASAero II design files (.CDX1)** open like OpenRocket and RockSim files: the Open design file button takes them, and a file's simulations are offered as stored runs. The rocket's shape is read (nose with its blunt tip, tubes, transitions, boattails, fin cans, a booster, fins with their airfoil section and bevels, rail guides, launch lugs, launch shoes and protuberances), with the chosen simulation's motors, staging delays, nozzle exit diameters, recovery events and launch site. RASAero keeps a rocket's weight and CG with each simulation, motor loaded: the motor is taken out and the rest put on each stage as a weight and CG override. RASAero's apogee is shown as the reference beside each run. The .CDX1 is only read: changes are saved as an .ork.
+- **A RASAero motor that isn't in your motor list**: the file's weight and CG include it, so the motor flown in its place is taken out until you upload the file's own motor and pick it; from then on the weight and CG without motor stay.
+- **RASAero runs fly as RASAero does**: the wind is set the same at every height (RASAero has one wind speed), and the file's All Turbulent Flow setting sets the boundary layer (off: natural transition, RASAero's laminar flow turning turbulent at a Reynolds number of 500,000).
+
+**Rocket builder**
+- **Custom roughness** under Surface finish: type the surface roughness in µm, for a finish the list doesn't have. A saved .ork names the nearest finish OpenRocket knows and keeps your number for this app. RASAero files keep RASAero's own roughness for their surface finish.
+
+**Flight**
+- **Nozzle exit diameter** given by a design file now stays with its motor in the builder and in saved files, and a booster's is used too (it sets the base drag while the motor burns). On a large motor this matters: it moves Proteus 6 from about 90,100 ft to 100,000 ft.
+- **Motor mount sizes** include every motor diameter in the motor list (111, 150, 203 and 216 mm were missing, so motors that size were always shown as too big for their mount).
+
 ## Build 320 (2026-11-16)
 
 **Parts library**
