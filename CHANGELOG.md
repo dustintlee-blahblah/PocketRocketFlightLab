@@ -4,6 +4,21 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 322 (2026-11-17)
+
+**Learn**
+- **A Learn page**, opened from Settings: eight short chapters for beginners (the four forces, a flight from pad to landing, stability, motors, drag, weather and the launch site, recovery, and how the simulator works and how far to trust it), each with a drawing and a "Try it in the app" note; a deeper chapter on the drag model, with its methods, sources and how well it is checked; and further reading. It works offline.
+- **Learn more** links at the end of seven help boxes (CG, Cd, Surface finish, parachute diameter, Wind with altitude, Motor Delay, Wind Tunnel) open the chapter that explains them.
+
+**Rocket builder**
+- **Leading-edge radius** for beveled and double-wedge fins: the small round where the faces meet. Above the transonic drag rise it adds what the round costs over the sharp edge it replaces (modified Newtonian theory, swept as the other edges), checked against cylinder drag measurements (NACA TN 2960) and a blunted-wing test (NASA TM X-27). RASAero files fill it from their LE radius, and it is saved in the .ork. The three measured flights that give a radius come out 0.2 to 1.5% lower.
+
+**Look and feel**
+- The disclaimer's tick box turns the theme's orange when ticked, and so does the box around it (it was grey).
+
+**Documentation**
+- AERODYNAMICS.md describes the leading-edge radius; the measured flights' figures in it and VALIDATION.md are rerun (6.4% mean error, 9.0% above Mach 1.2).
+
 ## Build 321 (2026-11-17)
 
 **Opening files**
