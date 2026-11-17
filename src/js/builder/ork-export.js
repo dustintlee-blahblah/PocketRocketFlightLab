@@ -119,7 +119,7 @@ export function bldToOrk(model, L, opts = {}) {
           : "automatic";
     const idly = upper ? model.stages[si].ignDelay || 0 : k.ignDelay || 0;
     const mo = k.motor
-      ? `<motor configid="${cfg}"><type>${e(k.motor.type || orkMotorType(k.motor))}</type><manufacturer>${e(k.motor.mfr)}</manufacturer><designation>${e(k.motor.name)}</designation><diameter>${n(k.motor.dia)}</diameter><length>${n(k.motor.len)}</length><delay>${k.delay == null || !(k.delay >= 0) ? "none" : n(k.delay)}</delay></motor>`
+      ? `<motor configid="${cfg}"><type>${e(k.motor.type || orkMotorType(k.motor))}</type><manufacturer>${e(k.motor.mfr)}</manufacturer><designation>${e(k.motor.name)}</designation><diameter>${n(k.motor.dia)}</diameter><length>${n(k.motor.len)}</length>${k.motor.noz > 0 ? `<nozzleexitdiameter>${n(k.motor.noz)}</nozzleexitdiameter>` : ""}<delay>${k.delay == null || !(k.delay >= 0) ? "none" : n(k.delay)}</delay></motor>`
       : "";
     return `<motormount><ignitionevent>${ign}</ignitionevent><ignitiondelay>${n(idly)}</ignitiondelay><overhang>${n(k.overhang || 0)}</overhang>${mo}</motormount>`;
   };

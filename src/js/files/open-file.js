@@ -1,5 +1,5 @@
 /**
- * Opening files: a design (.ork or .rkt) from the file picker, loadDesignXml (which every way of opening a design goes
+ * Opening files: a design (.ork, .rkt or .CDX1) from the file picker, loadDesignXml (which every way of opening a design goes
  * through), uploaded motor files (.eng, .rse, or a .zip of them), and Reset Changes.
  */
 import { BLD, BLD_ROOT, bldRender, bldSave, setBLD, setBldSel } from "../builder/builder-ui.js";
@@ -28,8 +28,10 @@ import {
   USER_MOTORS,
 } from "../design/defaults.js";
 import { parseOrk } from "./openrocket-import.js";
+import { DESIGN_EXT, otherFormat, parseOther } from "./other-formats.js";
+import { cdxRuns, isCdx } from "./rasaero-import.js";
 import { recentAdd, renderRecent } from "./recent.js";
-import { matchMotor, matchMotorAll, parseRkt } from "./rocksim-import.js";
+import { matchMotor, matchMotorAll } from "./rocksim-import.js";
 import { RANGE_KEYS, setORK_CFG, setORK_SIM, setSource, SOURCE } from "./save.js";
 import { prHash, prStateRead } from "./saved-simulation.js";
 import { isDirty, markClean, setActive } from "./unsaved-changes.js";
@@ -60,7 +62,7 @@ function launchSame(a, b) {
 }
 /**
  * The runs (simulations) stored in a design file, for choosing one when it's opened.
- * @param {string} xml the .ork or .rkt text
+ * @param {string} xml the .ork, .rkt or .CDX1 text
  * @param {object|null} saved this app's saved state from the file (prStateRead), for its runs' times
  * @returns {{i:number, name:string, motors:string, apogee:number|null, wind:number|null, outdated:boolean,
  *   cfg:string|null, at:string}[]}
@@ -77,6 +79,7 @@ export function designRuns(xml, saved) {
     return e ? e.textContent.trim() : "";
   };
   const n = (v) => (v === "" || v == null || !isFinite(+v) ? null : +v);
+  if (isCdx(xml)) return cdxRuns(doc);
   if (/<RockSimDocument/i.test(xml.slice(0, 4000)))
     return [...doc.getElementsByTagName("SimulationResults")].map((s, i) => ({
       i,
@@ -192,8 +195,7 @@ function askOpenRun(name, runs, hasSaved) {
  * @returns {Promise<boolean>} true if opened
  */
 export async function openDesignAsk(xml, name, buf, opts = {}) {
-  const rkt = /<RockSimDocument/i.test(xml.slice(0, 4000)),
-    saved = !rkt && buf ? await prStateRead(buf, null) : null,
+  const saved = !otherFormat(xml) && buf ? await prStateRead(buf, null) : null,
     runs = designRuns(xml, saved);
   // (tests open files as they come, without asking)
   if (window.PR_NO_ASK) return loadDesignXml(xml, name, buf, opts);
@@ -242,7 +244,7 @@ function askAddMotors(names) {
   });
 }
 /**
- * Opens a design from .ork or .rkt text: reads it, picks the motors, sets the design, conditions and builder
+ * Opens a design from .ork, .rkt or .CDX1 text: reads it, picks the motors, sets the design, conditions and builder
  * parts, and reports what was opened.
  * @param {string} xml
  * @param {string} fileName
@@ -260,8 +262,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
   try {
     // what the app saved in the file besides the design (prStateNow), read first: its motor configuration and uploaded
     // motors decide which motors the design flies
-    const saved =
-      opts.cfg == null && buf && !/<RockSimDocument/i.test(xml.slice(0, 4000)) ? await prStateRead(buf, null) : null;
+    const saved = opts.cfg == null && buf && !otherFormat(xml) ? await prStateRead(buf, null) : null;
     const savedNotes = [];
     if (saved) {
       // uploaded motors the design flies, carried in the file: added to yours only if you say so
@@ -286,7 +287,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
           "The file was changed in another program after it was last saved here, so it opens with its own motor configuration and motors, not the ones chosen here.",
         );
     }
-    const r = /<RockSimDocument/i.test(xml.slice(0, 4000)) ? parseRkt(xml) : parseOrk(xml);
+    const r = otherFormat(xml) ? parseOther(xml, fileName) : parseOrk(xml);
     setD(r.design);
     // the file's own launch settings, offered once it's open (the ones you have now are kept meanwhile)
     // the chosen run's conditions, as read (r.launch becomes L below)
@@ -424,12 +425,15 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         ? `Two-stage rocket. Sustainer: ${fmt(D.dryMass, "mass")} ${uname("mass")} without motor, CG ${fmt(D.cgEmpty, "len", 1)} ${uname("len")}, ${fmt(D.length, "len", 1)} ${uname("len")} long. Booster: ${fmt(D.bDryMass, "mass")} ${uname("mass")}, ${fmt(D.bLength, "len", 1)} ${uname("len")} long. Sustainer ignition ${D.stageDelay.toFixed(1)} s after booster burnout.`
         : `Weight without motor ${fmt(D.dryMass, "mass")} ${uname("mass")}, CG ${fmt(D.cgEmpty, "len", 1)} ${uname("len")}, length ${fmt(D.length, "len", 1)} ${uname("len")}.`;
     rep.innerHTML = `<div class="report"><b>${opts.builder ? "Built" : "Opened"} ${esc(D.name)}.</b> ${esc(summary)} ${esc(mnote)}
-      ${uniq.length ? `<ul>${uniq.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}<div class="note" style="margin-top:6px">Weight, CG and turning inertia are computed from the file’s components and materials. If you have weighed and balanced the real rocket, select the stage in the design tree and enter your numbers there.</div></div>`;
+      ${uniq.length ? `<ul>${uniq.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}<div class="note" style="margin-top:6px">${otherFormat(xml) === "cdx" ? "Weight and CG are the RASAero simulation’s; turning inertia is estimated from the rocket’s shape." : "Weight, CG and turning inertia are computed from the file’s components and materials."} If you have weighed and balanced the real rocket, select the stage in the design tree and enter your numbers there.</div></div>`;
     {
-      const isR = /<RockSimDocument/i.test(xml.slice(0, 4000));
+      const other = otherFormat(xml),
+        isR = !!other;
       let nm = (fileName || "").trim();
-      if (!nm || /^\.[a-z]+$/i.test(nm) || !/\.(ork|rkt)$/i.test(nm))
-        nm = ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") + (isR ? ".rkt" : ".ork");
+      if (!nm || /^\.[a-z]+$/i.test(nm) || !DESIGN_EXT.test(nm))
+        nm =
+          ((D.name || "rocket").replace(/[\\/:*?"<>|]+/g, "-").trim() || "rocket") +
+          (other === "cdx" ? ".CDX1" : isR ? ".rkt" : ".ork");
       const prevTips =
           opts.cfg != null && BLD
             ? BLD.stages.flatMap((st) =>
@@ -442,7 +446,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
           opts.cfg != null && BLD && BLD.settings
             ? Object.fromEntries(BLD_APP_SETTINGS.map((k) => [k, BLD.settings[k]]))
             : null;
-      if (isR) setORK_SIM(null); // RockSim files are read as one converted OpenRocket design with the chosen run
+      if (isR) setORK_SIM(null); // RockSim and RASAero files are read as one converted OpenRocket design with the chosen run
       setBLD(bldFromOrk(isR ? r.orkXml : xml, { ...r, rkt: isR }));
       setORK_SIM(null);
       // your design notes, kept per motor configuration
@@ -517,6 +521,11 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
             BLD.bp = { comps: j.comps || {}, splits: j.splits || {} };
           }
         } catch (e) {}
+      // a RASAero nose's blunt tip (an .ork has no place for it)
+      if (r.noseTip > 0) {
+        const q = BLD.stages[0] && BLD.stages[0].parts.find((x) => x.type === "nose");
+        if (q) q.tipR = r.noseTip;
+      }
       if (isR) BLD.mountHint = [r.design.mountDia || null, r.design.bMountDia || null];
       // a RockSim stage with different motors: the main mount flies the one that fits it
       if (isR) {
@@ -547,7 +556,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
       } catch (e) {}
       setSource({
         name: nm,
-        format: isR ? "rkt" : "ork",
+        format: other || "ork",
         text: xml,
         src: r.src,
         extras: isR ? [] : prevX ? prevX : !buf ? [] : await zipOthers(buf),

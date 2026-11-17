@@ -7,6 +7,7 @@ import { BLD } from "../builder/builder-ui.js";
 import { bldLayout } from "../builder/model.js";
 import { APP_BUILD } from "../core/start.js";
 import { mstats, NOSE_PRESETS, PROFILE } from "../design/defaults.js";
+import { DESIGN_EXT } from "../files/other-formats.js";
 import { SOURCE } from "../files/save.js";
 import { SYS_LABEL } from "../motors/catalog.js";
 import { aero, finOutline, radiusAt, segR } from "../physics/aerodynamics.js";
@@ -1373,7 +1374,7 @@ async function exportPdf() {
   btn.textContent = "Building PDF…";
   try {
     const doc = buildReportPdf();
-    const base = SOURCE && SOURCE.name ? SOURCE.name.replace(/\.(ork|rkt)$/i, "") : lastSim.D.name; // named after the design file (the rocket name only for a design not saved yet)
+    const base = SOURCE && SOURCE.name ? SOURCE.name.replace(DESIGN_EXT, "") : lastSim.D.name; // named after the design file (the rocket name only for a design not saved yet)
     const name =
       `${base}-${lastSim.m.cn || lastSim.m.name}-flight-report`
         .replace(/[^\w.-]+/g, "-")

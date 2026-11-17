@@ -48,8 +48,8 @@ version and, wrapped in an Android WebView, the Android app.
 
 `BLD` is the source of truth for a design; `bldDerive()` (`builder/derive.js`) turns it into `D` after every
 change. Opening a file goes the other way: `loadDesignXml()` (`files/open-file.js`) reads an OpenRocket file with
-`parseOrk()` (`files/openrocket-import.js`; RockSim files are first rewritten as OpenRocket XML by
-`files/rocksim-import.js`) and the builder reads the same XML into parts with `bldFromOrk()` (`builder/ork-read.js`).
+`parseOrk()` (`files/openrocket-import.js`; RockSim and RASAero II files are first rewritten as OpenRocket XML by
+`files/rocksim-import.js` and `files/rasaero-import.js`, reached through `files/other-formats.js`) and the builder reads the same XML into parts with `bldFromOrk()` (`builder/ork-read.js`).
 Saving writes `BLD` as OpenRocket XML (`builder/ork-export.js`) merged into the original file so that what the app
 doesn't edit is kept (`builder/ork-merge.js`).
 

@@ -246,6 +246,7 @@ export function bldFromOrk(xml, info) {
         dia: num(mo, "diameter"),
         len: num(mo, "length"),
         type: txt(mo, "type") || "reload",
+        ...(num(mo, "nozzleexitdiameter") > 0 ? { noz: num(mo, "nozzleexitdiameter") } : {}),
       };
       k.delay = dl === "" || dl === "none" || !isFinite(parseFloat(dl)) ? null : parseFloat(dl);
     } else {
@@ -703,6 +704,7 @@ export function bldFromOrk(xml, info) {
         dia: m ? m.dia : x.dia || 0,
         len: m ? m.len : 0,
         id: m ? m.id : undefined,
+        ...(x.nozzle > 0 ? { noz: x.nozzle } : {}),
       };
     };
     const s0 = model.stages[0],

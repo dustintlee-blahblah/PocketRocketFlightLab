@@ -68,7 +68,15 @@ export function bldSyncMotors() {
     if (hold && m.id === hold) return;
     if (m.dia > k.od - 2 * (k.wall || 0) + 0.0006 && k.od > 0) return; // a motor that can't go in this mount isn't written into the design
     if (m && (!k.motor || k.motor.name !== m.name || (k.motor.mfr || "") !== (m.mfr || m.brand || "")))
-      k.motor = { id: m.id, mfr: m.mfr || m.brand || "", name: m.name, dia: m.dia, len: m.len };
+      k.motor = {
+        id: m.id,
+        mfr: m.mfr || m.brand || "",
+        name: m.name,
+        dia: m.dia,
+        len: m.len,
+        // a nozzle exit diameter the file gave for this motor stays with it (under the file's own name for it)
+        ...(k.motor && k.motor.id === m.id && k.motor.noz > 0 ? { noz: k.motor.noz } : {}),
+      };
     else if (m && k.motor) k.motor.id = m.id;
   };
   const h = BLD.hold || [];

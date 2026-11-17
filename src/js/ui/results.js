@@ -5,6 +5,7 @@
 import { animAt } from "../animation/animation.js";
 import { esc } from "../core/helpers.js";
 import { D, L, units } from "../design/defaults.js";
+import { DESIGN_EXT, isOther, otherApp } from "../files/other-formats.js";
 import { SOURCE } from "../files/save.js";
 import { renderTitle } from "../files/unsaved-changes.js";
 import { renderFlightLog } from "../flightlog/flight-log.js";
@@ -92,12 +93,11 @@ export function renderResults() {
       r.hidden = !lastSim || !downloadsNS;
       const n = document.getElementById("simsavenote");
       if (n)
-        n.textContent =
-          SOURCE && SOURCE.format === "rkt"
-            ? `Saves the design as ${SOURCE.name.replace(/\.rkt$/i, "")}.ork, an OpenRocket file, with this run in its simulations. The original .rkt isn’t changed.`
-            : SOURCE
-              ? `Adds this run to the simulations in ${SOURCE.name}, so OpenRocket shows its results next to its own. Any unsaved design changes are saved with it.`
-              : "Save the design to a file first (Rocket tab), then runs can be saved into it.";
+        n.textContent = isOther(SOURCE)
+          ? `Saves the design as ${SOURCE.name.replace(DESIGN_EXT, "")}.ork, an OpenRocket file, with this run in its simulations. The original ${otherApp(SOURCE).ext} isn’t changed.`
+          : SOURCE
+            ? `Adds this run to the simulations in ${SOURCE.name}, so OpenRocket shows its results next to its own. Any unsaved design changes are saved with it.`
+            : "Save the design to a file first (Rocket tab), then runs can be saved into it.";
       const b = document.getElementById("simsave");
       if (b) b.disabled = !SOURCE;
     }

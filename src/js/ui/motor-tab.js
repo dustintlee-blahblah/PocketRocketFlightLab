@@ -213,7 +213,7 @@ export function saveFilter() {
 }
 export let pickSlot = -1; // -1: choosing the main motor; otherwise the index of the extra motor being chosen
 /* ---------- motor tube size ---------- */
-const MOTOR_SIZES = [13, 18, 24, 29, 38, 54, 75, 98, 132, 152, 161]; // standard motor diameters, mm, up to the largest motors in the list
+const MOTOR_SIZES = [13, 18, 24, 29, 38, 54, 75, 98, 111, 132, 150, 152, 161, 203, 216]; // the motor diameters in the list, mm
 /**
  * The motor size a mount takes: the largest standard motor that slides into its inside diameter.
  * @param {number} d inside diameter, m

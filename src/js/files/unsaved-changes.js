@@ -4,6 +4,7 @@
  */
 import { BLD, bldRender } from "../builder/builder-ui.js";
 import { boostId, D, defaultDesign, defaultLaunch, L, motorId } from "../design/defaults.js";
+import { DESIGN_EXT, isOther, otherApp } from "./other-formats.js";
 import { SAVE_IGNORE, SAVE_NOT, SOURCE } from "./save.js";
 import { saveDesignFile } from "./saved-simulation.js";
 import { isAndroidApp } from "./zip.js";
@@ -92,12 +93,16 @@ export function renderSavePanel() {
   b.hidden = !designDirty();
   b.title = !SOURCE
     ? "Save this new design"
-    : SOURCE.format === "rkt"
-      ? `Save as ${SOURCE.name.replace(/\.rkt$/i, "")}.ork`
+    : isOther(SOURCE)
+      ? `Save as ${SOURCE.name.replace(DESIGN_EXT, "")}.ork`
       : `Save changes to ${SOURCE.name}`;
-  b.textContent = SOURCE && SOURCE.format === "rkt" ? "Save as .ork" : "Save changes";
+  b.textContent = isOther(SOURCE) ? "Save as .ork" : "Save changes";
   const n = document.getElementById("rktnote");
-  if (n) n.hidden = !(SOURCE && SOURCE.format === "rkt");
+  if (n) {
+    n.hidden = !isOther(SOURCE);
+    const o = otherApp(SOURCE);
+    n.textContent = `Opened from a ${o.app} file. Changes are saved as an OpenRocket (.ork) file; the original ${o.ext} isn’t changed.`;
+  }
 }
 /**
  * Asks whether to write over the open design file or save a copy of it.
@@ -158,7 +163,7 @@ export function askName(mode, extra = {}) {
   document.getElementById("nameok").textContent = mode === "copy" ? "Save copy" : "Save";
   inp.value =
     mode === "copy"
-      ? (((SOURCE && SOURCE.name) || "").replace(/\.(ork|rkt)$/i, "") + " copy").trim()
+      ? (((SOURCE && SOURCE.name) || "").replace(DESIGN_EXT, "") + " copy").trim()
       : BLD && BLD.name && BLD.name !== "My rocket"
         ? BLD.name
         : "";
@@ -239,7 +244,7 @@ export function start() {
     const box = document.getElementById("namebox"),
       inp = document.getElementById("savename");
     const go = async () => {
-      const nm = inp.value.trim().replace(/\.(ork|rkt)$/i, "");
+      const nm = inp.value.trim().replace(DESIGN_EXT, "");
       if (!nm) {
         document.getElementById("nameerr").textContent = "Type a file name.";
         inp.focus();

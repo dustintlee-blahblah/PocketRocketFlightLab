@@ -11,6 +11,7 @@ import { b64ToU8, esc, jclone } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { boostId, D, firstId, L, motorId } from "../design/defaults.js";
+import { DESIGN_EXT, isOther, otherApp } from "./other-formats.js";
 import { recentPut, recentSaved, renderRecent } from "./recent.js";
 import { ORK_CFG, setSource, SOURCE } from "./save.js";
 import { askName, askOverwrite, markClean, renderSavePanel } from "./unsaved-changes.js";
@@ -402,14 +403,15 @@ function prCarryLog(oldFl, oldCal, move) {
  */
 export async function saveDesignFile(asNew, opts = {}) {
   // the first Save changes of a new design, or of a design opened from a RockSim file: it becomes an .ork file
-  // (under the name just given, or the .rkt file's name), and later saves go into it. A RockSim file is only ever read.
-  const fromRkt = !asNew && !!SOURCE && SOURCE.format === "rkt" && !opts.copyName;
+  // (under the name just given, or the file's own name), and later saves go into it. A RockSim or RASAero file is only
+  // ever read.
+  const fromRkt = !asNew && isOther(SOURCE) && !opts.copyName;
   const first = !asNew && ((!SOURCE && !!opts.name) || fromRkt);
   // Save a copy: the open file's design under a new name, in the same format; the copy is what's open afterwards
   const copy = !asNew && SOURCE && opts.copyName ? String(opts.copyName) : null;
   const clean = (nm) =>
     String(nm || "rocket")
-      .replace(/\.(ork|rkt)$/i, "")
+      .replace(DESIGN_EXT, "")
       .replace(/[\\/:*?"<>|]+/g, "-")
       .trim() || "rocket";
   const msg = document.getElementById("savemsg"),
@@ -667,7 +669,7 @@ export async function saveDesignFile(asNew, opts = {}) {
       } else if (!asNew && SOURCE) recentSaved(fileBytes, fname);
     }
     const what = fromRkt
-      ? `Saved as ${fname}, an OpenRocket file. The original .rkt file isn’t changed; from now on, Save changes updates ${fname}.`
+      ? `Saved as ${fname}, an OpenRocket file. The original ${otherApp(SOURCE).ext} file isn’t changed; from now on, Save changes updates ${fname}.`
       : first
         ? `Saved ${fname}. From now on, Save changes updates this file.`
         : copy

@@ -276,7 +276,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <h2>Get started</h2>
       <p class="note">Predict how high your rocket will fly, where it will land, and whether it's ready for the pad. Choose how to start:</p>
       <div class="wgrid">
-        <div class="wcard"><b>Open a design file</b><span>A rocket you've already designed in OpenRocket (.ork) or RockSim (.rkt). Its parts, motor and settings come with it.</span><label class="btn" for="orkfile">Open .ork / .rkt</label></div>
+        <div class="wcard"><b>Open a design file</b><span>A rocket you've already designed in OpenRocket (.ork), RockSim (.rkt) or RASAero II (.CDX1). Its parts, motor and settings come with it.</span><label class="btn" for="orkfile">Open design file</label></div>
         <div class="wcard"><b>Build your own</b><span>Start from a basic rocket (nose cone, body tube, fins, motor mount and parachute), then change any part.</span><button class="btn ghost" id="handdesign" type="button">Build a rocket</button></div>
         <div class="wcard wex"><div class="exrow"><b>Example rockets</b><button class="rsomore foldbtn" type="button" data-fold="exbody" aria-expanded="false" aria-controls="exbody">Show</button></div><span>Real designs to learn with, from a small model rocket to dual-deploy high power. Open one, look around, and change anything.</span><div id="exbody" hidden><div class="rlist" id="exlist"></div></div></div>
         <div class="wcard wrecent" id="recentwrap" hidden><b>Recent files</b><span>Open a design you’ve worked on before.</span><div class="rlist" id="recentlist"></div></div>
@@ -286,7 +286,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="row" style="justify-content:space-between">
         <div style="min-width:0"><h2 style="margin:0" id="rtitle">Rocket</h2><p class="note" id="rfile" style="margin:2px 0 0"></p></div>
         <div class="row">
-          <label class="file btn ghost" for="orkfile">Open .ork / .rkt<input type="file" id="orkfile" accept=".ork,.ORK,.rkt,.RKT,application/zip,application/octet-stream,application/xml,text/xml"></label>
+          <label class="file btn ghost" for="orkfile" title="OpenRocket (.ork), RockSim (.rkt) or RASAero II (.CDX1)">Open design file<input type="file" id="orkfile" accept=".ork,.ORK,.rkt,.RKT,.cdx1,.CDX1,application/zip,application/octet-stream,application/xml,text/xml"></label>
           <button class="btn" id="savefile" type="button" hidden>Save changes</button>
           <button class="btn ghost" id="savecopy" type="button">Save a copy</button>
           <button class="btn ghost" id="resetbtn">Reset Changes</button>
@@ -383,7 +383,7 @@ Opening a file takes the configuration its own simulation used, or its default. 
 
 The list shows the delays the motor is sold with. 0 s fires at burnout (booster motors use it to separate stages or light the next motor). Plugged means no ejection charge at all (an altimeter handles deployment). Custom is for any other time, such as a reload delay you drill shorter.
 
-Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing another motor keeps the delay if the new motor comes with it, and otherwise moves it to the nearest delay the new motor offers (a custom time is kept). The Results tab and the RSO Checklist show the ideal delay for the flight." aria-label="About Motor Delay">i</button></h2>
+Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero file has no delay: its parachutes open at apogee or at an altitude). Choosing another motor keeps the delay if the new motor comes with it, and otherwise moves it to the nearest delay the new motor offers (a custom time is kept). The Results tab and the RSO Checklist show the ideal delay for the flight." aria-label="About Motor Delay">i</button></h2>
       <div class="grid">
         <div class="fld"><label for="mdsel" id="mdlab">Ejection delay</label><div class="in"><select id="mdsel"></select></div></div>
         <div class="fld" id="mdcustf" hidden><label for="mdcust">Custom delay</label><div class="in"><input id="mdcust" type="number" inputmode="decimal" step="0.1" min="0"><span class="u">s</span></div></div>
@@ -547,9 +547,9 @@ Opening an OpenRocket or RockSim file sets it from the file's motor. Choosing an
         <li>Sutherland's law for air viscosity; U.S. Standard Atmosphere, 1976.</li>
       </ul>
       <h3>Design files and altimeter files</h3>
-      <p>Opens OpenRocket (.ork) and RockSim (.rkt) design files and saves designs as OpenRocket (.ork) files; RockSim files are only read, never changed. It also reads flight data files exported from altimeters, so they can be used alongside those programs and devices. File support was written independently from the files themselves; no program code from OpenRocket, RockSim or any altimeter software is included in this app (the motor data and parts library described below are data files). Simulations this app saves into a design file are labeled “Pocket Rocket”, so they aren’t mistaken for that program’s own results.</p>
+      <p>Opens OpenRocket (.ork), RockSim (.rkt) and RASAero II (.CDX1) design files and saves designs as OpenRocket (.ork) files; RockSim and RASAero files are only read, never changed. It also reads flight data files exported from altimeters, so they can be used alongside those programs and devices. File support was written independently from the files themselves; no program code from OpenRocket, RockSim or any altimeter software is included in this app (the motor data and parts library described below are data files). Simulations this app saves into a design file are labeled “Pocket Rocket”, so they aren’t mistaken for that program’s own results.</p>
       <h3>Trademarks</h3>
-      <p>RockSim is a trademark of Apogee Components, Inc. OpenRocket, Featherweight, Blue Raven, Altus Metrum, Eggtimer, PerfectFlite, StratoLogger, Missile Works, Apogee Components, AeroTech, Cesaroni Technology, Loki Research and ThrustCurve are names or trademarks of their respective owners, used here only to identify the files, devices and motors the app works with. Pocket Rocket Flight Lab is not affiliated with, sponsored by or endorsed by any of them.</p>
+      <p>RockSim is a trademark of Apogee Components, Inc. RASAero is a product of Rogers Aeroscience. OpenRocket, Featherweight, Blue Raven, Altus Metrum, Eggtimer, PerfectFlite, StratoLogger, Missile Works, Apogee Components, AeroTech, Cesaroni Technology, Loki Research and ThrustCurve are names or trademarks of their respective owners, used here only to identify the files, devices and motors the app works with. Pocket Rocket Flight Lab is not affiliated with, sponsored by or endorsed by any of them.</p>
       <h3>Motor data</h3>
       <p>The built-in motors are every motor in OpenRocket's motor database (1,127 motors from 27 makers): the curves published on ThrustCurve.org, most of them from official motor certification tests, and the older motors in the RASAero motor list. Where a motor has more than one curve, the one closest to its certified figures is used, certification curves first. Other motors can be loaded from .eng, .rse or .zip files. <a href="https://www.thrustcurve.org/" target="_blank" rel="noopener">thrustcurve.org</a></p>
       <h3>Parts library</h3>

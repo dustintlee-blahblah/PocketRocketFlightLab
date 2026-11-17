@@ -120,6 +120,7 @@ export function orkBooster(rd, nd, B, SRC) {
     bDryMass: B.mass,
     bCg: B.cg,
     bOverhang: rd.sOverhang[1] ?? 0,
+    bNozzleDia: (rd.sMotor[1] && rd.sMotor[1].nozzle) || 0,
     bMountAft:
       rd.sMountAft[1] != null && Math.abs(rd.sMountAft[1] - rd.sX0[1] - B.length) > 0.002
         ? rd.sMountAft[1] - rd.sX0[1]

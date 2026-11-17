@@ -1,7 +1,7 @@
 # Pocket Rocket Flight Lab
 
-A flight simulator for hobby and high-power rockets that runs on a phone. Open an OpenRocket (`.ork`) or
-RockSim (`.rkt`) design, or build one in the app, pick a motor, set the day's conditions, and get the
+A flight simulator for hobby and high-power rockets that runs on a phone. Open an OpenRocket (`.ork`),
+RockSim (`.rkt`) or RASAero II (`.CDX1`) design, or build one in the app, pick a motor, set the day's conditions, and get the
 predicted flight: apogee, speeds, stability, staging, recovery, drift and landing dispersion, an RSO
 checklist and a PDF flight report.
 
@@ -22,7 +22,7 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
 - 6-DOF flight simulation (position, pitch, yaw and roll) with Barrowman stability, a full drag
   build-up, wind with height and gusts, and the earth's rotation
 - Single, two- and three-stage rockets, motor clusters and airstarts
-- Opens OpenRocket and RockSim files and saves OpenRocket files, keeping everything the app doesn't edit
+- Opens OpenRocket, RockSim and RASAero II files and saves OpenRocket files, keeping everything the app doesn't edit
 - Rocket builder with a catalog of about 3,800 makers' parts, motor comparison, landing dispersion (Monte Carlo),
   fin flutter checks
 - The flight animated in 2D or in 3D, over an aerial photo of the launch site on its own terrain (USGS imagery and elevation, United States)
@@ -93,7 +93,7 @@ src/js/physics/     atmosphere, body geometry, aerodynamics (drag and stability)
 src/js/motors/      the motor catalog, thrust curve files, clusters
 src/js/design/      the default design and the saved state loaded at start-up
 src/js/recovery/    the ejection charge calculator
-src/js/files/       opening files, OpenRocket and RockSim import, saving, recent files, the built-in examples
+src/js/files/       opening files, OpenRocket, RockSim and RASAero import, saving, recent files, the built-in examples
 src/js/builder/     the rocket builder: its parts model and its .ork reading, writing and merging
 src/js/ui/          the tabs, forms, charts and drawings, results, RSO Checklist, Motor tab, settings,
                     the disclaimer
@@ -219,9 +219,9 @@ A build signed with a different key can't update an installed copy of the offici
 The GPL covers the program, not its name. If you distribute a modified version, please give it a
 different name so it isn't mistaken for Pocket Rocket Flight Lab.
 
-OpenRocket, RockSim, ThrustCurve and the motor and altimeter makers named here are names or trademarks
+OpenRocket, RockSim, RASAero, ThrustCurve and the motor and altimeter makers named here are names or trademarks
 of their owners, used only to identify the files, motors and devices the app works with. This project
-isn't affiliated with or endorsed by any of them, and it contains no code from OpenRocket or RockSim.
+isn't affiliated with or endorsed by any of them, and it contains no code from OpenRocket, RockSim or RASAero.
 
 ## Safety
 

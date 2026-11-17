@@ -10,7 +10,7 @@ import { jclone } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { D, L, units } from "../design/defaults.js";
 import { parseOrk } from "../files/openrocket-import.js";
-import { parseRkt } from "../files/rocksim-import.js";
+import { isOther, parseOther } from "../files/other-formats.js";
 import { setSource, SOURCE } from "../files/save.js";
 import { CLEAN, markClean } from "../files/unsaved-changes.js";
 import { drawProfile, renderSeries } from "../ui/charts.js";
@@ -772,8 +772,8 @@ export function start() {
       setBLD(null);
       if (SOURCE && SOURCE.text) {
         try {
-          const isR = SOURCE.format === "rkt",
-            r = isR ? parseRkt(SOURCE.text) : parseOrk(SOURCE.text);
+          const isR = isOther(SOURCE),
+            r = isR ? parseOther(SOURCE.text, SOURCE.name) : parseOrk(SOURCE.text);
           setBLD(bldFromOrk(isR ? r.orkXml : SOURCE.text, { ...r, rkt: isR }));
           BLD.name = D.name || BLD.name;
         } catch (e) {

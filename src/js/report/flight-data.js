@@ -3,6 +3,7 @@
  * number, acceleration, thrust, drag, weight, balance, stability, attitude, drift and the air), in the display units.
  */
 import { APP_BUILD } from "../core/start.js";
+import { DESIGN_EXT } from "../files/other-formats.js";
 import { SOURCE } from "../files/save.js";
 import { downloadsNS } from "./pdf-report.js";
 import { lastSim } from "../ui/results.js";
@@ -98,7 +99,7 @@ async function exportCsv() {
     msg.textContent = "Saving files isn’t available in this view.";
     return;
   }
-  const base = SOURCE && SOURCE.name ? SOURCE.name.replace(/\.(ork|rkt)$/i, "") : lastSim.D.name;
+  const base = SOURCE && SOURCE.name ? SOURCE.name.replace(DESIGN_EXT, "") : lastSim.D.name;
   const name =
     `${base}-${lastSim.m.cn || lastSim.m.name}-flight-data`
       .replace(/[^\w.-]+/g, "-")

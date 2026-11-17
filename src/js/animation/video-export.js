@@ -4,6 +4,7 @@
 import { ANIM, animPlay, animShow } from "./animation.js";
 import { animDraw } from "./scenery.js";
 import { anim3dSet, V3 } from "./view3d.js";
+import { DESIGN_EXT } from "../files/other-formats.js";
 import { SOURCE } from "../files/save.js";
 import { isAndroidApp } from "../files/zip.js";
 import { bufToB64, downloadsNS } from "../report/pdf-report.js";
@@ -268,7 +269,7 @@ async function animExportVideo() {
     enc.close();
     if (!avcC || !samples.length) throw new Error("the encoder returned no video");
     const mp4 = mp4Mux({ width: VW, height: VH, fps, samples, avcC });
-    const base = (SOURCE && SOURCE.name ? SOURCE.name.replace(/\.(ork|rkt)$/i, "") : lastSim.D.name) || "rocket";
+    const base = (SOURCE && SOURCE.name ? SOURCE.name.replace(DESIGN_EXT, "") : lastSim.D.name) || "rocket";
     const name =
       `${base}-${lastSim.m.cn || lastSim.m.name}-flight`
         .replace(/[^\w.-]+/g, "-")

@@ -5,6 +5,7 @@
  */
 import { esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
+import { DESIGN_EXT } from "../files/other-formats.js";
 import { inflate } from "../files/unzip.js";
 import { ALT_ACC, ALT_PRESS, altCompute, altParse } from "./altimeter-files.js";
 import {
@@ -690,8 +691,8 @@ export function start() {
       b = atob(s.slice(k + 1)),
       u = new Uint8Array(b.length);
     for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
-    if (/\.(ork|rkt)$/i.test(name)) {
-      prToast("To open a design, use Open .ork / .rkt on the Rocket tab.");
+    if (DESIGN_EXT.test(name)) {
+      prToast("To open a design, use Open design file on the Rocket tab.");
       return;
     }
     prPendingAlt = new File([u], name);

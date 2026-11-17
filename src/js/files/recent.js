@@ -225,7 +225,7 @@ async function openRecent(id) {
   }
   if (!buf) buf = e.data;
   if (!buf) {
-    rep.innerHTML = `<div class="report err">${esc(e.name)} can’t be opened any more. Open it again with Open .ork / .rkt.</div>`;
+    rep.innerHTML = `<div class="report err">${esc(e.name)} can’t be opened any more. Open it again with Open design file.</div>`;
     return;
   }
   try {
