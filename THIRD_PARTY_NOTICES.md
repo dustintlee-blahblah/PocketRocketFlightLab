@@ -239,8 +239,10 @@ License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), and OpenRock
 Rocketry, Front Range Rocket Recovery, Fruity Chutes, Rocketman and Spherachutes are Copyright 2022 by H. Craig
 Miller, compiled from information those makers provided. The files were converted to the app's compact format
 (tools/parts-catalog/): sizes in millimetres, one entry per part number, impossible sizes left out, and a listed
-weight turned into the material density for tubes, couplers, rings and bulkheads. Part numbers and makers' names
-belong to their makers, who are not affiliated with this app.
+weight turned into the material density for tubes, couplers, rings and bulkheads. Top Flight Recovery's X-Type
+parachutes, which those files leave out, were added by this app (tools/parts-catalog/extra/) from the sizes, part
+numbers, weights and descent-rate chart that retailers publish for them. Part numbers and makers' names belong to their
+makers, who are not affiliated with this app.
 
 == Launch site photo and terrain ==
 The 3D flight view's ground photo comes from the U.S. Geological Survey's imagery service (The National Map,

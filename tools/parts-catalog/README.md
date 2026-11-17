@@ -34,3 +34,21 @@ How it chooses:
   and the part keeps the builder's own.
 - **Units.** Sizes are stored in mm and weights in g; the app converts them to metres and kg when it unpacks a list
   (`src/js/builder/parts-catalog.js`).
+
+## The app's own additions (`extra/`)
+
+Parts OpenRocket's files leave out, in the same `.orc` format, read after them. Each is written by a script beside
+this file; don't edit the `.orc` by hand.
+
+- **Top Flight Recovery X-Type parachutes** (`top_flight_xtype.py` writes `extra/top_flight_xtype.orc`): the X-Type
+  (10 to 90 in.), thin mill X-Type (10 to 30 in.) and Ultra X-Type HD (18 to 90 in.), 28 chutes. OpenRocket models
+  only round chutes and Top Flight publishes no area or Cd, so each is listed as an equivalent round chute: its size as
+  the diameter, with the Cd that gives the drag area Top Flight's descent-rate chart implies (the chart's weight range
+  read at 17 to 22 ft/s, sea-level air; the method and sources are in the script). Read the same way, the chart gives
+  Top Flight's round chutes a Cd of about 1.1 to 1.3, above the 0.75 to 0.8 usually measured for flat round chutes, so
+  these X-Type figures are likely optimistic (a slower descent than the real chute) by about as much. Weights are
+  calculated from the fabric and lines, except the three thin mill sizes whose weights retailers list.
+
+```
+python3 tools/parts-catalog/top_flight_xtype.py --print   # writes extra/top_flight_xtype.orc, prints each chute's Cd
+```
