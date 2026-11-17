@@ -77,6 +77,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
     <button class="gear" id="gearbtn" type="button" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false" aria-controls="setmenu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M19.69 10.20 L22.28 10.45 L22.28 13.55 L19.69 13.80 L18.71 16.17 L20.37 18.17 L18.17 20.37 L16.17 18.71 L13.80 19.69 L13.55 22.28 L10.45 22.28 L10.20 19.69 L7.83 18.71 L5.83 20.37 L3.63 18.17 L5.29 16.17 L4.31 13.80 L1.72 13.55 L1.72 10.45 L4.31 10.20 L5.29 7.83 L3.63 5.83 L5.83 3.63 L7.83 5.29 L10.20 4.31 L10.45 1.72 L13.55 1.72 L13.80 4.31 L16.17 5.29 L18.17 3.63 L20.37 5.83 L18.71 7.83 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z"/></svg></button>
     <div class="setmenu" id="setmenu" role="dialog" aria-label="Settings" hidden>
       <h3>Settings</h3>
+      <button type="button" class="setrow setitem" id="s-learn"><span>Learn: how rockets fly</span><span class="setdots"><b aria-hidden="true">›</b></span></button>
       <button type="button" class="setrow setitem" id="s-profbtn" aria-expanded="false" aria-controls="s-prof"><span>Profile</span><span class="setdots"><span class="profsum" id="s-profsum"></span><b aria-hidden="true">›</b></span></button>
       <div class="setsub" id="s-prof" hidden>
         <label class="setfld"><span>Name</span><input type="text" id="p-name" maxlength="60" autocomplete="name"></label>
@@ -328,7 +329,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="grid" id="g-imperf" style="margin-top:10px"></div></div>
     </div>
     <div class="panel" id="wtpanel">
-      <div class="foldhead"><h2 style="margin:0">Wind Tunnel<button class="ib" type="button" data-title="Wind Tunnel" data-info="Your rocket in a wind tunnel, from a crawl to Mach 6, at any angle of attack. The drag, normal force and center of pressure are the same numbers the flight simulation uses, worked out from the parts on this tab (a staged rocket is tested as the whole stack at liftoff). The test section shows streamlines around the rocket (slender-body potential flow below Mach 1; above it, the flow turning along Mach lines behind the shocks), the boundary layer (laminar from the tip to a Reynolds number of 5×10⁵, then turbulent; drawn far thicker than life), and where the flow separates: behind the base, behind steps (reattaching about six step heights on), off boattails steeper than 8°, along the lee side once the angle of attack lets the crossflow separate (moving forward as the angle grows, the impulsive-flow analogy), and off the fins as they stall from 18° to 35°. Above Mach 1 it also shows where the shocks stand and how the pressure runs along the body (Taylor–Maccoll cone flow and the shock-expansion method). That picture is for looking at only and doesn't feed any number. Skin friction, form factors, nose drag (NASA TR R-100), base drag (Fleeman; NACA TN 3819 above Mach 1) and fin lift (Barrowman below Mach 0.9, supersonic theory above 1.5) are as described in the app's documentation." aria-label="About Wind Tunnel">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="wtbody" aria-expanded="false" aria-controls="wtbody">Show</button></div>
+      <div class="foldhead"><h2 style="margin:0">Wind Tunnel<button class="ib" type="button" data-learn="dragmodel" data-title="Wind Tunnel" data-info="Your rocket in a wind tunnel, from a crawl to Mach 6, at any angle of attack. The drag, normal force and center of pressure are the same numbers the flight simulation uses, worked out from the parts on this tab (a staged rocket is tested as the whole stack at liftoff). The test section shows streamlines around the rocket (slender-body potential flow below Mach 1; above it, the flow turning along Mach lines behind the shocks), the boundary layer (laminar from the tip to a Reynolds number of 5×10⁵, then turbulent; drawn far thicker than life), and where the flow separates: behind the base, behind steps (reattaching about six step heights on), off boattails steeper than 8°, along the lee side once the angle of attack lets the crossflow separate (moving forward as the angle grows, the impulsive-flow analogy), and off the fins as they stall from 18° to 35°. Above Mach 1 it also shows where the shocks stand and how the pressure runs along the body (Taylor–Maccoll cone flow and the shock-expansion method). That picture is for looking at only and doesn't feed any number. Skin friction, form factors, nose drag (NASA TR R-100), base drag (Fleeman; NACA TN 3819 above Mach 1) and fin lift (Barrowman below Mach 0.9, supersonic theory above 1.5) are as described in the app's documentation." aria-label="About Wind Tunnel">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="wtbody" aria-expanded="false" aria-controls="wtbody">Show</button></div>
       <div id="wtbody" hidden>
         <div class="wtsec"><canvas id="wtcv" aria-label="The rocket in the wind tunnel's test section at the chosen speed and angle of attack, with the shocks above Mach 1, the CP and the CG"></canvas><span class="wtbadge" id="wtregime"></span></div>
         <div class="wtleg" id="wtflowleg"><span><i style="background:var(--muted)"></i>streamlines</span><span><i style="background:var(--good)"></i>laminar boundary layer</span><span><i style="background:var(--gulf-ink)"></i>turbulent</span><span><i style="background:var(--warn)"></i>separated (eddies, × where it leaves)</span><span><b style="color:var(--good)">●</b> where the flow divides · <b style="color:var(--good)">○</b> reattaches</span></div>
@@ -379,7 +380,7 @@ Opening a file takes the configuration its own simulation used, or its default. 
       </div>
     </div>
     <div class="panel" id="mdelaypanel">
-      <h2>Motor Delay<button class="ib" type="button" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and chutes set on the Rocket tab to open at the motor ejection charge open then. As in OpenRocket, chutes set to open some other way (apogee, an altitude, a timer) stay packed until then; the Results tab and the RSO Checklist warn when a live charge fires while one of them is still packed, since a real charge can blow it out early.
+      <h2>Motor Delay<button class="ib" type="button" data-learn="motors" data-title="Motor Delay" data-info="The motor's ejection delay: the seconds from burnout until its ejection charge fires. This is the app's one delay setting: the simulation fires the charge then, and chutes set on the Rocket tab to open at the motor ejection charge open then. As in OpenRocket, chutes set to open some other way (apogee, an altitude, a timer) stay packed until then; the Results tab and the RSO Checklist warn when a live charge fires while one of them is still packed, since a real charge can blow it out early.
 
 The list shows the delays the motor is sold with. 0 s fires at burnout (booster motors use it to separate stages or light the next motor). Plugged means no ejection charge at all (an altimeter handles deployment). Custom is for any other time, such as a reload delay you drill shorter.
 
@@ -427,7 +428,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
   <footer><br><br>Treat all results as estimates and confirm with your RSO before flight.<br><button class="linkbtn" id="showlegal">Safety and liability disclaimer</button> · <button class="linkbtn" id="showabout">About and licenses</button><br>© 2026 Dustin Lee · Free software under the GNU GPL v3</footer>
 </div>
 <div class="modal" id="infobox" role="dialog" aria-modal="true" aria-labelledby="infottl" hidden><div class="mbox">
-  <h3 id="infottl"></h3><p id="infotxt"></p>
+  <h3 id="infottl"></h3><p id="infotxt"></p><button type="button" class="linkbtn lmore" id="infolearn" hidden></button>
   <div class="row mrow"><button class="btn" id="infook" type="button">Got it</button></div></div></div>
 <div class="modal" id="addpick" role="dialog" aria-modal="true" aria-labelledby="addttl" hidden><div class="mbox partbox">
   <h3 id="addttl">Add a part</h3>
@@ -614,6 +615,9 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
       <button class="btn" id="legalok" disabled>I agree</button>
     </div>
   </div>
+</div>
+<div class="legal learn" id="learn" role="dialog" aria-modal="true" aria-labelledby="learn-title" hidden>
+  <div class="box"><div class="head"></div><div class="body" tabindex="-1"></div><div class="foot"></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

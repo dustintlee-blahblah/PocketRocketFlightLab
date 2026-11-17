@@ -14,7 +14,7 @@ const VENMO_URL = "https://venmo.com/u/PocketRocketFlightLab",
  * Opens a link outside the app (through the Android app when there is one).
  * @param {string} url
  */
-function openLink(url) {
+export function openLink(url) {
   const A = window.PocketRocketApp;
   try {
     if (A && typeof A.openExternal === "function" && A.openExternal(url)) return;

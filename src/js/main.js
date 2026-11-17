@@ -98,6 +98,8 @@ import * as m84 from "./files/ork-airframe.js";
 import * as m85 from "./files/ork-design.js";
 import * as m86 from "./files/rasaero-import.js";
 import * as m87 from "./files/other-formats.js";
+import * as m88 from "./ui/learn-content.js";
+import * as m89 from "./ui/learn.js";
 
 const modules = [
   m0,
@@ -188,6 +190,8 @@ const modules = [
   m85,
   m86,
   m87,
+  m88,
+  m89,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

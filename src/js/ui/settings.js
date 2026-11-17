@@ -9,6 +9,7 @@ import { drawMC } from "../physics/monte-carlo.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender } from "./donate.js";
 import { lenWeightShow, setLenWeight, setUnits } from "./events.js";
+import { learnOpen } from "./learn.js";
 import { renderMotors } from "./motor-tab.js";
 import { renderResults } from "./results.js";
 import { renderRSO } from "./rso-checklist.js";
@@ -184,6 +185,10 @@ export function start() {
     document.getElementById("s-legal").onclick = () => {
       open(false);
       document.getElementById("showlegal").click();
+    };
+    document.getElementById("s-learn").onclick = () => {
+      open(false);
+      learnOpen();
     };
     document.getElementById("s-about").onclick = () => {
       open(false);

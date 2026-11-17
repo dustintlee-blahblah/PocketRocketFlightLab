@@ -218,6 +218,37 @@ const { chromium } = require("playwright");
     if (V3.on) document.getElementById("anim3dbtn").click();
     animClose();
   });
+  // the Learn page: every chapter opens, with its drawing, and the key help boxes link into it
+  await step("learn", () => {
+    document.getElementById("s-learn").click();
+  });
+  m = await look("learn", () => {
+    const ids = [...document.querySelectorAll("#learn .ch")].map((x) => x.dataset.ch),
+      out = { shown: document.getElementById("learn").hidden ? 0 : 1, chapters: ids.length, empty: 0, drawings: 0 };
+    for (const id of ids) {
+      document.querySelector(`#learn [data-ch="${id}"]`).click();
+      if (document.querySelector("#learn .body").textContent.length < 400) out.empty++;
+      if (document.querySelector("#learn .body figure svg")) out.drawings++;
+      document.querySelector("#learn .crumb").click();
+    }
+    document.querySelector("#learn [data-close]").click();
+    out.closed = document.getElementById("learn").hidden ? 1 : 0;
+    const ib = document.querySelector('.ib[data-learn="motors"]');
+    ib.click();
+    const lm = document.getElementById("infolearn");
+    out.more = lm.hidden ? 0 : 1;
+    lm.click();
+    out.toChapter = document.getElementById("learn-title").textContent.includes("Motors") ? 1 : 0;
+    learnClose();
+    return out;
+  });
+  need("Learn: opens from Settings", m.shown, 1);
+  need("Learn: chapters", m.chapters, 10);
+  need("Learn: chapters with text (none empty)", -m.empty, 0);
+  need("Learn: chapters with a drawing", m.drawings, 9);
+  need("Learn: closes", m.closed, 1);
+  need("Learn: a help box links to it", m.more, 1);
+  need("Learn: the link opens its chapter", m.toChapter, 1);
   const info = await p.evaluate(() => ({
     apo: lastSim && Math.round(lastSim.st.maxAlt),
     forms: Object.keys(FIELDS).map((g) => [g, document.getElementById(g)?.children.length]),

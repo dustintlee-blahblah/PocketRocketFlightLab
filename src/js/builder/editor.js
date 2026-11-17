@@ -644,7 +644,16 @@ function bldFieldHtml(F, val) {
     }
   }
   const label = F.kind === "pos" ? `Position on ${F.parent ? F.parent.name : "the body"}` : F.label;
-  const ib = infoBtn(F.kind === "pos" ? "Position" : label, bldInfo(F));
+  // a few key fields link to the Learn chapter that explains them
+  const learn =
+    F.key === "knownCg"
+      ? "stability"
+      : F.key === "cdOverride" || (F.key === "finish" && !F.p)
+        ? "drag"
+        : F.key === "dia" && F.p && F.p.type === "chute"
+          ? "recovery"
+          : "";
+  const ib = infoBtn(F.kind === "pos" ? "Position" : label, bldInfo(F), learn);
   return F.kind === "check"
     ? `<div class="fld wide"><div class="chkrow">${inp}${ib}</div></div>`
     : `<div class="fld${wide ? " wide" : ""}"><div class="lh"><label for="${id}">${esc(label)}</label>${ib}</div>${inp}</div>`;

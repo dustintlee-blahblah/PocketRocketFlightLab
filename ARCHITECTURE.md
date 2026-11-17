@@ -283,6 +283,8 @@ graphs, drift by wind speed, landing dispersion, the safety terms).
 | the parts catalog | `tools/parts-catalog/` (generated; don't edit `data/parts-catalog.js`), `builder/parts-catalog.js` |
 | a column of the flight data file | `report/flight-data.js`, and `more` in `physics/simulate.js` |
 | the motor filters | `ui/motor-tab.js`, `motors/catalog-lookup.js` |
+| the Learn page | its chapters and drawings in `ui/learn-content.js`, the page in `ui/learn.js`; a help box links to a chapter by its id (`data-learn` on the "i" button: `infoBtn`'s third argument) |
+| what the drag model is said to do, to users and developers | the Learn page's drag chapter (`ui/learn-content.js`) and AERODYNAMICS.md: change both when a drag term is added or replaced |
 
 After any change: `npm test` (nothing that shouldn't move has moved), `npm run lint`, `npm run format:check`,
 `npm run test:smoke`; after a change to the builder, a part's fields or the file format, `npm run test:roundtrip` too.

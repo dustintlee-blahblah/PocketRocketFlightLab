@@ -173,7 +173,7 @@ export function renderForms() {
       // the rail's lean direction only applies to a rail set to lean a fixed way
       const off = L.railMode !== "fixed" && k === "railDir";
       if (off) wrap.classList.add("off");
-      let html = `<div class="lh"><label for="${id}">${lab}</label>${infoBtn(lab, fieldInfo(k))}</div><div class="in">`;
+      let html = `<div class="lh"><label for="${id}">${lab}</label>${infoBtn(lab, fieldInfo(k), k === "windProfile" ? "weather" : "")}</div><div class="in">`;
       if (dim === "sel") {
         html +=
           `<select id="${id}">` +

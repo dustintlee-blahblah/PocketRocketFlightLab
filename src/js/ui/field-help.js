@@ -3,19 +3,22 @@
  */
 import { BLD } from "../builder/builder-ui.js";
 import { units } from "../design/defaults.js";
+import { learnChapters } from "./learn-content.js";
+import { learnOpen } from "./learn.js";
 import { uname } from "./units.js";
 /* ---------- field help: a small "i" button beside each input opens a box explaining how to fill it in ---------- */
 /**
  * The HTML of an "i" button that opens a help box (empty if there is no help text).
  * @param {string} title box title (HTML tags are stripped)
  * @param {string} txt help text
+ * @param {string} [learn] the Learn chapter its box links to ("Learn more"), if any
  * @returns {string} HTML
  */
-export function infoBtn(title, txt) {
+export function infoBtn(title, txt, learn) {
   if (!txt) return "";
   const q = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]),
     t = String(title).replace(/<[^>]*>/g, "");
-  return `<button class="ib" type="button" data-title="${q(t)}" data-info="${q(txt)}" aria-label="About ${q(t)}">i</button>`;
+  return `<button class="ib" type="button" data-title="${q(t)}" data-info="${q(txt)}"${learn ? ` data-learn="${q(learn)}"` : ""} aria-label="About ${q(t)}">i</button>`;
 }
 /**
  * Help text for the form fields, by key (a function where the text depends on the design).
@@ -279,6 +282,7 @@ export function bldInfo(F) {
  * @param {string} text
  */
 export function showInfo(title, text) {
+  document.getElementById("infolearn").hidden = true;
   document.getElementById("infottl").textContent = title || "";
   document.getElementById("infotxt").textContent = text || "";
   document.getElementById("infobox").hidden = false;
@@ -297,6 +301,14 @@ export function start() {
       e.stopPropagation();
       document.getElementById("infottl").textContent = b.dataset.title || "";
       document.getElementById("infotxt").textContent = b.dataset.info || "";
+      // a few key fields link to the chapter that explains them
+      const lm = document.getElementById("infolearn"),
+        ch = b.dataset.learn && learnChapters().find((c) => c.id === b.dataset.learn);
+      lm.hidden = !ch;
+      if (ch) {
+        lm.textContent = `Learn more: ${ch.title} ›`;
+        lm.dataset.ch = ch.id;
+      }
       const m = document.getElementById("infobox");
       m.hidden = false;
       document.getElementById("infook").focus();
@@ -307,6 +319,10 @@ export function start() {
     const m = () => document.getElementById("infobox");
     document.addEventListener("click", (e) => {
       if (e.target.id === "infook" || e.target === m()) m().hidden = true;
+      if (e.target.id === "infolearn") {
+        m().hidden = true;
+        learnOpen(e.target.dataset.ch);
+      }
     });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && m() && !m().hidden) m().hidden = true;
