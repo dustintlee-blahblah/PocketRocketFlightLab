@@ -8,6 +8,20 @@
  */
 import { FIN_EDGES, finTeEdge } from "../core/units-and-fin-edges.js";
 import { D, L } from "../design/defaults.js";
+import {
+  elAutoNum,
+  elDens,
+  elIsAuto,
+  elKid,
+  elNum,
+  elSubs,
+  elTxt,
+  ORK_BODY,
+  orkFinOutline,
+  orkLenOf,
+  orkOffset,
+  orkPlace,
+} from "./ork-xml.js";
 import { ORK_CFG, ORK_SIM } from "./save.js";
 import { noseR } from "../physics/geometry.js";
 /**
@@ -110,41 +124,6 @@ export function parseOrk(xml, opts = {}) {
   const rocket = doc.querySelector("openrocket > rocket") || doc.getElementsByTagName("rocket")[0];
   if (!rocket) throw new Error("No rocket was found in this file.");
   const notes = [];
-  /**
-   * The first child element with a tag name.
-   */
-  const kid = (el, tag) => [...el.children].find((c) => c.tagName === tag);
-  /**
-   * The trimmed text of a child element, or null.
-   */
-  const txt = (el, tag) => {
-    const c = kid(el, tag);
-    return c ? c.textContent.trim() : null;
-  };
-  /**
-   * The first number in a child element's text, or def.
-   */
-  const num = (el, tag, def = 0) => {
-    const s = txt(el, tag);
-    if (s == null) return def;
-    const mm = s.match(/-?\d+(\.\d+)?(e-?\d+)?/i);
-    return mm ? parseFloat(mm[0]) : def;
-  };
-  /**
-   * True if a child element's value is OpenRocket's "auto".
-   */
-  const isAuto = (el, tag) => {
-    const s = txt(el, tag);
-    return s != null && /^\s*auto/i.test(s);
-  };
-  /**
-   * The cached number after "auto" (may be stale).
-   */
-  const autoNum = (el, tag) => {
-    const s = txt(el, tag) || "";
-    const mm = s.match(/-?\d+(\.\d+)?(e-?\d+)?/i);
-    return mm ? parseFloat(mm[0]) : 0;
-  };
   // automatic radii: OpenRocket stores "auto <cached value>", and the cached value can be stale,
   // so resolve them from the neighbouring body components, as the .ork format defines automatic sizes
   let bodyOrder = [];
@@ -156,121 +135,20 @@ export function parseOrk(xml, opts = {}) {
     const par = c.parentElement && c.parentElement.parentElement,
       order =
         par && (par.tagName === "podset" || par.tagName === "parallelstage")
-          ? [...c.parentElement.children].filter((e) => ["nosecone", "bodytube", "transition"].includes(e.tagName))
+          ? [...c.parentElement.children].filter((e) => ORK_BODY.includes(e.tagName))
           : bodyOrder;
     const i = order.indexOf(c);
     for (let j = i + 1; j < order.length; j++) {
       const e = order[j];
-      if (e.tagName === "bodytube" && !isAuto(e, "radius")) return num(e, "radius");
-      if (e.tagName === "transition" && !isAuto(e, "foreradius")) return num(e, "foreradius");
+      if (e.tagName === "bodytube" && !elIsAuto(e, "radius")) return elNum(e, "radius");
+      if (e.tagName === "transition" && !elIsAuto(e, "foreradius")) return elNum(e, "foreradius");
     }
     return 0;
   };
-  /**
-   * The density attribute of a part's material element.
-   */
-  const dens = (el, tag = "material") => {
-    const c = kid(el, tag);
-    return c ? parseFloat(c.getAttribute("density")) || 0 : 0;
-  };
-  /**
-   * A component's subcomponents.
-   */
-  const subs = (el) => {
-    const s = kid(el, "subcomponents");
-    return s ? [...s.children] : [];
-  };
-  /**
-   * A component's length along the body (fin root chord, packed length of recovery and mass parts).
-   */
-  const lenOf = (c) => {
-    switch (c.tagName) {
-      case "trapezoidfinset":
-      case "ellipticalfinset":
-        return num(c, "rootchord");
-      case "freeformfinset":
-        return finPts(c).root;
-      case "parachute":
-      case "streamer":
-      case "shockcord":
-      case "masscomponent":
-        return num(c, "packedlength");
-      case "podset":
-      case "parallelstage": {
-        // a pod's length: its body parts end to end
-        const k = [...c.children].find((e) => e.tagName === "subcomponents");
-        return k
-          ? [...k.children]
-              .filter((e) => ["nosecone", "bodytube", "transition"].includes(e.tagName))
-              .reduce((a, e) => a + lenOf(e), 0)
-          : 0;
-      }
-      default:
-        return num(c, "length");
-    }
-  };
+
   const FF_NOTE =
     "Free-form fins keep their exact shape from the file; drag and stability are calculated from that shape.";
   const EL_NOTE = "Elliptical fins keep their exact shape; drag and stability are calculated from that shape.";
-  /**
-   * The outline of a free-form fin set from its points: root, span, area, centroid and the points.
-   * @param {Element} c fin set element
-   * @returns {object}
-   */
-  function finPts(c) {
-    const fp = kid(c, "finpoints");
-    if (!fp) return { root: 0, span: 0, area: 0, pts: [] };
-    const pts = [...fp.children].map((p) => [parseFloat(p.getAttribute("x")), parseFloat(p.getAttribute("y"))]);
-    let area = 0,
-      cx = 0;
-    for (let i = 0; i < pts.length; i++) {
-      const [x1, y1] = pts[i],
-        [x2, y2] = pts[(i + 1) % pts.length],
-        cr = x1 * y2 - x2 * y1;
-      area += cr;
-      cx += (x1 + x2) * cr;
-    }
-    /* OpenRocket's outline runs from the root's leading edge (the first point) round to its trailing edge (the last), and
-       the fin's length, which places it on the body, is that root chord. The tip can sweep past the root's trailing edge
-       (or reach ahead of its leading edge), so the outline's full extent isn't the root. */
-    const xs = pts.map((p) => p[0]),
-      ys = pts.map((p) => p[1]),
-      rootLen = pts.length > 2 ? pts[pts.length - 1][0] - pts[0][0] : 0,
-      x0 = rootLen > 0 ? pts[0][0] : Math.min(...xs),
-      span = Math.max(...ys);
-    // quarter point of the mean aerodynamic chord, by spanwise strips (where Barrowman puts a fin's lift)
-    let A2 = 0,
-      M2 = 0;
-    const N = 200;
-    for (let k = 0; k < N; k++) {
-      const y = ((k + 0.5) / N) * span;
-      let lo = Infinity,
-        hi = -Infinity;
-      for (let i = 0; i < pts.length; i++) {
-        const [xa, ya] = pts[i],
-          [xb, yb] = pts[(i + 1) % pts.length];
-        if ((ya - y) * (yb - y) <= 0 && ya !== yb) {
-          const xx = xa + ((y - ya) / (yb - ya)) * (xb - xa);
-          lo = Math.min(lo, xx);
-          hi = Math.max(hi, xx);
-        }
-      }
-      if (hi > lo) {
-        const ch = hi - lo;
-        A2 += ch;
-        M2 += ch * (lo - x0 + ch / 4);
-      }
-    }
-    return {
-      root: rootLen > 0 ? rootLen : Math.max(...xs) - x0,
-      span,
-      area: Math.abs(area) / 2,
-      xc: area ? cx / (3 * area) - x0 : (Math.max(...xs) - x0) / 2,
-      cpq: A2 > 0 ? M2 / A2 : null,
-      pts,
-      norm: pts.map(([x, y]) => [x - x0, y]),
-    };
-  }
   /**
    * Records a motor mount's motor (for the configuration in use), cluster count, ignition and overhang.
    * @param {Element} c the tube element
@@ -280,27 +158,27 @@ export function parseOrk(xml, opts = {}) {
    */
   function motorMountIn(c, ri, isInner, xAft) {
     // only a tube marked as a motor mount holds motors (an inner tube around a mount must not count them again)
-    if (!kid(c, "motormount") && c.getElementsByTagName("motormount").length) return;
-    const mountEl = kid(c, "motormount") || c;
+    if (!elKid(c, "motormount") && c.getElementsByTagName("motormount").length) return;
+    const mountEl = elKid(c, "motormount") || c;
     const motorEls = [...mountEl.getElementsByTagName("motor")];
     // the motor for this configuration; a mount with motors only for other configurations is empty in this one
     const motorEl =
       motorEls.find((e) => e.getAttribute("configid") === cfg) ||
       (cfg && motorEls.some((e) => e.getAttribute("configid")) ? null : motorEls[0]);
-    if (isInner && sMount[curStage] == null && kid(c, "motormount")) sMount[curStage] = ord(c, "it", /^innertube$/);
-    if (sMountAft[curStage] == null && kid(c, "motormount") && xAft != null) sMountAft[curStage] = xAft; // the aft end of the motor tube: where the motor sits
-    if (sMountD[curStage] == null && kid(c, "motormount") && ri > 0) sMountD[curStage] = 2 * ri; // inside diameter of the motor tube
+    if (isInner && sMount[curStage] == null && elKid(c, "motormount")) sMount[curStage] = ord(c, "it", /^innertube$/);
+    if (sMountAft[curStage] == null && elKid(c, "motormount") && xAft != null) sMountAft[curStage] = xAft; // the aft end of the motor tube: where the motor sits
+    if (sMountD[curStage] == null && elKid(c, "motormount") && ri > 0) sMountD[curStage] = 2 * ri; // inside diameter of the motor tube
     if (motorEl) {
-      const delayTxt = (txt(motorEl, "delay") || "").trim().toLowerCase(),
+      const delayTxt = (elTxt(motorEl, "delay") || "").trim().toLowerCase(),
         ej =
           delayTxt === "" || delayTxt === "none" || delayTxt === "p" || !isFinite(parseFloat(delayTxt))
             ? null
             : parseFloat(delayTxt);
       const mo = {
-        designation: (txt(motorEl, "designation") || "").trim(),
-        mfr: (txt(motorEl, "manufacturer") || "").trim(),
-        dia: num(motorEl, "diameter"),
-        nozzle: num(motorEl, "nozzleexitdiameter", 0),
+        designation: (elTxt(motorEl, "designation") || "").trim(),
+        mfr: (elTxt(motorEl, "manufacturer") || "").trim(),
+        dia: elNum(motorEl, "diameter"),
+        nozzle: elNum(motorEl, "nozzleexitdiameter", 0),
         ej,
         oi: ord(motorEl, "mo", /^motor$/),
         par: parDepth > 0,
@@ -308,21 +186,21 @@ export function parseOrk(xml, opts = {}) {
       };
       if (!sMotor[curStage]) sMotor[curStage] = mo;
       if (!motor) motor = mo;
-      const clusterCfg = (txt(c, "clusterconfiguration") || "single").trim().toLowerCase();
+      const clusterCfg = (elTxt(c, "clusterconfiguration") || "single").trim().toLowerCase();
       const copies =
         (clusterCfg === "single" ? 1 : clusterCfg === "double" ? 2 : Math.max(1, parseInt(clusterCfg, 10) || 1)) * podK;
       const ignCfg = [...mountEl.getElementsByTagName("ignitionconfiguration")].find(
         (e) => e.getAttribute("configid") === cfg,
       );
       const ignEvent = (
-        (ignCfg && txt(ignCfg, "ignitionevent")) ||
-        txt(mountEl, "ignitionevent") ||
+        (ignCfg && elTxt(ignCfg, "ignitionevent")) ||
+        elTxt(mountEl, "ignitionevent") ||
         "automatic"
       ).toLowerCase();
       const ignDelay =
-        ignCfg && txt(ignCfg, "ignitiondelay") != null
-          ? num(ignCfg, "ignitiondelay", 0)
-          : num(mountEl, "ignitiondelay", 0);
+        ignCfg && elTxt(ignCfg, "ignitiondelay") != null
+          ? elNum(ignCfg, "ignitiondelay", 0)
+          : elNum(mountEl, "ignitiondelay", 0);
       (sMotors[curStage] || (sMotors[curStage] = [])).push({
         ...mo,
         count: copies,
@@ -332,32 +210,11 @@ export function parseOrk(xml, opts = {}) {
       });
       if (!sIgn[curStage]) sIgn[curStage] = { event: ignEvent, delay: ignDelay };
     }
-    const overhangTxt = txt(mountEl, "overhang") ?? txt(c, "overhang") ?? txt(c, "motoroverhang");
+    const overhangTxt = elTxt(mountEl, "overhang") ?? elTxt(c, "overhang") ?? elTxt(c, "motoroverhang");
     if (overhangTxt != null) {
       R.overhang = parseFloat(overhangTxt);
       if (sOverhang[curStage] == null) sOverhang[curStage] = parseFloat(overhangTxt);
     }
-  }
-  /**
-   * A component's axial position element: method (top, bottom, middle, absolute...) and value.
-   * @param {Element} c
-   * @returns {{method:string, val:number}}
-   */
-  function offset(c) {
-    const axialEl = kid(c, "axialoffset"),
-      positionEl = kid(c, "position");
-    // when a file has both, OpenRocket keeps the one it reads last
-    const el =
-      axialEl && positionEl
-        ? [...c.children].indexOf(positionEl) > [...c.children].indexOf(axialEl)
-          ? positionEl
-          : axialEl
-        : axialEl || positionEl;
-    if (!el) return { method: null, val: 0 };
-    return {
-      method: (el.getAttribute("method") || el.getAttribute("type") || "top").toLowerCase(),
-      val: parseFloat(el.textContent) || 0,
-    };
   }
   const simEls = [...doc.getElementsByTagName("simulation")];
   /**
@@ -407,7 +264,7 @@ export function parseOrk(xml, opts = {}) {
           if (el) offStages.add(el);
         }
     // the builder passes the ones the file had switched off by their ids (its own file numbers only its stages)
-    for (const el of allStages) if ((opts.offIds || []).includes(txt(el, "id"))) offStages.add(el);
+    for (const el of allStages) if ((opts.offIds || []).includes(elTxt(el, "id"))) offStages.add(el);
   }
   /* pods and side boosters (OpenRocket pod sets and parallel stages, RockSim external pods): each one's body sections,
      for its drag and lift; how many copies of it there are (podK multiplies the mass, motors and fins of everything
@@ -440,7 +297,7 @@ export function parseOrk(xml, opts = {}) {
    * A part's Cd override (an override of 0 is kept as 1e-12 so it still counts as set), or 0 for none.
    */
   const odcOwn = (c) => {
-    const e = kid(c, "overridecd");
+    const e = elKid(c, "overridecd");
     const v = e ? parseFloat(e.textContent) : 0;
     return !isFinite(v) || v < 0 ? 0 : v > 0 ? v : e ? 1e-12 : 0;
   }; // an override of 0 (OpenRocket: the part adds no drag) is kept as 1e-12
@@ -512,25 +369,25 @@ export function parseOrk(xml, opts = {}) {
   function walk(c, x, parent) {
     // returns nothing; x is absolute top of component
     const tag = c.tagName,
-      len = lenOf(c);
+      len = orkLenOf(c);
     // the app's own finish name when the part has one, otherwise OpenRocket's
-    const cfin = FINISH_RS[(txt(c, "prflfinish") || txt(c, "finish") || "").trim().toLowerCase()];
+    const cfin = FINISH_RS[(elTxt(c, "prflfinish") || elTxt(c, "finish") || "").trim().toLowerCase()];
     let m = 0,
       cg = x + len / 2,
       ro = 0,
       ri = 0;
-    const rho = dens(c);
+    const rho = elDens(c);
     if (tag === "nosecone") {
-      ro = isAuto(c, "aftradius") ? R.last || nextExplicit(c) || autoNum(c, "aftradius") : num(c, "aftradius");
-      const shape = (txt(c, "shape") || "ogive").toLowerCase();
+      ro = elIsAuto(c, "aftradius") ? R.last || nextExplicit(c) || elAutoNum(c, "aftradius") : elNum(c, "aftradius");
+      const shape = (elTxt(c, "shape") || "ogive").toLowerCase();
       // OpenRocket marks a solid nose by a wall as thick as the radius
       const filled =
-        txt(c, "filled") === "true" ||
-        /filled/i.test(txt(c, "thickness") || "") ||
-        (ro > 0 && num(c, "thickness", 0) >= ro * 0.999);
-      const t = filled ? ro : num(c, "thickness", 0.002);
+        elTxt(c, "filled") === "true" ||
+        /filled/i.test(elTxt(c, "thickness") || "") ||
+        (ro > 0 && elNum(c, "thickness", 0) >= ro * 0.999);
+      const t = filled ? ro : elNum(c, "thickness", 0.002);
       const defP = { ogive: 1, power: 0.5, parabolic: 1, haack: 0 }[shape] ?? 0;
-      const sp = txt(c, "shapeparameter") != null ? num(c, "shapeparameter", defP) : defP;
+      const sp = elTxt(c, "shapeparameter") != null ? elNum(c, "shapeparameter", defP) : defP;
       const shp = ["ogive", "conical", "ellipsoid", "parabolic", "power", "haack"].includes(shape) ? shape : "ogive";
       // weight and balance point from the actual nose profile (solid, or a shell of the given thickness)
       {
@@ -538,13 +395,13 @@ export function parseOrk(xml, opts = {}) {
         m = rho * sh.V;
         cg = x + (sh.V > 0 ? sh.x : len * 0.6);
       }
-      const sl = num(c, "aftshoulderlength"),
-        sr = num(c, "aftshoulderradius"),
-        st = Math.min(num(c, "aftshoulderthickness", 0.002), sr);
+      const sl = elNum(c, "aftshoulderlength"),
+        sr = elNum(c, "aftshoulderradius"),
+        st = Math.min(elNum(c, "aftshoulderthickness", 0.002), sr);
       // the shoulder is part of the nose cone's own mass, so a mass override on the nose replaces both
       if (sl > 0 && sr > 0) {
         const parts = [[rho * Math.PI * (sr * sr - Math.max(sr - st, 0) ** 2) * sl, x + len + sl / 2]];
-        if (txt(c, "aftshouldercapped") === "true" && st < sr)
+        if (elTxt(c, "aftshouldercapped") === "true" && st < sr)
           parts.push([rho * Math.PI * Math.max(sr - st, 0) ** 2 * st, x + len + sl - st / 2]);
         for (const [pm, px] of parts) {
           if (pm > 0 && isFinite(px)) {
@@ -574,8 +431,8 @@ export function parseOrk(xml, opts = {}) {
       if (!["ogive", "conical", "ellipsoid", "parabolic", "power", "haack"].includes(shape))
         notes.push(`Nose shape “${shape}” was treated as ogive.`);
     } else if (tag === "bodytube") {
-      ro = isAuto(c, "radius") ? R.last || nextExplicit(c) || autoNum(c, "radius") : num(c, "radius");
-      ri = Math.max(ro - num(c, "thickness", 0.001), 0);
+      ro = elIsAuto(c, "radius") ? R.last || nextExplicit(c) || elAutoNum(c, "radius") : elNum(c, "radius");
+      ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
       m = rho * Math.PI * (ro * ro - ri * ri) * len;
       // wt, wd: the wall's thickness and density, for the skin's heating in flight (drag-model.js)
       if (parent.top)
@@ -592,25 +449,25 @@ export function parseOrk(xml, opts = {}) {
           wd: rho,
         });
       if (parent.podTop) podCur.segs.push({ kind: "tube", x, len, r1: ro, r2: ro, rs: cfin });
-      if (kid(c, "motormount")) {
+      if (elKid(c, "motormount")) {
         motorMountIn(c, ri, false, x + len);
         if (sMountD[curStage] == null && ri > 0) sMountD[curStage] = 2 * ri;
       }
     } else if (tag === "transition") {
-      const r1 = isAuto(c, "foreradius") ? R.last || autoNum(c, "foreradius") : num(c, "foreradius"),
-        r2 = isAuto(c, "aftradius") ? nextExplicit(c) || autoNum(c, "aftradius") || r1 : num(c, "aftradius");
-      const t = num(c, "thickness", 0.002);
-      const tsh = (txt(c, "shape") || "conical").toLowerCase(),
+      const r1 = elIsAuto(c, "foreradius") ? R.last || elAutoNum(c, "foreradius") : elNum(c, "foreradius"),
+        r2 = elIsAuto(c, "aftradius") ? nextExplicit(c) || elAutoNum(c, "aftradius") || r1 : elNum(c, "aftradius");
+      const t = elNum(c, "thickness", 0.002);
+      const tsh = (elTxt(c, "shape") || "conical").toLowerCase(),
         tshp = ["ogive", "conical", "ellipsoid", "parabolic", "power", "haack"].includes(tsh) ? tsh : "conical";
       const tp =
-        txt(c, "shapeparameter") != null
-          ? num(c, "shapeparameter", 0)
+        elTxt(c, "shapeparameter") != null
+          ? elNum(c, "shapeparameter", 0)
           : ({ ogive: 1, power: 0.5, parabolic: 1 }[tshp] ?? 0);
       // weight and balance point from its profile, with its shoulders, as OpenRocket works them out
       {
         const rAt = (u) =>
           r1 <= r2 ? r1 + noseR(tshp, tp, u, r2 - r1, len) : r2 + noseR(tshp, tp, len - u, r1 - r2, len);
-        const filledT = txt(c, "filled") === "true" || (Math.max(r1, r2) > 0 && t >= Math.max(r1, r2) * 0.999);
+        const filledT = elTxt(c, "filled") === "true" || (Math.max(r1, r2) > 0 && t >= Math.max(r1, r2) * 0.999);
         const sh = orkShell(rAt, len, t, filledT);
         m = rho * sh.V;
         cg = x + sh.x;
@@ -619,13 +476,13 @@ export function parseOrk(xml, opts = {}) {
           ["fore", -1],
           ["aft", 1],
         ]) {
-          const sl = num(c, end + "shoulderlength"),
-            sr = num(c, end + "shoulderradius"),
-            st = Math.min(num(c, end + "shoulderthickness", 0.002), sr);
+          const sl = elNum(c, end + "shoulderlength"),
+            sr = elNum(c, end + "shoulderradius"),
+            st = Math.min(elNum(c, end + "shoulderthickness", 0.002), sr);
           if (!(sl > 0 && sr > 0)) continue;
           const mid = sx < 0 ? x - sl / 2 : x + len + sl / 2;
           sparts.push([rho * Math.PI * (sr * sr - Math.max(sr - st, 0) ** 2) * sl, mid]);
-          if (txt(c, end + "shouldercapped") === "true" && st < sr)
+          if (elTxt(c, end + "shouldercapped") === "true" && st < sr)
             sparts.push([
               rho * Math.PI * Math.max(sr - st, 0) ** 2 * st,
               sx < 0 ? x - sl + st / 2 : x + len + sl - st / 2,
@@ -657,14 +514,14 @@ export function parseOrk(xml, opts = {}) {
         });
       if (parent.podTop) podCur.segs.push({ kind: "trans", x, len, r1, r2, shape: tshp, param: tp, rs: cfin });
     } else if (tag === "launchlug") {
-      ro = num(c, "radius", num(c, "outerradius", 0.003));
-      ri = Math.max(ro - num(c, "thickness", 0.0005), 0);
-      const cnt = Math.max(1, num(c, "instancecount", 1));
+      ro = elNum(c, "radius", elNum(c, "outerradius", 0.003));
+      ri = Math.max(ro - elNum(c, "thickness", 0.0005), 0);
+      const cnt = Math.max(1, elNum(c, "instancecount", 1));
       m = rho * Math.PI * (ro * ro - ri * ri) * len * cnt;
       // a rail-type lug (this app's): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail
       // a rail-type lug the app saved (tagged): a solid slider, w wide and 2·ro tall, riding a 1010 or 1515 rail. An
       // untagged solid lug keeps the file's own shape (a solid cylinder), as OpenRocket flies it
-      const tagged = (txt(c, "prfllug") || "").trim(),
+      const tagged = (elTxt(c, "prfllug") || "").trim(),
         rail = ["r1010", "r1515"].includes(tagged) ? tagged : "";
       lugs.push({
         x,
@@ -674,16 +531,16 @@ export function parseOrk(xml, opts = {}) {
         n: cnt,
         si: curStage,
         cdo: odc(c),
-        ...(rail ? { rail, w: num(c, "prfllugw", rail === "r1515" ? 0.0157 : 0.0102) } : {}),
+        ...(rail ? { rail, w: elNum(c, "prfllugw", rail === "r1515" ? 0.0157 : 0.0102) } : {}),
       });
     } else if (tag === "railbutton") {
-      const od = num(c, "outerdiameter", 0.0097),
-        id = num(c, "innerdiameter", 0.008),
-        h = num(c, "height", 0.0097),
-        fl = num(c, "flangeheight", 0.002),
-        bs = num(c, "baseheight", 0.002);
-      const cnt = Math.max(1, num(c, "instancecount", 1)),
-        sep = num(c, "instanceseparation", 0);
+      const od = elNum(c, "outerdiameter", 0.0097),
+        id = elNum(c, "innerdiameter", 0.008),
+        h = elNum(c, "height", 0.0097),
+        fl = elNum(c, "flangeheight", 0.002),
+        bs = elNum(c, "baseheight", 0.002);
+      const cnt = Math.max(1, elNum(c, "instancecount", 1)),
+        sep = elNum(c, "instanceseparation", 0);
       // weight as OpenRocket works it out: the base and flange discs at the outside diameter and the waist at the
       // inside diameter, in the button's material (Delrin when the file names none)
       m = (rho || 1150) * Math.PI * ((od / 2) ** 2 * (bs + fl) + (id / 2) ** 2 * Math.max(h - fl - bs, 0)) * cnt;
@@ -699,21 +556,21 @@ export function parseOrk(xml, opts = {}) {
           cdo: i === 0 ? odc(c) : 0,
         });
     } else if (tag === "innertube" || tag === "tubecoupler") {
-      ro = isAuto(c, "outerradius") ? parent.ri || 0 : num(c, "outerradius");
-      ri = Math.max(ro - num(c, "thickness", 0.001), 0);
+      ro = elIsAuto(c, "outerradius") ? parent.ri || 0 : elNum(c, "outerradius");
+      ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
       m = rho * Math.PI * (ro * ro - ri * ri) * len;
       if (tag === "innertube") motorMountIn(c, ri, true, x + len);
     } else if (tag === "centeringring" || tag === "bulkhead" || tag === "engineblock") {
-      ro = isAuto(c, "outerradius") ? parent.ri || 0 : num(c, "outerradius");
-      ri = isAuto(c, "innerradius") ? parent.innerOR || 0 : num(c, "innerradius");
+      ro = elIsAuto(c, "outerradius") ? parent.ri || 0 : elNum(c, "outerradius");
+      ri = elIsAuto(c, "innerradius") ? parent.innerOR || 0 : elNum(c, "innerradius");
       if (tag === "bulkhead") ri = 0;
       // an engine block is a ring given by its thickness (it has no inner radius of its own in the file)
-      if (tag === "engineblock" && kid(c, "thickness") && !kid(c, "innerradius"))
-        ri = Math.max(ro - num(c, "thickness"), 0);
+      if (tag === "engineblock" && elKid(c, "thickness") && !elKid(c, "innerradius"))
+        ri = Math.max(ro - elNum(c, "thickness"), 0);
       m = rho * Math.PI * Math.max(ro * ro - ri * ri, 0) * len;
     } else if (tag === "trapezoidfinset" || tag === "ellipticalfinset" || tag === "freeformfinset") {
-      const n = num(c, "fincount", 3),
-        t = num(c, "thickness", 0.003);
+      const n = elNum(c, "fincount", 3),
+        t = elNum(c, "thickness", 0.003);
       let root,
         tip,
         span,
@@ -722,14 +579,14 @@ export function parseOrk(xml, opts = {}) {
         outline = null,
         xcen = null;
       if (tag === "trapezoidfinset") {
-        root = num(c, "rootchord");
-        tip = num(c, "tipchord");
-        span = num(c, "height");
-        sweep = num(c, "sweeplength");
+        root = elNum(c, "rootchord");
+        tip = elNum(c, "tipchord");
+        span = elNum(c, "height");
+        sweep = elNum(c, "sweeplength");
         area = ((root + tip) / 2) * span;
       } else if (tag === "ellipticalfinset") {
-        root = num(c, "rootchord");
-        span = num(c, "height");
+        root = elNum(c, "rootchord");
+        span = elNum(c, "height");
         area = (Math.PI / 4) * root * span;
         tip = Math.max((2 * area) / span - root, 0);
         sweep = (root - tip) / 2;
@@ -740,7 +597,7 @@ export function parseOrk(xml, opts = {}) {
         }
         if (!notes.includes(EL_NOTE)) notes.push(EL_NOTE);
       } else {
-        const f = finPts(c);
+        const f = orkFinOutline(c);
         root = f.root;
         span = f.span;
         area = f.area;
@@ -758,8 +615,8 @@ export function parseOrk(xml, opts = {}) {
       }
       m = rho * area * t * n;
       // fin tabs (through-the-wall): a rectangle of the fin's own material inside the body
-      const tabH = num(c, "tabheight", 0),
-        tabL = Math.min(num(c, "tablength", 0), root);
+      const tabH = elNum(c, "tabheight", 0),
+        tabL = Math.min(elNum(c, "tablength", 0), root);
       let tabM = 0,
         tabX = 0;
       if (tabH > 0 && tabL > 0) {
@@ -777,7 +634,7 @@ export function parseOrk(xml, opts = {}) {
       }
       // fin fillets: the wedge between each side of a fin and the body, as OpenRocket sizes it (the fillet's arc,
       // tangent to the fin and to the round body), along the root, in the fillet's own material
-      const filR = num(c, "filletradius", 0),
+      const filR = elNum(c, "filletradius", 0),
         bodyR = parent.ro || 0;
       let filM = 0;
       if (filR > 0 && bodyR > 0) {
@@ -785,7 +642,7 @@ export function parseOrk(xml, opts = {}) {
           ia = Math.asin(filR / hyp),
           oa = Math.acos(filR / hyp),
           sec = (Math.tan(oa) * filR * filR) / 2 - (oa * filR * filR) / 2 - (ia * bodyR * bodyR) / 2;
-        filM = Math.max(sec, 0) * 2 * root * (dens(c, "filletmaterial") || rho) * n;
+        filM = Math.max(sec, 0) * 2 * root * (elDens(c, "filletmaterial") || rho) * n;
       }
       const xbar =
         xcen != null
@@ -804,16 +661,16 @@ export function parseOrk(xml, opts = {}) {
         sweep,
         t,
         x,
-        mat: (kid(c, "material")?.textContent || "").trim(),
+        mat: (elKid(c, "material")?.textContent || "").trim(),
         rho,
-        cant: num(c, "cant", 0),
+        cant: elNum(c, "cant", 0),
         pts: outline,
-        edge: (txt(c, "crosssection") || "square").toLowerCase(),
+        edge: (elTxt(c, "crosssection") || "square").toLowerCase(),
         // the app's own trailing edge, set apart from the section (not part of OpenRocket's format)
-        edgeTE: finTeEdge(txt(c, "prfltrailingedge") || ""),
+        edgeTE: finTeEdge(elTxt(c, "prfltrailingedge") || ""),
         // the app's own bevel lengths (beveled fins; not part of OpenRocket's format)
-        bevLE: num(c, "prflbevelle", 0),
-        bevTE: num(c, "prflbevelte", 0),
+        bevLE: elNum(c, "prflbevelle", 0),
+        bevTE: elNum(c, "prflbevelte", 0),
         rs: cfin,
         si: curStage,
         cdo: odc(c),
@@ -823,35 +680,36 @@ export function parseOrk(xml, opts = {}) {
         ...(podCur ? { n: n * podK, rb: parent.ro || 0, pod: podCur.i, sb: sbCur ? sbCur.i : null } : {}),
       });
     } else if (tag === "masscomponent") {
-      m = num(c, "mass");
+      m = elNum(c, "mass");
       // a protuberance on the outside of the body: this app's tags on an OpenRocket mass (see the builder's "bump")
-      if (txt(c, "prflbump"))
+      if (elTxt(c, "prflbump"))
         bumps.push({
           x,
-          len: num(c, "packedlength"),
-          w: num(c, "prflbumpw"),
-          h: num(c, "prflbumph"),
-          shape: txt(c, "prflbump").trim(),
+          len: elNum(c, "packedlength"),
+          w: elNum(c, "prflbumpw"),
+          h: elNum(c, "prflbumph"),
+          shape: elTxt(c, "prflbump").trim(),
           // its weight and where around the body it sits, for the sideways pull of an item on one side.
           // A fly-away rail guide is on the rocket only while it is on the rail: its weight is kept apart (m is 0 in the file)
-          mass: txt(c, "prflbump").trim() === "flyaway" ? num(c, "prflflymass", 0) : m,
-          ang: num(c, "radialdirection", 0),
-          ...(txt(c, "prflbump").trim() === "flyaway" ? { fly: true } : {}),
+          mass: elTxt(c, "prflbump").trim() === "flyaway" ? elNum(c, "prflflymass", 0) : m,
+          ang: elNum(c, "radialdirection", 0),
+          ...(elTxt(c, "prflbump").trim() === "flyaway" ? { fly: true } : {}),
           si: curStage,
         });
     } else if (tag === "parachute") {
-      const d = num(c, "diameter"),
-        lc = num(c, "linecount"),
-        ll = num(c, "linelength");
-      m = rho * Math.PI * (d / 2) ** 2 + lc * ll * dens(c, "linematerial");
-      const cdS = txt(c, "cd");
+      const d = elNum(c, "diameter"),
+        lc = elNum(c, "linecount"),
+        ll = elNum(c, "linelength");
+      m = rho * Math.PI * (d / 2) ** 2 + lc * ll * elDens(c, "linematerial");
+      const cdS = elTxt(c, "cd");
       const cd = cdS && !/auto/i.test(cdS) ? parseFloat(cdS) : 0.8;
       const dc = [...c.children]
         .filter((e) => e.tagName === "deploymentconfiguration")
         .find((e) => e.getAttribute("configid") === cfg);
-      const ev = ((dc && txt(dc, "deployevent")) || txt(c, "deployevent") || "apogee").toLowerCase();
-      const da = dc && txt(dc, "deployaltitude") != null ? num(dc, "deployaltitude", 0) : num(c, "deployaltitude", 0);
-      const dd = dc && txt(dc, "deploydelay") != null ? num(dc, "deploydelay", 0) : num(c, "deploydelay", 0);
+      const ev = ((dc && elTxt(dc, "deployevent")) || elTxt(c, "deployevent") || "apogee").toLowerCase();
+      const da =
+        dc && elTxt(dc, "deployaltitude") != null ? elNum(dc, "deployaltitude", 0) : elNum(c, "deployaltitude", 0);
+      const dd = dc && elTxt(dc, "deploydelay") != null ? elNum(dc, "deploydelay", 0) : elNum(c, "deploydelay", 0);
       chutes.push({
         d,
         cd,
@@ -859,23 +717,23 @@ export function parseOrk(xml, opts = {}) {
         alt: da,
         dd,
         x,
-        rel: /true/i.test(txt(c, "prflrelease") || ""),
+        rel: /true/i.test(elTxt(c, "prflrelease") || ""),
         si: curStage,
         oi: ord(c, "c", CHRE),
         ...(sbCur ? { sb: sbCur.i } : {}),
       });
     } else if (tag === "streamer") {
-      m = rho * num(c, "striplength") * num(c, "stripwidth");
-      const L_ = num(c, "striplength"),
-        W_ = num(c, "stripwidth");
+      m = rho * elNum(c, "striplength") * elNum(c, "stripwidth");
+      const L_ = elNum(c, "striplength"),
+        W_ = elNum(c, "stripwidth");
       // streamer: modeled as a parachute with the same drag area (streamer Cd about 0.7 of strip area)
       if (L_ > 0 && W_ > 0)
         chutes.push({
           d: Math.sqrt((4 * 0.7 * L_ * W_) / (Math.PI * 0.8)),
           cd: 0.8,
-          ev: (txt(c, "deployevent") || "apogee").toLowerCase(),
-          alt: num(c, "deployaltitude", 0),
-          dd: num(c, "deploydelay", 0),
+          ev: (elTxt(c, "deployevent") || "apogee").toLowerCase(),
+          alt: elNum(c, "deployaltitude", 0),
+          dd: elNum(c, "deploydelay", 0),
           x,
           si: curStage,
           streamer: true,
@@ -883,17 +741,22 @@ export function parseOrk(xml, opts = {}) {
           oi: ord(c, "c", CHRE),
         });
     } else if (tag === "shockcord") {
-      m = rho * num(c, "cordlength");
+      m = rho * elNum(c, "cordlength");
     } else if (tag === "stage" || tag === "podset" || tag === "parallelstage") {
       m = 0;
     } else if (tag === "tubefinset") {
       /* tube fins: short tubes around the body, touching it. "auto" outer radius: as OpenRocket sizes them, so that
          neighbors touch each other and the body (fewer than 3: the body's radius) */
-      const n = Math.max(1, num(c, "fincount", num(c, "instancecount", 6))),
+      const n = Math.max(1, elNum(c, "fincount", elNum(c, "instancecount", 6))),
         rb = parent.ro || 0;
       const sinH = Math.sin(Math.PI / n);
-      ro = isAuto(c, "radius") || txt(c, "radius") == null ? (n < 3 ? rb : (rb * sinH) / (1 - sinH)) : num(c, "radius");
-      ri = Math.max(ro - num(c, "thickness", 0.0005), 0);
+      ro =
+        elIsAuto(c, "radius") || elTxt(c, "radius") == null
+          ? n < 3
+            ? rb
+            : (rb * sinH) / (1 - sinH)
+          : elNum(c, "radius");
+      ri = Math.max(ro - elNum(c, "thickness", 0.0005), 0);
       m = rho * Math.PI * (ro * ro - ri * ri) * len * n;
       tubeFinSets.push({
         n: n * podK,
@@ -905,14 +768,14 @@ export function parseOrk(xml, opts = {}) {
         rs: cfin,
         si: curStage,
         cdo: odc(c),
-        rot: (num(c, "rotation", 0) * Math.PI) / 180,
-        id: txt(c, "id") || null,
+        rot: (elNum(c, "rotation", 0) * Math.PI) / 180,
+        id: elTxt(c, "id") || null,
         ...(podCur ? { pod: podCur.i, sb: sbCur ? sbCur.i : null } : {}),
       });
     } else if (tag !== "subcomponents") {
       notes.push(`Skipped a “${tag}” component.`);
     }
-    if (parent.top && ["nosecone", "bodytube", "transition"].includes(tag))
+    if (parent.top && ORK_BODY.includes(tag))
       bodyEls.push({ tag, oi: ord(c, tag, new RegExp("^" + tag + "$")), x, len, si: curStage });
     if (cdCover > 0) {
       // covered by a parent's Cd override: counted with the parent
@@ -931,15 +794,15 @@ export function parseOrk(xml, opts = {}) {
     )
       cdCount++;
     else if (odcOwn(c) > 0) cdComp = true;
-    const cdAll = cdCover === 0 && odcOwn(c) > 0 && txt(c, "overridesubcomponentscd") === "true";
+    const cdAll = cdCover === 0 && odcOwn(c) > 0 && elTxt(c, "overridesubcomponentscd") === "true";
     if (cdAll) cdCovered = true;
-    const om = kid(c, "overridemass"),
-      oc = kid(c, "overridecg");
+    const om = elKid(c, "overridemass"),
+      oc = elKid(c, "overridecg");
     let skipKids = false;
     if (om) {
       const v = parseFloat(om.textContent);
       if (isFinite(v) && v >= 0) m = v;
-      if (txt(c, "overridesubcomponentsmass") === "true") skipKids = true;
+      if (elTxt(c, "overridesubcomponentsmass") === "true") skipKids = true;
     }
     if (oc) {
       cg = x + (parseFloat(oc.textContent) || 0);
@@ -953,10 +816,10 @@ export function parseOrk(xml, opts = {}) {
       pin = (parent && parent.ri) || pr;
     let k2 = 0;
     if (tag === "nosecone")
-      k2 = (num(c, "thickness", 0) >= ro * 0.999 || txt(c, "filled") === "true" ? 0.3 : 0.5) * ro * ro;
+      k2 = (elNum(c, "thickness", 0) >= ro * 0.999 || elTxt(c, "filled") === "true" ? 0.3 : 0.5) * ro * ro;
     else if (tag === "transition") k2 = 0.5 * ro * ro;
     else if (tag === "launchlug" || tag === "tubefinset") k2 = (pr + ro) ** 2;
-    else if (tag === "railbutton") k2 = (pr + num(c, "height", 0.0097) / 2) ** 2;
+    else if (tag === "railbutton") k2 = (pr + elNum(c, "height", 0.0097) / 2) ** 2;
     else if (["bodytube", "innertube", "tubecoupler", "centeringring", "bulkhead", "engineblock"].includes(tag))
       k2 = (ro * ro + ri * ri) / 2;
     else if (/finset$/.test(tag)) {
@@ -967,21 +830,21 @@ export function parseOrk(xml, opts = {}) {
         yc = (sp * (rr + 2 * rt)) / (3 * (rr + rt || 1));
       k2 = (pr + yc) ** 2 + (sp * sp) / 18;
     } else if (tag === "masscomponent") {
-      const rp = num(c, "radialposition", 0);
+      const rp = elNum(c, "radialposition", 0);
       k2 = rp * rp + 0.25 * pin * pin;
     } else k2 = 0.25 * pin * pin;
     // where the sums stood before this part, to place it and the parts on it as one when its CG override covers them
-    const cgAll = !!oc && txt(c, "overridesubcomponentscg") === "true",
+    const cgAll = !!oc && elTxt(c, "overridesubcomponentscg") === "true",
       at0 = { tm: totalMass, mo: moment, np: massPts.length };
     addMass(m, cg, spread, k2);
-    if (ro > 0 && ["nosecone", "bodytube", "transition"].includes(tag)) maxR = Math.max(maxR, ro);
+    if (ro > 0 && ORK_BODY.includes(tag)) maxR = Math.max(maxR, ro);
     if (tag === "bodytube") {
       R.last = ro;
     }
     // children
-    const kids = subs(c);
+    const kids = elSubs(c);
     if (cdAll) cdCover++;
-    const innerOR = Math.max(0, ...kids.filter((k) => k.tagName === "innertube").map((k) => num(k, "outerradius")));
+    const innerOR = Math.max(0, ...kids.filter((k) => k.tagName === "innertube").map((k) => elNum(k, "outerradius")));
     const me = { x, len, ri: ri || ro, ro: ro || (parent && parent.ro) || 0, innerOR, uid: ++compUid };
     // pods and side boosters have their own outline: they don't change what an automatic size on the main body follows
     const lastR = R.last;
@@ -991,9 +854,9 @@ export function parseOrk(xml, opts = {}) {
     } else if (tag === "podset" || tag === "parallelstage") {
       // a pod set or side boosters: everything inside, once per copy, on a body of its own
       const saved = [podK, podCur, sbCur, podROff],
-        count = Math.max(1, Math.round(num(c, "instancecount", 1)));
+        count = Math.max(1, Math.round(elNum(c, "instancecount", 1)));
       podK *= count;
-      const ao = kid(c, "angleoffset");
+      const ao = elKid(c, "angleoffset");
       // for the drawing: which part it is, its copies around the rocket (this set's own), and where the first one sits
       podCur = {
         i: pods.length,
@@ -1001,13 +864,13 @@ export function parseOrk(xml, opts = {}) {
         segs: [],
         si: curStage,
         sb: null,
-        id: txt(c, "id") || null,
+        id: elTxt(c, "id") || null,
         n: count,
         ang: ao ? ((parseFloat(ao.textContent) || 0) * Math.PI) / 180 : 0,
         rOff: 0,
       };
       pods.push(podCur);
-      const ro = kid(c, "radiusoffset"),
+      const ro = elKid(c, "radiusoffset"),
         rv = ro ? parseFloat(ro.textContent) || 0 : 0,
         rm = ro ? (ro.getAttribute("method") || "relative").toLowerCase() : "relative";
       // the pod's distance from the rocket's axis (for the roll inertia): from the parent's surface unless set from the axis
@@ -1022,8 +885,8 @@ export function parseOrk(xml, opts = {}) {
           mass: 0,
           mom: 0,
           si: curStage,
-          event: ((sc && txt(sc, "separationevent")) || txt(c, "separationevent") || "burnout").toLowerCase(),
-          delay: sc ? num(sc, "separationdelay", 0) : num(c, "separationdelay", 0),
+          event: ((sc && elTxt(sc, "separationevent")) || elTxt(c, "separationevent") || "burnout").toLowerCase(),
+          delay: sc ? elNum(sc, "separationdelay", 0) : elNum(c, "separationdelay", 0),
         };
         sideBoosters.push(sbCur);
         podCur.sb = sbCur.i;
@@ -1034,11 +897,11 @@ export function parseOrk(xml, opts = {}) {
       // its body parts follow one another from the pod's position, as a stage's do
       let cur = x;
       for (const k of kids) {
-        const o = offset(k),
-          body = ["nosecone", "bodytube", "transition"].includes(k.tagName);
-        const kx = body && (!o.method || o.method === "after") ? cur + (o.method ? o.val : 0) : place(k, me);
+        const o = orkOffset(k),
+          body = ORK_BODY.includes(k.tagName);
+        const kx = body && (!o.method || o.method === "after") ? cur + (o.method ? o.val : 0) : orkPlace(k, me);
         walk(k, kx, me);
-        if (body) cur = Math.max(cur, kx + lenOf(k));
+        if (body) cur = Math.max(cur, kx + orkLenOf(k));
       }
       // its distance from the rocket's axis: as set from the axis, or from the parent's surface to the pod's
       {
@@ -1046,7 +909,7 @@ export function parseOrk(xml, opts = {}) {
         podCur.rOff = rm === "free" || rm === "coaxial" ? rv : (parent.ro || 0) + rv + pR;
       }
       [podK, podCur, sbCur, podROff] = saved;
-    } else if (!skipKids) for (const k of kids) walk(k, place(k, me), me);
+    } else if (!skipKids) for (const k of kids) walk(k, orkPlace(k, me), me);
     else
       for (const k of kids) {
         // the parent's weight stands in for theirs, but the parts are still there: fins, rail buttons, launch lugs,
@@ -1057,7 +920,7 @@ export function parseOrk(xml, opts = {}) {
           sm = sMass.slice(),
           so = sMom.slice(),
           sb = sideBoosters.map((b) => [b.mass, b.mom]);
-        walk(k, place(k, me), me);
+        walk(k, orkPlace(k, me), me);
         totalMass = tm;
         moment = mo;
         massPts.length = np;
@@ -1089,36 +952,16 @@ export function parseOrk(xml, opts = {}) {
     if (tag === "parallelstage") parDepth--;
     if (tag === "podset" || tag === "parallelstage") R.last = lastR;
   }
-  /**
-   * The forward end of a component, from its position method relative to its parent.
-   * @param {Element} k component
-   * @param {{x:number, len:number}} p parent
-   * @returns {number} m from the nose tip
-   */
-  function place(k, p) {
-    const o = offset(k),
-      len = lenOf(k);
-    switch (o.method) {
-      case "bottom":
-        return p.x + p.len - len + o.val;
-      case "middle":
-        return p.x + (p.len - len) / 2 + o.val;
-      case "absolute":
-        return o.val;
-      default:
-        return p.x + o.val;
-    }
-  }
-  bodyOrder = subs(rocket)
+  bodyOrder = elSubs(rocket)
     .filter((s) => s.tagName === "stage")
-    .flatMap((s) => subs(s))
-    .filter((c) => ["nosecone", "bodytube", "transition"].includes(c.tagName));
+    .flatMap((s) => elSubs(s))
+    .filter((c) => ORK_BODY.includes(c.tagName));
   let cursor = 0;
-  for (const stage of subs(rocket)) {
+  for (const stage of elSubs(rocket)) {
     if (stage.tagName !== "stage") continue;
     if (offStages.has(stage)) {
       notes.push(
-        `The stage “${txt(stage, "name") || "stage"}” is switched off in this flight configuration, so it’s left off.`,
+        `The stage “${elTxt(stage, "name") || "stage"}” is switched off in this flight configuration, so it’s left off.`,
       );
       continue;
     }
@@ -1132,28 +975,28 @@ export function parseOrk(xml, opts = {}) {
         .filter((e) => e.tagName === "separationconfiguration")
         .find((e) => e.getAttribute("configid") === cfg);
       sSep[curStage] = {
-        event: ((sc && txt(sc, "separationevent")) || txt(stage, "separationevent") || "burnout").toLowerCase(),
-        delay: sc ? num(sc, "separationdelay", 0) : num(stage, "separationdelay", 0),
+        event: ((sc && elTxt(sc, "separationevent")) || elTxt(stage, "separationevent") || "burnout").toLowerCase(),
+        delay: sc ? elNum(sc, "separationdelay", 0) : elNum(stage, "separationdelay", 0),
       };
     }
     const m0 = totalMass,
       mo0 = moment,
       x0 = cursor;
-    for (const c of subs(stage)) {
-      const o = offset(c);
+    for (const c of elSubs(stage)) {
+      const o = orkOffset(c);
       const x = o.method === "absolute" ? o.val : cursor + (o.method && o.method !== "after" ? 0 : o.val);
       walk(c, x, { x: 0, len: 0, ri: 0, top: true });
-      cursor = Math.max(cursor, x + lenOf(c));
+      cursor = Math.max(cursor, x + orkLenOf(c));
     }
     // stage-level overrides (OpenRocket applies these to the whole stage when "override subcomponents" is set)
-    const som = kid(stage, "overridemass"),
-      soc = kid(stage, "overridecg");
+    const som = elKid(stage, "overridemass"),
+      soc = elKid(stage, "overridecg");
     if (som || soc) {
       const ms = totalMass - m0,
         xs = ms > 0 ? (moment - mo0) / ms : (x0 + cursor) / 2;
-      const subsOn = txt(stage, "overridesubcomponentsmass") === "true";
+      const subsOn = elTxt(stage, "overridesubcomponentsmass") === "true";
       const newM = som ? (subsOn ? parseFloat(som.textContent) : ms + parseFloat(som.textContent)) : ms;
-      const newX = soc && txt(stage, "overridesubcomponentscg") === "true" ? x0 + parseFloat(soc.textContent) : xs;
+      const newX = soc && elTxt(stage, "overridesubcomponentscg") === "true" ? x0 + parseFloat(soc.textContent) : xs;
       totalMass = m0 + newM;
       moment = mo0 + newM * newX;
       sMass[curStage] = newM;
@@ -1179,12 +1022,12 @@ export function parseOrk(xml, opts = {}) {
       `This design has ${stages} stages. Pocket Rocket Flight Lab simulates up to three, so all stages were combined and flown as one rocket.`,
     );
   if (!twoStage) {
-    const rom = kid(rocket, "overridemass");
+    const rom = elKid(rocket, "overridemass");
     if (rom) {
       totalMass = parseFloat(rom.textContent) || totalMass;
       notes.push("Used the rocket-level mass override.");
     }
-    const rcg = kid(rocket, "overridecg");
+    const rcg = elKid(rocket, "overridecg");
     if (rcg && parseFloat(rcg.textContent) > 0) {
       moment = parseFloat(rcg.textContent) * totalMass;
     }
@@ -1383,8 +1226,8 @@ export function parseOrk(xml, opts = {}) {
       `Used the file’s Cd override on ${cdCount} part${cdCount > 1 ? "s" : ""}; it replaces the calculated drag of ${cdCount > 1 ? "those parts" : "that part"}${cdCovered ? ", and of the parts on it where the override covers them" : ""}. On the last body part that includes the base drag behind it.`,
     );
   if (cdComp) notes.push("Cd overrides on inner parts were ignored, since inner parts have no drag of their own.");
-  const ocd = [rocket, ...subs(rocket).filter((e) => e.tagName === "stage")]
-    .map((e) => kid(e, "overridecd"))
+  const ocd = [rocket, ...elSubs(rocket).filter((e) => e.tagName === "stage")]
+    .map((e) => elKid(e, "overridecd"))
     .find(Boolean);
   if (ocd) notes.push("Used the file’s Cd override for the whole rocket.");
   const FIN = FINISH_RS;
@@ -1400,7 +1243,7 @@ export function parseOrk(xml, opts = {}) {
   const f = S.f;
   const nd = {
     ...D,
-    name: txt(rocket, "name") || "Imported rocket",
+    name: elTxt(rocket, "name") || "Imported rocket",
     length: S.length,
     diameter: S.diameter,
     noseLen: S.nose ? S.nose.len : 3 * S.diameter,
@@ -1541,7 +1384,7 @@ export function parseOrk(xml, opts = {}) {
   }
   // whether the weight is the builder's own number (a stage or rocket weight override) rather than added up from the parts
   nd.massKnown =
-    !!kid(rocket, "overridemass") ||
+    !!elKid(rocket, "overridemass") ||
     (stages > 0 && [...Array(stages).keys()].every((i) => sKnown[i] || !(sMass[i] > 0)));
   nd.threeStage = threeStage;
   nd.s1 = null;
