@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 320 (2026-11-16)
+
+**Parts library**
+- **Top Flight Recovery X-Type parachutes**: 28 chutes OpenRocket's parts files leave out (it models only round chutes): X-Type 10 to 90 in., thin mill X-Type 10 to 30 in., and Ultra X-Type HD 18 to 90 in. Each is listed at its own size as an equivalent round chute, with the drag coefficient that gives the drag area Top Flight's descent-rate chart implies (the chart's range of rocket weights read at 17 to 22 ft/s, in sea-level air). That chart, read the same way, makes Top Flight's round chutes draggier than flat round chutes usually measure, so these are likely optimistic: the real chute may come down faster.
+
+**Under the hood**
+- **The OpenRocket file reader is split up**: the one 1,800-line function that read a design is now a short one that calls each step in order, with a reader for each kind of part and the weight, CG and Cd overrides applied in one place (`files/ork-*.js`; see ARCHITECTURE.md). Nothing it reads has changed: 3,922 readings of 710 designs are identical before and after.
+
 ## Build 319 (2026-11-16)
 
 **Builder**
