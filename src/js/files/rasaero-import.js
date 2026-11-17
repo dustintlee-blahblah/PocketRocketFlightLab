@@ -452,8 +452,9 @@ function cdxRecovery(R, notes) {
  * Reads a RASAero II design.
  * @param {string} xml the .CDX1 file
  * @param {string} [name] the rocket's name (a RASAero file has none: its file name, without the ending)
- * @returns {object} the same shape as parseOrk's result, with orkXml (the design as OpenRocket XML) and noseTip (the
- *   nose's blunt radius, m)
+ * @returns {object} the same shape as parseOrk's result, with orkXml (the design as OpenRocket XML), noseTip (the
+ *   nose's blunt radius, m), blMode (the boundary layer setting the file asks for) and loaded (for each stage whose
+ *   motor isn't in the motor list, its weight and CG with that motor in: {mass, cg from its front, len, motor})
  * @throws {Error} if the file isn't a readable RASAero design
  */
 export function parseCdx(xml, name) {
@@ -501,7 +502,7 @@ export function parseCdx(xml, name) {
       notes.push(
         `The simulation gives no weight for the ${label}: its parts are placeholders, so type its weight and CG in the builder.`,
       );
-      return { wt: null, m: null };
+      return { wt: null, m: null, loaded: null };
     }
     const m = eng ? matchMotor({ ...eng, dia: 0 }) : null,
       mm = m ? m.totalMass : 0,
@@ -516,7 +517,7 @@ export function parseCdx(xml, name) {
       cgAbs = cg;
     } else if (eng && !m)
       notes.push(
-        `RASAero’s weight and CG for the ${label} include its motor, ${eng.designation}, which isn’t in your motor list, so they couldn’t be taken out: the ${label} is heavier here than it is by the motor’s weight until you correct its weight in the builder.`,
+        `RASAero’s weight and CG for the ${label} include its motor, ${eng.designation}, which isn’t in your motor list. Until it is, the ${label}’s weight and CG without motor are worked out by taking out the motor flown here in its place. Add its motor file on the Motor tab and pick it: they are then worked out from it and kept.`,
       );
     else if (!eng) notes.push(`The simulation flies no motor in the ${label}: its weight was taken as is.`);
     if (cg > 0 && !(cgAbs > x0 && cgAbs < x1)) {
@@ -526,7 +527,9 @@ export function parseCdx(xml, name) {
       cgAbs = Math.min(Math.max(cg, x0 + 0.001), x1 - 0.001);
     }
     if (!(cg > 0)) notes.push(`The simulation gives no CG for the ${label}: it was worked out from placeholder parts.`);
-    return { wt: { mass, cg: cgAbs > 0 ? cgAbs - x0 : 0 }, m };
+    const wt = { mass, cg: cgAbs > 0 ? cgAbs - x0 : 0 };
+    // (with a motor that isn't in the list, what the file gave: the builder takes the motor flown out of it)
+    return { wt, m, loaded: eng && !m && W - a.W - mm > 0 ? { ...wt, len: x1 - x0, motor: eng } : null };
   };
   const susLen = lenOf(sus),
     allLen = susLen + (withBoost ? lenOf(boost) : 0);
@@ -543,6 +546,7 @@ export function parseCdx(xml, name) {
   let stages = "",
     susM = null,
     boostM = null;
+  const loaded = [null, null];
   const recovery = cdxRecovery(doc.getElementsByTagName("Recovery")[0], notes);
   if (asOne) {
     const r = dryOf(
@@ -554,6 +558,7 @@ export function parseCdx(xml, name) {
       allLen,
     );
     susM = r.m;
+    loaded[0] = r.loaded;
     stages = cdxStage("Rocket", [...sus, ...boost], r.wt, r.m, { recovery });
   } else {
     const W = sim ? cdxNum(sim, "SustainerLaunchWt") * LB : 0,
@@ -564,6 +569,7 @@ export function parseCdx(xml, name) {
         "The file has no simulation, and a RASAero design keeps its weight there: type the weight and CG in the builder.",
       );
     susM = s.m;
+    loaded[0] = s.loaded;
     const sep = two ? Math.max(cdxNum(sim, "Booster1SeparationDelay"), 0) : 0,
       ign = two ? Math.max(cdxNum(sim, "SustainerIgnitionDelay"), 0) : 0;
     stages = cdxStage(two ? "Sustainer" : "Rocket", sus, s.wt, s.m, {
@@ -582,6 +588,7 @@ export function parseCdx(xml, name) {
         { W, mom: W * cg },
       );
       boostM = b.m;
+      loaded[1] = b.loaded;
       stages += cdxStage("Booster", boost, b.wt, b.m, {
         stage: `<separationevent>burnout</separationevent><separationdelay>${sep}</separationdelay>`,
         motor: motorXml(boostEng, boostNoz),
@@ -596,6 +603,7 @@ export function parseCdx(xml, name) {
   const r = parseOrk(orkXml);
   r.orkXml = orkXml;
   r.noseTip = tip;
+  r.loaded = loaded;
   r.notes = [
     "RASAero keeps a rocket’s weight and CG with each simulation: they were read from the simulation, with the motor taken out, and put on the rocket as a weight and CG override. The parts themselves are the outside shape only.",
     ...notes,
@@ -621,14 +629,36 @@ export function parseCdx(xml, name) {
     if (has("Altitude")) r.launch.elev = cdxNum(site, "Altitude") * FT;
     if (cdxNum(site, "RodLength") > 0) r.launch.rail = cdxNum(site, "RodLength") * FT;
     if (has("RodAngle")) r.launch.angle = Math.abs(cdxNum(site, "RodAngle"));
-    if (has("WindSpeed")) r.launch.wind = cdxNum(site, "WindSpeed") * 0.44704;
+    if (has("WindSpeed")) r.launch.wind = Math.abs(cdxNum(site, "WindSpeed")) * 0.44704;
+    if (cdxNum(site, "WindSpeed") < 0)
+      r.notes.push(
+        "The file’s wind is a tailwind (a negative speed); its speed was read, and the rail’s direction is yours to set.",
+      );
     if (has("Temperature")) r.launch.tempC = ((cdxNum(site, "Temperature") - 32) * 5) / 9;
     // RASAero's barometer reading is the weather report's, corrected to sea level (0: standard air). A simulation
     // chosen when opening brings it, as the pressure at the pad
     const hg = cdxNum(site, "Pressure");
-    if (ORK_SIM != null)
+    if (ORK_SIM != null) {
       r.launch.pressure =
         hg > 0 ? hg * 3386.389 * Math.pow(1 - 2.25577e-5 * Math.max(r.launch.elev || 0, 0), 5.25588) : 0;
+      // RASAero has one wind speed for the whole flight, where this app's wind usually grows with height
+      r.launch.windProfile = "constant";
+      if (r.launch.wind > 0)
+        r.notes.push(
+          "RASAero flies one wind speed at every height, so Wind with height on the Range tab was set to Same at all altitudes for this run.",
+        );
+    }
+  }
+  // RASAero's skin friction: laminar flow up to a Reynolds number of 500,000 and turbulent after it, unless its All
+  // Turbulent Flow box is ticked. Both are boundary layer settings of this app
+  const flow = cdxTxt(design, "Turbulence");
+  if (flow) {
+    r.blMode = flow === "True" ? "turb" : "natural";
+    r.notes.push(
+      flow === "True"
+        ? "RASAero’s All Turbulent Flow is on in the file: Boundary layer is set to Turbulent from the nose."
+        : "RASAero’s All Turbulent Flow is off in the file, so it flies laminar flow that turns turbulent: Boundary layer was set to Natural transition, which does the same. Turbulent from the nose gives a lower, more cautious apogee.",
+    );
   }
   return r;
 }

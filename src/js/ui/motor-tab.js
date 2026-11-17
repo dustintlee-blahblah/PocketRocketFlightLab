@@ -1,6 +1,7 @@
 /**
  * The Motor tab: the motor list with its filters, the selected motors, and the motor tube size checks.
  */
+import { bldMotorPicked } from "../builder/builder-ui.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import {
@@ -440,6 +441,7 @@ export function renderMotors() {
         store.set("rfs-motor", motorId);
       }
       if (old) mdSnap(tg0, old, m);
+      bldMotorPicked();
       renderMotors();
       markStale();
       drawProfile();

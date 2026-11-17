@@ -1,6 +1,7 @@
 // RASAero II import test: opens two made-up .CDX1 designs (a single-stage rocket and the same rocket on a booster)
 // in the built app and checks what the reader made of them against the numbers in the files: lengths, fins, nose
-// tip, the launch weight and CG with the motor loaded, the nozzle exit diameters, staging delays, recovery, the launch
+// tip, the launch weight and CG with the motor loaded (also with a motor that isn't in the motor list, until it's
+// uploaded), the boundary layer and wind settings RASAero flies, the nozzle exit diameters, staging delays, recovery, the launch
 // site, RASAero's own apogee as the reference, and that the design is saved as an .ork, never over the .CDX1.
 // usage: node tests/rasaero.js [page.html]     (default page: web/pocket-rocket-flight-lab.html)
 "use strict";
@@ -17,7 +18,7 @@ const guides =
 /**
  * A made-up RASAero II file: a 3 in. rocket, 54 in. long with its boattail, and (booster: true) a 4 in. booster.
  */
-const cdx = (booster) => `<RASAeroDocument><FileVersion>2</FileVersion><RocketDesign>
+const cdx = (booster, engine = "J350W  (AT)") => `<RASAeroDocument><FileVersion>2</FileVersion><RocketDesign>
 <NoseCone><PartType>NoseCone</PartType><Length>12</Length><Diameter>3</Diameter><Shape>Tangent Ogive</Shape><BluntRadius>0.1</BluntRadius><Location>0</Location></NoseCone>
 <BodyTube><PartType>BodyTube</PartType><Length>40</Length><Diameter>3</Diameter>${guides}<Location>12</Location><BoattailLength>2</BoattailLength><BoattailRearDiameter>2.5</BoattailRearDiameter><BoattailOffset>0</BoattailOffset><Overhang>0</Overhang>${fin(7)}</BodyTube>
 <BoatTail><PartType>BoatTail</PartType><Length>2</Length><Diameter>3</Diameter><RearDiameter>2.5</RearDiameter><Location>52</Location></BoatTail>
@@ -25,7 +26,7 @@ ${booster ? `<Booster><PartType>Booster</PartType><Length>30</Length><Diameter>4
 <Surface>Smooth Paint</Surface><CP>0</CP><ModifiedBarrowman>False</ModifiedBarrowman><Turbulence>False</Turbulence></RocketDesign>
 <LaunchSite><Altitude>2000</Altitude><Pressure>0</Pressure><RodAngle>3</RodAngle><RodLength>10</RodLength><Temperature>59</Temperature><WindSpeed>5</WindSpeed></LaunchSite>
 <Recovery><Altitude1>1000</Altitude1><Altitude2>700</Altitude2><DeviceType1>Parachute</DeviceType1><DeviceType2>Parachute</DeviceType2><Event1>True</Event1><Event2>True</Event2><Size1>12</Size1><Size2>48</Size2><EventType1>Apogee</EventType1><EventType2>Altitude</EventType2><CD1>1.2</CD1><CD2>1.5</CD2></Recovery>
-<SimulationList><Simulation><SustainerEngine>J350W  (AT)</SustainerEngine><SustainerLaunchWt>8</SustainerLaunchWt><SustainerNozzleDiameter>0.75</SustainerNozzleDiameter><SustainerCG>34</SustainerCG><SustainerIgnitionDelay>2</SustainerIgnitionDelay>
+<SimulationList><Simulation><SustainerEngine>${engine}</SustainerEngine><SustainerLaunchWt>8</SustainerLaunchWt><SustainerNozzleDiameter>0.75</SustainerNozzleDiameter><SustainerCG>34</SustainerCG><SustainerIgnitionDelay>2</SustainerIgnitionDelay>
 ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</Booster1LaunchWt><Booster1SeparationDelay>1</Booster1SeparationDelay><Booster1IgnitionDelay>0</Booster1IgnitionDelay><Booster1CG>50</Booster1CG><Booster1NozzleDiameter>1.25</Booster1NozzleDiameter><IncludeBooster1>True</IncludeBooster1>" : "<IncludeBooster1>False</IncludeBooster1>"}
 <IncludeBooster2>False</IncludeBooster2><MaxAltitude>5000</MaxAltitude></Simulation></SimulationList></RASAeroDocument>`;
 
@@ -67,7 +68,7 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
         ok,
         runs: runs.map((x) => [x.motors, x.apogee]),
         D: JSON.parse(JSON.stringify(D)),
-        L: { elev: L.elev, rail: L.rail, angle: L.angle, wind: L.wind, tempC: L.tempC },
+        L: { elev: L.elev, rail: L.rail, angle: L.angle, wind: L.wind, tempC: L.tempC, windProfile: L.windProfile },
         m: { name: m.name, mass: m.totalMass, len: m.len },
         mb: mb && { name: mb.name, mass: mb.totalMass, len: mb.len },
         liftMass: R.st.liftMass,
@@ -136,6 +137,8 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
     near(`${t}: rail angle (deg)`, r.L.angle, 3);
     near(`${t}: wind (m/s)`, r.L.wind, 5 * 0.44704);
     near(`${t}: temperature (°C)`, r.L.tempC, 15);
+    same(`${t}: wind the same at all heights, as RASAero flies it`, r.L.windProfile, "constant");
+    same(`${t}: boundary layer as RASAero's (All Turbulent Flow off)`, D.blMode, "natural");
     near(`${t}: launch weight flown (kg)`, r.liftMass, (booster ? 20 : 8) * LB);
     same(`${t}: flies`, r.apogee > 100, true);
     if (booster) {
@@ -158,6 +161,73 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
       near(`${t}: sustainer lights 2 s after that (s)`, D.stageDelay, 3);
       near(`${t}: booster nozzle exit diameter (m)`, D.bNozzleDia, 1.25 * IN);
     }
+  }
+  // a motor that isn't in the motor list: the file's weight and CG have it in, so the motor flown in its place is
+  // taken out until the real one is uploaded, and from then on the numbers stay
+  {
+    const p = await browser.newPage();
+    p.on("pageerror", (e) => fails.push("pageerror: " + e.message));
+    await p.route(/^https?:/, (r) => r.abort());
+    await p.addInitScript(() => {
+      window.PR_EXPOSE = true;
+      window.PR_NO_ASK = true;
+      localStorage.setItem("rfs-disclaimer-v2", JSON.stringify({ accepted: true, version: "2026-11-02" }));
+    });
+    await p.goto("file://" + path.resolve(file));
+    await p.waitForTimeout(1000);
+    const state = () =>
+      p.evaluate(() => {
+        const m = findMotor(motorId);
+        return {
+          m: { name: m.name, mass: m.totalMass, len: m.len },
+          dry: D.dryMass,
+          cg: D.cgEmpty,
+          lift: simulate(D, { ...L, turb: 0 }, m, null).st.liftMass,
+          pending: !!BLD.stages[0].withMotor,
+        };
+      });
+    const loadedCg = (a) => (a.dry * a.cg + a.m.mass * (54 * IN - a.m.len / 2)) / (8 * LB);
+    await p.evaluate(
+      async (xml) => {
+        await loadDesignXml(xml, "Test rocket.CDX1", null, {
+          pick: { kind: "run", i: 0, cfg: null, name: "Simulation 1" },
+        });
+        await new Promise((res) => setTimeout(res, 300));
+      },
+      cdx(false, "Z999  (EX)"),
+    );
+    const a = await state();
+    same("unlisted motor: a motor that fits flies in its place", a.m.name !== "Z999", true);
+    same("unlisted motor: weight still worked out from the motor flown", a.pending, true);
+    near("unlisted motor: weight without motor, the stand-in taken out (kg)", a.dry, 8 * LB - a.m.mass);
+    near("unlisted motor: CG with the stand-in loaded (m)", loadedCg(a), 34 * IN);
+    near("unlisted motor: launch weight flown (kg)", a.lift, 8 * LB);
+    await p.setInputFiles("#engfile", {
+      name: "Z999.eng",
+      mimeType: "text/plain",
+      buffer: Buffer.from("Z999 54 400 P 0.9 1.6 EX\n0.05 900\n1.5 800\n2.0 0\n"),
+    });
+    await p.waitForTimeout(600);
+    const b = await state();
+    same("its motor uploaded: it is the motor flown", b.m.name, "Z999");
+    same("its motor uploaded: the weight is settled", b.pending, false);
+    near("its motor uploaded: weight without motor (kg)", b.dry, 8 * LB - 1.6);
+    near("its motor uploaded: CG with it loaded (m)", loadedCg(b), 34 * IN);
+    near("its motor uploaded: launch weight flown (kg)", b.lift, 8 * LB);
+    // another motor after that: the rocket's own weight doesn't change with it
+    await p.evaluate(
+      (id) => {
+        setMotorId(id);
+        bldMotorPicked();
+        bldDerive();
+      },
+      await p.evaluate((nm) => allMotors().find((m) => m.name !== nm && Math.abs(m.dia - 0.054) < 0.001).id, "Z999"),
+    );
+    const c = await state();
+    same("another motor picked: it is the motor flown", c.m.name !== "Z999", true);
+    near("another motor picked: weight without motor unchanged (kg)", c.dry, 8 * LB - 1.6);
+    near("another motor picked: CG without motor unchanged (m)", c.cg, b.cg);
+    await p.close();
   }
   await browser.close();
   console.log(fails.length ? fails.join("\n") : "");

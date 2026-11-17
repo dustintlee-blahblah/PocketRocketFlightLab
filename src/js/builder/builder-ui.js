@@ -11,6 +11,7 @@ import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { allMotors, boostId, firstId, motorId, setMotorId, setMotorTarget } from "../design/defaults.js";
 import { confirmUnsaved } from "../files/recent.js";
+import { matchMotor } from "../files/rocksim-import.js";
 import { setSource } from "../files/save.js";
 import { markClean, setActive } from "../files/unsaved-changes.js";
 import { findMotor } from "../motors/clusters.js";
@@ -62,7 +63,9 @@ export function bldSyncMotors() {
   /**
    * Sets a stage's primary mount's motor, unless it's held by a choice already made there.
    */
+  const flown = new Map();
   const put = (st, m, hold) => {
+    flown.set(st, m || null);
     const k = bldMounts(st)[0];
     if (!k || !m || st.noMotor) return;
     if (hold && m.id === hold) return;
@@ -82,16 +85,55 @@ export function bldSyncMotors() {
   const h = BLD.hold || [];
   // a design where only one stage has a motor mount (a payload section on top): the motor goes in that stage
   const mounted = BLD.stages.filter((st) => bldMounts(st).length && !st.noMotor);
-  if (BLD.stages.length > 1 && mounted.length === 1) {
-    put(mounted[0], findMotor(motorId), h[0]);
+  if (BLD.stages.length > 1 && mounted.length === 1) put(mounted[0], findMotor(motorId), h[0]);
+  else {
+    put(BLD.stages[0], findMotor(motorId), h[0]);
+    // three stages: sustainer, booster (the middle one), first stage
+    if (BLD.stages.length === 3 && mounted.length === 3) {
+      put(BLD.stages[1], findMotor(boostId), h[1]);
+      put(BLD.stages[2], findMotor(firstId), h[2]);
+    } else if (BLD.stages.length > 1) put(BLD.stages[BLD.stages.length - 1], findMotor(boostId), h[1]);
+  }
+  BLD.stages.forEach((st) => bldMotorOut(st, flown.get(st) || null));
+}
+/**
+ * A stage whose file gave its weight and CG with a motor in it that isn't in the motor list (a RASAero file keeps
+ * them that way): its weight and CG without motor are what is left when the motor flown in it here is taken out, its
+ * aft end at the stage's. Once the file's own motor is the one flown, or the numbers are typed over, they stay.
+ * @param {object} st the stage; st.withMotor: {mass, cg (from the stage's front, 0: none), len (the stage's), motor
+ *   (the file's: designation and maker), set (the weight and CG last worked out here)}
+ * @param {object|null} flown the motor chosen for the stage on the Motor tab
+ */
+function bldMotorOut(st, flown) {
+  const w = st.withMotor;
+  if (!w) return;
+  if (w.set && (st.known !== w.set[0] || st.knownCg !== w.set[1])) {
+    delete st.withMotor; // typed over
     return;
   }
-  put(BLD.stages[0], findMotor(motorId), h[0]);
-  // three stages: sustainer, booster (the middle one), first stage
-  if (BLD.stages.length === 3 && mounted.length === 3) {
-    put(BLD.stages[1], findMotor(boostId), h[1]);
-    put(BLD.stages[2], findMotor(firstId), h[2]);
-  } else if (BLD.stages.length > 1) put(BLD.stages[BLD.stages.length - 1], findMotor(boostId), h[1]);
+  const m = bldMounts(st)[0] && !st.noMotor ? flown : null,
+    mm = m && w.mass - m.totalMass > 0 ? m.totalMass : 0;
+  st.known = w.mass - mm;
+  if (w.cg > 0) {
+    const cg = mm ? (w.mass * w.cg - mm * (w.len - m.len / 2)) / st.known : 0;
+    st.knownCg = cg > 0 && cg < w.len ? cg : w.cg;
+  }
+  const real = m ? matchMotor(w.motor) : null;
+  if (mm && real && real.id === m.id) {
+    delete st.withMotor;
+    prToast(
+      `${st.name || "Stage"}: weight and CG without motor set from the file’s, which had the ${m.cn || m.name} in it.`,
+    );
+  } else w.set = [st.known, st.knownCg];
+}
+/**
+ * After a motor is picked on the Motor tab: a stage whose weight is still worked out from a file's weight with its
+ * motor in (bldMotorOut) gets it worked out again for the new motor.
+ */
+export function bldMotorPicked() {
+  if (!BLD || !BLD.stages.some((st) => st.withMotor)) return;
+  bldApply();
+  bldSave();
 }
 /**
  * bldDerive, with any error shown in the builder.

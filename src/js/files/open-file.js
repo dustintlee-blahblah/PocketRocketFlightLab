@@ -2,7 +2,7 @@
  * Opening files: a design (.ork, .rkt or .CDX1) from the file picker, loadDesignXml (which every way of opening a design goes
  * through), uploaded motor files (.eng, .rse, or a .zip of them), and Reset Changes.
  */
-import { BLD, BLD_ROOT, bldRender, bldSave, setBLD, setBldSel } from "../builder/builder-ui.js";
+import { BLD, BLD_ROOT, bldMotorPicked, bldRender, bldSave, setBLD, setBldSel } from "../builder/builder-ui.js";
 import { bldDerive, bldOffApply, bldOffList } from "../builder/derive.js";
 import { BLD_APP_SETTINGS, bldDefault, bldMounts, bldSettings } from "../builder/model.js";
 import { bldFromOrk } from "../builder/ork-read.js";
@@ -423,7 +423,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
       ? `Three-stage rocket. Sustainer: ${fmt(D.dryMass, "mass")} ${uname("mass")} without motor, ${fmt(D.length, "len", 1)} ${uname("len")} long. Booster: ${fmt(D.bDryMass, "mass")} ${uname("mass")}, ${fmt(D.bLength, "len", 1)} ${uname("len")}. First stage: ${fmt(D.s1.bDryMass, "mass")} ${uname("mass")}, ${fmt(D.s1.bLength, "len", 1)} ${uname("len")}. Booster ignition ${(D.midDelay || 0).toFixed(1)} s after first-stage burnout; sustainer ignition ${D.stageDelay.toFixed(1)} s after booster burnout.`
       : D.twoStage
         ? `Two-stage rocket. Sustainer: ${fmt(D.dryMass, "mass")} ${uname("mass")} without motor, CG ${fmt(D.cgEmpty, "len", 1)} ${uname("len")}, ${fmt(D.length, "len", 1)} ${uname("len")} long. Booster: ${fmt(D.bDryMass, "mass")} ${uname("mass")}, ${fmt(D.bLength, "len", 1)} ${uname("len")} long. Sustainer ignition ${D.stageDelay.toFixed(1)} s after booster burnout.`
-        : `Weight without motor ${fmt(D.dryMass, "mass")} ${uname("mass")}, CG ${fmt(D.cgEmpty, "len", 1)} ${uname("len")}, length ${fmt(D.length, "len", 1)} ${uname("len")}.`;
+        : `${r.loaded && r.loaded[0] ? `Weight with the file’s ${r.motor.designation} in` : "Weight without motor"} ${fmt(D.dryMass, "mass")} ${uname("mass")}, CG ${fmt(D.cgEmpty, "len", 1)} ${uname("len")}, length ${fmt(D.length, "len", 1)} ${uname("len")}.`;
     rep.innerHTML = `<div class="report"><b>${opts.builder ? "Built" : "Opened"} ${esc(D.name)}.</b> ${esc(summary)} ${esc(mnote)}
       ${uniq.length ? `<ul>${uniq.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}<div class="note" style="margin-top:6px">${otherFormat(xml) === "cdx" ? "Weight and CG are the RASAero simulation’s; turning inertia is estimated from the rocket’s shape." : "Weight, CG and turning inertia are computed from the file’s components and materials."} If you have weighed and balanced the real rocket, select the stage in the design tree and enter your numbers there.</div></div>`;
     {
@@ -526,6 +526,11 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         const q = BLD.stages[0] && BLD.stages[0].parts.find((x) => x.type === "nose");
         if (q) q.tipR = r.noseTip;
       }
+      // a RASAero file's flow setting, and its stages' weights with a motor that isn't in the motor list (bldMotorOut)
+      if (r.blMode) BLD.settings.blMode = r.blMode;
+      (r.loaded || []).forEach((w, i) => {
+        if (w && BLD.stages[i]) BLD.stages[i].withMotor = w;
+      });
       if (isR) BLD.mountHint = [r.design.mountDia || null, r.design.bMountDia || null];
       // a RockSim stage with different motors: the main mount flies the one that fits it
       if (isR) {
@@ -704,6 +709,7 @@ export function start() {
     if (added.length) {
       setMotorId(USER_MOTORS.find((m) => m.name === added[added.length - 1]).id);
       store.set("rfs-motor", motorId);
+      bldMotorPicked();
     }
     rep.innerHTML = `<div class="report${bad.length && !added.length ? " err" : ""}">${added.length ? `Added ${added.length > 8 ? `${added.length} motors (${added.slice(0, 6).map(esc).join(", ")} and ${added.length - 6} more)` : added.map(esc).join(", ")} to your user-uploaded motors${added.length === 1 ? " and selected it" : ""}.` : ""} ${dup.length ? `Skipped ${dup.length} duplicate${dup.length > 1 ? "s" : ""} (same name, impulse, diameter and maker as a motor already in the list): ${dup.length > 8 ? `${dup.slice(0, 6).map(esc).join(", ")} and ${dup.length - 6} more` : dup.map(esc).join(", ")}.` : ""} ${bad.length ? `Couldn’t read ${bad.map(esc).join(", ")}. Check that it is a RASP .eng or RockSim .rse file.` : ""}</div>`;
     renderMotors();
