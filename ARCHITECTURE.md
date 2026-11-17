@@ -247,18 +247,22 @@ written out by component (`bx, by, bz`), so a cross product is three lines. In `
 the mass, `u` the direction of the air moving past the rocket, and `d` and `q` (as `dx, dy, dz` and `qx, qy, qz`)
 the body's two cross axes.
 
-**`parseOrk()`** (`files/openrocket-import.js`) reads an OpenRocket file in one walk of its component tree:
+**`parseOrk()`** (`files/openrocket-import.js`) reads an OpenRocket file. It is short: it calls each step in order,
+and the steps are in the `files/ork-*.js` modules:
 
-| Part | What it does |
-|---|---|
-| helpers at the top (`txt`, `num`, `dens`, `lenOf`...) | read one value from an element; resolve automatic sizes |
-| `walk(c, x, parent)` | the walk: one branch per component type (nose cone, body tube, fin set, parachute, mass component, launch lug...), each adding its mass with `addMass()` and recording its shape |
-| `motorMountIn()` | a motor mount and its motor |
-| `finalize(sel, label)` | builds a design from a set of stages: once for a single-stage rocket, per stage for a staged one |
-| the end | recovery devices, the file's saved simulations, clusters |
+| Step | Where | What it does |
+|---|---|---|
+| which flight is read | `orkConfig()` in `ork-config.js` | the motor configuration, the simulation it is taken from, and the stages switched off in it |
+| the parts | `orkReadStages()` in `ork-parts.js` | one walk of the component tree (`orkWalk()`), with a reader for each kind of part (`readNose`, `readTube`, `readFins`, `readChute`...; the table `ORK_READ` lists them by tag). A reader works out the part's weight, balance point and radii and records its shape; `orkWalk()` then applies the weight, CG and Cd overrides, adds the weight (`addMass()`) and walks the parts on it. `motorMountIn()` reads a motor mount and its motor |
+| the reading | `orkReading()` in `ork-parts.js` | everything read so far, in one object passed to every reader as `rd`: the totals, the parts by kind, and what is kept by stage |
+| the airframes | `orkStaging()`, `orkAirframe()` in `ork-airframe.js` | how the stages are flown, and one airframe from a set of stages: once for a single-stage rocket, per stage for a staged one |
+| the design | `orkSustainer()`, `orkBooster()`, `orkFirstStage()`, `orkRecovery()`, `orkMotorExtras()` in `ork-design.js` | the design's fields, its recovery devices, and a cluster's extra motors |
+| the launch | `orkLaunch()` in `ork-config.js` | the launch site and weather of the file's saved simulation |
+| helpers | `ork-xml.js` | read one value from an element (`elTxt`, `elNum`, `elDens`...), a part's place and length (`orkPlace`, `orkLenOf`), a free-form fin's outline |
 
 **`bldFromOrk()`** (`builder/ork-read.js`) reads the same XML into builder parts, with a `case` per component type that
-mirrors `walk()`. A new kind of part needs a branch in both, plus `bldToOrk()` (`builder/ork-export.js`) to write it.
+mirrors the readers in `ork-parts.js`. A new kind of part needs a `case` there and a reader in `ork-parts.js` (added
+to `ORK_READ`), plus `bldToOrk()` (`builder/ork-export.js`) to write it.
 
 **`buildReportPdf()`** (`report/pdf-report.js`) draws the report top to bottom; each section starts with a
 `// ---- name` comment: page 1 (title block and the rocket's configuration), then page 2 on (apogee, stats, flags,
@@ -271,7 +275,7 @@ graphs, drift by wind speed, landing dispersion, the safety terms).
 | a drag or stability formula | `physics/aerodynamics.js` (`cdParts`, `cnaParts`), with its source in AERODYNAMICS.md |
 | how the flight is flown | `deriv()` in `physics/simulate.js` |
 | a part's fields in the builder | `builder/fields.js`; its defaults in `bldNew()` (`builder/model.js`); how it is drawn in `builder/side-view.js` |
-| how a part is saved and opened | `builder/ork-export.js`, `builder/ork-read.js` and `files/openrocket-import.js` (all three) |
+| how a part is saved and opened | `builder/ork-export.js`, `builder/ork-read.js` and its reader in `files/ork-parts.js` (all three) |
 | a figure on the Results tab or in the report | `resultGroups()` in `ui/results.js` |
 | a Launch warning or RSO checklist item | `ui/state.js` (`runNow`), `ui/launch-warnings.js`, `ui/rso-checklist.js` |
 | a Range tab field | `ui/forms.js`, and its help in `ui/field-help.js` |

@@ -91,6 +91,11 @@ import * as m77 from "./report/flight-data.js";
 import * as m78 from "./builder/fin-dxf.js";
 import * as m79 from "./animation/site-photo.js";
 import * as m80 from "./animation/view3d.js";
+import * as m81 from "./files/ork-xml.js";
+import * as m82 from "./files/ork-config.js";
+import * as m83 from "./files/ork-parts.js";
+import * as m84 from "./files/ork-airframe.js";
+import * as m85 from "./files/ork-design.js";
 
 const modules = [
   m0,
@@ -174,6 +179,11 @@ const modules = [
   m78,
   m79,
   m80,
+  m81,
+  m82,
+  m83,
+  m84,
+  m85,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 
