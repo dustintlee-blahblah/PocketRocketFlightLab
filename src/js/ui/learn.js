@@ -19,7 +19,7 @@ function learnShow(id) {
     all = learnChapters(),
     i = all.findIndex((c) => c.id === id);
   if (i < 0) {
-    head.innerHTML = `<h2 id="learn-title">Learn</h2><p>How rockets fly, and how this app works them out.</p>`;
+    head.innerHTML = `<h2 id="learn-title">Learn</h2><p>How rockets fly, and how this sim works.</p>`;
     let grp = "",
       n = 0,
       h = "";
