@@ -341,14 +341,15 @@ were really finished isn't recorded:
 | Finish given to the "zero roughness" rockets | Mean error | Bias | Above Mach 1.2 |
 |---|---|---|---|
 | Polished, 2 µm (as the files say; the headline numbers) | 6.4% | +3.1% | 9.0% |
-| Smooth paint, 20 µm (before build 322) | 6.2% | +1.7% | 8.3% |
-| Regular paint, 60 µm (before build 322) | 8.8% | −5.4% | 10.6% |
+| Smooth paint, 20 µm | 6.2% | +1.6% | 8.1% |
+| Regular paint, 60 µm | 8.7% | −5.5% | 10.4% (8 flights: one falls below Mach 1.2) |
 
 Regular paint on all of them overshoots (the student rockets then come out 7–13% low, the L500 21% low), so the real
 finishes were probably mixed, and smoother on these rockets than on the weighed hobby rockets further down, which
 needed regular paint and rail buttons. The headline keeps the files' own setting rather than whichever finish fits
 best, which would turn these check flights into tuning. Finish matters more above Mach 1 than below it: Proteus 6
-goes from +16.8% polished to +9.5% with smooth paint and −4.5% with regular paint.
+goes from +16.8% polished to +9.4% with smooth paint and −4.8% with regular paint. (`node validation/flights.js
+--zero-finish smooth` or `normal` flies these rockets with the other finish.)
 
 ### Drag above Mach 2 measured in a flight: Qu8k's recorder
 

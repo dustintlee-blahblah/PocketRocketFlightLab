@@ -4,12 +4,15 @@
  * same flight:
  *
  *   node build.js && node validation/flights.js [--html other-build.html] [--verbose] [--csv out.csv]
+ *     [--geometric] [--zero-finish smooth|normal]
  *
  * Each rocket is opened in the built app (headless Chromium) as an OpenRocket design with its launch weight and CG,
  * flown on RASAero's own thrust curve for its motor (validation/flight-motors.eng), from its launch site's altitude and
  * temperature, off its rail at its angle, in the file's wind (taken as the same at every height). Printed: measured
  * apogee, RASAero II's and the app's, each one's error; then the mean absolute error and bias of both, overall and by
- * top speed. --html flies another build of the app (to compare before and after a change).
+ * top speed. --html flies another build of the app (to compare before and after a change). --zero-finish flies the
+ * rockets whose files say "Smooth (Zero Roughness)" (read as polished, 2 µm) with another OpenRocket finish instead:
+ * smooth (smooth paint, 20 µm) or normal (regular paint, 60 µm), for VALIDATION.md's table of finishes.
  */
 "use strict";
 const fs = require("fs");
@@ -25,6 +28,8 @@ const opt = (k) => {
 const html = path.resolve(opt("--html") || path.join(__dirname, "..", "web", "pocket-rocket-flight-lab.html"));
 const csvOut = opt("--csv");
 const verbose = args.includes("--verbose");
+const zeroFinish = opt("--zero-finish"); // another finish for the files' "zero roughness" rockets
+if (zeroFinish && !/^(smooth|normal)$/.test(zeroFinish)) throw new Error("--zero-finish takes smooth or normal");
 const geometric = args.includes("--geometric"); // compare true heights even where a barometric altimeter measured
 const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
 
@@ -76,7 +81,14 @@ const eng = fs.readFileSync(path.join(__dirname, "flight-motors.eng"), "utf8");
           error: R.st.error || null,
         };
       },
-      { xml: flightOrk(f, mo), eng, f, IN, FT, MPH },
+      {
+        xml: flightOrk(zeroFinish && f.finish === "polished" ? { ...f, finish: zeroFinish } : f, mo),
+        eng,
+        f,
+        IN,
+        FT,
+        MPH,
+      },
     );
     if (app.err || app.error) throw new Error(`${f.title}: ${app.err || app.error}`);
     // the loaded rocket must weigh what the file says, or the comparison means nothing
