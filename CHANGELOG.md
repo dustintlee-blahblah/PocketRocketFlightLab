@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 323 (2026-11-17)
+
+**Learn**
+- The Settings entry reads **Learn: Rockets & how the sim works**, and the Learn page's subtitle **How rockets fly, and how this sim works**.
+
+**Validation**
+- `validation/flights.js --zero-finish smooth|normal` flies the rockets whose files say "Smooth (Zero Roughness)" with smooth or regular paint; VALIDATION.md's table of finishes is rerun with it (smooth paint 6.2% mean error, regular paint 8.7%).
+
 ## Build 322 (2026-11-17)
 
 **Learn**
