@@ -40,12 +40,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const problems = [];
 // a run that stops early (a promise left waiting with nothing else to do) must not pass
 let finished = false;
-process.on("exit", (code) => {
-  if (!finished && code === 0) {
-    console.log("FAIL the test stopped before it finished");
-    process.exitCode = 1;
-  }
-});
+if (require.main === module)
+  process.on("exit", (code) => {
+    if (!finished && code === 0) {
+      console.log("FAIL the test stopped before it finished");
+      process.exitCode = 1;
+    }
+  });
 const fail = (what) => {
   console.log("  FAIL " + what);
   problems.push(what);
@@ -69,6 +70,36 @@ function deviceErrors() {
   return out;
 }
 const alive = () => adbQuiet("shell", "pidof", PKG).length > 0;
+
+/** what the device says happened to the app: whether it runs, crashes, kills, the WebView's own errors, memory */
+function deviceDiag(why) {
+  console.log(`  ..   device state (${why}): app process ${adbQuiet("shell", "pidof", PKG) || "not running"}`);
+  const log = adbQuiet("logcat", "-d", "-b", "main,system,crash", "-v", "brief");
+  const keep = log
+    .split("\n")
+    .filter((l) =>
+      /FATAL|AndroidRuntime|crash|Crash|died|Died|Killing|lowmemorykiller|lmkd|signal \d+|Render process|renderer|RenderProcessGone|cr_|chromium.*(ERROR|FATAL)|pocketrocket|ANR/.test(
+        l,
+      ),
+    )
+    .slice(-50);
+  for (const l of keep) console.log("       " + l.trim().slice(0, 240));
+  const mem = adbQuiet("shell", "cat", "/proc/meminfo")
+    .split("\n")
+    .filter((l) => /MemTotal|MemAvailable/.test(l))
+    .join("; ");
+  console.log("       " + mem);
+}
+
+/** the app's WebView DevTools socket, forwarded to tcp:9333; null when the app isn't running */
+function forwardDevtools() {
+  const pid = adbQuiet("shell", "pidof", PKG);
+  if (!pid) return null;
+  const sock = (adbQuiet("shell", "cat", "/proc/net/unix").match(new RegExp("webview_devtools_remote_" + pid)) ||
+    [])[0];
+  if (sock) adb("forward", "tcp:9333", "localabstract:" + sock);
+  return sock || null;
+}
 
 function install(apk) {
   adbQuiet("uninstall", PKG);
@@ -168,18 +199,24 @@ async function main() {
     install(DBG);
     launch();
     await sleep(8000);
-    const pid = adb("shell", "pidof", PKG);
-    const sock = (adbQuiet("shell", "cat", "/proc/net/unix").match(new RegExp("webview_devtools_remote_" + pid)) ||
-      [])[0];
+    const sock = forwardDevtools();
     if (!sock) {
       fail("debug app: no WebView DevTools socket (is WebView debugging on in debug builds?)");
     } else {
-      adb("forward", "tcp:9333", "localabstract:" + sock);
       console.log("  ..   connecting to the WebView over DevTools (" + sock + ")");
       // Android WebView's DevTools has no browser contexts, which Playwright's connectOverCDP sets up first, so the
       // page is driven over plain DevTools messages instead
       const errs = [];
-      const browser = await cdpPage("http://127.0.0.1:9333", (m) => errs.push(m));
+      const browser = await cdpPage(
+        "http://127.0.0.1:9333",
+        (m) => errs.push(m),
+        () => {
+          deviceDiag("the DevTools connection closed");
+          const now = forwardDevtools();
+          if (!now) throw new Error("the debug app's process is gone (see the device state above)");
+          if (now !== sock) console.log(`  ..   the app restarted: ${sock} → ${now}`);
+        },
+      );
       const page = browser;
       // past the first-run screens, as a person who has accepted them, with the page's test hooks on (as in
       // tests/walkthrough.js), then a dual-deploy example
@@ -200,6 +237,7 @@ async function main() {
       const pg = page;
 
       // a simulation: an example rocket, Launch, the apogee on Results
+      console.log("  ..   opening an example and launching it");
       await pg.evaluate(() => {
         const d = document.getElementById("legal");
         if (d) d.hidden = true;
@@ -219,6 +257,7 @@ async function main() {
         : fail(`no apogee after Launch ("${apo}")`);
 
       // a design file, through Open design file and Android's file picker
+      console.log("  ..   opening a design file through the file picker");
       adb("push", files.ork, "/sdcard/Download/devicetest.ork");
       adbQuiet(
         "shell",
@@ -254,6 +293,7 @@ async function main() {
         ? pass(`the design file opened (${opened.name.trim()})`)
         : found && fail(`the design file didn't open (name before "${before}", after "${opened.name}")`);
 
+      console.log("  ..   sharing an altimeter log to the app");
       // an altimeter log shared from another app (put where the app may read it: its own files, through run-as,
       // which debug builds allow; a real share hands the app a content:// link with permission to read it)
       adb("push", files.log, "/data/local/tmp/devicetest-log.csv");
@@ -305,7 +345,7 @@ async function main() {
 // onError gets uncaught page errors. The WebView may close its DevTools connection (on a reload, say): the next
 // step then reconnects, sets the connection up again (scripts for new pages too) and is tried once more; each
 // close is logged with the step that was waiting and the WebView's reason.
-async function cdpPage(base, onError) {
+async function cdpPage(base, onError, beforeReconnect) {
   const within = (pr, ms, what) => {
     let t;
     return Promise.race([
@@ -379,6 +419,7 @@ async function cdpPage(base, onError) {
       if (++reconnects > 5) throw new Error(CLOSED + " too many times");
       console.log("  ..   reconnecting to the WebView");
       await sleep(2000);
+      if (beforeReconnect) await beforeReconnect();
       await connect();
     }
     try {
@@ -436,6 +477,11 @@ module.exports = { makeFiles };
 if (require.main === module)
   main().catch((e) => {
     console.log("FAIL " + e.message);
+    try {
+      deviceDiag("after the failure");
+    } catch {
+      /* no device */
+    }
     try {
       shot("error");
     } catch {
