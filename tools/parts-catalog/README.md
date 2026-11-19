@@ -56,11 +56,11 @@ stated speed, sea-level air).
 
 - **Top Flight Recovery X-Type parachutes** (`top_flight_xtype.py` writes `extra/top_flight_xtype.orc`): the X-Type
   (10 to 90 in.), thin mill X-Type (10 to 30 in.) and Ultra X-Type HD (18 to 90 in.), 28 chutes. OpenRocket models
-  only round chutes and Top Flight publishes no area or Cd, so each is listed as an equivalent round chute: its size as
-  the diameter, with the Cd that gives the drag area Top Flight's descent-rate chart implies (the chart's weight range
-  read at 17 to 22 ft/s, sea-level air; the method and sources are in the script). Read the same way, the chart gives
-  Top Flight's round chutes a Cd of about 1.1 to 1.3, above the 0.75 to 0.8 usually measured for flat round chutes, so
-  these X-Type figures are likely optimistic (a slower descent than the real chute) by about as much. Weights are
+  only round chutes and Top Flight publishes no area or Cd, so each is listed as an equivalent round chute: its size
+  (tip to tip) as the diameter, with Cd 0.53 from the measured drag of cross parachutes (Knacke, Parachute Recovery
+  Systems Design Manual, Table 5-1: Dc/D0 1.15 to 1.19, CD0 0.60 to 0.85 on the cloth area, so 0.42 to 0.64 on the
+  size; the middle is used). Top Flight's own descent chart gave 0.55 to 0.75 until November 2026, but the same chart
+  makes Top Flight's round chutes 0.44 at 9 to 15 in. and 1.1 to 1.3 from 36 in. up, so it isn't relied on. Weights are
   calculated from the fabric and lines, except the three thin mill sizes whose weights retailers list.
 
 ```

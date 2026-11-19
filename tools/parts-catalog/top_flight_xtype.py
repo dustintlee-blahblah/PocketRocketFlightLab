@@ -4,20 +4,24 @@
 usage: top_flight_xtype.py [--print]
 
 OpenRocket models only round parachutes, so its parts files leave the X-Type chutes out (Dave Cook's top_flight.orc
-says so). Top Flight publishes no canopy area or drag coefficient for them; what it does publish is a descent-rate
-chart: for each size, the range of rocket weights it brings down at its recommended 17 to 22 ft/s. Each size here is
-listed at its own size as the diameter, with the drag coefficient that gives the drag area that chart implies:
+says so). An X-Type is a cross parachute, and Top Flight publishes no canopy area or drag coefficient for it. The drag
+comes from the measured drag of cross parachutes, Knacke, Parachute Recovery Systems Design Manual (NWC TP 6575, 1991),
+Table 5-1, Solid Textile Parachutes:
 
-    a rocket of weight W falling steadily at v has  W = 1/2 rho v^2 CdA,  so  CdA = 2 W / (rho v^2).
+    CROSS: constructed diameter over nominal diameter Dc/D0 = 1.15 to 1.19; drag coefficient CD0 = 0.60 to 0.85.
 
-The lightest rocket of a range is taken to fall at 17 ft/s and the heaviest at 22 ft/s. The two ends give two
-estimates of CdA; the one used is their geometric mean, 2 g sqrt(Wmin Wmax) / (rho 17 22 ft^2/s^2), which brings a
-rocket whose weight is the geometric middle of the range down at sqrt(17 x 22) = 19.3 ft/s. The chart states no air
-density; sea-level standard air is used (1.225 kg/m3), as such charts usually assume. Cd = CdA / (pi/4 size^2).
+CD0 is on the nominal area S0 (the canopy's cloth area, D0 = sqrt(4 S0 / pi)); Dc is the size tip to tip, which is how
+Top Flight sizes its X-Types. On the size as the diameter, then,
 
-The same chart, read the same way, gives Top Flight's round chutes a Cd of about 1.1 to 1.3 at 36 in. and over, well
-above the 0.75 to 0.8 usually measured for flat round chutes: the chart is optimistic, and an X-Type listed from it is
-likely optimistic by about as much. This is said in README.md beside this file.
+    Cd = CD0 (D0 / Dc)^2,  0.60 / 1.19^2 = 0.42 to 0.85 / 1.15^2 = 0.64;  the middle of both ranges, 0.725 / 1.17^2 = 0.53,
+
+which is used for every size. (The table's Dc/D0 carries the arm proportions, so their width needn't be known.)
+
+Until November 2026 each size's Cd came from Top Flight's descent-rate chart instead (the rocket weights each size
+brings down at its recommended 17 to 22 ft/s), 0.55 to 0.75. That chart can't be relied on: read the same way, Top
+Flight's round chutes come out at about 0.44 from 9 to 15 in. and 1.1 to 1.3 from 36 in. up, where flat round chutes
+measure 0.75 to 0.80 (Knacke's same table). The chart is still listed below (CHART) for reference, and --print shows
+what it gives beside the value used.
 
 Sources (retrieved 2026-11-16; Top Flight's own site could not be reached from where this was written):
   - Top Flight's X-Type descent chart ("X-TYPE 'CHUTES", "Top Flight recommends a descent rate of 17 to 22 ft. per
@@ -77,13 +81,17 @@ PARTS = (
 )
 
 
-def cd_of(size):
-    """The equivalent round-chute Cd of an X-Type of this size (in.), on its size as the diameter. A size the chart
-    has no row for (12 in.) takes the mean of the sizes on either side of it."""
+# Knacke Table 5-1, cross parachute: the middle of CD0 0.60-0.85 on the middle of Dc/D0 1.15-1.19
+CD_KNACKE = round(0.725 / 1.17**2, 2)
+
+
+def cd_chart(size):
+    """What Top Flight's chart implies for an X-Type of this size (in.), on its size as the diameter, for comparison
+    only. A size the chart has no row for (12 in.) takes the mean of the sizes on either side of it."""
     if size not in CHART:
         lo = max(s for s in CHART if s < size)
         hi = min(s for s in CHART if s > size)
-        return (cd_of(lo) + cd_of(hi)) / 2
+        return (cd_chart(lo) + cd_chart(hi)) / 2
     w1, w2 = CHART[size]
     cda = 2 * G * math.sqrt(w1 * w2) / (RHO * V_LIGHT * V_HEAVY)
     return cda / (math.pi / 4 * (size * IN) ** 2)
@@ -92,15 +100,15 @@ def cd_of(size):
 def main():
     out = []
     for pn, s, fab, kind, oz, line in PARTS:
-        cd = round(cd_of(s), 2)
-        note = "" if s in CHART else " (no chart row: the mean of the 10 and 18 in. sizes)"
+        cd = CD_KNACKE
+        note = ""
         mass = f'\n            <Mass Unit="oz">{oz}</Mass>' if oz else ""
         out.append(
-            f"""        <!-- {pn}: Cd {cd} from Top Flight's descent chart{note} -->
+            f"""        <!-- {pn}: Cd {cd} from Knacke's cross parachute (Table 5-1) -->
         <Parachute>
             <Manufacturer>Top Flight Recovery</Manufacturer>
             <PartNumber>{pn}</PartNumber>
-            <Description>Parachute, {kind}, {s} in., nylon (equivalent round chute, Cd {cd} from Top Flight's descent chart)</Description>
+            <Description>Parachute, {kind}, {s} in., nylon (equivalent round chute, Cd {cd}, Knacke's cross parachute)</Description>
             <Material Type="SURFACE">{fab}</Material>
             <Diameter Unit="in">{s}.0</Diameter>
             <DragCoefficient>{cd}</DragCoefficient>
@@ -111,14 +119,13 @@ def main():
 """
         )
         if "--print" in sys.argv:
-            print(f"{pn:12s} {s:3d} in  Cd {cd:.2f}  CdA {cd * math.pi / 4 * (s * IN) ** 2:.4f} m2{'  ' + str(oz) + ' oz' if oz else ''}{note}")
+            print(f"{pn:12s} {s:3d} in  Cd {cd:.2f} (chart {cd_chart(s):.2f})  CdA {cd * math.pi / 4 * (s * IN) ** 2:.4f} m2{'  ' + str(oz) + ' oz' if oz else ''}{note}")
     xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!--
 top_flight_xtype.orc - Top Flight Recovery X-Type parachutes as equivalent round chutes, for Pocket Rocket Flight Lab.
 Generated by top_flight_xtype.py (see it for the method and sources); don't edit by hand.
-The drag coefficient is on the chute's size as the diameter and comes from Top Flight's descent-rate chart, read at
-17 to 22 ft/s in sea-level air. That chart, read the same way, makes Top Flight's round chutes draggier than flat round
-chutes usually are, so these are likely optimistic too.
+The drag coefficient is on the chute's size (tip to tip) as the diameter: a cross parachute's measured CD0 and Dc/D0,
+Knacke, Parachute Recovery Systems Design Manual, Table 5-1.
 -->
 <OpenRocketComponent>
     <Version>0.1</Version>
