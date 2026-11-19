@@ -555,15 +555,16 @@ h2 {
 .apogee .tol {
   font: 600 0.8rem/1.05 var(--f-body, inherit);
   margin-left: 6px;
-  /* top of the tolerance level with the top of the digits (text-top sits at the font's ascent, above them) */
+  /* centred on the height of the digits (text-top is the font's ascent, above them); one line sits lower than two */
   vertical-align: text-top;
   position: relative;
-  top: calc(var(--apo) * 0.18);
+  top: calc(var(--apo) * 0.42);
   white-space: nowrap;
 }
 .apogee .tol.two {
   display: inline-flex;
   flex-direction: column;
+  top: calc(var(--apo) * 0.3);
 }
 .motorchip {
   display: flex;
