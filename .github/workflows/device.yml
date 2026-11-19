@@ -69,7 +69,9 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
-          target: google_apis
+          # the plain Android image: on google_apis, Google Play services kept crashing on the CI emulator and
+          # Android closed the app with it (the WebView takes its fonts from Play services)
+          target: default
           arch: x86_64
           # 4 GB, a low-end phone's: at the default (about 2.5 GB, much of it Google Play services) Android's
           # low-memory killer closed the app mid-test
