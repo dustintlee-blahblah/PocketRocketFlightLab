@@ -289,9 +289,34 @@ export function apoRound(v) {
   return (Math.round(d / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 /**
+ * The small tolerance beside the apogee on the Results tab: ±x when the likely range is even, +a over −b when it is not
+ * (built rockets usually come out heavier, so an estimated weight leans low). The range is apoRange's, rounded like it.
+ */
+export function renderApoTol() {
+  const el = document.getElementById("apotol");
+  if (!el) return;
+  const R = lastSim && apoRange(lastSim.st, lastSim.D);
+  if (!R) {
+    el.innerHTML = "";
+    el.removeAttribute("title");
+    return;
+  }
+  const A = toDisp(lastSim.st.maxAlt, "alt"),
+    q = Math.abs(A) >= 1000 ? 10 : 1,
+    r = (v) => Math.max(q, Math.round(v / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+    up = r(toDisp(R.hi, "alt") - A),
+    dn = r(A - toDisp(R.lo, "alt")),
+    what = `Likely range ${apoRound(R.lo)}–${apoRound(R.hi)} ${uname("alt")} (about 90%)${R.mc ? ", with the dispersion run" : ""}`;
+  el.innerHTML = up === dn ? `±${up}` : `<span>+${up}</span><span>−${dn}</span>`;
+  el.classList.toggle("two", up !== dn);
+  el.title = what;
+  el.setAttribute("aria-label", what);
+}
+/**
  * Show the dispersion run's results (statistics and the landing map) on the Results tab.
  */
 export function renderMC() {
+  renderApoTol();
   const out = document.getElementById("mcout");
   if (!out) return;
   if (!lastMC || !lastSim || lastMC.when !== lastSim.when) {

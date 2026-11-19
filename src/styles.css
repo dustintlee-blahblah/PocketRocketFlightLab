@@ -539,6 +539,7 @@ h2 {
 }
 .apogee {
   font: 700 3.4rem/0.95 var(--f-display);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .apogee small {
@@ -546,6 +547,20 @@ h2 {
   color: var(--muted);
   font-weight: 600;
   margin-left: 4px;
+}
+.apogee.long {
+  font-size: clamp(2.3rem, 11vw, 3.4rem);
+}
+.apogee .tol {
+  font: 600 0.8rem/1.05 var(--f-body, inherit);
+  margin-left: 6px;
+  vertical-align: 0.9em;
+  white-space: nowrap;
+}
+.apogee .tol.two {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: 0.35em;
 }
 .motorchip {
   display: flex;

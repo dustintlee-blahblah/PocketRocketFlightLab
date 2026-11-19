@@ -182,6 +182,7 @@ const { chromium } = require("playwright");
     windRows: count("#windtable tr"),
     log: document.getElementById("flpanel") ? 1 : 0,
     apogee: lastSim ? lastSim.st.maxAlt : 0,
+    tol: /^(±\d|\+\d.*−\d)/.test(document.getElementById("apotol")?.textContent || "") ? 1 : 0,
   }));
   need("Results tab: groups of figures", m.groups, 5);
   need("Results tab: figures", m.tiles, 25);
@@ -193,6 +194,7 @@ const { chromium } = require("playwright");
   need("Results tab: drift-by-wind table rows", m.windRows, 4);
   need("Results tab: flight log panel", m.log, 1);
   need("Results tab: an apogee", m.apogee, 10);
+  need("Results tab: the ± tolerance beside the apogee", m.tol, 1);
   // the flight animation, in 2D and (where this browser has WebGL) in 3D, in each camera
   await step("animation", () => {
     animOpen();

@@ -12,7 +12,7 @@ import { renderFlightLog } from "../flightlog/flight-log.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
 import { stability } from "../physics/aerodynamics.js";
 import { baroReading } from "../physics/atmosphere.js";
-import { mcAuto, renderMC } from "../physics/monte-carlo.js";
+import { mcAuto, renderApoTol, renderMC } from "../physics/monte-carlo.js";
 import { noseWeightPlan } from "../physics/nose-weight.js";
 import { simulate } from "../physics/simulate.js";
 import { isThree, stackStability } from "../physics/staging.js";
@@ -120,7 +120,10 @@ export function renderResults() {
   document.getElementById("mchip").textContent = m.cn || m.name;
   document.getElementById("apogee").innerHTML = st.error
     ? "—"
-    : `${fmt(st.maxAlt, "alt")}<small>${uname("alt")}</small>`;
+    : `${fmt(st.maxAlt, "alt")}<small>${uname("alt")}</small><small class="tol" id="apotol"></small>`;
+  // five digits and the tolerance don't fit beside the motor on a phone at full size
+  document.getElementById("apogee").classList.toggle("long", !st.error && fmt(st.maxAlt, "alt").length > 5);
+  renderApoTol();
   const SL = lastSim.SS || S;
   {
     const sp = document.getElementById("stagepanel");
