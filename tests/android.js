@@ -188,6 +188,15 @@ async function main() {
         sessionStorage.setItem("rfs-splash", "1");`);
       await page.reload();
       await sleep(6000);
+      // the hooks are there only if the page loaded after the script was set; once more if not
+      if (!(await page.evaluate(() => typeof openExample === "function"))) {
+        console.log("  ..   page test hooks missing after the reload: reloading again");
+        await page.reload();
+        await sleep(6000);
+        if (!(await page.evaluate(() => typeof openExample === "function")))
+          throw new Error("the page's test hooks aren't there after two reloads");
+      }
+      console.log("  ..   past the first-run screens");
       const pg = page;
 
       // a simulation: an example rocket, Launch, the apogee on Results
@@ -293,7 +302,9 @@ async function main() {
 
 // A page in Android WebView, over DevTools: evaluate(fn) runs fn in the page and returns its value; click(selector)
 // clicks the first visible match as a tap would (counted as a user's gesture, so a file picker may open);
-// onError gets uncaught page errors.
+// onError gets uncaught page errors. The WebView may close its DevTools connection (on a reload, say): the next
+// step then reconnects, sets the connection up again (scripts for new pages too) and is tried once more; each
+// close is logged with the step that was waiting and the WebView's reason.
 async function cdpPage(base, onError) {
   const within = (pr, ms, what) => {
     let t;
@@ -302,50 +313,83 @@ async function cdpPage(base, onError) {
       new Promise((_, no) => (t = setTimeout(() => no(new Error(`no answer in ${ms / 1000} s: ${what}`)), ms))),
     ]).finally(() => clearTimeout(t));
   };
-  const list = await within(
-    fetch(base + "/json").then((r) => r.json()),
-    30000,
-    "the WebView's DevTools page list",
-  );
-  const t = list.find((x) => x.type === "page") || list[0];
-  if (!t) throw new Error("no page in the WebView's DevTools list");
-  const ws = new WebSocket(t.webSocketDebuggerUrl);
-  await within(
-    new Promise((ok, no) => {
-      ws.onopen = ok;
-      ws.onerror = () => no(new Error("couldn't open the WebView's DevTools connection"));
-    }),
-    30000,
-    "opening the WebView's DevTools connection",
-  );
-  let id = 0;
+  const initScripts = [];
+  let ws = null,
+    id = 0,
+    reconnects = 0;
   const waiting = new Map();
-  ws.onclose = () => {
-    for (const w of waiting.values()) w.no(new Error("the WebView closed its DevTools connection"));
-    waiting.clear();
-  };
-  ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.id && waiting.has(m.id)) {
-      const w = waiting.get(m.id);
-      waiting.delete(m.id);
-      m.error ? w.no(new Error(m.error.message)) : w.ok(m.result);
-    } else if (m.method === "Runtime.exceptionThrown") {
-      const d = m.params.exceptionDetails;
-      onError((d.exception && d.exception.description) || d.text);
-    }
-  };
-  const send = (method, params = {}) =>
+  const CLOSED = "the WebView closed its DevTools connection";
+
+  async function connect() {
+    const list = await within(
+      fetch(base + "/json").then((r) => r.json()),
+      30000,
+      "the WebView's DevTools page list",
+    );
+    const t = list.find((x) => x.type === "page" && x.webSocketDebuggerUrl) || list.find((x) => x.webSocketDebuggerUrl);
+    if (!t) throw new Error("no page in the WebView's DevTools list: " + JSON.stringify(list).slice(0, 300));
+    const sock = new WebSocket(t.webSocketDebuggerUrl);
+    await within(
+      new Promise((ok, no) => {
+        sock.onopen = ok;
+        sock.onerror = () => no(new Error("couldn't open the WebView's DevTools connection"));
+      }),
+      30000,
+      "opening the WebView's DevTools connection",
+    );
+    sock.onclose = (ev) => {
+      if (ws !== sock) return;
+      ws = null;
+      const steps = [...waiting.values()].map((w) => w.method).join(", ") || "nothing";
+      console.log(`  ..   ${CLOSED} (code ${ev.code}${ev.reason ? ", " + ev.reason : ""}; waiting on ${steps})`);
+      for (const w of waiting.values()) w.no(new Error(CLOSED));
+      waiting.clear();
+    };
+    sock.onmessage = (ev) => {
+      const m = JSON.parse(ev.data);
+      if (m.id && waiting.has(m.id)) {
+        const w = waiting.get(m.id);
+        waiting.delete(m.id);
+        m.error ? w.no(new Error(m.error.message)) : w.ok(m.result);
+      } else if (m.method === "Runtime.exceptionThrown") {
+        const d = m.params.exceptionDetails;
+        onError((d.exception && d.exception.description) || d.text);
+      }
+    };
+    ws = sock;
+    await raw("Runtime.enable");
+    await raw("Page.enable");
+    for (const src of initScripts) await raw("Page.addScriptToEvaluateOnNewDocument", { source: src });
+  }
+
+  const raw = (method, params = {}) =>
     within(
       new Promise((ok, no) => {
-        waiting.set(++id, { ok, no });
+        if (!ws) return no(new Error(CLOSED));
+        waiting.set(++id, { ok, no, method });
         ws.send(JSON.stringify({ id, method, params }));
       }),
       60000,
       method,
     );
-  await send("Runtime.enable");
-  await send("Page.enable");
+
+  // a step, reconnecting first if the connection has gone, and once more if it goes while waiting
+  async function send(method, params = {}, again = true) {
+    if (!ws) {
+      if (++reconnects > 5) throw new Error(CLOSED + " too many times");
+      console.log("  ..   reconnecting to the WebView");
+      await sleep(2000);
+      await connect();
+    }
+    try {
+      return await raw(method, params);
+    } catch (e) {
+      if (e.message !== CLOSED || !again) throw e;
+      return send(method, params, false);
+    }
+  }
+
+  await connect();
   const run = async (expr) => {
     const r = await send("Runtime.evaluate", {
       expression: expr,
@@ -361,8 +405,15 @@ async function cdpPage(base, onError) {
   };
   return {
     evaluate: (fn) => run(`(${fn})()`),
-    addInitScript: (src) => send("Page.addScriptToEvaluateOnNewDocument", { source: src }),
-    reload: () => send("Page.reload"),
+    async addInitScript(src) {
+      initScripts.push(src);
+      await send("Page.addScriptToEvaluateOnNewDocument", { source: src });
+    },
+    // a reload can take the connection with it: that counts as done
+    reload: () =>
+      send("Page.reload", {}, false).catch((e) => {
+        if (e.message !== CLOSED) throw e;
+      }),
     async click(sel) {
       const ok = await run(`(() => {
         const el = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.offsetParent !== null);
@@ -372,7 +423,12 @@ async function cdpPage(base, onError) {
       })()`);
       if (!ok) throw new Error("nothing visible to click: " + sel);
     },
-    close: async () => ws.close(),
+    dropForTest: () => ws && ws.close(),
+    close: async () => {
+      const w = ws;
+      ws = null;
+      w && w.close();
+    },
   };
 }
 
