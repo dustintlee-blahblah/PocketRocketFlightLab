@@ -1,0 +1,83 @@
+# The Android app on an Android emulator (tests/android.js): after each release, the release's own APK is installed,
+# opened and watched for crashes; then a debug build of the same commit is driven through a simulation, a design file
+# opened through Android's file picker, and an altimeter log shared to the app. Screenshots from the device are kept as
+# the android-screenshots artifact. Run it by hand too (Actions > Device test > Run workflow): it then tests the
+# latest release.
+
+name: Device test
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the page and the debug APK
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          node build.js
+          (cd android && ./gradlew --no-daemon assembleDebug)
+
+      - name: The release's APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          N=$(grep -oE 'APP_BUILD = "[0-9]+"' src/js/core/start.js | grep -oE '[0-9]+')
+          V=$(grep -oE 'versionName "[^"]+"' android/app/build.gradle | cut -d'"' -f2)
+          TAG="v${V}-build${N}"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          echo "testing release $TAG"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern PocketRocketFlightLab.apk --dir rel
+
+      - name: Let the emulator use the processor's virtualization
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Test on the emulator (Android 14)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: node tests/android.js --release rel/PocketRocketFlightLab.apk --debug android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Keep the device's screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-screenshots
+          path: test-results/android/*.png
+          if-no-files-found: ignore

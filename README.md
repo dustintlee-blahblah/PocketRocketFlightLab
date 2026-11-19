@@ -68,15 +68,17 @@ tests/golden-snapshot.json          the recorded results (examples and builder d
 tests/drag-benchmarks.js            the drag model against published NACA measurements
 tests/smoke.js                      clicks through the tabs and controls; fails on any page error or an empty screen
 tests/roundtrip.js                  changes every field of every builder part, saves, reopens and compares
+tests/walkthrough.js                every screen at phone size in light and dark: screenshots; fails on errors, overflow, blank charts
+tests/android.js                    the Android app on an emulator: opens, runs, opens a design file, takes a shared log
 tools/set-build.js                  sets the build number everywhere it appears
 tools/screenshots.js                takes the screenshots in docs/images from the built app
 tools/build-release-apk.sh          builds and checks the signed release APK (used by the release workflow)
 tools/motor-catalog/                builds src/data/motor-catalog.js from the OpenRocket motor database
-tools/parts-catalog/                builds src/data/parts-catalog.js from OpenRocket's component files
+tools/parts-catalog/                builds src/data/parts-catalog.js from Dave Cook's parts database and makers' specs
 tools/unused-exports.js             lint: module exports nothing uses
 tools/check-module-tops.js          lint: modules only define things when they load
 tools/relink.js, tools/move-code.js rewrite imports from what each module uses; move code between modules
-.github/workflows/                  Check (every push and pull request) and Release (a new build number on main)
+.github/workflows/                  Check (every push and pull request), Release (a new build number on main), Device test (after a release)
 CHANGELOG.md                        what changed in each build; a release's description comes from its section
 VALIDATION.md, validation/          how accurate the app is, and the scripts that check it
 docs/images/                        the README's screenshots

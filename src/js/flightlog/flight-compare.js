@@ -135,8 +135,9 @@ function fcMeasured(f) {
 export function fcOpen(f, draft) {
   const P = fcPredict(f);
   fcNow = { f, draft: !!draft, P, M: fcMeasured(f), view: "alt" };
-  fcRender();
+  // shown first: the chart is sized from the window, which has no size while hidden
   document.getElementById("cmpmodal").hidden = false;
+  fcRender();
   document.getElementById("cmpbody").scrollTop = 0;
 }
 /**

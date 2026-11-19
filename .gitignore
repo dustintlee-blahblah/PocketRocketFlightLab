@@ -26,3 +26,4 @@ web/
 /golden-snapshot.json
 *.golden.json
 __pycache__/
+test-results/
