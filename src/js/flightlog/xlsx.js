@@ -966,12 +966,20 @@ export function start() {
     flPredBox();
     setAltP(null);
   };
-  document.getElementById("fladd").onclick = () => flOpen(null);
+  // Compare with a real flight: an altimeter file, or readings entered by hand
   {
-    const inp = document.getElementById("flaltfile");
+    const box = document.getElementById("flchoose"),
+      inp = document.getElementById("flaltfile");
+    document.getElementById("flcmp").onclick = () => (box.hidden = false);
+    document.getElementById("flchcancel").onclick = () => (box.hidden = true);
+    document.getElementById("flhand").onclick = () => {
+      box.hidden = true;
+      flOpen(null);
+    };
     inp.onchange = () => {
       const f = inp.files && inp.files[0];
       inp.value = "";
+      box.hidden = true;
       if (f) altOpenFile(f, "new");
     };
   }

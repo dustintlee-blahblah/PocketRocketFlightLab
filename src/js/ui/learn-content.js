@@ -38,6 +38,63 @@ const fig = (svg, caption) => `<figure>${svg}</svg><figcaption>${caption}</figca
 const tryIt = (html) => `<div class="try"><b>Try it in the app:</b> ${html}</div>`;
 
 /**
+ * What the drag model does in each speed band (Technical level, "How the drag is worked out"): shown under the
+ * speed-band drawing when a band is tapped. From AERODYNAMICS.md; keep the two in step.
+ */
+export const LEARN_BANDS = {
+  sub: {
+    title: "Subsonic: below Mach 0.8",
+    html:
+      `<p>The air has time to move aside ahead of the rocket, so no shock waves form. Compressibility only scales things a little. Drag is mostly <b>skin friction</b>, often the biggest single part, and <b>base drag</b>, often a quarter to a third of the total on a coasting model rocket.</p>` +
+      `<ul><li><b>Friction:</b> the Prandtl–Schlichting turbulent flat-plate law, White's rough law for rough surfaces, Hoerner's form factors for thick bodies and fins.</li>` +
+      `<li><b>Nose:</b> almost no pressure drag if it blends smoothly into the body (Hoerner's shoulder-angle rule).</li>` +
+      `<li><b>Base:</b> the base pressure measured in flight in NASA TR R-100. A boattail shrinks the base, and a burning motor's exhaust fills the nozzle's share of it.</li>` +
+      `<li><b>Fins:</b> a square leading edge costs 0.4 of the stagnation pressure on its face (Hoerner); a rounded one costs nothing. Their lift is Barrowman's (Diederich's formula with the Prandtl–Glauert correction).</li></ul>` +
+      `<p><b>Where it shows:</b> most model rockets and many Level 1 and 2 flights never leave this band. Finish, fillets and the base matter most here. Across the check cases the drag is within about 10%; calibrating to your own altimeter readings closes most of the rest.</p>`,
+    links: [["validation", "Validation"]],
+  },
+  trans: {
+    title: "Transonic: Mach 0.8 to 1.2 (fins to 1.5)",
+    html:
+      `<p>Parts of the airflow reach the speed of sound before the rocket does: over the nose shoulder and the fins first. <b>Shock waves form</b>, drag rises steeply and peaks just past Mach 1, and the center of pressure moves. No theory covers this band, so every simulator works from measurements here.</p>` +
+      `<ul><li><b>Nose:</b> NASA TR R-100's measured curves for cones, ogives, parabolic, Haack and elliptical noses, read for your nose's shape and slenderness.</li>` +
+      `<li><b>Fins:</b> a measured correlation of 22 wings through Mach 1 (NACA Report 1253). A fin's drag starts to rise near Mach 0.96 − 1.5 × its thickness ratio: about Mach 0.87 for a 6%-thick fin. A short, stubby fin's drag rises later and peaks lower.</li>` +
+      `<li><b>Base:</b> the measured base pressure peaks just past Mach 1. Fins near the base add suction from Mach 0.95 (NACA TN 3819).</li>` +
+      `<li><b>Fin lift</b> is blended from Barrowman's subsonic value at Mach 0.9 to supersonic theory at 1.5.</li></ul>` +
+      `<p><b>Where it shows:</b> this is the weakest band of every rocket simulator. Across the check cases the drag is about 13% off here, against about 6% above Mach 1.2. The ± beside the apogee on Results widens for flights that top out here, and the RSO Checklist flags transonic flights.</p>`,
+    links: [
+      ["mach", "Flying through Mach 1"],
+      ["validation", "Validation"],
+    ],
+  },
+  super: {
+    title: "Supersonic: Mach 1.2 to 4",
+    html:
+      `<p>The shocks settle into place ahead of the nose and on the fins' leading edges. Drag comes mostly from <b>wave drag</b>, the energy the shocks take, and for thin fins and slender noses <b>linear supersonic theory</b> works well.</p>` +
+      `<ul><li><b>Fins:</b> thin-airfoil wave drag, K × (t/c)² ÷ √(M² − 1): K = 4 for a double wedge, 16/3 for an airfoil, 10 for a beveled fin with 20% bevels. A rounded leading edge acts like a cylinder across the flow (modified Newtonian theory). Fin lift is Ackeret's theory with tip loss.</li>` +
+      `<li><b>Nose:</b> NASA TR R-100's measured curves to Mach 2. Past that, a nose that comes to a point uses the second-order shock-expansion method (NACA Report 1328), as Missile DATCOM does; a blunt nose keeps the measured curves to their last point, about Mach 3.6.</li>` +
+      `<li><b>Boattails:</b> TR R-100's equation for conical afterbodies to Mach 2, linear theory past 2.5.</li>` +
+      `<li><b>Base:</b> NACA TN 3819 above Mach 2, with the extra suction from fins near the base and blunt fin trailing edges.</li>` +
+      `<li><b>Friction</b> falls as the air near the skin heats (the Van Driest II method), and the skin's own temperature is followed through the flight.</li></ul>` +
+      `<p><b>Where it shows:</b> sharp, thin fin edges and slender noses pay off here. Well past Mach 1 the fins lose lift faster than the nose, so the CP creeps forward and the margin shrinks. Across the check cases the drag is within about 6% from Mach 1.2 to 3 and about 4% from 3 to 5.</p>`,
+    links: [
+      ["mach", "Flying through Mach 1"],
+      ["validation", "Validation"],
+    ],
+  },
+  hyper: {
+    title: "Hypersonic edge: Mach 4 to 6",
+    html:
+      `<p>Past most of the measured data for rocket shapes. The shocks lie close to the surface, and the pressure on a surface depends mostly on the angle it meets the flow at.</p>` +
+      `<ul><li><b>Blunt noses</b> (and any nose the shock-expansion method can't handle) are blended from Mach 4 to 6 into <b>modified Newtonian theory</b>, which works out the pressure from that angle alone. Pointed noses stay with shock-expansion.</li>` +
+      `<li><b>Friction</b> keeps falling as the boundary layer heats: by Mach 5 it is under half its low-speed value.</li>` +
+      `<li>The fins' wave drag and lift carry on from the supersonic band.</li></ul>` +
+      `<p><b>Where it shows:</b> only the fastest amateur flights reach this band, briefly. The model's fastest checks are the Aerobee 150A wind-tunnel data to Mach 5 and the Arcas sounding rocket to Mach 4.6; nothing measured checks it past Mach 5. The Wind Tunnel on the Rocket tab goes to Mach 6.</p>`,
+    links: [["validation", "Validation"]],
+  },
+};
+
+/**
  * The chapters, in reading order: id (for links into a chapter), group, title, a one-line summary and the HTML.
  * Built when asked for (nothing is drawn at start-up).
  * @returns {{id:string, group:string, title:string, sub:string, html:string}[]}
@@ -130,22 +187,25 @@ export function learnChapters() {
       `<text x="150" y="70" text-anchor="middle" fill="var(--accent)" stroke="none">every 0.002 to 0.2 s</text>`,
     "Each step adds up the forces and moves the rocket a moment forward, thousands of times a flight.",
   );
-  const BANDS = fig(
-    svgOpen(96, "Speed bands of the drag model") +
-      [
-        [6, 72, "Subsonic", "below 0.8"],
-        [80, 72, "Transonic", "0.8 to 1.2"],
-        [154, 76, "Supersonic", "1.2 to 4"],
-        [232, 62, "Hypersonic", "4 to 6"],
-      ]
-        .map(
-          ([x, w, t, m], i) =>
-            `<rect x="${x}" y="20" width="${w}" height="34" rx="6" ${i === 1 ? 'stroke="var(--accent)" fill="var(--accent)" fill-opacity=".15"' : ""}/><text x="${x + w / 2}" y="41" text-anchor="middle" stroke="none" fill="${i === 1 ? "var(--accent)" : "currentColor"}">${t}</text><text x="${x + w / 2}" y="72" text-anchor="middle" stroke="none" fill="currentColor">${m}</text>`,
-        )
-        .join("") +
-      `<text x="150" y="90" text-anchor="middle" stroke="none" fill="currentColor">Mach number</text>`,
-    "Each band uses its own methods, blended where they meet. The transonic band has no theory, only measurements.",
-  );
+  // the speed bands, each tappable: the panel under the drawing (learnBand, in learn.js) says what drives the drag
+  // there and how the app works it out
+  const BANDS =
+    fig(
+      svgOpen(96, "Speed bands of the drag model: tap a band to read about it").replace('role="img"', 'role="group"') +
+        [
+          ["sub", 4, 66, "Subsonic", "below 0.8"],
+          ["trans", 75, 70, "Transonic", "0.8 to 1.2"],
+          ["super", 150, 72, "Supersonic", "1.2 to 4"],
+          ["hyper", 227, 70, "Hypersonic", "4 to 6"],
+        ]
+          .map(
+            ([k, x, w, t, m]) =>
+              `<g class="lband" data-band="${k}" role="button" tabindex="0" aria-pressed="false" aria-label="${t}, Mach ${m}: what drives the drag and how the app works it out"><rect x="${x}" y="20" width="${w}" height="34" rx="6"/><text class="lbt" x="${x + w / 2}" y="41" text-anchor="middle" stroke="none">${t}</text><text x="${x + w / 2}" y="72" text-anchor="middle" stroke="none" fill="currentColor">${m}</text></g>`,
+          )
+          .join("") +
+        `<text x="150" y="90" text-anchor="middle" stroke="none" fill="currentColor">Mach number</text>`,
+      "Tap a band for what drives the drag there and how the app works it out. Each band uses its own methods, blended where they meet.",
+    ) + `<div class="bandinfo" id="bandinfo" aria-live="polite" hidden></div>`;
   // ---- Mid & high power, and Technical: drawings ----
   const CERT = fig(
     svgOpen(128, "Motor impulse classes and the certification levels that allow them") +
@@ -388,7 +448,7 @@ export function learnChapters() {
         `<p>The steps are very short: 2 thousandths of a second on the rail and while the motor burns, 1 hundredth while coasting, and longer under the parachute, where little changes. A typical flight takes many thousands of steps, in well under a second.</p>` +
         `<p><b>How close is it?</b> Flown against 23 real flights with measured altitudes, the app's predictions came within about 6% on average. Your rocket can differ for reasons the app can't see:</p>` +
         `<ul><li>The real weight and balance point, if they were estimated rather than measured.</li><li>The real finish, and small things like glue fillets, seams and decals.</li><li>Motors of the same type, which vary a little from one to the next.</li><li>Gusts, and the wind higher up, which no one measures at the pad.</li></ul>` +
-        `<p>The best fix is your own data. Weigh the rocket and find its CG with the motor in, and enter those in the builder. After a flight, enter your altimeter's reading in the Flight Log and let the app calibrate to your rocket.</p>` +
+        `<p>The best fix is your own data. Weigh the rocket and find its CG with the motor in, and enter those in the builder. After a flight, tap Compare with a real flight in the Flight Log on the Results tab, enter your altimeter's reading or import its file, save the flight and let the app calibrate to your rocket.</p>` +
         tryIt(
           "Imperfections on the Rocket tab adds the small real-world flaws, and Landing dispersion on the Results tab shows how much the result spreads when the wind varies.",
         ),
@@ -520,7 +580,7 @@ export function learnChapters() {
         `<li><b>Acceleration at the altimeter's limit:</b> many small altimeters read acceleration only to about 23 g, and work out top speed from it. A flight that pulls harder reads low on both.</li>` +
         `<li><b>Barometric altimeters</b> turn pressure into height assuming a standard day. On a hot day the real height is higher than they say, by about 1% for every 3 °C (5 °F) above standard.</li></ul>` +
         tryIt(
-          "import the altimeter's file in the Flight Log, or type in what its display showed, then tap Compare: the curves, each event's error and what the differences point at.",
+          "tap Compare with a real flight in the Flight Log on the Results tab, and import the altimeter's file or enter what its display showed: Flight vs prediction shows the curves, each event's error and what the differences point at.",
         ),
     },
     {
@@ -586,7 +646,7 @@ export function learnChapters() {
           .join("") +
         `</tbody></table></div>` +
         `<p>The weakest band is transonic. Across all check cases, drag is within about 6% between Mach 1.2 and 3, but about 13% off between Mach 0.8 and 1.2, where shock waves come and go and no theory holds.</p>` +
-        `<h3>Calibrating to your own flights</h3><p>No drag model knows your rocket's real finish, fillets and seams. After a flight, log your altimeter's reading in the Flight Log and tick Use for calibration: the app scales its drag so the prediction matches your flights, and every later run of that rocket uses it.</p>` +
+        `<h3>Calibrating to your own flights</h3><p>No drag model knows your rocket's real finish, fillets and seams. After a flight, tap Compare with a real flight in the Flight Log, enter your altimeter's reading or import its file, save the flight and tick Use for calibration: the app scales its drag so the prediction matches your flights, and every later run of that rocket uses it.</p>` +
         tryIt(
           "open the Wind Tunnel and the Drag table on the Rocket tab to see the parts for your own rocket at every speed.",
         ) +
@@ -653,7 +713,7 @@ export function learnChapters() {
         `<li><b>Above Mach 1.2</b> the app has tended to predict high. The cause is being looked for in the drag model itself, rather than covered with a correction factor.</li></ul>` +
         `<p>Other checks: drag against NACA and NASA wind-tunnel and free-flight data within about 6% from Mach 1.2 to 3; the Arcas CP within 3.1% of length; and OpenRocket's own example files flown side by side.</p>` +
         tryIt(
-          "log your own flights in the Flight Log and tap Compare: for your rocket, they are the best check of all. VALIDATION.md has every flight and comparison above, and how to run them yourself.",
+          "compare your own flights with Compare with a real flight in the Flight Log: for your rocket, they are the best check of all. VALIDATION.md has every flight and comparison above, and how to run them yourself.",
         ) +
         `<p><a href="https://github.com/dustintlee-blahblah/PocketRocketFlightLab/blob/main/VALIDATION.md" target="_blank" rel="noopener">VALIDATION.md</a></p>`,
     },

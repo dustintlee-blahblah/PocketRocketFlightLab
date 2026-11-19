@@ -4,123 +4,163 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 327 (2026-11-19)
+
+**Flight Log**
+
+- **Compare with a real flight** replaces + Log a flight and the separate import button. It offers two ways in: **Import altimeter file** (as before: which rocket flew it, then the real curve) or **Enter by hand** (pick your altimeter for the readings it gives, or Another altimeter for just the apogee; the Log file, Display readings and Apogee only tabs are gone). Both open Flight vs prediction, flown with the flight's own motor, delay, weight and weather, where you save the flight and calibrate the drag to it. Editing a saved flight still saves straight away; a flight with files still takes a second altimeter's file.
+
+**Learn**
+
+- **Speed bands are tappable** in the drag model chapter: subsonic, transonic, supersonic and the hypersonic edge each say what drives the drag there, the methods and sources used, and how well it is checked, with links to Flying through Mach 1 and Validation.
+- **Back closes Learn** in the Android app instead of closing the app, and a close **X** sits in the window's top right corner.
+
 ## Build 326 (2026-11-19)
 
 **Range tab**
+
 - **Get Current Location**, beside Get directions, fills the site's latitude and longitude from the device's location (GPS), with how close the fix is. Location is asked for only when the button is tapped, and the position goes only into the field. The Android app asks for location permission the first time.
 
 **Results**
+
 - **Recovery Plan starts folded**: tap Show to open it. It is still worked out after each Launch, and the PDF report still has it.
 
 **Rocket builder**
+
 - The top row of the parts list reads **Whole Rocket** (was ROCKET).
 
 **Android app**
+
 - If the page's process ends (Android short of memory, or a graphics driver crash), the app starts the page again with a short message instead of closing; designs and settings are kept. Links still open in the phone's browser, mail and map apps.
 
 **Testing**
+
 - The Android emulator test now drives the debug app end to end (a simulation, a design file opened through Android's file picker, an altimeter log shared to the app): it talks to the page over plain DevTools, reconnects if the connection drops, can't pass by stopping early, and runs on the plain Android image (4 GB) because Google Play services kept crashing on the Google image and taking the app with it.
 
 ## Build 325 (2026-11-19)
 
 **Results**
+
 - **The apogee range leaves out flights that tumbled.** Build 324 folded the landing-dispersion run's spread into the ±, and a rocket with a small stability margin and an estimated weight had some dispersion flights go unstable and top out near the pad: they swamped the range (−10,000 ft on a 17,000 ft flight). The ± now takes the spread of the flights that flew normally, about their median, and a line under the apogee says how many dispersion flights went unstable.
 - **Stability leaving the rail comes first**, on the Results tab and in the RSO checklist: it is judged at the real speed and angle as the rocket leaves the rail, the slowest, most vulnerable moment of free flight. The static number on the pad (the usual 1-caliber rule) follows it; under 1 caliber there with at least 1 caliber leaving the rail is a caution rather than a stop. Leaving the rail below 0 caliber is now a stop.
 - **Chance of tumbling** sits with the stability checks and says how much the balance is varied, and, when the weight is estimated, that weighing the rocket and marking its CG narrows it.
 
 **Testing**
+
 - The emulator test runs on Ubuntu 24.04 (the browser library it drives has none for GitHub's newer image), and the inputs test checks that tumbling dispersion flights stay out of the apogee range.
 
 ## Build 324 (2026-11-19)
 
 **Results**
+
 - **Apogee range**: a small ± beside the predicted apogee, from how far real apogees have landed from the app's predictions (23 measured flights, by top speed: the typical 1σ spread shown, the 90% range used by the waiver and cloud checks). Tap it for both. Estimated weights and calibrated drag widen or narrow it.
 - **Recovery Plan**: every charge in order (primary altimeter, backup altimeter, motor) with its time after apogee, height and speed, a charge that fires while still climbing called out; the flight flown again as if the primary altimeter failed and as if every altimeter failed, each graded on its landing; a warning when one altimeter and a plugged motor leave no backup; time and drift under the drogue and the main, and with the main at 500, 750 and 1,000 ft; the main's opening load against the harness's rating; static port sizes (PerfectFlite's rule).
 
 **Rocket builder**
+
 - **Recovery electronics** (Whole rocket): a backup altimeter with its own apogee delay and main height, the altimeter bay's size, and the chute and harness's rated load. Saved in the .ork.
 - **Fin weight follows the fin's section**: rounded, beveled, double-wedge and airfoil fins weigh what their shape holds, not a full flat slab (an airfoil two thirds of it, a double wedge half; rounded edges about 1%). A weight you enter still wins.
 - **Parts library**: the parachutes of Fruity Chutes, Rocketman, Spherachutes and b2 Rocketry (SkyAngle) are rebuilt from each maker's published sizes, weights, drag coefficients and ratings. FlisKits and Front Range Rocket Recovery parts are gone (no published sizes or ratings). Older Fruity Chutes part numbers still match.
 - **Top Flight X-Type** chutes take Cd 0.53 from measured cross-parachute drag (Knacke, Parachute Recovery Systems Design Manual) in place of Top Flight's chart.
 
 **Flight Log**
+
 - **Altimeter logs**: import a log from 25 altimeters (Featherweight, Missile Works, PerfectFlite, Jolly Logic, Eggtimer, Altus Metrum and others) by Open design file, the Flight Log or sharing it to the app. The log screen shows which rocket flew it and the flight's details; the charge is found from the curve.
 - **Display readings**: log what an altimeter's display or beeps gave you.
 - **Flight vs prediction**: the logged curve against the design flown the same way, with burnout, charge and apogee marked, each event compared, warnings when the charge fired before apogee or the accelerometer was at its limit, and what the differences point at. Save or calibrate drag from it.
 
 **Range tab**
+
 - Each number takes a physical range (wind up to 100 mph, field elevation up to 6,000 m, rail angle up to 45° and so on): a value past it is held at the end of the range and the field says so. Absurd values used to give absurd flights.
 
 **Flight report (PDF)**
+
 - The Recovery Plan is in the report.
 
 **Learn**
+
 - **Three levels**: Getting started, Mid & high power, Technical. Ten new chapters with drawings: certification, waivers and predicting apogee, dual deploy, fin flutter, flying through Mach 1, staging, reading your altimeter, the stability model, the equations of motion and the atmosphere, and validation.
 
 **Fixes**
+
 - Opening a stored run from a file this app saved flies that run's motor (it flew the design's saved motor).
 - Flight vs prediction's chart opened blank on some screens.
 
 **Testing**
+
 - New automated tests run on every push: a walkthrough of every screen at phone size in light and dark; inputs moving the results the way physics says, and odd values breaking nothing; the PDF report, flight data CSV, Flight Log backup and Save a copy read back. An Android emulator test runs after each release.
 
 **Validation**
+
 - Three flights flyers shared (CT Concept 98, Partizon, Ascender) are in VALIDATION.md.
 
 ## Build 323 (2026-11-17)
 
 **Learn**
+
 - The Settings entry reads **Learn: Rockets & how the sim works**, and the Learn page's subtitle **How rockets fly, and how this sim works**.
 
 **Validation**
+
 - `validation/flights.js --zero-finish smooth|normal` flies the rockets whose files say "Smooth (Zero Roughness)" with smooth or regular paint; VALIDATION.md's table of finishes is rerun with it (smooth paint 6.2% mean error, regular paint 8.7%).
 
 ## Build 322 (2026-11-17)
 
 **Learn**
+
 - **A Learn page**, opened from Settings: eight short chapters for beginners (the four forces, a flight from pad to landing, stability, motors, drag, weather and the launch site, recovery, and how the simulator works and how far to trust it), each with a drawing and a "Try it in the app" note; a deeper chapter on the drag model, with its methods, sources and how well it is checked; and further reading. It works offline.
 - **Learn more** links at the end of seven help boxes (CG, Cd, Surface finish, parachute diameter, Wind with altitude, Motor Delay, Wind Tunnel) open the chapter that explains them.
 
 **Rocket builder**
+
 - **Leading-edge radius** for beveled and double-wedge fins: the small round where the faces meet. Above the transonic drag rise it adds what the round costs over the sharp edge it replaces (modified Newtonian theory, swept as the other edges), checked against cylinder drag measurements (NACA TN 2960) and a blunted-wing test (NASA TM X-27). RASAero files fill it from their LE radius, and it is saved in the .ork. The three measured flights that give a radius come out 0.2 to 1.5% lower.
 
 **Look and feel**
+
 - The disclaimer's tick box turns the theme's orange when ticked, and so does the box around it (it was grey).
 
 **Documentation**
+
 - AERODYNAMICS.md describes the leading-edge radius; the measured flights' figures in it and VALIDATION.md are rerun (6.4% mean error, 9.0% above Mach 1.2).
 
 ## Build 321 (2026-11-17)
 
 **Opening files**
+
 - **RASAero II design files (.CDX1)** open like OpenRocket and RockSim files: the Open design file button takes them, and a file's simulations are offered as stored runs. The rocket's shape is read (nose with its blunt tip, tubes, transitions, boattails, fin cans, a booster, fins with their airfoil section and bevels, rail guides, launch lugs, launch shoes and protuberances), with the chosen simulation's motors, staging delays, nozzle exit diameters, recovery events and launch site. RASAero keeps a rocket's weight and CG with each simulation, motor loaded: the motor is taken out and the rest put on each stage as a weight and CG override. RASAero's apogee is shown as the reference beside each run. The .CDX1 is only read: changes are saved as an .ork.
 - **A RASAero motor that isn't in your motor list**: the file's weight and CG include it, so the motor flown in its place is taken out until you upload the file's own motor and pick it; from then on the weight and CG without motor stay.
 - **RASAero runs fly as RASAero does**: the wind is set the same at every height (RASAero has one wind speed), and the file's All Turbulent Flow setting sets the boundary layer (off: natural transition, RASAero's laminar flow turning turbulent at a Reynolds number of 500,000).
 
 **Rocket builder**
+
 - **Custom roughness** under Surface finish: type the surface roughness in µm, for a finish the list doesn't have. A saved .ork names the nearest finish OpenRocket knows and keeps your number for this app. RASAero files keep RASAero's own roughness for their surface finish.
 
 **Flight**
+
 - **Nozzle exit diameter** given by a design file now stays with its motor in the builder and in saved files, and a booster's is used too (it sets the base drag while the motor burns). On a large motor this matters: it moves Proteus 6 from about 90,100 ft to 100,000 ft.
 - **Motor mount sizes** include every motor diameter in the motor list (111, 150, 203 and 216 mm were missing, so motors that size were always shown as too big for their mount).
 
 ## Build 320 (2026-11-16)
 
 **Parts library**
+
 - **Top Flight Recovery X-Type parachutes**: 28 chutes OpenRocket's parts files leave out (it models only round chutes): X-Type 10 to 90 in., thin mill X-Type 10 to 30 in., and Ultra X-Type HD 18 to 90 in. Each is listed at its own size as an equivalent round chute, with the drag coefficient that gives the drag area Top Flight's descent-rate chart implies (the chart's range of rocket weights read at 17 to 22 ft/s, in sea-level air). That chart, read the same way, makes Top Flight's round chutes draggier than flat round chutes usually measure, so these are likely optimistic: the real chute may come down faster.
 
 **Under the hood**
+
 - **The OpenRocket file reader is split up**: the one 1,800-line function that read a design is now a short one that calls each step in order, with a reader for each kind of part and the weight, CG and Cd overrides applied in one place (`files/ork-*.js`; see ARCHITECTURE.md). Nothing it reads has changed: 3,922 readings of 710 designs are identical before and after.
 
 ## Build 319 (2026-11-16)
 
 **Builder**
+
 - **Surface finish: Smooth paint: glossy (40 µm)**: a new choice between the 20 µm and 60 µm ones, for a clean glossy paint job that hasn't been sanded afterward. OpenRocket has no 40 µm finish, so a design saved with it opens there as Regular paint (60 µm); this app reads its own marker in the file and brings back 40 µm.
 - **The 20 µm finish is named Smooth paint: wet-sanded**, so the two smooth-paint choices read apart.
 
 ## Build 318 (2026-11-16)
 
 **Flight**: read from the design the way OpenRocket flies it, each checked against OpenRocket 24.12
+
 - **A CG override that covers the parts on it**: the part and everything on it now balance at that point. It moved only the part itself, which changed the stability margin.
 - **A Cd override that covers the parts on it**: it now replaces the drag of those parts too. The setting was ignored.
 - **A Cd override on the last body part**: it now replaces the base drag behind that part as well, as in OpenRocket. Base drag used to be added on top. The note shown when the file opens says so.
@@ -131,46 +171,56 @@ version.
 ## Build 317 (2026-11-16)
 
 **Flight**
+
 - **Rail buttons and launch lugs on a part with a typed-in weight are flown**: when a part's weight was typed in to cover the parts on it, only its fins, parachutes and inner tubes were read for the flight. Rail buttons, launch lugs and anything else on it were dropped, so their drag was missing and the results said the design had none. Every part on it is now read; only its weight is left out, since the typed-in weight covers it. Designs set up that way fly a little lower than before (an Estes Partizon on an I205: 3,784 ft, was 3,967 ft).
 
 ## Build 316 (2026-11-16)
 
 **Settings**
+
 - **Units is Imperial or Metric, with a Length and Weight choice under it**: Length and Weight replaces Rocket weight in. With Imperial it offers In/Lb and In/Oz; with Metric, m/kg and mm/g. Every length and weight field follows it, and the choice is remembered for each system.
 - **Part weights follow the choice too**: a part's weight was always in ounces or grams. It is now in the unit chosen (pounds with In/Lb, kilograms with m/kg), and so is the nose-weight advice in the results. Black powder charges stay in grams and motor diameters in millimetres.
 - **Ejection charge calculator**: its lengths follow the Length and Weight choice.
 
 **Results**
+
 - **A booster stage with no motor**: the results say it flew as dead weight.
 - **A launch site with no field elevation of its own**: the Range tab and the results say the elevation shown is left from before, until one is entered.
 
 **Builder**
+
 - **Swapping for a library part**: says when a weight you typed in was cleared or replaced.
 - **Importing a fin's DXF**: asks before replacing the fin's shape.
 - **Add a part**: the add button reads Add a part.
 
 **Launch sites**
+
 - **Importing sites**: asks before replacing sites of the same name: replace them, keep them, or cancel.
 
 **Flight animation**
+
 - **Flight line camera**: says the camera follows the rocket by itself.
 - **Export video from the 3D view**: the button stays, as Export 2D video, and switches to the 2D view to make it.
 
 ## Build 315 (2026-11-16)
 
 **Parts library**
+
 - **Streamers and parachute cloth weigh what they should**: a library streamer of crepe paper added 2 kg to the rocket (the source lists paper as 90 where it means 90 g/m²); it now adds about 2 g. Some parachute cloth was a thousandth of its weight, which mattered for parachutes without a listed weight. Both are read in the right unit.
 - **Slips in listed weights are not passed on**: a few parts' listed weights are plainly wrong in the source (paper rings that weighed nothing, a paper motor tube denser than steel). A weight that makes a tube, ring or bulkhead less than a quarter or more than six times its material's density is not believed, and the material's density is used; a material with no believable density is left out and the part keeps the builder's own.
 - **A new motor mount fits the motor**: adding a motor mount from the library lists the tubes that hold the chosen motor (it listed every tube that goes inside the body).
 
 **Flight animation**
+
 - **Scrubbing the 3D view while paused**: the picture goes straight to the scrubbed time. It eased toward it one step at a time, so the camera trailed behind and could miss the rocket.
 - **Site photo box only where it does something**: it shows when the run has coordinates.
 
 **Results**
+
 - **Safety cone and Landing dispersion**: the Flight Performance graphs named Cone and Landing are now Safety cone and Landing dispersion.
 
 **Settings and launch sites**
+
 - **The Units button names the weight unit**: it reads ft · oz when the rocket's weight is shown in ounces.
 - **Saved sites on a narrow screen**: a site's Rename and Delete buttons go under its name, so the name isn't cut short.
 - **A new site whose elevation can't be looked up**: the message now says the elevation under Range is still the one from before, and what it is.
@@ -178,26 +228,31 @@ version.
 ## Build 314 (2026-11-16)
 
 **Launch sites**
+
 - **Four more built-in fields**: Clio, MI (Alkay Airport), Frank Hunt Field, UT, Manchester, MI (JMRC) and Mojave Desert, CA (FAR) join the saved sites the app starts with, each with its coordinates and field elevation.
 - **New built-in fields reach an app already in use**: the app used to add its built-in fields once, on first run. It now adds each newly listed field once after an update. A name you already use, or a field within about a mile of a site you've saved, is skipped, and a built-in field you deleted doesn't come back.
 
 ## Build 313 (2026-11-16)
 
 **Launch sites**
+
 - **Add site, in Manage**: new sites are added from Manage (Add site: a name and, if wanted, coordinates). The field-name box under Range is gone. The new site becomes the one in use, with the waiver, recovery area and rail as they are set now; with coordinates other than today's, its field elevation is looked up. Save Changes stays, appears when the chosen site's settings have changed, and saves them to that site. Manage is always there, with or without saved sites.
 - **Export sites and Import sites**: Export sites saves every saved site as a file (pocket-rocket-launch-sites.json), to back them up or take them to another device. Import sites adds the sites in such a file; one with the name of a site already saved replaces it. Photos and terrain aren't in the file: each device fetches its own.
 
 **Flight animation**
+
 - **Opens paused**: the animation opens standing on the pad; Play starts the countdown. Meanwhile the site's photo and terrain have time to arrive.
 - **Site photo and terrain tried again**: a photo or terrain that couldn't be fetched is tried again each time the site is chosen or the 3D view opens (it waited for the site to change or the app to restart), and the Range tab and the 3D view say what happened: fetching, photo not fetched, or photo on flat ground until the terrain arrives. A request that gets no answer gives up after 90 seconds.
 - **Every site's photo and terrain are kept**: there is no limit on the number of sites (it was four, dropped in coordinate order). A site's photo and terrain go when its saved site is deleted, unless another site is at the same place.
 
 **About**
+
 - **Parts library credits**: the About text and third-party notices name H. Craig Miller as the copyright holder of the parachute makers' files (b2 Rocketry, Front Range Rocket Recovery, Fruity Chutes, Rocketman, Spherachutes), give Dave Cook's years as his files do, and say the makers are not affiliated with the app.
 
 ## Build 312 (2026-11-15)
 
 **Flight animation**
+
 - **The flight in 3D**: Watch the flight now opens in 3D. The rocket is a solid model built from the design's own shape and fins, flying its simulated path with its simulated tilt and roll, with the pad and rail, the flame, a smoke trail that drifts with the wind, the path flown, a shadow, the drogue and main parachutes and dropped stages. Three cameras: Chase (the one it opens in), Flight line (a spectator near the pad who follows the rocket and zooms in) and Whole flight. In Chase and Whole flight, drag to look around and pinch or scroll to zoom. The play, speed and scrub controls and the readout, with the distance upwind or downwind of the pad, work as in 2D. The 2D view button brings back the side view, and the choice is remembered. Far off, the rocket is drawn larger than life so it can be seen, and the readout says by how much. Video export is for the 2D view.
 - **The launch site's photo and terrain**: with the launch site's coordinates set, the ground is an aerial photo of the site laid on the real shape of the land, with the hills and the skyline out to 40 km (U.S. Geological Survey imagery and elevation; United States only). Choosing a saved site or typing coordinates on the Range tab fetches them, once, and they are kept on the device for use at the field without a connection (up to four sites). Untick Site photo in the 3D view to do without. Without them the ground is plain, with a 100 m grid.
 - **Level-ground flight, drawn on the land**: the flight is still flown over level ground at the pad's height, so every figure is unchanged; in the 3D picture the last 150 m are eased onto the land's own height, so the rocket lands on it.
@@ -205,11 +260,13 @@ version.
 ## Build 311 (2026-11-15)
 
 **Rocket builder**
+
 - **Add a body part opens a window**: the add button now opens a window with the parts in it, as Add a part from Library does: the body parts, the parts that go on the selected body part, and adding or removing a stage. Picking one adds it and closes the window; Cancel, Escape or a tap outside closes it without adding anything.
 
 ## Build 310 (2026-11-15)
 
 **Rocket builder**
+
 - **Export a fin as a DXF**: Export DXF, under the fin drawing, saves one fin's outline at full size (trapezoid, elliptical or free-form) for a laser cutter, a CNC router or a printed template. The drawing is in millimetres, one closed outline on a layer named FIN.
 - **Import a fin from a DXF**: Import DXF, beside it, reads a full-size drawing's outline (polylines with their arcs, lines and arcs that join up, ellipses, splines) and makes the fin that shape as a free-form fin. The number of fins, their thickness, edges, cant, position and material stay as they are. The root is the edge along the bottom of the drawing (or along its top or a side, or its longest straight edge); the unit is the file's, millimetres if it doesn't say, or the one chosen beside the button. The result is reported under the buttons with the root and span it read.
 - **Flip front to back**: a free-form fin can be turned around, for a drawing that came in with its trailing edge forward.
@@ -218,6 +275,7 @@ version.
 ## Build 309 (2026-11-15)
 
 **Rocket builder**
+
 - **Add a part from Library**: the add button is now half the width, with Add a part from Library beside it. The library window opens with the kind of part to choose (body tube, nose cone, transition, motor mount, inner tube, coupler, centering ring, bulkhead, launch lug, parachute, streamer), then the search, the maker filter and the fit box. Picking a part adds it where the add button would, filled in from the library.
 - **Swap for a library part**: the link in a part's editor (it was Choose from the parts catalog) replaces the selected part's sizes with a library part's. A swapped tube keeps its length when the stock is long enough; a newly added one takes the library's length.
 - **Library, not catalog**: the app's wording is the same throughout.
@@ -225,67 +283,84 @@ version.
 ## Build 308 (2026-11-15)
 
 **Rocket builder**
+
 - **Parts catalog**: about 3,800 makers' parts (LOC Precision, Madcow, Public Missiles, Estes, Giant Leap, Fruity Chutes and 15 more): body tubes, nose cones, transitions, couplers, centering rings, bulkheads, launch lugs, parachutes and streamers. Select a part and tap Choose from the parts catalog: the list is searchable, filters by maker, and starts narrowed to what fits (a nose cone that matches the body, a ring that fits the tube's inside, a mount tube for the motor). Picking one fills in the part's sizes, material and listed weight; the part stays editable and keeps its maker and part number, saved in the design file. A tube keeps its length when it can be cut from the stock length. The data comes from the component files distributed with OpenRocket (Dave Cook's openrocket-database, Apache License 2.0).
 
 **Ejection charges**
+
 - **A parachute in the nose cone gets its own bay**: for head-end deployment (a main packed in a hollow nose cone with its own charge), the calculator now measures the nose cone's inside from its shape and wall thickness, adds the tube between its base and the first bulkhead, and sizes the charge and shear pins on the nose joint. It was counting only the tube space behind the nose cone.
 
 **Settings**
+
 - **Rocket weight in ounces**: with imperial units, the rocket's weight can be shown in pounds or ounces (Settings, Rocket weight in).
 
 **Results**
+
 - **Flight data file**: Download flight data saves the last run as a CSV, one row for each recorded moment: altitude, speeds, Mach number, acceleration, thrust, drag and drag coefficient, weight, CG, CP and stability margin, angle of attack, tilt, roll rate, drift, and the air's temperature, pressure and density, in the units the app is showing.
 
 **Validation**
+
 - **Each check is graded by what its source records** (VALIDATION.md, How much weight each check can bear): wind-tunnel and flight cases are marked 1 to 3 by how much of the rocket, motor and day their source gives, and the accuracy figures are reported by grade.
 
 ## Build 307 (2026-11-15)
 
 **Drag**
+
 - **A step up in diameter no longer costs far too much**: a wider section behind a narrower one (a fin can's sleeve, a coupler band, a payload bay) was charged most of stagnation pressure on its face whatever its height, two to seven times what steps measure. It now takes the measured drag of a step against its height beside the boundary layer (NASA TN D-8040 above Mach 1.6, Hoerner below Mach 0.9). Designs with such a step fly higher than before; designs without one are unchanged.
 - **A short, steep flare can't cost more than a flat step**: the cone formula could give a short flare more than stagnation pressure.
 - **Fins through Mach 1**: the fins' pressure drag near Mach 1 now follows NACA Report 1253's chart of 22 wings, in which a stubby fin's drag rises later and stops far lower than a long one's. It was sized from one wind-tunnel model whose fins sit on a boattail. This touches sharp-edged fins only (beveled, double wedge, airfoil), and mostly ones thick for their chord.
 
 **Atmosphere**
+
 - **A hot or cold day at the pad no longer reaches the stratosphere**: the pad's temperature offset is carried up through the troposphere and fades out between 11 and 15 km above sea level (U.S. Standard Atmosphere Supplements, 1966). Only flights above about 36,000 ft above sea level change, by a percent or so. A loaded forecast is still used as it is.
 
 **Validation**
+
 - **Three new checks from flight recorders**: Qu8k's accelerometer in the coast (Mach 2.0–2.8), Proto's through its coast and fall (Mach 2.1–0.6; the app within about 8%), and how drag rises with height in four tracked two-stage flights to 70,000 ft (the app's rise matches within a few percent, so the boundary layer is turbulent up there as the app assumes).
 - **VALIDATION.md's measured-flights section is redone for the current model**: 6.5% mean apogee error on the 23 flights, with what is behind each of the large misses (Qu8k's is its predicted thrust curve and an uncorrected accelerometer; its drag is not too low).
 
 ## Build 306 (2026-11-15)
 
 **Rocket builder**
+
 - **Chute release setting**: a parachute set to open at an altitude has a new switch, Held by a chute release (a Jolly Logic Chute Release, for one). Tick it when the motor's ejection charge puts the bundled chute out near apogee and the release opens it at the opening altitude. The setting is saved with the design.
 
 **Results and the RSO checklist**
+
 - **No caution for a chute release flying as intended**: with the switch ticked, the motor charge firing while the main is still closed is expected and isn't flagged. A caution remains only when the charge fires more than 1.5 s before apogee or with the rocket moving faster than about 100 ft/s (30 m/s), since coming apart then is hard on the rocket whatever holds the chute.
 - **The caution without the switch reads better**: when the charge fires after apogee and the main is set for a lower altitude, it says when the charge fires and when the main opens, that this is right with a chute release, and how to tick the switch or change the timing otherwise.
 
 ## Build 305 (2026-11-15)
 
 **Rocket builder**
+
 - **The finish names say which one a painted rocket is**: Regular paint (60 µm) is now "a typical painted rocket", where it read as a rough or brushed coat and steered people away from the choice that fits. Smooth paint (20 µm) is a glossy, wet-sanded finish, and Optimum paint (5 µm) one sanded and polished. The roughness stands for the whole surface as it flies (tube spirals, seams, decals, fillets and the paint's texture), not the paint film alone; the weighed, logged flights matched with regular paint and their rail buttons counted. The finish field's help says so, and that the values are estimates.
 
 **Results**
+
 - **The finish note offers regular paint first**, as the usual choice for a painted rocket.
 
 **Under the hood**
+
 - The regression test's results text is re-recorded for the note's wording; every flight is identical.
 
 ## Build 304 (2026-11-15)
 
 **Results**
+
 - **Notes on what usually makes the predicted drag too low**: when a design has a polished (or smoother) finish, or no rail buttons or launch lug, a note under the results says what each is worth on that flight, with a button to switch to smooth or regular paint, or to add a pair of 1010 rail buttons (a launch lug on small rockets). "Keep polished" or "It has none" hides the note for that design. Weighed, logged flights of ordinary kit rockets came out 4–23% below the apogee predicted for their design files set up that way, and within a few percent with regular paint and rail buttons; a pair of 1010 buttons adds about a fifth to the drag of a 1.6 in rocket.
 
 **Flight Log & Calibration**
+
 - **Drag measured by the altimeter's accelerometer**: importing a file with an acceleration column (Altus Metrum and Featherweight files have one) keeps the coast, between burnout and apogee, where an accelerometer reads the drag directly whatever the motor did. The log shows that drag as a multiple of the design's estimate, and a calibration uses it in place of the apogee when every ticked flight has it. It is used only when the boost agrees with the rocket's weight and motor (within 12%) and the accelerometer's climb agrees with the barometer's (within 8%); otherwise the log says why not. The column check has the acceleration column and its unit.
 - **Featherweight Interface Program exports open** (the classic Raven's CSV, with a time column for every channel).
 
 **Stability**
+
 - **Above Mach 1, the nose and the body behind it take their lift and center of pressure from measured charts** (MIL-HDBK-762 figures 5-4 to 5-7: ogive-cylinders, and cone-cylinders for conical noses), and **the lift the fins put on the body is added** (NACA Report 1307), faded in from Mach 0.9 to 1.5. On the measured rockets the supersonic lift error is roughly halved and a delta-fin missile's center of pressure goes from 6% of its length forward to within 1%; the Arcas's is 4–5% forward above Mach 3 (was 2–3%), the cautious direction. Nothing changes below Mach 0.9, so subsonic flights fly exactly as before. No measured rocket here has a conical nose, so the cone chart is unchecked.
 
 **Under the hood**
+
 - **Validation: seven weighed, logged flights** of three kit rockets (Harvey Mudd College's published data), apogee and coast drag: `npm run validate:logged`. As their design files are set up the app is 13.8% high in apogee and 15.7% low in drag; with regular paint and rail buttons 3.5% and 6.3%. VALIDATION.md has the table.
 - **Validation: the Arcas's normal-force slope**, with and without fins (NASA TN D-4013 and D-4014), is in the accuracy check.
 - **New test in the Check workflow** (`tests/coast.js`): a flight of known drag, written out as an altimeter file, must calibrate back to that drag from the coast; a file whose accelerometer reads low must be refused; the drag notes show and act.
@@ -295,12 +370,15 @@ version.
 ## Build 303 (2026-11-14)
 
 **Rocket builder**
+
 - **A fin's trailing edge can be set apart from its leading edge**: a new Trailing edge field on fin sets (Same as the leading edge, Square, Rounded, Tapered to a sharp edge), for a fin rounded or sharpened at the front and left square at the back, or the other way round. A blunt back adds base drag behind the fin at every speed and keeps only the front's share of the wave drag above Mach 1; a tapered back removes the base drag. Checked on NACA RM L55G28a, whose report gives wedge leading edges and square trailing edges: drag within 1.2% of the flight, against 5.2% low before. Saved in the app's own data inside the .ork (OpenRocket sees the leading edge's type). Designs that don't set it fly exactly as before.
 
 **Settings**
+
 - **The Drag model switch is gone**: the app always flies the current drag model (the app's since build 288). Anyone who had Previous chosen is moved to it. A drag calibration fitted with the previous model shows as not in use, with Refit and Remove, as it did when switching.
 
 **Under the hood**
+
 - **The previous drag model's code is removed.** The current model computes exactly what it did: 1,119,046 drag numbers over 286 designs, 286 flights, the regression cases, the drag benchmarks and the validation scripts are all identical before and after. The Wind Tunnel's previous-against-current comparison went with it.
 - **AERODYNAMICS.md describes only the current model**, with today's accuracy figures: 5.8% on the 23 measured flights as the altimeters read (RASAero II 5.2%).
 - **Where the remaining apogee error sits** (`validation/drag-factors.js`): the drag factor each measured flight needs. The fourteen rockets with beveled or square fins need 1.00 on average; the nine with rounded fins 1.09, with too much scatter between them to correct for.
@@ -312,21 +390,26 @@ version.
 No change to the app itself: it flies, opens and saves exactly as Build 301 does.
 
 **Under the hood**
+
 - **Save-and-reopen test runs on GitHub**: it ticks checkboxes with the input's own click. A pointer click needed the box on screen, and on GitHub's machine (other fonts) one landed outside the window, which failed the checks for Build 301.
 
 ## Build 301 (2026-11-13)
 
 **Opening files**
+
 - **A motor name that fits several motors is said out loud**: when a file's motor could be more than one in the list (a name two makers share, or a file that names no maker), the report on opening names the one chosen and the others, for example "The file's "K475" also fits Ellis Mountain K475: the AMW K475 was chosen." Of several with the name, one in the file's diameter is chosen first.
 - **A flight on a stand-in motor says so in the results**: when the file's motor isn't in your list and another is flown in its place, the Results checks and the PDF report carry a warning naming the motor the design calls for. Before, this was said once, when the file was opened.
 
 **Rocket builder**
+
 - **Auto-fit centering rings, bulkheads and couplers stay auto-fit** after a save and reopen (they came back as fixed sizes), and a parachute's line length left to follow the canopy stays that way.
 
 **Flight Log**
+
 - **The large-calibration warning stays open until you press OK**, and appears from a 30% drag correction (was 35%).
 
 **Under the hood**
+
 - **Regression test covers the newer features**: 13 more cases flown from designs made in the builder (two and three stages, a cluster, fly-away guide, rod and rail lugs, a protuberance on one side, canted fins, the current drag model, motors missing or ambiguous in a file), plus the motor list itself and where every earlier motor id leads. The 40 example cases' numbers are unchanged.
 - **Save-and-reopen test**: every field of every builder part is changed, saved with the app's own save, reopened and compared (490 checks). It found the two builder fixes above.
 - **The smoke test fails on an empty screen** (motor makers, the add-a-part list, result tiles, charts), which is how the missing manufacturer filter would have been caught.
@@ -335,6 +418,7 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 300 (2026-11-13)
 
 **Motors**
+
 - **Every motor in OpenRocket's motor database**: the built-in list is rebuilt from the database OpenRocket downloads and flies (version 20260920070751), replacing the old AeroTech, Cesaroni, Loki and Estes list. 1,127 motors from 27 makers (AeroTech 319, Cesaroni 310, AMW 87, Contrail 67, Loki 63, Gorilla 52, Hypertek 47, Kosdon 30, Estes 25, Ellis Mountain 24, Quest 19, Sky Ripper 17, Apogee 12 and 14 more), up from 1,029 from 4. The RASAero list's repeats of ThrustCurve.org motors under other names are left out, so each motor is listed once. Every motor of the old list is in the new one, so saved designs keep their motor; 108 use a different curve now (the one closest to the certified figures in today's data), 15 of them AeroTech motors that changed total impulse by more than 2% (the most the F62T, −11.5%, and F50T, +11%).
 - **The manufacturer filter is back** on the Motor tab, makers with the most motors first. (Since the move to modules it read the brand list before the motors were loaded, so it showed only All.) The motor system filter adds "Reload" for other makers' reloads.
 - **OpenRocket's maker codes** in older .ork and RASP files: "E" Estes, "A" AeroTech (it meant Apogee here before; Apogee is "AP"), "Q" Quest, "H" Hypertek, "K" Kosdon, and the rest. A file naming its motor by maker code now finds that maker's motor.
@@ -342,103 +426,125 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 299 (2026-11-12)
 
 **Rocket builder**
+
 - **Fly-away rail guide is its own part**: it moved from the Protuberance shapes to the add-a-part list, next to Launch lug and Rail buttons. Adding one puts it just above the fins (on the body tube that has them). Its behaviour is unchanged, and designs that already have one open as before.
 - **Launch rods 1/4, 5/16, 3/8 and 1/2 in**: new lug types (1/4 Rod … 1/2 Rod) beside 1/8 and 3/16, each with the usual lug size for that rod. A lug from a file that doesn't say its type is taken as made for the largest rod it slides over.
 
 **Range and RSO Checklist**
+
 - **Rail or rod type** offers the same rods (1/8 to 1/2 in), and each rod lug passes only on its own rod.
 
 ## Build 298 (2026-11-12)
 
 **Rocket builder**
+
 - **Lug types shortened and the rod split by size**: 1/8 Rod, 3/16 Rod, 1010 Rail and 1515 Rail. A rod lug flies only from its own rod (and its inside diameter must clear it); choosing a rod type gives the lug the usual size for that rod when it is too small for it (or, for 1/8, loose on it). A rail lug's height above the body and width can now be set; they start as the rail's button's.
 - **Files that don't say a lug's type** (OpenRocket and RockSim designs, designs saved before lug types, and a rail lug re-saved in OpenRocket, which drops the app's tag): the type is read from the lug's size for the pad checks — a solid lug as a 1010 or 1515 rail guide by its height, any other as a 3/16 Rod lug if it clears that rod, otherwise 1/8 — and the lug keeps the file's shape and drag. Designs open, fly and save exactly as before.
 
 ## Build 297 (2026-11-12)
 
 **Rocket builder**
+
 - **Three types of launch lug**: Launch Lug - Rod Type (a tube over a rod, as before and the default), Launch Lug - 1010 Rail and Launch Lug - 1515 Rail (a solid slider that rides in the rail's slot, as tall and wide as that rail's button). A rail lug's drag is a long box's (Hoerner) on its width × height. Saved in the .ork file (OpenRocket sees a solid lug of the same height).
 
 **Launch and RSO Checklist**
+
 - **Each lug flies only from its own rod or rail**: a rod-type lug from a rod its inside diameter clears, a 1010 rail lug from a 1010 rail, a 1515 rail lug from a 1515 rail. Rail buttons are checked against the rail the same way. Launch warns, and the RSO Checklist's rail fit item says what doesn't match.
 
 ## Build 296 (2026-11-12)
 
 **Results**
+
 - **Every speed shows its mph (or km/h)** in small grey type under the ft/s or m/s value, in the main results, the staging panel and the Monte Carlo results.
 - **New figures: Time to burnout and Coast time to apogee** (Ascent section). **Max roll rate** now always shows (0 rpm for a rocket that doesn't roll); it used to appear only when the rocket rolled.
 
 **PDF report**
+
 - **Every results figure, in the same sections as the Results tab.** Each tile grows to fit its text (long entries such as Stability at liftoff used to run out of their box and lose words), with units and notes in smaller grey type and mph or km/h under each speed. A staged flight's booster and sustainer figures are included too. The Checks list moves to a new page cleanly when it doesn't fit.
 
 ## Build 295 (2026-11-12)
 
 **Flight animation**
+
 - **The rocket rolls.** The animation follows the simulated roll (from canted fins or a crooked fin): each fin is drawn at its own angle around the body, widening, narrowing and passing in front of and behind it, and the rail buttons, lugs and protuberances travel around with it. A rocket that doesn't roll looks steady; a three-fin rocket is now drawn as a true three-fin view (one fin toward you, two to the sides). The roll is held after apogee.
 
 ## Build 294 (2026-11-12)
 
 **Rocket builder**
+
 - **A fly-away rail guide is now a cage around the body.** It was drawn, and its drag worked out, as a single block on one side. It now wraps the body in the side view and the animation, and choosing the shape puts it just above the fins. It has a thickness around the body in place of a width and an angle, and its drag on the rail is that of the ring between the body and its outside (it was width × height).
 - **A streamlined protuberance is drawn as a smooth bump** with a rounded front and a long taper, and an upright cylinder as a round-topped post, in place of plain blocks. The animation draws the streamlined one the same way.
 
 ## Build 293 (2026-11-12)
 
 **Rocket builder**
+
 - **Rail buttons, launch lugs and protuberances are drawn solid in the side view.** They were drawn in the same faint grey as the parts inside the body and were hard to see.
 
 **Flight animation**
+
 - **The rocket now shows its rail buttons, launch lugs and protuberances**, each drawn at least a couple of pixels big so it can be seen. A fly-away rail guide is shown on the pad and is gone once the rocket leaves the rail.
 
 ## Build 292 (2026-11-12)
 
 **Flight simulation**
+
 - **A protuberance on one side of the body now turns the rocket.** It used to add only weight and straight-back drag, so even a large item on one side flew straight. Now its weight moves the CG off the centerline (so the motor's push and the rocket's drag pass beside it) and its own drag pulls back out at its distance from the centerline. The fins work against both: a small camera gives a slight arc and a landing off to one side, a very large item tumbles the rocket. A spinning rocket averages the push out. Designs without protuberances fly as before; fly-away rail guides are not affected.
 
 **Rocket builder**
+
 - **Protuberance: Angle around the body.** Where around the body the item sits. Two alike on opposite sides (0° and 180°) balance each other; two on the same side add up. Saved in the .ork file.
 
 ## Build 291 (2026-11-12)
 
 **Rocket builder**
+
 - **Fly-away rail guide**: a new shape in the Protuberance part's Shape list, for a clamp-on guide that carries the rocket up a rail and falls away as the rocket leaves it. Its weight and its drag (a blunt box's, 1.20 on width × height) count only while the rocket is on the rail; the flight after that carries neither. In the saved file it is written with no weight, so OpenRocket doesn't fly it as part of the rocket.
 - **Choosing a nose or transition shape sets that shape's usual parameter** (1 for an ogive or parabola, 0.5 for a power series, 0 for a Haack), instead of carrying over the last shape's.
 - **Limits on four fields that could stall a run or give nonsense**: shape parameter 0 to 1, fin cant 15° either way, parachute and streamer drag coefficient up to 10, and a nose cone can't have zero length.
 
 **Launch**
+
 - **Launch warns when the rail guides are missing or don't suit the pad**: no launch lug or rail buttons in the design, buttons on a rod or a lug on a rail, a lug too small for the rod, or buttons of the wrong size for the rail (1010 or 1515). You can open the builder, change the rail type, or launch anyway; it asks once for each problem. A launch tower needs no guides, and neither does a rocket with a fly-away rail guide. The RSO Checklist's rail fit item knows the fly-away guide too.
 
 ## Build 290 (2026-11-11)
 
 **Rocket builder**
+
 - **Protuberance: a new shape, "Long box, sloped front"**: a long box whose front face ramps up to its full height and whose back end is square, such as a camera housing with a ramped front. Its drag is about half the long blunt box's below Mach 1 (0.39 on its frontal area), worked out from Hoerner's long box and his measurements of square and beveled steps on a wall; above Mach 1 it stays a share of the long blunt box. Drawn with its ramp in the side view.
 - **Rail buttons now have a weight.** They had none: the Weight field showed 0 and they added nothing to the rocket. They now weigh what their shape and material give (about 1.2 g for a pair of 1010 buttons, as OpenRocket works it out), so a design with rail buttons comes out that much heavier.
 - **Override can be switched on for a part whose calculated value is 0.** The switch used to turn itself straight back off, leaving the box locked; now the box opens empty for your value.
 
 **Flight animation**
+
 - **The countdown no longer ends with "Liftoff!"**: it runs 3, 2, 1 and the rocket goes.
 
 **Reference library**
+
 - **Every report in the library was checked for public release**: NACA and NASA reports against NASA's report server (distribution Public, no export control), Air Force and Army reports by the release statement on the document. Two whose release could not be confirmed (the Aerobee 150A performance summary and the 1970 Space Handbook) were taken out and are cited only, leaving 20.
 
 ## Build 289 (2026-11-11)
 
 **Reference library** (no change to the app)
+
 - **The public reports behind the app's physics are now in their own repository**, [PocketRocketFlightLab-references](https://github.com/dustintlee-blahblah/PocketRocketFlightLab-references): 23 NACA, NASA, Air Force and Army reports cleared for public release, from the Missile DATCOM final report and manuals and MIL-HDBK-762 to the wind-tunnel and free-flight reports the drag model is checked against. REFERENCES.md links each one; copyrighted sources are cited there but not stored.
 
 ## Build 288 (2026-11-11)
 
 **A new drag model**
+
 - **Drag is now worked out by a new model**, built term by term from public NACA, NASA, Missile DATCOM and US Army handbook sources and checked against more measurements than the one before. What differs: skin friction follows the skin's temperature as the airflow heats it during a flight (Van Driest II); the base drag of a plain body comes from NASA's free-flight measurements (lower below Mach 1 than before); nose wave drag above Mach 2 is by second-order shock-expansion; boattails get a wave drag of their own and a base drag that shrinks with the base; and sharp-edged fins' wave drag is from thin-airfoil theory with a transonic peak that depends on the fin's aspect ratio.
 - **How the two compare with measurements** (mean error): drag of wind-tunnel and free-flight models 10% against 22% below Mach 0.8, 9% against 18% from Mach 0.8 to 1.2, and 7% against 12% from Mach 1.2 to 3; apogee on 23 measured flights 6.0% against 8.3%, and 7.3% against 12.2% on the nine above Mach 1.2. Below Mach 0.8 the flights come out about the same (4.3% against 4.7%), with the new model reading about 2% higher. AERODYNAMICS.md has every case, including the ones where the new model is still behind.
 - **Settings → Drag model** switches between Current and Previous, so you can fly the same rocket on both. With Previous chosen, the Wind Tunnel draws the two together.
 - **A drag calibration belongs to the model it was fitted with.** One made before this build isn't applied to the new model; the flight log says so and offers Refit.
 
 **Results**
+
 - **What a barometric altimeter would read**: under the predicted apogee, when it differs by 2% or more. A barometric altimeter assumes standard air, so on a warm day it reads low (about 1% for every 3 °C above standard), and the app's apogee is the true height.
 - **RSO Checklist**: a flag for flights above Mach 5, past the measurements the drag model is checked against.
 
 **Rocket builder**
+
 - **Protuberance**: a new part for cameras, switch boxes, shrouds and other bumps on the body, as a blunt box, long blunt box, upright cylinder or streamlined shape, with drag from Hoerner's measurements of bodies in a boundary layer. Saved in the design file.
 - **Surface finish names** now say what each roughness is: the 5 µm choice is paint sanded smooth, 20 µm is spray paint left as it dried, 60 µm a rough or brushed coat (from Missile DATCOM's roughness table, which puts paint well below the names the list had).
 - **Square fin edges** below the transonic drag rise: the blunt leading edge's drag is 0.4 of stagnation pressure instead of 0.8 (Hoerner), in the new model.
@@ -446,68 +552,82 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 287 (2026-11-09)
 
 **Checks against measured data** (no change to the app's results)
+
 - **Two more rockets the model is checked against, never tuned on**: NACA RM L56G24, a free-flight missile model with small delta fins on a boattail (drag and center of pressure, Mach 1.7–2.8), and NASA TM-2005-213541, a slender missile in NASA's wind tunnels (drag, center of pressure and lift, Mach 0.6–3.95, from the report's own data). VALIDATION.md has the results: with small fins far behind a long body, the app's center of pressure comes out forward and its lift low, and on the second rocket its drag rises too early near Mach 1. Both are listed as open problems in AERODYNAMICS.md.
 - **REFERENCES.md** lists the reports behind the app's physics and what each one is used for.
 
 ## Build 286 (2026-11-09)
 
 **Wind Tunnel**
+
 - **Lee-side separation moves forward as the angle of attack grows**: the crossflow on the lee side now breaks away where each slice of the body has moved about one and a half radii sideways (the impulsive-flow analogy, NACA Report 1048), so at 10–12° separation starts partway along the body and by about 20° it starts just behind the nose. Before, it stayed near the tail until very large angles. The picture only; no number changes.
 
 **Rocket tab**
+
 - **Surface finish help** no longer quotes a fixed altitude effect: it says the finish matters most on fast rockets and that how much depends on how rough the paint really is.
 
 ## Build 285 (2026-11-09)
 
 **Wind Tunnel**
+
 - **Streamlines** replace the drifting streaks in the test section: worked out for your rocket at the chosen speed and angle of attack, with dashes running along them with the flow. Below Mach 1 they bend round the nose and body; above it they kink at the shocks and turn into the wake behind the base.
 - **The boundary layer and separated flow**: laminar (a smooth edge) from the tip, turbulent (a ruffled, moving edge) behind; separated air shown as turning eddies, with a cross where the flow leaves the surface, behind the base, behind steps (and a ring where it reattaches), off tail cones steeper than 8°, along the lee side at larger angles of attack, and off the fins as they stall from 18° to 35°; a dot where the flow divides on the nose. A legend and a line under the picture say how far the flow stays laminar and what is separated. The picture uses the drag model's own transition and separation rules and doesn't change any number.
 
 ## Build 284 (2026-11-08)
 
 **Drag model** (results change)
+
 - **Tail cones above Mach 1**: the supersonic base drag no longer gives a steep, separated tail cone the relief of smoothly attached flow, and boattail relief now comes in only from Mach 1.5 to 2, where NASA flight data (the RM-10, NACA TN 3320) support it. Build 282's version removed nearly all base drag near Mach 1.2 behind any tail cone, so rockets with tail cones that fly supersonic predicted too high: a CT Concept 98 with a 16° tail cone went from 18,576 ft to 17,417 ft, against a GPS apogee of about 17,400 ft. Rockets without a tail cone, or that stay subsonic, are unchanged.
 
 ## Build 283 (2026-11-08)
 
 **Rocket tab**
+
 - **Bevel length fields show as soon as you choose Beveled**: changing a fin set's Edges to Beveled now brings up Leading-edge and Trailing-edge bevel length right away (before, they appeared only after selecting another part and coming back).
 
 ## Build 282 (2026-11-08)
 
 **Rocket tab**
+
 - **Wind Tunnel**: a new block after Imperfections (folded at start) puts your design in a test section from a crawl to Mach 6 at any angle of attack: drag coasting and burning, lift slope, CP and stability, charts against Mach and angle, the shocks drawn around the rocket, and a CSV of the sweep. Every number is the flight's own aerodynamics.
 - **Nose cone tip radius** (0 is a sharp point): a rounded tip adds drag above about Mach 0.8, is drawn in the side view, and is saved in the app's data inside the .ork.
 - **Bevel lengths for beveled fins**: how far the leading- and trailing-edge bevels run along the chord. Short, steep bevels add wave drag above Mach 1; 0 keeps the usual bevels, a fifth of the chord.
 
 **Opening files**
+
 - **Pods, side boosters and tube fins** from OpenRocket and RockSim files now fly: each pod's body, fins and mass, side boosters dropping away at separation with their motors, and tube fins' lift and drag. Reversed nose cones read as tail cones; each flight configuration flies its own motors.
 - Extra fin sets keep a beveled or double-wedge section (they were read as square).
 
 **Drag model** (results change)
+
 - **Supersonic base drag** follows NASA's measured base pressures (NACA TN 3819, Love 1957) for the body, boattails and fins near the base, in place of a single correlation.
 - **Square and rounded fin trailing edges** below the speed of sound get the base drag of a two-dimensional edge (Hoerner), which is higher than the rocket's round base; rounded edges keep 0.7 of it. Apogees of rockets with square or rounded fins come out up to about 3% lower; subsonic rockets with sharp-edged fins are unchanged.
 
 **Motor tab**
+
 - Compare motors counts the motors it will actually fly, and says "the first 200" when the list is longer.
 
 **How accurate is it?**
+
 - [AERODYNAMICS.md](AERODYNAMICS.md) maps every drag and stability term to its source; [VALIDATION.md](VALIDATION.md) now compares apogee with 23 measured flights (RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft) and drag with two more NACA and Aerobee rockets. The app predicts high on real flights (11% on average, more above Mach 1.2), which is the next thing to work on.
 
 ## Build 281 (2026-11-08)
 
 **Results tab**
+
 - **No more empty boxes in the results tables**: the space a group's last row leaves is now plain, with no border around it (also in the staging and landing dispersion tables).
 
 ## Build 280 (2026-11-08)
 
 **Motor tab**
+
 - **Upload a Motor starts folded**, with a Show button like the other blocks; messages from an upload still show.
 - **Compare motors is a button at the bottom of Filter Motor List** ("Compare 13 motors"), visible even with the filters folded. The comparison table opens under it once it runs.
 
 ## Build 279 (2026-11-08)
 
 **Under the hood** (no change to results or how the app works)
+
 - **The code is reorganized for contributors**: the app's source is now ES modules, each importing what it uses by name, bundled into the same single page; the largest files are split into focused ones (the rocket builder into its fields, editor, side view, undo and design steps; staging, fin flutter, wind, parachutes and nose weight out of the flight simulation).
 - **Built and signed on GitHub**: this is the first release built by GitHub Actions from the tagged source, signed with the same key as before, so it installs over the app you have.
 - **Checks on every change**: formatting, lint, the regression test, a UI smoke test, the drag benchmarks and an Android build run on every push and pull request.
@@ -515,12 +635,14 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 278 (2026-11-08)
 
 **Rocket tab**
+
 - **The figures under the rocket drawing take less room**: length, diameter, weights, CG and CP always show; the stability lines (at liftoff and tilted into the airflow) fold away behind **Show details**. When the rocket is under 1 caliber, the link reads "Stability under 1 cal" in red.
 - The margin's range is now labelled **uncertainty margin**.
 
 ## Build 276 (2026-11-08)
 
 **Stability**
+
 - **Nose weight to add**: when a rocket is short of 1 caliber at liftoff, 10% of its length, or 1 caliber leaving the rail in the day's wind, Results shows the weight to put at mid-nose to reach all three, and how it changes the apogee. The checklist cautions quote it too.
 - **Uncertainty margin**: the liftoff margin shows its range from the CP estimate's error against NASA's Arcas wind-tunnel data (±2.3% of body length), e.g. "2.83 cal · uncertainty margin 2.4–3.2". The checklist says when the true margin could be under 1 caliber.
 - **Margin as a share of length**: shown beside the calibers, with a caution under 10% (long, thin rockets can show plenty of calibers with little real margin).
@@ -529,15 +651,18 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 - **Body lift at small angles**: the static CP includes the body's lift at a typical 2° tilt, as OpenRocket's does; long rockets read up to about 0.4 cal lower, closer to the wind-tunnel data.
 
 **Landing dispersion**
+
 - **Balance is varied** (new setting, "Balance (CG against CP), share of length", default 2.3%), and the results show the **chance of tumbling** and the **lowest stability of the worst 5%** of flights. The checklist grades the chance of tumbling.
 
 ## Build 275 (2026-11-08)
 
 **Accuracy**
+
 - **Motor data closest to the certified figures**: where ThrustCurve.org has several data files for a motor, the app now uses the one that best matches its certified total impulse and burn time. 17 motors changed, including the Estes A8 (burn 0.53 s → 0.73 s), Cesaroni 229H255 (316 → 229 N·s) and AeroTech E15W, I195J, I435T and K270W. Small Estes A8 rockets went from 10–18% low against OpenRocket to within 4%.
 - **Nose cone and transition weights** are worked out as OpenRocket does (the wall measured square to the surface), and transition shoulders are now weighed. Small, thick-walled noses were about 9% too heavy.
 
 **Opening and saving files**
+
 - **Every rocket-wide setting is saved**: other drag (ΔCd), the boundary layer setting and turning inertia come back when you reopen the file.
 - **Deleted flights stay deleted** when you reopen a file that still carries them.
 - **Save no longer rewrites the launch conditions of the file's own simulations** (OpenRocket's runs keep theirs); your full launch settings are kept with the app's settings, and Save this run adds a run with them.
@@ -548,11 +673,13 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 274 (2026-11-08)
 
 **Motor tab**
+
 - "Select from database" is now **Filter Motor List**, and "Motor configuration" is now **Motor Config from File**. Both start collapsed with a Show button; the motor count stays visible under the filter heading.
 
 ## Build 273 (2026-11-08)
 
 **Stability**
+
 - **Five or more fins**: fins at the same station on the same body now shield each other, as in OpenRocket (5 fins 0.948, 6 0.913, 7 0.854, 8 0.81, more 0.75). Barrowman's formula covers three and four fins; the CP now matches OpenRocket's to 0.5 mm for 3 to 8 fins.
 - **Stability when tilted**: the Rocket tab shows the liftoff margin with the rocket tilted 5° and 10° into the airflow. Body lift moves the CP forward on long, skinny rockets as they tilt.
 - **Body lift uses Galejs's factor (1.1)**, as OpenRocket does, so the tilted CP matches OpenRocket's.
@@ -560,10 +687,12 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 272 (2026-11-07)
 
 **Overrides**
+
 - **Each override has its own Override switch** beside its field: weight, CG, turning inertia and Cd for the whole rocket (and each stage), and a part's weight and Cd. Off, the field shows the calculated value and the flight uses it; on, it uses your value, starting from the calculated one. The "enter 0 to calculate" rule is gone.
 - **An override switched off keeps its value**: it's left out of a saved .ork (as OpenRocket stores it) and kept with the app's settings in the file, so it comes back when you reopen it.
 
 **Accuracy**
+
 - **Nozzle size from the motor's thrust**: the altitude thrust correction now sizes each motor's nozzle exit from its average thrust instead of its diameter, which overstated it for slow-burning motors. Against OpenRocket, launches from fields above 1 km went from about 4.5% high to 1.5%.
 - **Free-form fins are placed by their root chord**, as OpenRocket and RockSim place them. Fins whose tips sweep past the root's trailing edge were placed too far forward, which moved the CP forward (the Performance Rocketry Gizmo XL read unstable; its CP now matches OpenRocket's).
 - **A shroud line length of 0 in a file means no lines** (it was read as lines as long as the chute is wide).
@@ -571,51 +700,61 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 269 (2026-11-06)
 
 **Opening stored runs**
+
 - **The launch site is selected** when you open a saved run or a file's saved settings: by the site's name (now saved with the file and each run), or by one of your saved sites at the same place.
 - **OpenRocket runs bring their own weather**: OpenRocket's multi-level wind (ground wind and winds aloft), the run's air pressure and humidity, or OpenRocket's standard air. A run with OpenRocket's average wind clears the winds aloft, so it flies as it did in OpenRocket.
 
 **Code**
+
 - The flight simulation's main loop is split into named steps (no change in results).
 
 ## Build 268 (2026-11-06)
 
 **Accuracy**
+
 - **Off-rail velocity is read at the exact end of the rail**, worked out within the simulation step. Before, it was read at the end of the step where the rocket left the rail, a little past the rail's end (usually under 1% high). Nothing else in the flight changes.
 
 ## Build 267 (2026-11-06)
 
 **Flight chart**
+
 - **Touch the chart to read its values**: a vertical line appears where you touch, with each line's value where it crosses (the prediction, a logged flight, the booster) and the time. Drag sideways to move it; touch the line again to clear it.
 
 ## Build 266 (2026-11-06)
 
 **Results**
+
 - **New readouts**: average acceleration to burnout, drogue descent velocity and landing velocity (over the ground, as OpenRocket's ground hit velocity, with its vertical part). Max velocity is now called Max ascent velocity.
 - **The results table is grouped**: speed and acceleration, ascent, stability, recovery, and descent and landing.
 - **Drogue descent velocity** is the fastest the rocket falls once the drogue is fully open, until the main deploys. Only the readout changed; the simulated flight is the same.
 
 **Flight animation**
+
 - **A 3, 2, 1 countdown** over the rocket on the pad before liftoff (on opening, Restart, or Play after the end). The readout stays blank during the countdown.
 
 ## Build 261 (2026-11-05)
 
 **RockSim files**
+
 - **Parachutes and streamers deploy as the RockSim file sets them**: at the motor's ejection charge, a time after launch or apogee, at apogee, or at an altitude, from the run you open (or the design's own settings). Before, the largest parachute was guessed to be the main and everything else opened at apogee.
 - **RockSim's stage mass and CG overrides** are used only when the file has them switched on, as in RockSim; values left over in the file are ignored.
 
 ## Build 260 (2026-11-05)
 
 **Choose a stored run when opening a file**
+
 - **Opening an .ork or .rkt now asks how to open it**: the design only (keeping your launch settings), the design with the settings saved with it, or any of its stored runs, in a scrollable list showing each run's motors, apogee, wind and whether it's out of date. Picking a run brings in its motor configuration and launch conditions, and its apogee for comparison.
 - Runs saved from the app keep all their launch settings and the time they were saved, shown in the list.
 
 **Rocket tab**
+
 - **Turning inertia** now shows the value calculated from the parts, and flights use it (before, an even-weight estimate was used). Type a measured value to replace it; clear the field to go back.
 - **Design notes** has a text box for your own notes, saved in the .ork with each motor configuration.
 
 ## Build 258 (2026-11-05)
 
 **Overwrite or save a copy**
+
 - **Save changes and Save this run now ask** whether to write over the open .ork file or save a copy under a new name (or cancel).
 - **If the file can't be written over** (for example, it was opened from another app, or moved), a pop-up says why and offers a copy, instead of quietly making a new "(1)" file. To write over the original, open it with Open .ork / .rkt, then save.
 - Writing over a file now also works with storage apps that refused it before.
@@ -623,6 +762,7 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 ## Build 257 (2026-11-04)
 
 **Everything saved in the design file**
+
 - **Save changes keeps everything for the rocket in the .ork**: every launch and range setting, the Get weather date, winds aloft, the motor configuration and motors chosen, motor temperature and delays, dispersion and imperfection settings, the flight log and the drag calibration. OpenRocket ignores the extra and opens the file as usual.
 - **Uploaded motors the design flies are saved with it**, and added to your uploaded motors when the file is opened on another device.
 - **Opening a file saved with different settings** shows a pop-up listing what differs (site, weather, winds aloft, rail, drag calibration and so on), and you choose to use the file's settings or keep your own. Logged flights in the file are added to the flight log.
@@ -631,21 +771,25 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 - Save changes also writes the launch site's longitude.
 
 **Results**
+
 - The "Likely … ft" apogee range under the predicted apogee is gone. The RSO Checklist still checks the top of the likely range against the cloud ceiling, and the PDF report still lists it.
 
 **Weather for any date**
+
 - **Get weather** (renamed from Get forecast) now works for any launch date from 1940 to 16 days ahead, and picks the source from the date on its own: NOAA's GFS forecast from two days ago on, archived GFS forecasts back to March 2021, and the ERA5 reanalysis back to 1940.
 - **Winds aloft** are filled in from March 2021 on. For older dates (or anywhere the service has none), a pop-up says so and the Winds aloft table is cleared, so the wind above the ground is estimated from the ground wind. You can still type winds aloft in by hand.
 - Older records have no visibility, chance of precipitation or cloud base; those fields are left as they were, and the result says which.
 - **The result now appears in a pop-up**: what was filled in, one item to a line, or why the weather couldn't be fetched.
 
 **Parachutes**
+
 - **Parachutes open over a distance, not a fixed time**, as measured in parachute tests: a chute opening fast fills quickly, one opening slowly near apogee takes longer. The rocket no longer seems to fall fast under a chute just after apogee.
 
 ## Builds 228–256 (2026-11-02 to 2026-11-04)
 
 **Build 251**
 **Motor delay and ejection charges**
+
 - **Motor Delay**, a new section on the Motor tab above Motor temperature: one ejection delay setting per stage, chosen from the delays the motor is sold with, **Plugged**, or a custom time. Opening an OpenRocket or RockSim file sets it from the file. Changing motors keeps the delay if the new motor offers it, and otherwise moves to the nearest one.
 - **Plugged is separate from 0 s.** A 0 s delay fires at burnout (booster motors use it to separate stages or light the next motor); plugged means no charge. RockSim's negative ejection delays read as plugged, as RockSim simulates them.
 - **A chute set to open at the motor ejection charge stays packed when the motor is plugged**, and the rocket comes down ballistically. As in OpenRocket, a motor charge only opens chutes set to ejection; if a live charge fires while a chute set to open another way is still packed, the results warn you.
@@ -655,17 +799,21 @@ No change to the app itself: it flies, opens and saves exactly as Build 301 does
 - **Builder:** a chute deployed at ejection has a "Delay after the charge" field.
 
 **Animation**
+
 - A ballistic rocket turns nose-down after apogee.
 - A short flash in the rocket body shows each ejection or motor delay charge firing.
 - The standing safety cone label is gone; a warning appears only if the rocket leaves the cone under power.
 
 **Accuracy**
+
 - **Swept fins near and above Mach 1:** fins swept well back no longer get a transonic drag bump that tests don't show. Checked against two NACA reports: RM E50D28, the RM-10 missile's 60° fins, and RM A53D02, a fin-stabilized body flown from Mach 0.6 to 10. Fins swept 30° or less are unchanged. Rockets with fins swept between about 40° and 60° will show a little less drag near Mach 1.
 
 **Open-source code**
+
 - The source is split into files by area with a build step, fully commented, formatted and lint-clean, with a regression test that proves a change leaves every result the same, and drag benchmarks against NACA data. Unused code, including the old hidden quick-entry form, is gone. Apart from the changes above, the app works the same.
 
 **Earlier builds**
+
 - **Above Mach 0.8 (build 237):** fin lift from supersonic theory, so stability above Mach 1 is within about 2% of body length of NASA data on a slender rocket; the drag rise of sharp-edged fins through Mach 1; beveled and double-wedge fin edges; and an RSO checklist item for flights reaching Mach 0.9 or more.
 - **A stronger safety and liability disclaimer**, which everyone accepts again on first opening the app after updating from build 231 or earlier. It adds: users under 18 need a parent or guardian's acceptance and adult supervision; the app isn't professional advice or endorsed by any rocketry organization, and the RSO always overrides it; ejection charge sizes are estimates; donations are gifts; Utah law governs; and if one part is found unenforceable, the rest still stands.
 - **Ejection Charge Calculator:** charge sizes appear only after you acknowledge the black powder warning once.

@@ -843,6 +843,11 @@ export function start() {
   document.getElementById("animbtn").onclick = animOpen;
   // the phone's Back button (the Android app asks this first): close the animation window, or an info or About box, instead of leaving the app
   window.prBack = function () {
+    // Learn sits on top of everything else, Settings included
+    if (window.prLearnOpen && window.prLearnOpen()) {
+      window.prLearnClose();
+      return true;
+    }
     if (window.prSettingsOpen && window.prSettingsOpen()) {
       window.prSettingsClose();
       return true;
@@ -857,6 +862,7 @@ export function start() {
       return true;
     }
     for (const [id, b] of [
+      ["flchoose", "flchcancel"],
       ["altmodal", "altcancel"],
       ["flallmodal", "flallclose"],
       ["flmodal", "flcancel"],

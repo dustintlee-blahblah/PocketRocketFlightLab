@@ -179,6 +179,7 @@ const ok = (what, cond, got) => {
   }
 
   // the log screen and Flight vs prediction, from the Flight Log's import
+  let m;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pr-alt-"));
   const egg = path.join(dir, logs[0].name);
   fs.writeFileSync(egg, logs[0].text);
@@ -187,16 +188,28 @@ const ok = (what, cond, got) => {
     flSaveAll({});
     renderFlightLog();
   });
+  // one button, Compare with a real flight: a file or readings by hand; Back closes the choice
+  await p.click("#flcmp");
+  m = await p.evaluate(() => {
+    const open = !document.getElementById("flchoose").hidden,
+      ways = document.querySelectorAll("#flchoose .flchoice").length,
+      back = window.prBack();
+    return { open, ways, back, shut: document.getElementById("flchoose").hidden };
+  });
+  ok("one button opens the two ways in", m.open && m.ways === 2, m);
+  ok("Back closes the choice", m.back && m.shut, m);
+  await p.click("#flcmp");
   await p.setInputFiles("#flaltfile", egg);
   await p.waitForTimeout(1500);
-  let m = await p.evaluate(() => ({
+  m = await p.evaluate(() => ({
+    chooser: document.getElementById("flchoose").hidden,
     open: !document.getElementById("altmodal").hidden,
     title: document.getElementById("alttitle").textContent,
     who: document.querySelectorAll("#altwho .whoopt").length,
     flight: !!document.getElementById("af-delay"),
     btn: document.getElementById("altok").textContent,
   }));
-  ok("log screen opens", m.open && m.title === "Altimeter log", m);
+  ok("log screen opens", m.open && m.title === "Altimeter log" && m.chooser, m);
   ok("log screen: which rocket flew it", m.who >= 2, m.who);
   ok("log screen: the flight's details", m.flight && m.btn === "Compare", m);
   await p.fill("#af-delay", "3 s");
@@ -224,9 +237,21 @@ const ok = (what, cond, got) => {
   ok("saved to the Flight Log", m.n === 1 && m.cal, m);
   await p.click('#cmpbtns [data-c="close"]');
 
-  // an altimeter's display readings, at its acceleration limit
-  await p.evaluate(() => flOpen(null));
-  await p.click('#flform [data-tab="readings"]');
+  // an altimeter's display readings, at its acceleration limit, entered by hand
+  await p.click("#flcmp");
+  await p.click("#flhand");
+  m = await p.evaluate(() => ({
+    form: !document.getElementById("flmodal").hidden,
+    title: document.getElementById("fltitle").textContent,
+    btn: document.getElementById("flsave").textContent,
+    tabs: !!document.querySelector("#flform .fltabs"),
+    alti: !!document.getElementById("fl-alti"),
+  }));
+  ok(
+    "Enter by hand: the form, no tabs",
+    m.form && m.title === "Enter a flight by hand" && m.btn === "Compare" && !m.tabs && m.alti,
+    m,
+  );
   await p.selectOption("#fl-alti", "jl-two");
   await p.dispatchEvent("#fl-alti", "change");
   const tr = logs[0].truth;
@@ -240,7 +265,16 @@ const ok = (what, cond, got) => {
   m = await p.evaluate(() => !document.getElementById("fr-lim").hidden);
   ok("display readings: limit warning", m);
   await p.click("#flsave");
+  await p.waitForTimeout(1200);
+  m = await p.evaluate(() => ({
+    cmp: !document.getElementById("cmpmodal").hidden,
+    save: !!document.querySelector('#cmpbtns [data-c="save"]'),
+    n: flList().length,
+  }));
+  ok("Enter by hand: Compare opens Flight vs prediction, not saved yet", m.cmp && m.save && m.n === 1, m);
+  await p.click('#cmpbtns [data-c="save"]');
   await p.waitForTimeout(800);
+  await p.click('#cmpbtns [data-c="close"]');
   m = await p.evaluate(() => {
     const f = flList().find((x) => x.readings);
     return f ? { alt: f.readings.alt, apo: f.apo, vmax: f.vmax, vu: f.readings.vUnit } : null;
@@ -261,22 +295,48 @@ const ok = (what, cond, got) => {
   );
   await p.click('#cmpbtns [data-c="close"]');
 
-  // a flight with just its apogee
-  await p.evaluate(() => {
-    flOpen(null);
-  });
-  await p.click('#flform [data-tab="apo"]');
-  await p.fill("#fl-apo", String(Math.round(tr.apo / 0.3048)));
+  // a flight with just its apogee: Another altimeter
+  await p.click("#flcmp");
+  await p.click("#flhand");
+  await p.selectOption("#fl-alti", "other");
+  await p.dispatchEvent("#fl-alti", "change");
+  await p.fill("#fr-apo", String(Math.round(tr.apo / 0.3048)));
   await p.click("#flsave");
+  await p.waitForTimeout(1200);
+  m = await p.evaluate(() => [...document.querySelectorAll(".cmpt tbody tr td:first-child")].map((x) => x.textContent));
+  ok("apogee only compares", m && m.some((x) => /Apogee|Highest point/.test(x)), m);
+  await p.click('#cmpbtns [data-c="save"]');
   await p.waitForTimeout(800);
-  m = await p.evaluate(() => {
-    const f = flList().find((x) => !x.readings && !(x.altis && x.altis.length));
-    if (!f) return null;
-    fcOpen(f);
-    return [...document.querySelectorAll(".cmpt tbody tr td:first-child")].map((x) => x.textContent);
-  });
-  ok("apogee only compares", m && m.includes("Apogee"), m);
   await p.click('#cmpbtns [data-c="close"]');
+  m = await p.evaluate(() => flList().filter((x) => x.readings && x.readings.alt === "other" && x.apo > 0).length);
+  ok("apogee only saved", m === 1, m);
+
+  // editing: a saved flight saves straight away; a file's flight shows its files, not the readings
+  m = await p.evaluate(() => {
+    const f = flList().find((x) => x.readings && x.readings.alt === "other");
+    flOpen(f);
+    return {
+      title: document.getElementById("fltitle").textContent,
+      btn: document.getElementById("flsave").textContent,
+      apo: document.getElementById("fr-apo").value,
+    };
+  });
+  ok("Edit flight: Save, readings kept", m.title === "Edit flight" && m.btn === "Save" && +m.apo > 0, m);
+  await p.click("#flsave");
+  await p.waitForTimeout(600);
+  m = await p.evaluate(() => {
+    const f = flList().find((x) => x.altis && x.altis.length);
+    flOpen(f);
+    const r = {
+      files: !document.getElementById("fl-altbox").hidden,
+      readings: !document.getElementById("fl-read").hidden,
+      apo: document.getElementById("fl-apo").value,
+    };
+    document.getElementById("flcancel").click();
+    return r;
+  });
+  ok("Edit flight from a file: its files and apogee", m.files && !m.readings && +m.apo > 0, m);
+  ok("three flights logged", (await p.evaluate(() => flList().length)) === 3);
 
   // a log picked with Open design file goes to the Flight Log
   await p.evaluate(() => showTab("rocket"));

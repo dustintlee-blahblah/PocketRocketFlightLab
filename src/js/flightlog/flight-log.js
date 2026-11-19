@@ -456,7 +456,7 @@ export function renderFlightLog() {
     au = uname("alt");
   renderFlCal(list);
   if (!list.length) {
-    el.innerHTML = `<p class="note" style="margin:0 0 10px">No flights logged for ${esc(D.name || "this rocket")} yet. Log a flight by hand (or from what your altimeter's display shows), or import the file from your altimeter (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Jolly Logic, Apogee Components or any CSV/text log).</p>`;
+    el.innerHTML = `<p class="note" style="margin:0 0 10px">No flights logged for ${esc(D.name || "this rocket")} yet. Tap Compare with a real flight to see how this design did against a flight you flew: import your altimeter's file, or enter what its display or beeps gave you. Save it to keep it here and calibrate the drag to it.</p>`;
     return;
   }
   // the current design's prediction for each flight (worked out once per run)
@@ -771,7 +771,7 @@ function renderFlCal(list) {
       `<span id="flcalst">Drag calibrated <b>×${k.toFixed(2)}</b> (${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%) from a ${fmt(c.apo, "alt")} ${uname("alt")} flight${c.motor ? " on " + esc(c.motor) : ""}${c.date ? ", " + esc(c.date) : ""}, entered before the flight log.</span>` +
       `<button class="btn ghost" type="button" id="fllegacy">Add it to the log</button><button class="btn ghost" type="button" id="flcalrm">Remove</button>`;
   else
-    h = `<span id="flcalst">${list.some((f) => f.apo > 0) ? "Not calibrated. Tick “Use for calibration” on the flights you trust to scale the drag to them." : "Not calibrated. Log a flight with its real apogee to calibrate the drag to it."}</span>`;
+    h = `<span id="flcalst">${list.some((f) => f.apo > 0) ? "Not calibrated. Tick “Use for calibration” on the flights you trust to scale the drag to them." : "Not calibrated. Compare with a real flight and save it to calibrate the drag to it."}</span>`;
   if (flFitMsg) h += `<div class="${busy ? "note" : "bad"}" style="flex-basis:100%;margin:0">${esc(flFitMsg)}</div>`;
   el.innerHTML = h;
   const rf = document.getElementById("flrefit");
@@ -851,22 +851,24 @@ export function flOpen(f) {
   flEdit = n;
   const dm = flCtx({ motorId: n.motorId, boostId: n.boostId }),
     designW = dm ? flLiftMass(dm.D, dm.m, dm.mb) : null;
-  document.getElementById("fltitle").textContent = f ? "Edit flight" : "Log a flight";
+  // a saved flight is edited and saved; a new one (by hand, or a file's flight being corrected) goes on to Compare
+  document.getElementById("fltitle").textContent = n.made
+    ? "Edit flight"
+    : f
+      ? "Flight details"
+      : "Enter a flight by hand";
+  document.getElementById("flsave").textContent = n.made ? "Save" : "Compare";
   document.getElementById("flform").innerHTML = `
-    <div class="cmpseg fltabs" role="tablist">${[
-      ["file", "Log file"],
-      ["readings", "Display readings"],
-      ["apo", "Apogee only"],
-    ]
-      .map(([k, l]) => `<button type="button" role="tab" data-tab="${k}">${l}</button>`)
-      .join("")}</div>
     <div class="flaltbox" id="fl-altbox"></div>
-    <div id="fl-read"></div>
     <div class="flgrid" id="fl-apov">
-      ${flField("fl-apo", "Real apogee, above the pad", "alt", n.apo)}
-      ${flField("fl-vmax", "Real top speed", "speed", n.vmax, 0)}
+      ${flField("fl-apo", "Apogee, above the pad", "alt", n.apo)}
+      ${flField("fl-vmax", "Top speed", "speed", n.vmax, 0)}
     </div>
-    <div class="flgrid" style="margin-top:10px">
+    <div id="fl-read"></div>
+    <p class="note flsubnote" id="fl-filelink">Have the altimeter's file? <label class="file linkbtn" for="fl-altin2">Import it instead<input type="file" id="fl-altin2"></label></p>
+    <h3 class="flsub">Flight conditions</h3>
+    <p class="note flsubnote">${n.made ? "As logged." : "From this run. Change anything that was different on the day: the app flies the design again with these."}</p>
+    <div class="flgrid">
       <div class="fld"><label for="fl-date">Date</label><div class="in"><input id="fl-date" type="date" value="${esc(n.date || "")}"></div></div>
       <div class="fld"><label for="fl-place">Place</label><div class="in"><input id="fl-place" type="text" value="${esc(n.place || "")}" placeholder="Launch site"></div></div>
       <div class="fld"><label for="fl-motor">Motor</label><div class="in"><input id="fl-motor" type="text" value="${esc(n.motor || "")}"></div></div>
@@ -881,10 +883,24 @@ export function flOpen(f) {
       <div class="fld"><label for="fl-lbrg">In this direction</label><div class="in"><input id="fl-lbrg" type="text" value="${n.landBrg != null ? Math.round(n.landBrg) : ""}" placeholder="° or SE"><span class="u">°</span></div></div>
     </div>
     <div class="fld" style="margin-top:8px"><label for="fl-notes">Notes</label><textarea id="fl-notes" rows="2">${esc(n.notes || "")}</textarea></div>`;
+  // what the altimeter gave: its display readings (a flight logged with just its apogee and top speed shows them under
+  // Another altimeter), or the files kept with the flight
+  const R0 =
+    n.readings && n.readings.alt
+      ? n.readings
+      : n.apo > 0 && !(n.altis && n.altis.length)
+        ? { alt: "other", apo: n.apo, vmax: n.vmax, vUnit: uname("speed") === "m/s" ? "m/s" : "ft/s" }
+        : null;
+  flReadBox(R0 ? R0.alt : store.get("rfs-altimeter") || "other", R0);
+  {
+    const i2 = document.getElementById("fl-altin2");
+    i2.onchange = () => {
+      const fi = i2.files && i2.files[0];
+      i2.value = "";
+      if (fi) altOpenFile(fi, "form");
+    };
+  }
   flAltBox();
-  flReadBox(n.readings && n.readings.alt ? n.readings.alt : store.get("rfs-altimeter") || "jl-two", n.readings);
-  document.querySelectorAll("#flform .fltabs [data-tab]").forEach((b) => (b.onclick = () => flSetTab(b.dataset.tab)));
-  flSetTab(n.readings && n.readings.alt ? "readings" : n.altis && n.altis.length ? "file" : "apo");
   const motorTxt = document.getElementById("fl-motor");
   motorTxt.oninput = () => {
     flEdit.motorId = null;
@@ -925,26 +941,24 @@ export function flAltBox() {
       inp.value = "";
       if (f) altOpenFile(f, "form");
     };
+  flSetTab(A.length ? "file" : "readings");
 }
 /**
- * The tab open in the flight form: "file" (an altimeter's log file), "readings" (read off its display or beeps) or
- * "apo" (just the apogee and top speed).
+ * What the flight form shows for the measurements: "file" (the altimeter files kept with the flight, and the apogee and
+ * top speed taken from them) or "readings" (an altimeter's display readings; Another altimeter for just the apogee).
  */
-let flTab = "apo";
+let flTab = "readings";
 /**
- * Opens a tab of the flight form.
+ * Shows the form's measurements one way or the other (see flTab).
  * @param {string} t
  */
 function flSetTab(t) {
   flTab = t;
-  document.querySelectorAll("#flform .fltabs [data-tab]").forEach((b) => {
-    const on = b.dataset.tab === t;
-    b.classList.toggle("on", on);
-    b.setAttribute("aria-selected", on);
-  });
-  document.getElementById("fl-altbox").hidden = t !== "file";
-  document.getElementById("fl-read").hidden = t !== "readings";
-  document.getElementById("fl-apov").hidden = t === "readings";
+  const file = t === "file";
+  document.getElementById("fl-altbox").hidden = !file;
+  document.getElementById("fl-apov").hidden = !file;
+  document.getElementById("fl-read").hidden = file;
+  document.getElementById("fl-filelink").hidden = file;
   flPredBox();
 }
 /**
@@ -987,7 +1001,7 @@ function flReadBox(id, R) {
             .join("")}</optgroup>`,
       )
       .join("")}</select></div></div>
-    <p class="note" style="margin:4px 0 8px">Readings from ${esc(a.how)}; ${lim}.</p>
+    <p class="note" style="margin:4px 0 8px">${a.id === "other" ? "Whatever your altimeter gave you" : `Readings from ${esc(a.how)}; ${lim}`}. Only Max altitude is needed.</p>
     <div class="flgrid fl2">${ALT_READINGS.filter(([k]) => a.readings.includes(k))
       .map(([k, l, dim]) =>
         dim === "alt" || dim === "speed"
@@ -1201,15 +1215,18 @@ export function start() {
       r.textContent =
         flTab === "readings"
           ? "Enter the altimeter's max altitude."
-          : "Enter the real apogee, or import the altimeter's file.";
+          : "Enter the apogee, or import the altimeter's file.";
       r.className = "bad";
       r.hidden = false;
       return;
     }
     if (!(v.apo > 0)) v.apo = flEdit.altis[0].apo;
-    if (flSaveFlight({ ...flEdit, ...v })) {
-      document.getElementById("flmodal").hidden = true;
-      flEdit = null;
-    }
+    const f = { ...flEdit, ...v };
+    // a saved flight is saved; a new one goes on to Flight vs prediction, which saves it
+    if (f.made) {
+      if (!flSaveFlight(f)) return;
+    } else fcOpen(f, true);
+    document.getElementById("flmodal").hidden = true;
+    flEdit = null;
   };
 }

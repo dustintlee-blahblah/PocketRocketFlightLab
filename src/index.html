@@ -59,7 +59,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">326</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">327</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -197,11 +197,11 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       </div>
     </div>
     <div class="panel" id="flpanel" hidden>
-      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Import the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Jolly Logic or Apogee Components altimeter (exported as CSV, text or .xlsx; Open design file and sharing a file to the app work too) to fill in the apogee and top speed and to show the real curve on the chart, or enter what an altimeter's display or beeps gave you under Display readings. Compare opens Flight vs prediction: the curves with burnout, the charge and apogee marked, each event against this design flown the same way (its motor, delay, weight and weather), a warning when the charge fired before apogee or the altimeter's accelerometer was at its limit, and what the differences point at. If the file has an accelerometer column (Altus Metrum and Featherweight files do), the log also shows the drag it measured in the coast, between burnout and apogee, where the accelerometer reads the drag directly whatever the motor did; a calibration uses that in place of the apogee when every ticked flight has it. It is only used when the boost agrees with the rocket’s weight and motor and the flight went straight up, so weigh the rocket and enter the weight with the flight. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
+      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Compare with a real flight takes either the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Jolly Logic or Apogee Components altimeter (exported as CSV, text or .xlsx; Open design file and sharing a log to the app work too), which shows the real curve, or what an altimeter's display or beeps gave you, entered by hand. Either way it opens Flight vs prediction, where you can save the flight and calibrate the drag to it. Flight vs prediction shows the curves with burnout, the charge and apogee marked, each event against this design flown the same way (its motor, delay, weight and weather), a warning when the charge fired before apogee or the altimeter's accelerometer was at its limit, and what the differences point at. If the file has an accelerometer column (Altus Metrum and Featherweight files do), the log also shows the drag it measured in the coast, between burnout and apogee, where the accelerometer reads the drag directly whatever the motor did; a calibration uses that in place of the apogee when every ticked flight has it. It is only used when the boost agrees with the rocket’s weight and motor and the flight went straight up, so weigh the rocket and enter the weight with the flight. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
       <div id="flcal" class="flcal"></div>
       <div id="flprompt" class="flprompt" hidden></div>
       <div id="fllist"></div>
-      <div class="row flbtns"><button class="btn" id="fladd" type="button">+ Log a flight</button><label class="file btn ghost" for="flaltfile">Import altimeter file<input type="file" id="flaltfile"></label></div>
+      <div class="row flbtns"><button class="btn" id="flcmp" type="button">Compare with a real flight</button></div>
       <div class="row flbtns"><button class="btn ghost" id="flallbtn" type="button">All flights</button><button class="btn ghost" id="flexp" type="button">Export backup</button><button class="btn ghost" id="flcsv" type="button">Export CSV</button><label class="file btn ghost" for="flimp">Import backup<input type="file" id="flimp" accept=".json,application/json,text/plain"></label></div>
     </div>
 
@@ -477,12 +477,20 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
 <div class="modal" id="fitwarn" role="alertdialog" aria-modal="true" aria-labelledby="fitwarntxt" hidden><div class="mbox">
   <p id="fitwarntxt"></p>
   <div class="row mrow"><button class="btn" id="fitfix">Choose another motor</button><button class="btn ghost" id="fitok">OK</button></div></div></div>
+<div class="modal" id="flchoose" role="dialog" aria-modal="true" aria-labelledby="flchtitle" hidden><div class="mbox flbox">
+  <h2 id="flchtitle">Compare with a real flight</h2>
+  <p class="note" style="margin:0 0 12px">How this design did against a flight you flew. The app flies it again with that day's motor, delay, weight and weather and sets it beside what your altimeter measured. Save the flight to keep it, and calibrate the drag to it.</p>
+  <div class="flchoices">
+    <label class="file flchoice" for="flaltfile"><b>Import altimeter file</b><span>A log from Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Jolly Logic, Apogee Components, or any CSV, text or .xlsx log. Shows the real curve.</span><input type="file" id="flaltfile"></label>
+    <button class="flchoice" id="flhand" type="button"><b>Enter by hand</b><span>What your altimeter's display or beeps gave you: pick it from the list for its readings, or Another altimeter for just the apogee.</span></button>
+  </div>
+  <div class="row mrow"><button class="btn ghost" id="flchcancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="flmodal" role="dialog" aria-modal="true" aria-labelledby="fltitle" hidden><div class="mbox flbox">
-  <h2 id="fltitle">Log a flight</h2>
+  <h2 id="fltitle">Enter a flight by hand</h2>
   <div id="flform"></div>
   <p class="note" id="flpred"></p>
   <div id="flres" hidden></div>
-  <div class="row mrow"><button class="btn" id="flsave" type="button">Save flight</button><button class="btn ghost" id="flcancel" type="button">Cancel</button></div></div></div>
+  <div class="row mrow"><button class="btn" id="flsave" type="button">Compare</button><button class="btn ghost" id="flcancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="flallmodal" role="dialog" aria-modal="true" aria-labelledby="flalltitle" hidden><div class="mbox flbox">
   <h2 id="flalltitle">All flights</h2>
   <div id="flallbody"></div>
@@ -630,7 +638,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
   </div>
 </div>
 <div class="legal learn" id="learn" role="dialog" aria-modal="true" aria-labelledby="learn-title" hidden>
-  <div class="box"><div class="head"></div><div class="body" tabindex="-1"></div><div class="foot"></div></div>
+  <div class="box"><button class="learnx" type="button" data-close aria-label="Close Learn" title="Close"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></button><div class="head"></div><div class="body" tabindex="-1"></div><div class="foot"></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

@@ -247,26 +247,27 @@ const SCREENS = [
     },
   ],
   [
-    "log-a-flight",
+    "compare-real-flight",
     () => {
       showTab("results");
-      document.getElementById("fladd").click();
+      document.getElementById("flcmp").click();
     },
   ],
   [
-    "log-a-flight-readings",
+    "enter-by-hand",
     () => {
       showTab("results");
-      document.getElementById("fladd").click();
-      document.querySelector('#flform .fltabs [data-tab="readings"]').click();
+      flOpen(null);
     },
   ],
   [
-    "log-a-flight-apogee",
+    "enter-by-hand-readings",
     () => {
       showTab("results");
-      document.getElementById("fladd").click();
-      document.querySelector('#flform .fltabs [data-tab="apo"]').click();
+      flOpen(null);
+      const s = document.getElementById("fl-alti");
+      s.value = "jl-two";
+      s.dispatchEvent(new Event("change"));
     },
   ],
   ["altimeter-log", "altlog"],

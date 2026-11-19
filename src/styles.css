@@ -1463,6 +1463,49 @@ h2 + .subh {
   padding: 7px 12px;
   font-size: 0.84rem;
 }
+/* Compare with a real flight: the two ways in */
+.flchoices {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.flchoice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.flchoice b {
+  font-size: 1rem;
+}
+.flchoice span {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.flchoice:hover,
+.flchoice:focus-visible,
+label.flchoice:focus-within {
+  border-color: var(--accent);
+}
+.flsub {
+  margin: 14px 0 2px;
+  font-size: 0.95rem;
+}
+.flsubnote {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+}
 .flsum {
   margin: 0 0 10px;
   font-size: 0.88rem;
@@ -3105,6 +3148,33 @@ html.typing .runbar {
   cursor: not-allowed;
 }
 /* the Learn page: the disclaimer's dialog, holding the chapter list or one chapter */
+/* the close X in the Learn window's top right corner (Back on Android closes it too) */
+.learn .box {
+  position: relative;
+}
+.learn .learnx {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  z-index: 1;
+}
+.learn .learnx:hover,
+.learn .learnx:focus-visible {
+  background: var(--field);
+  color: var(--ink);
+}
+.learn .head {
+  padding-right: 48px;
+}
 .learn .head .crumb {
   font-size: 0.8rem;
   margin: 0 0 4px;
@@ -3189,6 +3259,55 @@ html.typing .runbar {
 .learn figure svg {
   display: block;
   max-height: 180px;
+}
+/* the drag model's speed bands: tappable, the chosen one in the accent color */
+.learn .lband {
+  cursor: pointer;
+  outline: none;
+}
+.learn .lband rect {
+  fill: var(--field);
+}
+.learn .lband .lbt {
+  fill: currentColor;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.learn .lband:hover rect,
+.learn .lband:focus-visible rect {
+  stroke: var(--accent);
+}
+.learn .lband:focus-visible rect {
+  stroke-width: 2.6;
+}
+.learn .lband[aria-pressed="true"] rect {
+  stroke: var(--accent);
+  fill: var(--accent);
+  fill-opacity: 0.15;
+}
+.learn .lband[aria-pressed="true"] .lbt {
+  fill: var(--accent);
+  text-decoration: none;
+}
+.learn .bandinfo {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--field);
+  padding: 4px 12px 10px;
+  margin: -2px 0 12px;
+  font-size: 0.9rem;
+}
+.learn .bandinfo h4 {
+  margin: 8px 0 4px;
+  color: var(--accent);
+}
+.learn .bandinfo ul {
+  padding-left: 18px;
+}
+.learn .bandinfo .row {
+  gap: 14px;
+  margin-top: 6px;
 }
 .learn figcaption {
   font-size: 0.75rem;

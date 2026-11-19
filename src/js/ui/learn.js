@@ -5,7 +5,7 @@
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { openLink } from "./donate.js";
-import { learnChapters } from "./learn-content.js";
+import { LEARN_BANDS, learnChapters } from "./learn-content.js";
 
 let learnFocus = null;
 /**
@@ -82,6 +82,25 @@ function learnShow(id) {
   body.focus();
 }
 /**
+ * A tapped speed band (drag model chapter): its text in the panel under the drawing; the same band again closes it.
+ * @param {Element} g the band's group in the drawing
+ */
+function learnBand(g) {
+  const box = document.getElementById("bandinfo"),
+    k = g.dataset.band,
+    B = LEARN_BANDS[k];
+  if (!box || !B) return;
+  const open = g.getAttribute("aria-pressed") !== "true";
+  for (const x of document.querySelectorAll("#learn .lband")) x.setAttribute("aria-pressed", String(open && x === g));
+  box.hidden = !open;
+  if (!open) return;
+  box.innerHTML =
+    `<h4>${esc(B.title)}</h4>` +
+    B.html +
+    `<div class="row">${B.links.map(([id, t]) => `<button type="button" class="linkbtn" data-ch="${id}">${esc(t)} ›</button>`).join("")}<button type="button" class="linkbtn" data-band-close>Close</button></div>`;
+  box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+/**
  * Opens the Learn page, at a chapter or at the list.
  * @param {string} [id] the chapter's id
  */
@@ -105,6 +124,9 @@ export function learnClose() {
  */
 export function start() {
   const dlg = document.getElementById("learn");
+  // Back on Android (window.prBack) closes Learn rather than the app
+  window.prLearnOpen = () => !dlg.hidden;
+  window.prLearnClose = learnClose;
   dlg.addEventListener("click", (e) => {
     const t = e.target;
     if (t === dlg || t.closest("[data-close]")) return learnClose();
@@ -112,6 +134,16 @@ export function start() {
     if (lv) {
       store.set("rfs-learn-level", lv.dataset.lv);
       return learnShow(null);
+    }
+    const band = t.closest("[data-band]");
+    if (band) return learnBand(band);
+    if (t.closest("[data-band-close]")) {
+      const on = document.querySelector('#learn .lband[aria-pressed="true"]');
+      if (on) {
+        learnBand(on);
+        on.focus();
+      }
+      return;
     }
     const ch = t.closest("[data-ch]");
     if (ch) return learnShow(ch.dataset.ch || null);
@@ -123,6 +155,12 @@ export function start() {
     }
   });
   dlg.addEventListener("keydown", (e) => {
+    // a speed band takes Enter and Space, as a button does
+    const band = e.target.closest && e.target.closest("[data-band]");
+    if (band && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      return learnBand(band);
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       learnClose();
