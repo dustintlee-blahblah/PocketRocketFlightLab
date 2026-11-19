@@ -1,4 +1,4 @@
-import { finTeEdge } from "../core/units-and-fin-edges.js";
+import { finSectionShare, finTeEdge } from "../core/units-and-fin-edges.js";
 import {
   elAutoNum,
   elDens,
@@ -733,7 +733,16 @@ function readFins(rd, c, x, parent, { tag, cfin, rho }) {
   const n = elNum(c, "fincount", 3),
     t = elNum(c, "thickness", 0.003);
   const { root, tip, span, sweep, area, outline, xcen } = finShape(rd, c, tag);
-  let m = rho * area * t * n;
+  // the section's own shape: rounded, beveled or airfoiled edges take material off the slab (finSectionShare)
+  const share = finSectionShare(
+    (elTxt(c, "crosssection") || "square").toLowerCase(),
+    finTeEdge(elTxt(c, "prfltrailingedge") || ""),
+    t,
+    span > 0 ? area / span : root,
+    elNum(c, "prflbevelle", 0),
+    elNum(c, "prflbevelte", 0),
+  );
+  let m = rho * area * t * n * share;
   const tab = finTabs(c, root, rho, t, n),
     tabM = tab.m,
     tabX = tab.x,

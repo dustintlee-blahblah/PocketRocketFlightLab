@@ -56,3 +56,35 @@ export const finTeEdge = (e) => (e && FIN_TE_EDGES.some((x) => x[0] === e) ? e :
  * @returns {number}
  */
 export const finWaveK = (e) => (e === "doublewedge" ? 4 : e === "beveled" ? 10 : 16 / 3);
+/**
+ * The share of a slab (chord × thickness) a fin's cross-section fills, from its edges, for its weight. Each end of the
+ * section takes away what it shapes off the slab:
+ *   - square: nothing;
+ *   - rounded (a half-round end): t²/2 − πt²/8 = (4 − π)/8·t²;
+ *   - beveled or tapered to a sharp edge over a length b: the two wedges cut off, b·t/2;
+ * and two whole sections:
+ *   - double wedge: ½;
+ *   - airfoil: ⅔, the biconvex (parabolic-arc) section its wave drag K = 16/3 stands for (finWaveK).
+ * A bevel with no length given is 20% of the chord, the drag model's default. A leading-edge radius on a sharp section
+ * adds back a sliver (under 1% of a fin) and is left out.
+ * @param {string} edge the section (FIN_EDGES)
+ * @param {string} edgeTE the trailing edge set apart from it ("" for the section's own)
+ * @param {number} t thickness, m
+ * @param {number} c mean chord, m
+ * @param {number} [bevLE] leading bevel length, m
+ * @param {number} [bevTE] trailing bevel length, m
+ * @returns {number} 0.5 to 1
+ */
+export function finSectionShare(edge, edgeTE, t, c, bevLE = 0, bevTE = 0) {
+  if (!(t > 0) || !(c > 0)) return 1;
+  if (edge === "doublewedge" && !edgeTE) return 0.5;
+  if (edge === "airfoil" && !edgeTE) return 2 / 3;
+  const round = ((4 - Math.PI) / 8) * t * t,
+    wedge = (b) => (Math.min(b > 0 ? b : 0.2 * c, c / 2) * t) / 2,
+    end = (e, b) => (e === "rounded" ? round : e === "beveled" || e === "sharp" ? wedge(b) : 0);
+  // a sharp section (airfoil, double wedge) with its own trailing edge: its front half as the section, its back as set
+  const front = edge === "airfoil" ? (t * c) / 6 : edge === "doublewedge" ? (t * c) / 4 : end(edge, bevLE),
+    te = edgeTE || (edge === "beveled" ? "beveled" : edge === "airfoil" || edge === "doublewedge" ? "sharp" : edge),
+    back = end(te, te === "beveled" || te === "sharp" ? bevTE : 0);
+  return Math.max(0.5, 1 - (front + back) / (t * c));
+}
