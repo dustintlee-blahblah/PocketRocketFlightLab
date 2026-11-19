@@ -310,7 +310,7 @@ acceleration and top speed read low.
 | Flight | Mach | Measured | App | |
 |---|---|---|---|---|
 | CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.6 | GPS apogee about 17,400 ft | 17,452 ft | +0.3% |
-| Estes Partizon, AeroTech I205W | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft) | 4,116 ft | −3.4% |
+| Estes Partizon, AeroTech I205W | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft) | 4,116 ft | −3.5% |
 | Estes Ascender, AeroTech H135W | 0.79 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 876 ft/s, 22.0 g | see below |
 
 - **Concept 98**: as the flyer set it up, with its pair of rail buttons, its tail cone painted rather than smooth, the field's
@@ -324,9 +324,10 @@ acceleration and top speed read low.
   apogee and isn't graded. Its boost is: peak acceleration and top speed agree within 4%, below the altimeter's limit.
   The app passes 3,943 ft about 5.6 s after burnout, which fits the motor's shortest delay (6 s); with that delay the app
   gives 4,224 ft for the highest point after ejection (+4.8% on the logged 4,030 ft). Without the early charge it would
-  have reached 4,807 ft.
+  have reached 4,869 ft.
 
-None of these is in the averages above, which cover the RASAero II files only.
+None of these is in the averages above, which cover the RASAero II files only. `node validation/shared-flights.js
+--dir <folder>` flies them again from a folder holding the three design files (kept outside the repository).
 
 **The app is 7% off on these flights, a little high, and 9% above Mach 1.2.** None of its constants were set from
 these flights, and the comparison is not entirely independent of RASAero II either: these are the flights RASAero
