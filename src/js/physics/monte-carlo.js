@@ -258,6 +258,21 @@ export function mcBearing(angE) {
    weight and CG add 10% low and 3.6% high at 90% (built rockets usually come out heavier than their parts add up to;
    judgment figures), and a drag calibrated to one of your own flights replaces the band's figures with 3% at 90%. */
 /**
+ * The 5th, 50th and 95th percentiles of a set of apogees (straight-line between the sorted values), or null for too few.
+ * @param {number[]} v
+ * @returns {{p05:number, p50:number, p95:number}|null}
+ */
+function mcQuantiles(v) {
+  if (v.length < 5) return null;
+  const a = v.slice().sort((x, y) => x - y),
+    at = (f) => {
+      const k = f * (a.length - 1),
+        i = Math.floor(k);
+      return a[i] + (a[Math.min(i + 1, a.length - 1)] - a[i]) * (k - i);
+    };
+  return { p05: at(0.05), p50: at(0.5), p95: at(0.95) };
+}
+/**
  * The likely apogee range: the dispersion run's spread combined with the model's measured accuracy for this speed.
  * @param {object} st the flight's summary (from simulate)
  * @param {object} D design
@@ -278,9 +293,13 @@ export function apoRange(st, D) {
       ? { lo: (0.03 * k) / band.k90, hi: (0.03 * k) / band.k90 }
       : { lo: Math.max(0, -(band.mean - k * band.sd)), hi: Math.max(0, band.mean + k * band.sd) };
   const mc = lastMC && lastSim && lastMC.when === lastSim.when && lastMC.am > 0 ? lastMC : null;
-  // the dispersion run's 5–95% spread, and an estimated weight's allowance, both at 90%
-  const cLo = mc ? Math.max(0, (mc.am - mc.p05) / mc.am) : 0,
-    cHi = mc ? Math.max(0, (mc.p95 - mc.am) / mc.am) : 0,
+  /* the dispersion run's 5–95% spread about its median, from the flights that flew normally: a flight that tumbled is a
+     different outcome, not a less accurate apogee (it is counted on its own, in Chance of tumbling and beside the
+     apogee), and a handful of them would otherwise swamp the range. An estimated weight's allowance too; both at 90%. */
+  const ok = mc && mc.pts ? mc.pts.filter((p) => !p.tumble && p.apo > 0).map((p) => p.apo) : [],
+    q = mcQuantiles(ok),
+    cLo = q ? Math.max(0, (q.p50 - q.p05) / q.p50) : 0,
+    cHi = q ? Math.max(0, (q.p95 - q.p50) / q.p50) : 0,
     eLo = est ? 0.1 : 0,
     eHi = est ? 0.036 : 0;
   const m90 = model(band.k90),
@@ -302,7 +321,9 @@ export function apoRange(st, D) {
     mHi: m90.hi,
     cLo,
     cHi,
-    mc: !!mc,
+    mc: !!q,
+    tumbles: mc ? mc.tumbles : 0,
+    n: mc ? mc.n : 0,
     cal,
     est,
     band,
@@ -330,6 +351,8 @@ export function renderApoTol() {
   if (!R) {
     el.innerHTML = "";
     el.removeAttribute("title");
+    const w = document.getElementById("apowarn");
+    if (w) w.hidden = true;
     return;
   }
   const A = toDisp(lastSim.st.maxAlt, "alt"),
@@ -338,6 +361,14 @@ export function renderApoTol() {
     up = r(toDisp(R.hi1, "alt") - A),
     dn = r(A - toDisp(R.lo1, "alt")),
     what = `Typical range ${apoRound(R.lo1)}–${apoRound(R.hi1)} ${uname("alt")} (1σ, about 2 flights in 3); 90% range ${apoRound(R.lo)}–${apoRound(R.hi)}${R.mc ? ", with the dispersion run" : ""}`;
+  // flights in the dispersion run that went unstable: said beside the apogee, as the range leaves them out
+  const w = document.getElementById("apowarn");
+  if (w) {
+    w.hidden = !R.tumbles;
+    w.textContent = R.tumbles
+      ? `${R.tumbles} of ${R.n} dispersion flights went unstable (left out of the range): see Chance of tumbling in the checklist.`
+      : "";
+  }
   el.innerHTML = up === dn ? `±${up}` : `<span>+${up}</span><span>−${dn}</span>`;
   el.classList.toggle("two", up !== dn);
   el.title = what;

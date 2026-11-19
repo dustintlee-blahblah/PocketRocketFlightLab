@@ -3840,3 +3840,13 @@ table.cmpt {
 #recbody .rect {
   margin-bottom: 8px;
 }
+/* dispersion flights that went unstable, under the apogee */
+.apowarn {
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}

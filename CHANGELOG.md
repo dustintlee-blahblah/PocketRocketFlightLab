@@ -4,6 +4,16 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 325 (2026-11-19)
+
+**Results**
+- **The apogee range leaves out flights that tumbled.** Build 324 folded the landing-dispersion run's spread into the ±, and a rocket with a small stability margin and an estimated weight had some dispersion flights go unstable and top out near the pad: they swamped the range (−10,000 ft on a 17,000 ft flight). The ± now takes the spread of the flights that flew normally, about their median, and a line under the apogee says how many dispersion flights went unstable.
+- **Stability leaving the rail comes first**, on the Results tab and in the RSO checklist: it is judged at the real speed and angle as the rocket leaves the rail, the slowest, most vulnerable moment of free flight. The static number on the pad (the usual 1-caliber rule) follows it; under 1 caliber there with at least 1 caliber leaving the rail is a caution rather than a stop. Leaving the rail below 0 caliber is now a stop.
+- **Chance of tumbling** sits with the stability checks and says how much the balance is varied, and, when the weight is estimated, that weighing the rocket and marking its CG narrows it.
+
+**Testing**
+- The emulator test runs on Ubuntu 24.04 (the browser library it drives has none for GitHub's newer image), and the inputs test checks that tumbling dispersion flights stay out of the apogee range.
+
 ## Build 324 (2026-11-19)
 
 **Results**

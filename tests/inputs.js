@@ -243,6 +243,34 @@ const ok = (what, cond, got) => {
   await build("a thicker body wall: lower apogee", "^body tube", "wall", 2.5, less("apo"));
   await build("a longer nose: CG moves forward, more stable", "^nose cone", "len", 1.5, more("stab"));
 
+  // ---- flights that tumble in the dispersion run are said beside the apogee and left out of its range (build 324 let
+  // a few of them swamp it: −10,000 ft on a 17,000 ft flight)
+  try {
+    await start();
+    await type("mcBal", 30); // the balance varied by 30% of the length: many flights go unstable
+    await p.evaluate(() => {
+      L.mcN = 60;
+      document.getElementById("runbtn").click();
+    });
+    await p.waitForFunction(() => window.lastMC && lastMC.when === lastSim.when, null, { timeout: 120000 });
+    await p.waitForTimeout(500);
+    const r = await p.evaluate(() => ({
+      tumbles: lastMC.tumbles,
+      warn: document.getElementById("apowarn").hidden ? "" : document.getElementById("apowarn").textContent,
+      R: apoRange(lastSim.st, lastSim.D),
+      apo: lastSim.st.maxAlt,
+    }));
+    ok("dispersion run with a very uncertain balance: some flights tumble", r.tumbles > 0, r.tumbles);
+    ok("tumbling flights said beside the apogee", /went unstable/.test(r.warn), r.warn);
+    ok(
+      "the apogee range leaves tumbling flights out (90% range within 40% of the apogee)",
+      r.R.lo > 0.6 * r.apo && r.R.hi < 1.4 * r.apo,
+      [r.R.lo, r.apo, r.R.hi],
+    );
+  } catch (e) {
+    ok("tumbling flights and the apogee range", false, e.message.split("\n")[0]);
+  }
+
   // ---- strange values in every Range-tab number field: no crash, nothing broken on Results
   await start();
   const keys = await p.evaluate(() => {

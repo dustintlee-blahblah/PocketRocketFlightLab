@@ -595,10 +595,20 @@ export function resultGroups(st, S) {
     ],
   ];
   const stability = [
+    // leaving the rail in this wind, first: the slowest, most vulnerable moment of free flight, tilted to the airflow by the crosswind, so body lift has moved the CP forward
+    ...(st.railMargin != null && !st.error
+      ? [
+          [
+            "Stability leaving the rail",
+            st.railMargin.toFixed(2),
+            `cal · at ${st.railAoA.toFixed(0)}° in this wind · ${st.railPct.toFixed(0)}% of length`,
+          ],
+        ]
+      : []),
     [
       st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
       S.marginL.toFixed(2),
-      (S.pctL != null ? `cal · ${S.pctL.toFixed(0)}% of length` : "cal") +
+      (S.pctL != null ? `cal · static, the 1-caliber rule · ${S.pctL.toFixed(0)}% of length` : "cal · static") +
         (S.unc ? ` · uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}` : ""),
     ],
     // nose weight to reach 1 caliber, 10% of the length and 1 caliber leaving the rail in this wind
@@ -618,16 +628,6 @@ export function resultGroups(st, S) {
         ],
       ];
     })(),
-    // leaving the rail in this wind: tilted to the airflow by the crosswind, so body lift has moved the CP forward
-    ...(st.railMargin != null && !st.error
-      ? [
-          [
-            "Stability leaving the rail",
-            st.railMargin.toFixed(2),
-            `cal · at ${st.railAoA.toFixed(0)}° in this wind · ${st.railPct.toFixed(0)}% of length`,
-          ],
-        ]
-      : []),
     // how well it damps its wobble (about 0.05–0.3 is the usual guide)
     ...((st.dampMax || st.dampRail) && !st.tumble
       ? [

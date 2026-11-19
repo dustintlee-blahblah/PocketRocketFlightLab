@@ -196,35 +196,31 @@ export function rsoChecks(st, S, m, D, LL) {
   // stability
   const ml = S.marginL,
     nw = typeof nosePlan === "function" ? nosePlan(st, S) : null;
-  add(
-    ml > 4 ? "warn" : ml >= 1.5 ? "good" : ml >= 1 ? "warn" : "bad",
-    st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
-    `${ml.toFixed(2)} cal`,
-    ml > 4
-      ? "Very stable (over 4 calibers): it will turn into the wind strongly. Fine in calm air; in wind, a lower rail angle or less wind helps."
-      : ml >= 1.5
-        ? "At least 1 caliber is the usual minimum; this has margin."
-        : ml >= 1
-          ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight." +
-            (S.unc && ml - S.unc < 1
-              ? ` The CP estimate is good to about ±${S.unc.toFixed(1)} cal on this rocket, so it could be below 1.`
-              : "")
-          : `Below 1 caliber. Add ${nw && nw.cal > 0 ? noseWeightText(nw.cal) + " at mid-nose" : "nose weight"} or larger fins before flying.`,
-  );
-  // margin as a share of the rocket's length: one caliber is little on a long, thin rocket
-  if (S.pctL != null && ml >= 1)
+  // judged first leaving the rail, at the real speed and angle (below); the static number on the pad is the usual 1-caliber
+  // rule, a conservative stand-in: under it with 1 caliber or more leaving the rail is a caution, not a stop
+  const railOk = st.railMargin != null && !st.tumble && st.railMargin >= 1;
+  const padAdd = () =>
     add(
-      S.pctL >= 10 ? "good" : "warn",
-      "Stability as a share of length",
-      `${S.pctL.toFixed(0)}%`,
-      S.pctL >= 10
-        ? "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
-        : `${ml.toFixed(2)} cal is only ${S.pctL.toFixed(0)}% of this rocket's length. Long, thin rockets lose margin quickly when they tilt; 10–15% of the length is a common guide for them. ${nw && nw.pct > 0 ? `Reaching 10% takes ${noseWeightText(nw.pct)} at mid-nose.` : "Consider nose weight."}`,
+      ml > 4 ? "warn" : ml >= 1.5 ? "good" : ml >= 1 || railOk ? "warn" : "bad",
+      st.staged ? "Stack stability at liftoff" : "Stability at liftoff",
+      `${ml.toFixed(2)} cal`,
+      ml > 4
+        ? "Very stable (over 4 calibers): it will turn into the wind strongly. Fine in calm air; in wind, a lower rail angle or less wind helps."
+        : ml >= 1.5
+          ? "At least 1 caliber is the usual minimum; this has margin."
+          : ml >= 1
+            ? "Just above the 1 caliber minimum. Confirm the CG with the motor in, and consider a little nose weight." +
+              (S.unc && ml - S.unc < 1
+                ? ` The CP estimate is good to about ±${S.unc.toFixed(1)} cal on this rocket, so it could be below 1.`
+                : "")
+            : railOk
+              ? `Below the usual 1-caliber rule on the pad (static), though it has ${st.railMargin.toFixed(2)} cal leaving the rail. Many RSOs go by the static number: ${nw && nw.cal > 0 ? noseWeightText(nw.cal) + " at mid-nose" : "nose weight"} would meet it.`
+              : `Below 1 caliber. Add ${nw && nw.cal > 0 ? noseWeightText(nw.cal) + " at mid-nose" : "nose weight"} or larger fins before flying.`,
     );
   // leaving the rail in this wind
   if (st.railMargin != null && !st.tumble)
     add(
-      st.railMargin >= 1 ? "good" : "warn",
+      st.railMargin >= 1 ? "good" : st.railMargin >= 0 ? "warn" : "bad",
       "Stability leaving the rail",
       `${st.railMargin.toFixed(2)} cal at ${st.railAoA.toFixed(0)}°`,
       `In this wind the airflow meets the rocket at ${st.railAoA.toFixed(0)}° as it leaves the rail. Body lift moves the CP forward as it tilts, leaving ${st.railMargin.toFixed(2)} cal.` +
@@ -234,6 +230,33 @@ export function rsoChecks(st, S, m, D, LL) {
             ? " A longer rail, a faster motor, nose weight or less wind raises it."
             : "") +
         (st.railMargin < 1 && nw && nw.rail > 0 ? ` 1 cal here takes ${noseWeightText(nw.rail)} at mid-nose.` : ""),
+    );
+  padAdd();
+  // the dispersion flights, with the balance varied: how often it tumbles
+  {
+    const mc = lastMC && lastSim && lastMC.when === lastSim.when ? lastMC : null;
+    if (mc && mc.n > 0 && !st.error) {
+      const f = mc.tumbles / mc.n,
+        balCal = S.L > 0 && S.d > 0 ? ((LL.mcBal || 0) * S.L) / S.d : 0;
+      add(
+        f === 0 ? "good" : f < 0.02 ? "warn" : "bad",
+        "Chance of tumbling",
+        `${+(100 * f).toFixed(1)}% (${mc.tumbles} of ${mc.n})`,
+        f === 0
+          ? `None of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance varied.`
+          : `${mc.tumbles} of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance (CG against CP) varied. The balance is varied by ${balCal.toFixed(2)} cal (1σ, ${(100 * (LL.mcBal || 0)).toFixed(1)}% of the length)${D.massKnown === false ? ", as the weight is estimated: weigh the rocket and mark its CG, then lower Balance in the dispersion settings" : ""}. Otherwise add nose weight or larger fins, or wait for less wind. These flights are left out of the apogee range.`,
+      );
+    }
+  }
+  // margin as a share of the rocket's length: one caliber is little on a long, thin rocket
+  if (S.pctL != null && ml >= 1)
+    add(
+      S.pctL >= 10 ? "good" : "warn",
+      "Stability as a share of length",
+      `${S.pctL.toFixed(0)}%`,
+      S.pctL >= 10
+        ? "The CP is at least 10% of the rocket's length behind the CG, a common guide for long rockets."
+        : `${ml.toFixed(2)} cal is only ${S.pctL.toFixed(0)}% of this rocket's length. Long, thin rockets lose margin quickly when they tilt; 10–15% of the length is a common guide for them. ${nw && nw.pct > 0 ? `Reaching 10% takes ${noseWeightText(nw.pct)} at mid-nose.` : "Consider nose weight."}`,
     );
   // dynamic stability: how well it damps its wobble
   {
@@ -532,21 +555,6 @@ export function rsoChecks(st, S, m, D, LL) {
             : "Under 5 miles (8 km): keep the rocket in sight; high-power flights would need at least 5 miles."
           : `At least 5 miles (8 km).${hp.hpr ? " Meets the high-power minimum." : ""}`,
       );
-  }
-  // the dispersion flights, with the balance varied: how often it tumbles
-  {
-    const mc = lastMC && lastSim && lastMC.when === lastSim.when ? lastMC : null;
-    if (mc && mc.n > 0 && !st.error) {
-      const f = mc.tumbles / mc.n;
-      add(
-        f === 0 ? "good" : f < 0.02 ? "warn" : "bad",
-        "Chance of tumbling",
-        `${+(100 * f).toFixed(1)}% (${mc.tumbles} of ${mc.n})`,
-        f === 0
-          ? `None of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance varied.`
-          : `${mc.tumbles} of the ${mc.n} dispersion flights tumbled, with the wind, weight and balance (CG against CP) varied. Add nose weight or larger fins, or wait for less wind.`,
-      );
-    }
   }
   {
     const cz = LL.ceiling || 0;
