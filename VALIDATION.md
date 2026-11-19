@@ -309,12 +309,13 @@ acceleration and top speed read low.
 
 | Flight | Mach | Measured | App | |
 |---|---|---|---|---|
-| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.6 | GPS apogee about 17,400 ft | 18,075 ft (being checked) | +3.9% |
+| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.6 | GPS apogee about 17,400 ft | 17,452 ft | +0.3% |
 | Estes Partizon, AeroTech I205W | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft) | 4,116 ft | −3.4% |
 | Estes Ascender, AeroTech H135W | 0.79 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 876 ft/s, 22.0 g | see below |
 
-- **Concept 98**: with the launch conditions of its saved run; OpenRocket 24.12 gives 16,875 ft (−3.0%). The drag model
-  adopted in build 288 raised the app's figure from 17,417 ft (+0.1%).
+- **Concept 98**: as the flyer set it up, with its pair of rail buttons, a painted (not smooth) part, the field's
+  3,898 ft elevation and its saved weather. Before the rail buttons and paint were added the app gave 18,075 ft (+3.9%);
+  OpenRocket 24.12 gives 16,875 ft (−3.0%) on that earlier file.
 - **Partizon**: flown at the launch conditions saved with the file, on a 10 s delay, which puts the charge 0.6 s before
   apogee as on the flight; the app's coast from burnout to apogee, 10.6 s, matches the altimeter's 10.8 s. The
   altimeter's peak of 23.0 g is its limit (the app gives 47 g), so its 905 ft/s top speed reads low (the app
