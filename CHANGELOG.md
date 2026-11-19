@@ -4,6 +4,42 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 324 (2026-11-19)
+
+**Results**
+- **Apogee range**: a small ± beside the predicted apogee, from how far real apogees have landed from the app's predictions (23 measured flights, by top speed: the typical 1σ spread shown, the 90% range used by the waiver and cloud checks). Tap it for both. Estimated weights and calibrated drag widen or narrow it.
+- **Recovery Plan**: every charge in order (primary altimeter, backup altimeter, motor) with its time after apogee, height and speed, a charge that fires while still climbing called out; the flight flown again as if the primary altimeter failed and as if every altimeter failed, each graded on its landing; a warning when one altimeter and a plugged motor leave no backup; time and drift under the drogue and the main, and with the main at 500, 750 and 1,000 ft; the main's opening load against the harness's rating; static port sizes (PerfectFlite's rule).
+
+**Rocket builder**
+- **Recovery electronics** (Whole rocket): a backup altimeter with its own apogee delay and main height, the altimeter bay's size, and the chute and harness's rated load. Saved in the .ork.
+- **Fin weight follows the fin's section**: rounded, beveled, double-wedge and airfoil fins weigh what their shape holds, not a full flat slab (an airfoil two thirds of it, a double wedge half; rounded edges about 1%). A weight you enter still wins.
+- **Parts library**: the parachutes of Fruity Chutes, Rocketman, Spherachutes and b2 Rocketry (SkyAngle) are rebuilt from each maker's published sizes, weights, drag coefficients and ratings. FlisKits and Front Range Rocket Recovery parts are gone (no published sizes or ratings). Older Fruity Chutes part numbers still match.
+- **Top Flight X-Type** chutes take Cd 0.53 from measured cross-parachute drag (Knacke, Parachute Recovery Systems Design Manual) in place of Top Flight's chart.
+
+**Flight Log**
+- **Altimeter logs**: import a log from 25 altimeters (Featherweight, Missile Works, PerfectFlite, Jolly Logic, Eggtimer, Altus Metrum and others) by Open design file, the Flight Log or sharing it to the app. The log screen shows which rocket flew it and the flight's details; the charge is found from the curve.
+- **Display readings**: log what an altimeter's display or beeps gave you.
+- **Flight vs prediction**: the logged curve against the design flown the same way, with burnout, charge and apogee marked, each event compared, warnings when the charge fired before apogee or the accelerometer was at its limit, and what the differences point at. Save or calibrate drag from it.
+
+**Range tab**
+- Each number takes a physical range (wind up to 100 mph, field elevation up to 6,000 m, rail angle up to 45° and so on): a value past it is held at the end of the range and the field says so. Absurd values used to give absurd flights.
+
+**Flight report (PDF)**
+- The Recovery Plan is in the report.
+
+**Learn**
+- **Three levels**: Getting started, Mid & high power, Technical. Ten new chapters with drawings: certification, waivers and predicting apogee, dual deploy, fin flutter, flying through Mach 1, staging, reading your altimeter, the stability model, the equations of motion and the atmosphere, and validation.
+
+**Fixes**
+- Opening a stored run from a file this app saved flies that run's motor (it flew the design's saved motor).
+- Flight vs prediction's chart opened blank on some screens.
+
+**Testing**
+- New automated tests run on every push: a walkthrough of every screen at phone size in light and dark; inputs moving the results the way physics says, and odd values breaking nothing; the PDF report, flight data CSV, Flight Log backup and Save a copy read back. An Android emulator test runs after each release.
+
+**Validation**
+- Three flights flyers shared (CT Concept 98, Partizon, Ascender) are in VALIDATION.md.
+
 ## Build 323 (2026-11-17)
 
 **Learn**
