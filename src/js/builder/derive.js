@@ -3,6 +3,7 @@
  * calculated values (weight, CG, turning inertia, a part's weight) the override fields show beside your own.
  */
 import { BLD, bldFind, bldSyncMotors } from "./builder-ui.js";
+import { BLD_REC_DEFAULTS } from "./fields.js";
 import { bldOvOn, bldSettings } from "./model.js";
 import { bldToOrk } from "./ork-export.js";
 import { jclone } from "../core/helpers.js";
@@ -171,6 +172,9 @@ export function bldDerive() {
   }
   nd.otherCd = S.otherCd || 0;
   nd.blMode = S.blMode || "turb";
+  // recovery electronics (recovery/recovery-plan.js)
+  nd.rec = {};
+  for (const k of Object.keys(BLD_REC_DEFAULTS)) nd.rec[k] = S[k] ?? BLD_REC_DEFAULTS[k];
   // turning inertia: a typed value, else the one worked out from the parts (parseOrk)
   if (bldOvOn(S, "dryInertia")) {
     nd.dryInertia = S.dryInertia;

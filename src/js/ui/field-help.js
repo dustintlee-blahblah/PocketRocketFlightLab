@@ -152,6 +152,18 @@ export function bldInfo(F) {
       "Extra drag coefficient for things the parts don’t include, such as camera shrouds, switch bands or screw heads. Usually 0.",
     cdOverride:
       "The rocket’s drag coefficient. Off, it’s calculated from the shape and finish at every speed (the field shows it at Mach 0.3). Switch Override on to use one fixed Cd at every speed instead, such as RockSim’s fixed Cd or one from a real flight.",
+    bakOn:
+      "A second altimeter on its own battery and switch, firing its own apogee and main charges a little after the first, so one failure doesn't lose the recovery. Tripoli requires two fully separate systems for Level 3.\n\nThe Recovery plan on the Results tab flies the flight again as if the first altimeter failed, and as if both did, and says whether the recovery would still be safe.",
+    bakDelay:
+      "How long after apogee the backup altimeter fires its apogee charge. 1 to 2 seconds after the primary is usual, so the two charges don't fire together.",
+    bakMainDrop:
+      "How far below the main's set height the backup altimeter fires its main charge. 50 to 100 ft (15 to 30 m) lower is usual.",
+    bayDia:
+      "The inside diameter of the altimeter bay, for its static port size (Results, Recovery plan). Blank uses the body's diameter.",
+    bayLen:
+      "The length of the altimeter bay, for its static port size (Results, Recovery plan): PerfectFlite's rule sizes the ports from the bay's diameter and length.",
+    mainRating:
+      "The load the main chute and its harness (shock cord, swivel, quick links) are rated to hold: the weakest of them. The Recovery plan compares the main's opening load with it. Blank to leave it out.",
     blMode:
       "Turbulent from the nose is right for nearly all rockets, since nose tips, joints and lugs trip the airflow early.\n\nNatural transition lets the flow stay smooth (laminar) over the front of a very smooth, polished rocket, which lowers friction drag.",
     ignDelay: "Seconds between the booster burning out and the sustainer motor lighting.",

@@ -102,6 +102,7 @@ import * as m88 from "./ui/learn-content.js";
 import * as m89 from "./ui/learn.js";
 import * as m90 from "./flightlog/altimeters.js";
 import * as m91 from "./flightlog/flight-compare.js";
+import * as m92 from "./recovery/recovery-plan.js";
 
 const modules = [
   m0,
@@ -196,6 +197,7 @@ const modules = [
   m89,
   m90,
   m91,
+  m92,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

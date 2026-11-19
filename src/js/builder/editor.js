@@ -4,7 +4,7 @@
  */
 import { BLD, BLD_ROOT, bldChanged, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
 import { bldCalcOv, bldCalcPartMass } from "./derive.js";
-import { BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
+import { BLD_REC_DEFAULTS, BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
 import { finDxfFlip, finDxfLoad, finDxfNote, finDxfSave } from "./fin-dxf.js";
 import {
   BLD_BODY,
@@ -361,6 +361,11 @@ export function bldRenderEdit() {
   if (f.root) {
     let h = `<div class="bldh">Whole rocket</div><div class="grid">`;
     for (const [key, label, kind, dim, obj, opts] of bldRootFields()) {
+      // a heading: a new group of fields
+      if (key === "#") {
+        h += `</div><div class="bldh">${esc(label)}</div><div class="grid">`;
+        continue;
+      }
       const O = obj || BLD;
       h += bldFieldHtml(
         {
@@ -373,7 +378,7 @@ export function bldRenderEdit() {
           armed: kind === "ovr" && O[key + "On"] === true,
           calc: kind === "ovr" ? bldCalcOv(key, 0) : undefined,
         },
-        O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : undefined),
+        O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : BLD_REC_DEFAULTS[key]),
       );
     }
     el.innerHTML = h + `</div>`;

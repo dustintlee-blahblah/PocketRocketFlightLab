@@ -162,6 +162,11 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="stats" id="stagestats"></div>
     </div>
 
+    <div class="panel" id="recpanel" hidden>
+      <h2>Recovery Plan<button class="ib" type="button" data-title="Recovery Plan" data-info="Each charge as it would fire (the primary altimeter's, a backup altimeter's and the motor's), the flight flown again as if a charge failed, the time and drift under each chute, the main's opening load and the altimeter bay's static ports.&#10;&#10;Set a backup altimeter, the bay's size and the harness's rated load in the builder, under Whole rocket: Recovery electronics." aria-label="About Recovery Plan">i</button></h2>
+      <div id="recbody"></div>
+    </div>
+
     <div class="panel" id="animpanel" hidden>
       <h2>Flight Animation</h2>
       <div class="animrow"><button class="btn animbtn" id="animbtn" type="button">▶ Watch the flight</button><svg class="animico" viewBox="0 0 64 51" width="88" height="70" aria-hidden="true"><line x1="2" y1="47" x2="62" y2="47" stroke="var(--line)" stroke-width="2" stroke-linecap="round"/><path d="M8 46 Q31 -20 56 46" fill="none" stroke="var(--gulf)" stroke-width="2" stroke-dasharray="3 3.5" stroke-linecap="round"/><g transform="translate(32 13)"><path d="M-8 0 Q-8 -3 -5 -3 L4 -3 Q9 -1.5 11 0 Q9 1.5 4 3 L-5 3 Q-8 3 -8 0Z" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><path d="M-5 -3 L-9 -7 L-8 -3 M-5 3 L-9 7 L-8 3" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"/></g><path d="M8 47 l-3.5 -6 l7 0 z" fill="var(--accent)"/></svg></div>

@@ -360,8 +360,22 @@ export function bldRootFields() {
         ["natural", "Natural transition (very smooth, no joints near the nose)"],
       ],
     ],
+    // recovery electronics: the backup altimeter, the altimeter bay (for its static ports) and the main's rated load
+    ["#", "Recovery electronics"],
+    ["bakOn", "A backup altimeter fires its own charges", "check", null, BLD.settings],
+    ...(BLD.settings.bakOn
+      ? [
+          ["bakDelay", "Backup apogee charge, seconds after apogee", "num", "time", BLD.settings],
+          ["bakMainDrop", "Backup main charge, this far below the main's height", "num", "alt", BLD.settings],
+        ]
+      : []),
+    ["bayDia", "Altimeter bay inside diameter", "num", "len", BLD.settings],
+    ["bayLen", "Altimeter bay length", "num", "len", BLD.settings],
+    ["mainRating", "Main chute and harness rated load", "num", "force", BLD.settings],
   ];
 }
+/** the recovery electronics' settings when not set: a backup 1 s after apogee and 100 ft (30.48 m) lower for the main */
+export const BLD_REC_DEFAULTS = { bakOn: false, bakDelay: 1, bakMainDrop: 30.48, bayDia: 0, bayLen: 0, mainRating: 0 };
 /**
  * The fields of a stage: name, separation and ignition settings.
  * @param {object} st stage

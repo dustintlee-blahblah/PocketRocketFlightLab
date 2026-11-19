@@ -520,6 +520,12 @@ export function bpRender() {
       "The usual choice for ejection: fine grain, lights easily and burns fast.",
     ],
     [
+      "Backup charge, black powder",
+      `${g2(bp * 1.25)}–${g2(bp * 1.5)} g`,
+      `${gr(bp * 1.25)}–${gr(bp * 1.5)} gr`,
+      "For a backup altimeter's charge on the same event: 25–50% more than the primary, so the event still happens if the primary was too small. Size each event (drogue, main) on its own.",
+    ],
+    [
       "Black powder FFFg",
       `${g2(bp)} g`,
       `${bpGr} gr`,

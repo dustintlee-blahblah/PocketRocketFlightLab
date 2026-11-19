@@ -16,6 +16,7 @@ import { mcAuto, renderApoTol, renderMC } from "../physics/monte-carlo.js";
 import { noseWeightPlan } from "../physics/nose-weight.js";
 import { simulate } from "../physics/simulate.js";
 import { isThree, stackStability } from "../physics/staging.js";
+import { renderRecovery } from "../recovery/recovery-plan.js";
 import { downloadsNS } from "../report/pdf-report.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender, supRender } from "./donate.js";
@@ -130,6 +131,7 @@ export function renderResults() {
     sp.hidden = !st.staged;
     if (st.staged) renderStaging(st, S);
   }
+  renderRecovery();
   {
     const sub = document.querySelector(".motorchip .sub");
     if (sub)

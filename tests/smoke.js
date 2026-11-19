@@ -183,6 +183,7 @@ const { chromium } = require("playwright");
     log: document.getElementById("flpanel") ? 1 : 0,
     apogee: lastSim ? lastSim.st.maxAlt : 0,
     tol: /^(±\d|\+\d.*−\d)/.test(document.getElementById("apotol")?.textContent || "") ? 1 : 0,
+    rec: document.getElementById("recpanel").hidden ? 0 : count("#recbody .rect tbody tr"),
   }));
   need("Results tab: groups of figures", m.groups, 5);
   need("Results tab: figures", m.tiles, 25);
@@ -195,6 +196,32 @@ const { chromium } = require("playwright");
   need("Results tab: flight log panel", m.log, 1);
   need("Results tab: an apogee", m.apogee, 10);
   need("Results tab: the ± tolerance beside the apogee", m.tol, 1);
+  need("Results tab: recovery plan (charges and cases)", m.rec, 2);
+  // a backup altimeter: its charges are listed and the flight is flown again as if the primary failed
+  await step("backup altimeter", () => {
+    Object.assign(BLD.settings, { bakOn: true, bakDelay: 2, bayLen: 0.3, mainRating: 500 });
+    bldApply();
+    runNow();
+  });
+  await p.waitForTimeout(1500);
+  m = await look("recovery plan", () => ({
+    backup: [...document.querySelectorAll("#recbody td small")].filter((e) => /^Backup/.test(e.textContent)).length,
+    fails: [...document.querySelectorAll("#recbody td")].filter((e) =>
+      /^(Primary|Motor charge) fails/.test(e.textContent),
+    ).length,
+    ports: /one hole of \d/.test(document.getElementById("recbody").textContent) ? 1 : 0,
+    load: /% of the/.test(document.getElementById("recbody").textContent) ? 1 : 0,
+  }));
+  need("Recovery plan: the backup altimeter's charges", m.backup, 1);
+  need("Recovery plan: flown as if the primary failed", m.fails, 1);
+  need("Recovery plan: static port size", m.ports, 1);
+  need("Recovery plan: opening load against the rating", m.load, 1);
+  await step("backup altimeter off", () => {
+    Object.assign(BLD.settings, { bakOn: false, bayLen: 0, mainRating: 0 });
+    bldApply();
+    runNow();
+  });
+  await p.waitForTimeout(1200);
   // the flight animation, in 2D and (where this browser has WebGL) in 3D, in each camera
   await step("animation", () => {
     animOpen();

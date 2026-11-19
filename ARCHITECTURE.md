@@ -153,7 +153,10 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
   second-order shock-expansion), and the streamlines, boundary layer and separated regions from
   `physics/flow-streams.js` (slender-body potential flow, supersonic flow along Mach lines, and the drag model's
   transition and separation rules); both are drawn only and feed no number.
-- **Recovery** (`recovery/ejection-charge.js`): black powder charge sizes for each compartment.
+- **Recovery** (`recovery/ejection-charge.js`): black powder charge sizes for each compartment. The Recovery Plan
+  (`recovery/recovery-plan.js`, on Results): each charge in order (primary and backup altimeters, the motor), the
+  flight flown again with charges failing, time and drift under each chute and with the main set higher or lower, the
+  main's opening load against its rated load, and the bay's static port size.
 - **Flight log** (`flightlog/`): real flights logged with altimeter files (several makers' CSV formats, Excel), the
   readings off an altimeter's display (`altimeters.js`: each altimeter's readings and sensor limits), or just the
   apogee; Flight vs prediction (`flight-compare.js`) flies the design the way each flight was flown and compares event
@@ -197,6 +200,7 @@ Functions and variables of one feature share a prefix, which also tells you the 
 | `cal` | drag calibration | `flightlog/drag-calibration.js` |
 | `alt` | altimeter files and the altimeter list | `flightlog/` |
 | `fc` | Flight vs prediction | `flightlog/flight-compare.js` |
+| `rec` | the Recovery Plan | `recovery/recovery-plan.js` |
 | `md` | motor delays and the motor configuration picker | `ui/motor-delay.js` |
 | `mc` | landing dispersion (Monte Carlo) | `physics/monte-carlo.js` |
 | `wt` | the Wind Tunnel | `ui/wind-tunnel.js` |

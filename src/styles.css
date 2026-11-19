@@ -3818,3 +3818,25 @@ table.cmpt {
 .apogee .tol {
   cursor: pointer;
 }
+/* the recovery plan */
+#recbody .rect td small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+#recbody .good {
+  color: var(--good);
+}
+#recbody .warn {
+  color: var(--warn);
+}
+#recbody .bad {
+  color: var(--bad);
+}
+#recbody .rect tr.set td {
+  font-weight: 700;
+}
+#recbody .rect {
+  margin-bottom: 8px;
+}

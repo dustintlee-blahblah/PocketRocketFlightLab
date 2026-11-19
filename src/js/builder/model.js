@@ -320,6 +320,12 @@ export const BLD_APP_SETTINGS = [
   "bDryInertiaOn",
   "s1DryInertia",
   "s1DryInertiaOn",
+  "bakOn",
+  "bakDelay",
+  "bakMainDrop",
+  "bayDia",
+  "bayLen",
+  "mainRating",
 ];
 /**
  * Design-wide builder settings that aren't parts (finish, inertia, drag adjustments), at their defaults.
