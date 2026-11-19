@@ -48,6 +48,9 @@ jobs:
       - name: Drag from an altimeter's accelerometer, and the drag hints
         run: node tests/coast.js
 
+      - name: Altimeter logs, display readings and Flight vs prediction
+        run: node tests/altimeter-logs.js
+
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag
 

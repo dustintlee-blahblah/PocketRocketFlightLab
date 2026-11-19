@@ -28,8 +28,10 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
 - The flight animated in 2D or in 3D, over an aerial photo of the launch site on its own terrain (USGS imagery and elevation, United States)
 - The simulated flight as a data file (CSV), and a PDF flight report
 - Flight log with altimeter imports (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile
-  Works, Apogee) and drag calibration to real flights, from the apogee or from the drag an altimeter's
-  accelerometer measured in the coast
+  Works, Jolly Logic, Apogee) or the readings off an altimeter's display, Flight vs prediction (each
+  event against the design flown the same way, a charge before apogee and an altimeter at its
+  acceleration limit called out), and drag calibration to real flights, from the apogee or from the
+  drag an altimeter's accelerometer measured in the coast
 - Weather forecast for the launch site, including winds aloft to about 100,000 ft
 
 How accurate is it? [VALIDATION.md](VALIDATION.md) compares it with OpenRocket and with NASA and NACA wind-tunnel

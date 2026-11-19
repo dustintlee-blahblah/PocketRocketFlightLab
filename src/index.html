@@ -191,7 +191,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       </div>
     </div>
     <div class="panel" id="flpanel" hidden>
-      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Import the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works or Apogee Components altimeter (exported as CSV or text) to fill in the apogee and top speed and to show the real curve on the chart. If the file has an accelerometer column (Altus Metrum and Featherweight files do), the log also shows the drag it measured in the coast, between burnout and apogee, where the accelerometer reads the drag directly whatever the motor did; a calibration uses that in place of the apogee when every ticked flight has it. It is only used when the boost agrees with the rocket’s weight and motor and the flight went straight up, so weigh the rocket and enter the weight with the flight. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
+      <h2>Flight Log &amp; Calibration<button class="ib" type="button" data-title="Flight Log & Calibration" data-info="Your real flights of this rocket, kept on this device with this design. Each flight keeps the prediction made when it was logged, so you can see how close the simulation is. Tick “Use for calibration” on the flights you trust: the drag is scaled so the design matches them (one flight exactly, several as the best fit), and every run of this rocket uses that drag from then on. Import the file from a Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Jolly Logic or Apogee Components altimeter (exported as CSV, text or .xlsx; Open design file and sharing a file to the app work too) to fill in the apogee and top speed and to show the real curve on the chart, or enter what an altimeter's display or beeps gave you under Display readings. Compare opens Flight vs prediction: the curves with burnout, the charge and apogee marked, each event against this design flown the same way (its motor, delay, weight and weather), a warning when the charge fired before apogee or the altimeter's accelerometer was at its limit, and what the differences point at. If the file has an accelerometer column (Altus Metrum and Featherweight files do), the log also shows the drag it measured in the coast, between burnout and apogee, where the accelerometer reads the drag directly whatever the motor did; a calibration uses that in place of the apogee when every ticked flight has it. It is only used when the boost agrees with the rocket’s weight and motor and the flight went straight up, so weigh the rocket and enter the weight with the flight. Export a backup to keep the log safe or move it to another device." aria-label="About Flight Log and Calibration">i</button></h2>
       <div id="flcal" class="flcal"></div>
       <div id="flprompt" class="flprompt" hidden></div>
       <div id="fllist"></div>
@@ -287,7 +287,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="row" style="justify-content:space-between">
         <div style="min-width:0"><h2 style="margin:0" id="rtitle">Rocket</h2><p class="note" id="rfile" style="margin:2px 0 0"></p></div>
         <div class="row">
-          <label class="file btn ghost" for="orkfile" title="OpenRocket (.ork), RockSim (.rkt) or RASAero II (.CDX1)">Open design file<input type="file" id="orkfile" accept=".ork,.ORK,.rkt,.RKT,.cdx1,.CDX1,application/zip,application/octet-stream,application/xml,text/xml"></label>
+          <label class="file btn ghost" for="orkfile" title="OpenRocket (.ork), RockSim (.rkt) or RASAero II (.CDX1); an altimeter log opens in the Flight Log">Open design file<input type="file" id="orkfile" accept=".ork,.ORK,.rkt,.RKT,.cdx1,.CDX1,.csv,.CSV,.txt,.TXT,.tsv,.xlsx,.pf2,application/zip,application/octet-stream,application/xml,text/xml,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
           <button class="btn" id="savefile" type="button" hidden>Save changes</button>
           <button class="btn ghost" id="savecopy" type="button">Save a copy</button>
           <button class="btn ghost" id="resetbtn">Reset Changes</button>
@@ -487,7 +487,14 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
   <canvas id="altcv" aria-label="Altitude from the altimeter file, with this run's prediction"></canvas>
   <div class="legend" id="altleg"></div>
   <div id="altout"></div>
+  <div id="altwho"></div>
+  <div id="altflight"></div>
   <div class="row mrow"><button class="btn" id="altok" type="button">Use this data</button><button class="btn ghost" id="altcancel" type="button">Cancel</button></div></div></div>
+<div class="modal" id="cmpmodal" role="dialog" aria-modal="true" aria-labelledby="cmptitle" hidden><div class="mbox flbox cmpbox">
+  <h2 id="cmptitle">Flight vs prediction</h2>
+  <p class="note" id="cmpsub" style="margin:0 0 10px"></p>
+  <div id="cmpbody"></div>
+  <div class="row mrow" id="cmpbtns"></div></div></div>
 <div class="modal" id="railwarn" role="alertdialog" aria-modal="true" aria-labelledby="railwarntxt" hidden><div class="mbox">
   <p id="railwarntxt"></p>
   <div class="row mrow"><button class="btn" id="railfix">Change rail length</button><button class="btn ghost" id="railok">OK</button></div></div></div>

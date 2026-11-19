@@ -5,9 +5,14 @@
  */
 import { esc } from "../core/helpers.js";
 import { D } from "../design/defaults.js";
-import { DESIGN_EXT } from "../files/other-formats.js";
-import { inflate } from "../files/unzip.js";
+import { parseOrk } from "../files/openrocket-import.js";
+import { DESIGN_EXT, otherFormat, parseOther } from "../files/other-formats.js";
+import { openRecent, recentList } from "../files/recent.js";
+import { matchMotor } from "../files/rocksim-import.js";
+import { SOURCE } from "../files/save.js";
+import { inflate, unzipOrk } from "../files/unzip.js";
 import { ALT_ACC, ALT_PRESS, altCompute, altParse } from "./altimeter-files.js";
+import { fcOpen } from "./flight-compare.js";
 import {
   altMode,
   altP,
@@ -18,9 +23,12 @@ import {
   flDate,
   flDiff,
   flEdit,
+  flField,
+  flKey,
   flLandTxt,
   flList,
   flMotorInfo,
+  flMotorName,
   flOpen,
   flPct,
   flPredBox,
@@ -33,6 +41,7 @@ import {
   setFlNow,
 } from "./flight-log.js";
 import { findMotor } from "../motors/clusters.js";
+import { simulate } from "../physics/simulate.js";
 import { downloadsNS } from "../report/pdf-report.js";
 import { css, niceTicks, setupCanvas } from "../ui/charts.js";
 import { lastSim, runAll } from "../ui/results.js";
@@ -244,6 +253,14 @@ export async function altOpenFile(file, mode) {
     prToast("Couldn't read that file.");
   }
 }
+/**
+ * Opens an altimeter log chosen with Open design file: in the Flight Log, once a design is open.
+ * @param {File} file
+ */
+export function altIncoming(file) {
+  prPendingAlt = file;
+  prIncomingGo();
+}
 /* a file shared to the app from another app (Featherweight UI, email, Drive…): straight into the flight log */
 /**
  * A file shared to the app, waiting until the app is ready (disclaimer agreed, a design open).
@@ -286,10 +303,19 @@ function altShow() {
     opt = (sel, none) =>
       (none ? `<option value="-1"${sel < 0 ? " selected" : ""}>${none}</option>` : "") +
       P.cols.map((c, k) => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(c)}</option>`).join("");
-  document.getElementById("alttitle").textContent = `${P.brand.id === "other" ? "Altimeter" : P.brand.name} file`;
+  const known = P.brand.id !== "other",
+    sure = known && P.hasHeader && m.t >= 0 && m.alt >= 0,
+    tt = m.t >= 0 ? P.data.map((r) => r[m.t]).filter(isFinite) : [],
+    span =
+      tt.length > 1 ? (tt[tt.length - 1] - tt[0]) * (m.tUnit === "ms" ? 0.001 : 1) : P.data.length / (m.rate || 10),
+    used = [m.t, m.alt, m.vel, m.acc].filter((k) => k >= 0).map((k) => P.cols[k]);
+  document.getElementById("alttitle").textContent =
+    altMode === "new" ? "Altimeter log" : `${known ? P.brand.name : "Altimeter"} file`;
   document.getElementById("altmap").innerHTML = `
-    <p class="note" style="margin:0 0 10px">${esc(P.fname)}: ${P.data.length} rows, ${P.cols.length} column${P.cols.length > 1 ? "s" : ""}. ${P.brand.id === "other" ? "The altimeter brand wasn't recognized, so check" : "Check"} the columns and units below against the curve.</p>
-    <div class="flgrid">
+    <p class="note" style="margin:0 0 6px">${esc(P.fname)}</p>
+    <div class="altchips"><span class="chip${known ? " ok" : ""}">${known ? "✓ " + esc(P.brand.name) : "Brand not recognized"}</span><span class="chip">${span.toFixed(0)} s · ${P.data.length} rows</span><span class="chip">${["altitude", m.vel >= 0 ? "velocity" : "", m.acc >= 0 ? "acceleration" : "", /lat/i.test(P.cols.join(" ")) ? "GPS" : ""].filter(Boolean).join(" · ")}</span></div>
+    <p class="note" style="margin:0 0 8px">Columns: ${used.map(esc).join(", ")}. <button type="button" class="linkbtn" id="altcolbtn" aria-expanded="${!sure}">${sure ? "Change" : "Hide"}</button></p>
+    <div class="flgrid" id="altcols"${sure ? " hidden" : ""}>
       ${P.sheets && P.sheets.length > 1 ? `<div class="fld"><label for="alt-sh">Worksheet</label><div class="in"><select id="alt-sh">${P.sheets.map((x, i) => `<option value="${i}"${i === P.sheet ? " selected" : ""}${x.P.error ? " disabled" : ""}>${esc(x.name)}</option>`).join("")}</select></div></div><div class="flsp"></div>` : ""}
       <div class="fld"><label for="alt-t">Time column</label><div class="in"><select id="alt-t">${opt(m.t, "None: fixed sample rate")}</select></div></div>
       <div class="fld" id="alt-tuw"><label for="alt-tu">${m.t >= 0 ? "Time unit" : "Samples per second"}</label><div class="in">${m.t >= 0 ? `<select id="alt-tu"><option value="s"${m.tUnit === "s" ? " selected" : ""}>seconds</option><option value="ms"${m.tUnit === "ms" ? " selected" : ""}>milliseconds</option></select>` : `<input id="alt-rate" type="number" inputmode="decimal" step="any" value="${m.rate}">`}</div></div>
@@ -344,8 +370,165 @@ function altShow() {
           altPreview();
         }),
   );
+  document.getElementById("altcolbtn").onclick = (e) => {
+    const g = document.getElementById("altcols"),
+      open = g.hidden;
+    g.hidden = !open;
+    e.target.textContent = open ? "Hide" : "Change";
+    e.target.setAttribute("aria-expanded", open);
+  };
+  document.getElementById("altok").textContent = altMode === "new" ? "Compare" : "Use this data";
   document.getElementById("altmodal").hidden = false;
   altPreview();
+  altWho();
+}
+/**
+ * The rocket chosen in the altimeter log screen: "cur" (the design open now), "r:<id>" (a recent file) or "other".
+ */
+let altWhoSel = "cur";
+/**
+ * Whether a design's prediction fits the log: its top speed within 12% and its burnout within 0.6 s.
+ * @param {object} r the log's figures (altCompute)
+ * @param {number} v predicted top speed, m/s
+ * @param {number} b predicted burnout, s
+ * @param {string} mn the motor's name
+ * @returns {string} html
+ */
+function altFit(r, v, b, mn) {
+  const ok = r.vmax > 0 && Math.abs(v / r.vmax - 1) <= 0.12 && (r.ev.burn == null || Math.abs(b - r.ev.burn) <= 0.6);
+  return ok
+    ? `<span class="fit">Fits: ${r.ev.burn != null ? `burnout at ${r.ev.burn.toFixed(1)} s and ` : ""}${fmt(r.vmax, "speed")} ${uname("speed")} match the ${esc(mn)}.</span>`
+    : `<span class="nofit">On its ${esc(mn)} it reaches ${fmt(v, "speed")} ${uname("speed")}; this log shows ${fmt(r.vmax, "speed")}.</span>`;
+}
+/**
+ * The burnout (the time of the top speed) and top speed of a run.
+ * @param {object} R simulate's result
+ * @returns {{v:number, b:number}}
+ */
+function altRunFit(R) {
+  const o = R.out;
+  let iv = 0;
+  for (let i = 0; i < o.t.length; i++) if (o.t[i] <= R.st.tApo && o.vel[i] > o.vel[iv]) iv = i;
+  return { v: R.st.maxV, b: o.t[iv] };
+}
+/**
+ * Which rocket flew it, and the flight's details (a new flight only): the design open now, recent design files, or
+ * another one; each with whether its prediction fits the log.
+ */
+async function altWho() {
+  const who = document.getElementById("altwho"),
+    fl = document.getElementById("altflight");
+  if (altMode !== "new" || !lastSim) {
+    who.innerHTML = fl.innerHTML = "";
+    return;
+  }
+  altWhoSel = "cur";
+  const r = altR && !altR.error ? altR : null,
+    cur = altRunFit(lastSim),
+    mn = flMotorName(lastSim.m, lastSim.mb);
+  const opt = (v, title, sub) =>
+    `<label class="whoopt${v === altWhoSel ? " sel" : ""}"><input type="radio" name="altwho" value="${esc(v)}"${v === altWhoSel ? " checked" : ""}><span><b>${title}</b><span class="sub" data-sub="${esc(v)}">${sub}</span></span></label>`;
+  let rec = [];
+  try {
+    rec = (await recentList()).filter((e) => !(SOURCE && SOURCE.recentId === e.id) && e.data).slice(0, 3);
+  } catch (e) {}
+  who.innerHTML =
+    `<div class="subh" style="margin-top:12px">Which rocket flew it?</div>` +
+    opt("cur", `${esc(D.name || "This design")} · open now`, r ? altFit(r, cur.v, cur.b, mn) : "") +
+    rec.map((e) => opt("r:" + e.id, `${esc(e.rocket || e.name)} · recent`, "Checking…")).join("") +
+    opt("other", "Another design…", "Open a design file or a recent file first; the log comes back once it's open.");
+  who.querySelectorAll("input[name=altwho]").forEach(
+    (i) =>
+      (i.onchange = () => {
+        altWhoSel = i.value;
+        who.querySelectorAll(".whoopt").forEach((l) => l.classList.toggle("sel", l.contains(i)));
+        fl.hidden = altWhoSel !== "cur";
+      }),
+  );
+  // the flight's details, for the design open now
+  const L0 = lastSim.L,
+    dm = (altP.fname || "").match(/(20\d\d)[-_.]?([01]\d)[-_.]?([0-3]\d)/),
+    today = new Date(),
+    iso = new Date(today.getTime() - today.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  fl.hidden = false;
+  fl.innerHTML = `<div class="subh" style="margin-top:12px">The flight</div>
+    <div class="flgrid fl2">
+      <div class="fld"><label>Motor</label><div class="in"><input type="text" value="${esc(mn)}" readonly title="Change it on the Motor tab"></div></div>
+      <div class="fld"><label for="af-delay">Delay</label><div class="in"><input id="af-delay" type="text" value="${lastSim.D.ejDelay != null && (lastSim.D.deployMode || "apogee") === "motor" ? lastSim.D.ejDelay + " s" : ""}" placeholder="e.g. 10 s"></div></div>
+      <div class="fld"><label for="af-date">Date${dm ? " · from the file name" : ""}</label><div class="in"><input id="af-date" type="date" value="${dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : iso}"></div></div>
+      ${flField("af-mass", "Liftoff weight, with motor", "mass", null, 2, "Design: " + fmt(lastSim.D.dryMass + lastSim.m.totalMass, "mass"))}
+      ${flField("af-elev", "Field elevation", "alt", L0.elev)}
+      ${flField("af-wind", "Wind", "wind", L0.wind)}
+    </div>
+    <p class="note" style="margin:6px 0 0">Weather and field come from the Range tab; change them here for this flight. The motor is the one on the Motor tab.</p>`;
+  // the recent designs: open each, fly it on its own motor, and say whether it fits
+  for (const e of rec) {
+    let txt = "";
+    try {
+      const xml = await unzipOrk(e.data),
+        pr = otherFormat(xml) ? parseOther(xml, e.name) : parseOrk(xml),
+        mo = pr.motor ? matchMotor(pr.motor) : null;
+      if (mo && r) {
+        const R = simulate(pr.design, lastSim.L, mo, null, { noRef: true });
+        if (!R.st.error) {
+          const q = altRunFit(R);
+          txt = altFit(r, q.v, q.b, mo.cn || mo.name);
+        }
+      }
+    } catch (err) {}
+    const el = who.querySelector(`[data-sub="r:${e.id}"]`);
+    if (el) el.innerHTML = txt || "Opened earlier on this device.";
+  }
+}
+/**
+ * A log waiting for its rocket to be opened: {a (the altimeter's figures), key (the design open when it was chosen)}.
+ */
+export let altWaiting = null;
+/**
+ * Opens Flight vs prediction for a log once its rocket is open and has been launched.
+ */
+export function altWaitingGo() {
+  if (!altWaiting || flKey() === altWaiting.key || document.documentElement.classList.contains("nodesign")) return;
+  if (!lastSim) {
+    try {
+      runAll();
+    } catch (e) {}
+  }
+  if (!lastSim) return;
+  const a = altWaiting.a;
+  altWaiting = null;
+  const tb = document.getElementById("t-results");
+  if (tb) tb.click();
+  fcOpen(altDraft(a, {}), true);
+}
+/**
+ * A new flight for the open design, from an altimeter's figures and the details entered.
+ * @param {object} a the altimeter's figures
+ * @param {object} v details: delay, date, mass, elev, wind
+ * @returns {object} the flight, not saved yet
+ */
+function altDraft(a, v) {
+  const today = new Date(),
+    iso = new Date(today.getTime() - today.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  return {
+    date: v.date || iso,
+    motor: flMotorName(lastSim.m, lastSim.mb),
+    motorId: lastSim.m.id,
+    boostId: lastSim.mb ? lastSim.mb.id : null,
+    delay:
+      v.delay ??
+      (lastSim.D.ejDelay != null && (lastSim.D.deployMode || "apogee") === "motor" ? lastSim.D.ejDelay + " s" : ""),
+    wind: v.wind ?? lastSim.L.wind,
+    windDir: lastSim.L.windDir,
+    tempC: lastSim.L.tempC,
+    elev: v.elev ?? lastSim.L.elev,
+    mass: v.mass ?? null,
+    apo: a.apo,
+    vmax: a.vmax,
+    landDist: a.land ? a.land.dist : null,
+    landBrg: a.land ? a.land.brg : null,
+    altis: [a],
+  };
 }
 /**
  * The figures worked out from the file with the columns as chosen.
@@ -727,6 +910,35 @@ export function start() {
       },
     };
     document.getElementById("altmodal").hidden = true;
+    if (altMode === "new") {
+      if (altWhoSel === "cur") {
+        const g = (id, dim) => {
+          const e = document.getElementById(id),
+            x = e ? parseFloat(e.value) : NaN;
+          return isFinite(x) ? fromDisp(x, dim) : undefined;
+        };
+        fcOpen(
+          altDraft(a, {
+            delay: document.getElementById("af-delay").value.trim(),
+            date: document.getElementById("af-date").value,
+            mass: g("af-mass", "mass"),
+            elev: g("af-elev", "alt"),
+            wind: g("af-wind", "wind"),
+          }),
+          true,
+        );
+      } else {
+        altWaiting = { a, key: flKey() };
+        if (altWhoSel.startsWith("r:")) openRecent(altWhoSel.slice(2));
+        else {
+          const tb = document.getElementById("t-rocket");
+          if (tb) tb.click();
+          prToast("Open the rocket that flew it; the log comes back once it's open and launched.");
+        }
+      }
+      setAltP(null);
+      return;
+    }
     // a date in the file name (2026-05-14, 20260514) is a good guess for the flight's date
     const dm = altP.fname.match(/(20\d\d)[-_.]?([01]\d)[-_.]?([0-3]\d)/);
     if (!(altMode === "form" && flEdit)) {

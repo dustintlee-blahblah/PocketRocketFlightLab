@@ -100,6 +100,8 @@ import * as m86 from "./files/rasaero-import.js";
 import * as m87 from "./files/other-formats.js";
 import * as m88 from "./ui/learn-content.js";
 import * as m89 from "./ui/learn.js";
+import * as m90 from "./flightlog/altimeters.js";
+import * as m91 from "./flightlog/flight-compare.js";
 
 const modules = [
   m0,
@@ -192,6 +194,8 @@ const modules = [
   m87,
   m88,
   m89,
+  m90,
+  m91,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

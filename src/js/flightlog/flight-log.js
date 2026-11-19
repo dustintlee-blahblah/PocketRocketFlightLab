@@ -6,8 +6,10 @@ import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { D, series, setSeries } from "../design/defaults.js";
 import { SOURCE } from "../files/save.js";
+import { ALT_READINGS, altAtLimit, altimeterById, altimeterName, ALTIMETERS } from "./altimeters.js";
 import { applyCal, calGet, calKeyOld, calSet, calStale, solveDragScale } from "./drag-calibration.js";
-import { altOpenFile, prIncomingGo, prPendingAlt } from "./xlsx.js";
+import { fcOpen } from "./flight-compare.js";
+import { altOpenFile, altWaiting, altWaitingGo, prIncomingGo, prPendingAlt } from "./xlsx.js";
 import { findMotor, flightFirst } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
 import { aero, cdParts } from "../physics/aerodynamics.js";
@@ -257,7 +259,7 @@ function flLiftMass(Dd, m, mb) {
  * @param {object} f flight
  * @returns {{D:object, L:object, m:object, mb:object}|null}
  */
-function flCtx(f) {
+export function flCtx(f) {
   if (!lastSim) return null;
   const m = (f.motorId && findMotor(f.motorId)) || null,
     mb = f.boostId ? findMotor(f.boostId) : null;
@@ -273,6 +275,9 @@ function flCtx(f) {
     const dm = f.mass - flLiftMass(lastSim.D, m, mbF);
     D2 = { ...lastSim.D, dryMass: Math.max(0.005, lastSim.D.dryMass + dm) };
   }
+  // the delay flown, where the motor's charge opens the chute: a charge before apogee cuts the climb short
+  const dl = parseFloat(f.delay);
+  if (isFinite(dl) && dl >= 0 && (D2.deployMode || "apogee") === "motor") D2 = { ...D2, ejDelay: dl };
   return { D: D2, L: L2, m, mb: mbF };
 }
 /**
@@ -432,44 +437,13 @@ function flInMC(f, p) {
       : "outside the 95% ellipse";
 }
 /**
- * What the altimeter's events say about the delay and the main.
- * @param {object} f flight
- * @param {object} a altimeter results
- * @returns {string}
- */
-function flEventTxt(f, a) {
-  if (!a || !a.ev) return "";
-  const ev = a.ev,
-    out = [],
-    s = (v) => v.toFixed(1) + " s";
-  if (ev.burn != null && a.tApo != null) {
-    const ideal = a.tApo - ev.burn,
-      dl = parseFloat(f.delay);
-    let t = `Burnout ${ev.burnEst ? "≈" : ""}${s(ev.burn)}, apogee ${s(a.tApo)}: the ideal delay was ${ideal.toFixed(1)} s`;
-    if (ev.drogue != null) {
-      const off = ev.drogue - a.tApo;
-      t += `. The apogee charge fired ${Math.abs(off).toFixed(1)} s ${off >= 0 ? "after" : "before"} apogee`;
-    } else if (isFinite(dl)) {
-      const off = ev.burn + dl - a.tApo;
-      t += `. Your ${dl} s delay fired about ${Math.abs(off).toFixed(1)} s ${off >= 0 ? "after" : "before"} apogee`;
-    }
-    out.push(t + ".");
-  }
-  if (ev.main != null && ev.mainAlt != null) {
-    const set = lastSim && lastSim.D.recovery === "dual" ? lastSim.D.mainAlt : null;
-    out.push(
-      `Main ${ev.mainEst ? "opened about" : "fired"} at ${s(ev.main)}, ${fmt(ev.mainAlt, "alt")} ${uname("alt")}${set > 0 ? ` (set to ${fmt(set, "alt")} ${uname("alt")})` : ""}.`,
-    );
-  }
-  return out.join(" ");
-}
-/**
  * Draws the Flight Log: each flight against its prediction, the calibration line and the buttons.
  */
 export function renderFlightLog() {
   const pn = document.getElementById("flpanel");
   if (!pn) return;
   if (prPendingAlt && lastSim) setTimeout(prIncomingGo, 50);
+  if (altWaiting) setTimeout(altWaitingGo, 50);
   if (!lastSim || document.documentElement.classList.contains("nodesign")) {
     pn.hidden = true;
     return;
@@ -482,7 +456,7 @@ export function renderFlightLog() {
     au = uname("alt");
   renderFlCal(list);
   if (!list.length) {
-    el.innerHTML = `<p class="note" style="margin:0 0 10px">No flights logged for ${esc(D.name || "this rocket")} yet. Log a flight by hand, or import the file from your altimeter (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Apogee Components or any CSV/text log).</p>`;
+    el.innerHTML = `<p class="note" style="margin:0 0 10px">No flights logged for ${esc(D.name || "this rocket")} yet. Log a flight by hand (or from what your altimeter's display shows), or import the file from your altimeter (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile Works, Jolly Logic, Apogee Components or any CSV/text log).</p>`;
     return;
   }
   // the current design's prediction for each flight (worked out once per run)
@@ -522,8 +496,7 @@ export function renderFlightLog() {
                 return `<div class="flalt">${A.map((a) => `${esc(a.brand)} ${a.apo > 0 ? fmt(a.apo, "alt") + " " + au : "—"}`).join(" · ")}${sp != null ? ` · <b class="${flCls(sp)}">${sp.toFixed(1)}% apart</b>` : ""}</div>`;
               })()
             : "";
-        const a0 = A[0],
-          evt = flEventTxt(f, a0);
+        const a0 = A[0];
         let landTxt = "";
         if (rl) {
           const sp = now && now.land,
@@ -533,14 +506,14 @@ export function renderFlightLog() {
         return `<div class="flrow${flShow === f.id ? " on" : ""}" data-id="${esc(f.id)}">
       <div class="flhd"><b>${esc(flDate(f.date) || "No date")}</b>${f.motor ? ` · ${esc(f.motor)}${f.delay ? ` (${esc(f.delay)})` : ""}` : ""}${f.place ? ` · ${esc(f.place)}` : ""}</div>
       <div class="flnum"><span>Real <b>${f.apo > 0 ? fmt(f.apo, "alt") + " " + au : "—"}</b></span>${f.pred > 0 ? `<span>Predicted ${fmt(f.pred, "alt")} ${au} <b class="${flCls(d)}">${flPct(d)}</b></span>` : ""}${dn != null && Math.abs(now.apo - f.pred) > 0.5 ? `<span>Now ${fmt(now.apo, "alt")} ${au} <b class="${flCls(dn)}">${flPct(dn)}</b></span>` : ""}${f.vmax > 0 ? `<span>Top speed ${fmt(f.vmax, "speed")} ${uname("speed")}</span>` : ""}${f.mass > 0 ? `<span>${fmt(f.mass, "mass")} ${uname("mass")} at liftoff</span>` : ""}</div>
-      ${alts}${A.length === 1 ? `<div class="flalt">${esc(a0.brand || "Altimeter")} data${a0.rateHigh != null ? ` · ${fmt(a0.rateHigh, "speed")} ${uname("speed")} under drogue` : ""}${a0.rateLow != null ? ` · ${fmt(a0.rateLow, "speed")} ${uname("speed")} near the ground` : ""}</div>` : ""}
-      ${evt ? `<div class="flalt">${esc(evt)}</div>` : ""}${landTxt}${
+      ${alts}${!A.length && f.readings && f.readings.alt ? `<div class="flalt">${esc(altimeterName(altimeterById(f.readings.alt)))} readings</div>` : ""}${A.length === 1 ? `<div class="flalt">${esc(a0.brand || "Altimeter")} data${a0.rateHigh != null ? ` · ${fmt(a0.rateHigh, "speed")} ${uname("speed")} under drogue` : ""}${a0.rateLow != null ? ` · ${fmt(a0.rateLow, "speed")} ${uname("speed")} near the ground` : ""}</div>` : ""}
+      ${landTxt}${
         now && now.coast
           ? `<div class="flalt">${now.coast.ok ? `Drag measured in the coast by the accelerometer: <b>×${now.coast.k.toFixed(2)}</b> this design's estimate (Mach ${now.coast.m0.toFixed(2)}–${now.coast.m1.toFixed(2)}), whatever the motor did.` : `The accelerometer's coast isn't used to measure drag: ${esc(now.coast.why)}.`}</div>`
           : ""
       }
       ${f.notes ? `<div class="flnote">${esc(f.notes)}</div>` : ""}
-      <div class="flact">${A.some((a) => a.curve) ? `<button class="btn ghost" type="button" data-fl="show">${flShow === f.id ? "Hide from chart" : "Show on chart"}</button>` : ""}${
+      <div class="flact">${f.apo > 0 || A.length ? `<button class="btn" type="button" data-fl="cmp">Compare</button>` : ""}${A.some((a) => a.curve) ? `<button class="btn ghost" type="button" data-fl="show">${flShow === f.id ? "Hide from chart" : "Show on chart"}</button>` : ""}${
         f.apo > 0
           ? (() => {
               const ok = !!flCtx(f);
@@ -574,7 +547,8 @@ function flAct(id, what, btn) {
     renderFlightLog();
     drawChart();
     if (flShow) document.getElementById("chartpanel").scrollIntoView({ behavior: "smooth", block: "center" });
-  } else if (what === "edit") flOpen(f);
+  } else if (what === "cmp") fcOpen(f);
+  else if (what === "edit") flOpen(f);
   else if (what === "del") {
     if (btn.dataset.sure !== "1") {
       btn.dataset.sure = "1";
@@ -616,7 +590,7 @@ const flToday = () => new Date().toLocaleDateString(undefined, { year: "numeric"
 /**
  * Fits the drag multiplier to the ticked flights (see the note above) and saves it.
  */
-async function flFit() {
+export async function flFit() {
   if (!lastSim) return;
   if (flFitBusy) {
     flFitAgain = true;
@@ -847,7 +821,7 @@ function renderFlCal(list) {
  * The HTML of one number field in the flight form.
  * @returns {string}
  */
-function flField(id, lab, dim, val, dec, ph) {
+export function flField(id, lab, dim, val, dec, ph) {
   const u = dim ? uname(dim) : "";
   return `<div class="fld"><label for="${id}">${lab}</label><div class="in"><input id="${id}" type="number" inputmode="decimal" step="any"${ph ? ` placeholder="${esc(ph)}"` : ""} value="${val != null && isFinite(val) ? (dim ? +toDisp(val, dim).toFixed(dec ?? (dim === "alt" ? 0 : 1)) : val) : ""}">${u ? `<span class="u">${u}</span>` : ""}</div></div>`;
 }
@@ -879,7 +853,20 @@ export function flOpen(f) {
     designW = dm ? flLiftMass(dm.D, dm.m, dm.mb) : null;
   document.getElementById("fltitle").textContent = f ? "Edit flight" : "Log a flight";
   document.getElementById("flform").innerHTML = `
-    <div class="flgrid">
+    <div class="cmpseg fltabs" role="tablist">${[
+      ["file", "Log file"],
+      ["readings", "Display readings"],
+      ["apo", "Apogee only"],
+    ]
+      .map(([k, l]) => `<button type="button" role="tab" data-tab="${k}">${l}</button>`)
+      .join("")}</div>
+    <div class="flaltbox" id="fl-altbox"></div>
+    <div id="fl-read"></div>
+    <div class="flgrid" id="fl-apov">
+      ${flField("fl-apo", "Real apogee, above the pad", "alt", n.apo)}
+      ${flField("fl-vmax", "Real top speed", "speed", n.vmax, 0)}
+    </div>
+    <div class="flgrid" style="margin-top:10px">
       <div class="fld"><label for="fl-date">Date</label><div class="in"><input id="fl-date" type="date" value="${esc(n.date || "")}"></div></div>
       <div class="fld"><label for="fl-place">Place</label><div class="in"><input id="fl-place" type="text" value="${esc(n.place || "")}" placeholder="Launch site"></div></div>
       <div class="fld"><label for="fl-motor">Motor</label><div class="in"><input id="fl-motor" type="text" value="${esc(n.motor || "")}"></div></div>
@@ -889,15 +876,15 @@ export function flOpen(f) {
       ${flField("fl-wind", "Wind", "wind", n.wind)}
       <div class="fld"><label for="fl-wdir">Wind from</label><div class="in"><input id="fl-wdir" type="text" value="${n.windDir != null ? Math.round(n.windDir) : ""}" placeholder="° or NW"><span class="u">°</span></div></div>
       ${flField("fl-elev", "Field elevation", "alt", n.elev)}
-      ${flField("fl-apo", "Real apogee, above the pad", "alt", n.apo)}
-      ${flField("fl-vmax", "Real top speed", "speed", n.vmax, 0)}
       <div class="flsp"></div>
       ${flField("fl-ldist", "Landed this far from the pad", "alt", n.landDist)}
       <div class="fld"><label for="fl-lbrg">In this direction</label><div class="in"><input id="fl-lbrg" type="text" value="${n.landBrg != null ? Math.round(n.landBrg) : ""}" placeholder="° or SE"><span class="u">°</span></div></div>
     </div>
-    <div class="fld" style="margin-top:8px"><label for="fl-notes">Notes</label><textarea id="fl-notes" rows="2">${esc(n.notes || "")}</textarea></div>
-    <div class="flaltbox" id="fl-altbox"></div>`;
+    <div class="fld" style="margin-top:8px"><label for="fl-notes">Notes</label><textarea id="fl-notes" rows="2">${esc(n.notes || "")}</textarea></div>`;
   flAltBox();
+  flReadBox(n.readings && n.readings.alt ? n.readings.alt : store.get("rfs-altimeter") || "jl-two", n.readings);
+  document.querySelectorAll("#flform .fltabs [data-tab]").forEach((b) => (b.onclick = () => flSetTab(b.dataset.tab)));
+  flSetTab(n.readings && n.readings.alt ? "readings" : n.altis && n.altis.length ? "file" : "apo");
   const motorTxt = document.getElementById("fl-motor");
   motorTxt.oninput = () => {
     flEdit.motorId = null;
@@ -940,6 +927,131 @@ export function flAltBox() {
     };
 }
 /**
+ * The tab open in the flight form: "file" (an altimeter's log file), "readings" (read off its display or beeps) or
+ * "apo" (just the apogee and top speed).
+ */
+let flTab = "apo";
+/**
+ * Opens a tab of the flight form.
+ * @param {string} t
+ */
+function flSetTab(t) {
+  flTab = t;
+  document.querySelectorAll("#flform .fltabs [data-tab]").forEach((b) => {
+    const on = b.dataset.tab === t;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", on);
+  });
+  document.getElementById("fl-altbox").hidden = t !== "file";
+  document.getElementById("fl-read").hidden = t !== "readings";
+  document.getElementById("fl-apov").hidden = t === "readings";
+  flPredBox();
+}
+/**
+ * Speed units an altimeter can show: [name, m/s].
+ */
+const FL_SPEEDS = [
+  ["ft/s", 0.3048],
+  ["mph", 0.44704],
+  ["m/s", 1],
+  ["km/h", 1 / 3.6],
+];
+/**
+ * Draws the Display readings tab for an altimeter: the readings it gives, in its order.
+ * @param {string} id altimeter id
+ * @param {object} [R] readings saved with the flight (SI)
+ */
+function flReadBox(id, R) {
+  const box = document.getElementById("fl-read"),
+    a = altimeterById(id),
+    vu = (R && R.vUnit) || a.speedUnit || (uname("speed") === "m/s" ? "m/s" : "ft/s"),
+    vk = (FL_SPEEDS.find((x) => x[0] === vu) || FL_SPEEDS[0])[1];
+  const brands = [...new Set(ALTIMETERS.map((x) => x.brand))];
+  const val = (k, dim) => {
+    const v = R && R.alt === id ? R[k] : null;
+    if (v == null || !isFinite(v)) return "";
+    return dim === "alt" ? +toDisp(v, "alt").toFixed(0) : dim === "speed" ? +(v / vk).toFixed(0) : +v.toFixed(2);
+  };
+  const lim =
+    a.accG > 0
+      ? `its accelerometer reads up to about ${a.accG} g along the rocket`
+      : a.accG === null
+        ? "it has no accelerometer"
+        : "its accelerometer's range isn't published";
+  box.innerHTML = `
+    <div class="fld"><label for="fl-alti">Altimeter</label><div class="in"><select id="fl-alti">${brands
+      .map(
+        (b) =>
+          `<optgroup label="${esc(b || "Other")}">${ALTIMETERS.filter((x) => x.brand === b)
+            .map((x) => `<option value="${x.id}"${x.id === a.id ? " selected" : ""}>${esc(x.name)}</option>`)
+            .join("")}</optgroup>`,
+      )
+      .join("")}</select></div></div>
+    <p class="note" style="margin:4px 0 8px">Readings from ${esc(a.how)}; ${lim}.</p>
+    <div class="flgrid fl2">${ALT_READINGS.filter(([k]) => a.readings.includes(k))
+      .map(([k, l, dim]) =>
+        dim === "alt" || dim === "speed"
+          ? `<div class="fld"><label for="fr-${k}">${l}</label><div class="in"><input id="fr-${k}" type="number" inputmode="decimal" step="any" value="${val(k, dim)}"><span class="u">${dim === "alt" ? uname("alt") : vu}</span></div></div>`
+          : `<div class="fld"><label for="fr-${k}">${l}${k === "ap2e" ? " (− before apogee)" : ""}</label><div class="in"><input id="fr-${k}" type="number" inputmode="decimal" step="any" value="${val(k, dim)}"><span class="u">${dim}</span></div></div>`,
+      )
+      .join("")}${
+      a.readings.includes("vmax")
+        ? `<div class="fld"><label for="fr-vu">Speed unit on the altimeter</label><div class="in"><select id="fr-vu">${FL_SPEEDS.map(([u]) => `<option${u === vu ? " selected" : ""}>${u}</option>`).join("")}</select></div></div>`
+        : ""
+    }</div>
+    <div class="cmpban warn" id="fr-lim" hidden></div>`;
+  document.getElementById("fl-alti").onchange = (e) => {
+    store.set("rfs-altimeter", e.target.value);
+    flReadBox(e.target.value, flReadReadings().readings);
+  };
+  const vs = document.getElementById("fr-vu");
+  if (vs)
+    vs.onchange = () => {
+      const r = flReadReadings(vu).readings;
+      r.vUnit = vs.value;
+      flReadBox(id, r);
+    };
+  box.querySelectorAll("input").forEach((i) => (i.oninput = () => flReadLimit()));
+  flReadLimit();
+}
+/**
+ * Reads the Display readings tab into SI.
+ * @param {string} [unitWas] the speed unit the boxes were drawn in (when the unit is being changed)
+ * @returns {{apo:number|null, vmax:number|null, readings:object}}
+ */
+function flReadReadings(unitWas) {
+  const sel = document.getElementById("fl-alti");
+  if (!sel) return { apo: null, vmax: null, readings: null };
+  const a = altimeterById(sel.value),
+    vs = document.getElementById("fr-vu"),
+    vu = unitWas || (vs ? vs.value : a.speedUnit || "ft/s"),
+    vk = (FL_SPEEDS.find((x) => x[0] === vu) || FL_SPEEDS[0])[1],
+    R = { alt: a.id, vUnit: vu };
+  for (const [k, , dim] of ALT_READINGS) {
+    const e = document.getElementById("fr-" + k);
+    if (!e) continue;
+    const v = parseFloat(e.value);
+    if (!isFinite(v)) continue;
+    R[k] = dim === "alt" ? fromDisp(v, "alt") : dim === "speed" ? v * vk : v;
+  }
+  return { apo: R.apo ?? null, vmax: R.vmax ?? null, readings: R };
+}
+/**
+ * Warns when the altimeter's acceleration readings are at its limit for this flight.
+ */
+function flReadLimit() {
+  const w = document.getElementById("fr-lim");
+  if (!w) return;
+  const R = flReadReadings().readings,
+    a = altimeterById(R.alt),
+    st = flEdit ? flPredict({ ...flEdit, ...flRead() }) : null,
+    pg = st && st.maxAcc ? st.maxAcc / 9.80665 : null,
+    on = altAtLimit(a, R.peakG ?? null, pg);
+  w.hidden = !on;
+  if (on)
+    w.innerHTML = `<b>Acceleration at the altimeter's limit.</b>The ${esc(altimeterName(a))} reads up to about ${a.accG} g${pg > a.accG ? ` and this flight pulls about ${pg.toFixed(0)} g` : R.peakG != null ? ` and it read ${R.peakG} g` : ""}, so its top speed and accelerations ${pg > a.accG ? "read" : "may read"} low. They're kept with the flight but not compared.`;
+}
+/**
  * Reads the flight form.
  * @returns {object} flight fields
  */
@@ -961,8 +1073,9 @@ function flRead() {
     windDir: flParseDir(document.getElementById("fl-wdir").value),
     tempC: g("fl-temp", "temp"),
     elev: g("fl-elev", "alt"),
-    apo: g("fl-apo", "alt"),
-    vmax: g("fl-vmax", "speed"),
+    ...(flTab === "readings"
+      ? flReadReadings()
+      : { apo: g("fl-apo", "alt"), vmax: g("fl-vmax", "speed"), readings: null }),
     landDist: g("fl-ldist", "alt"),
     landBrg: flParseDir(document.getElementById("fl-lbrg").value),
     notes: document.getElementById("fl-notes").value.trim(),
@@ -1031,6 +1144,49 @@ export function setAltP(v) {
   return (altP = v);
 }
 /**
+ * Saves a flight to the log (a new one gets its prediction, made now, and an id), then asks about calibrating to it.
+ * @param {object} f the flight
+ * @returns {object|null} the flight as saved, or null if it couldn't be saved
+ */
+export function flSaveFlight(f) {
+  delete f.alti;
+  delete f.curve;
+  delete f.tApo;
+  delete f.tLand;
+  delete f.rateHigh;
+  delete f.rateLow;
+  const wasNew = !f.made;
+  if (!f.made) {
+    const st = flPredict(f);
+    f.pred = st ? st.maxAlt : lastSim.st.maxAlt;
+    f.predV = st ? st.maxV : lastSim.st.maxV;
+    f.dragScale = lastSim.D.dragScale || 1;
+    f.made = Date.now();
+    f.id = flId();
+  }
+  {
+    const m = f.motorId && findMotor(f.motorId),
+      mb = f.boostId && findMotor(f.boostId),
+      mi = m ? flMotorInfo(m, lastSim.D.twoStage ? mb : null) : null;
+    if (mi) {
+      f.impulse = mi.I;
+      f.cls = mi.cls;
+    }
+  }
+  const list = flList().filter((x) => x.id !== f.id);
+  list.push(f);
+  if (!flPut(list)) return null;
+  delete flNow[f.id];
+  renderFlightLog();
+  drawChart();
+  const d = flDiff(f.apo, f.pred);
+  prToast(d != null ? `Flight logged: ${flPct(d)} from the prediction` : "Flight logged");
+  // a ticked flight that changed: the calibration follows it; a new flight: offer to calibrate to it
+  if (!wasNew && f.cal) flFit();
+  else if (wasNew && f.apo > 0 && flCtx(f)) flAskCal(f.id);
+  return f;
+}
+/**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
  */
 export function start() {
@@ -1042,49 +1198,18 @@ export function start() {
     const v = flRead(),
       r = document.getElementById("flres");
     if (!(v.apo > 0) && !(flEdit.altis && flEdit.altis.length)) {
-      r.textContent = "Enter the real apogee, or import the altimeter's file.";
+      r.textContent =
+        flTab === "readings"
+          ? "Enter the altimeter's max altitude."
+          : "Enter the real apogee, or import the altimeter's file.";
       r.className = "bad";
       r.hidden = false;
       return;
     }
     if (!(v.apo > 0)) v.apo = flEdit.altis[0].apo;
-    const f = { ...flEdit, ...v };
-    delete f.alti;
-    delete f.curve;
-    delete f.tApo;
-    delete f.tLand;
-    delete f.rateHigh;
-    delete f.rateLow;
-    const wasNew = !f.made;
-    if (!f.made) {
-      const st = flPredict(f);
-      f.pred = st ? st.maxAlt : lastSim.st.maxAlt;
-      f.predV = st ? st.maxV : lastSim.st.maxV;
-      f.dragScale = lastSim.D.dragScale || 1;
-      f.made = Date.now();
-      f.id = flId();
+    if (flSaveFlight({ ...flEdit, ...v })) {
+      document.getElementById("flmodal").hidden = true;
+      flEdit = null;
     }
-    {
-      const m = f.motorId && findMotor(f.motorId),
-        mb = f.boostId && findMotor(f.boostId),
-        mi = m ? flMotorInfo(m, lastSim.D.twoStage ? mb : null) : null;
-      if (mi) {
-        f.impulse = mi.I;
-        f.cls = mi.cls;
-      }
-    }
-    const list = flList().filter((x) => x.id !== f.id);
-    list.push(f);
-    if (!flPut(list)) return;
-    delete flNow[f.id];
-    document.getElementById("flmodal").hidden = true;
-    flEdit = null;
-    renderFlightLog();
-    drawChart();
-    const d = flDiff(f.apo, f.pred);
-    prToast(d != null ? `Flight logged: ${flPct(d)} from the prediction` : "Flight logged");
-    // a ticked flight that changed: the calibration follows it; a new flight: offer to calibrate to it
-    if (!wasNew && f.cal) flFit();
-    else if (wasNew && f.apo > 0 && flCtx(f)) flAskCal(f.id);
   };
 }

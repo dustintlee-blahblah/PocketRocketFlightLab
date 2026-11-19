@@ -24,6 +24,7 @@ const ALT_BRANDS = [
   ["eggtimer", "Eggtimer", /eggtimer|egg ?finder|quasar|quantum|\bfalt\b|\bfveloc\b/im, "ft"],
   ["missileworks", "Missile Works", /missile ?works|m-?dacs|\brrc ?[23]\b|rrc2\+|rrc2l|rrc3 ?(sport|plus)?/im, "ft"],
   ["apogee", "Apogee Components", /apogee ?components|apogee ?rockets|apogeerockets/im, "ft"],
+  ["jolly", "Jolly Logic", /jolly ?logic|altimeter ?(one|two|three)\b/im, "ft"],
   ["perfectflite", "PerfectFlite", /perfect ?flite|stratologger|pnut|sl ?100|alt ?15k|\.pf2\b|mav?\b.*perfect/im, "ft"],
 ];
 /**
@@ -594,6 +595,15 @@ export function altCompute(P, map) {
   if (ev.main != null) {
     ev.mainAlt = h[idxAt(ev.main)];
   }
+  // the apogee charge, where the file doesn't flag it: a sudden change in the deceleration near apogee (see altCharge)
+  if (ev.drogue == null && ev.burn != null) {
+    const c = altCharge(T, vel, tL, ev.burn, T[iA] - tL, landed ? T[iE] - tL : T[T.length - 1] - tL);
+    if (c) {
+      ev.drogue = c.t;
+      ev.drogueEst = true;
+    }
+  }
+  if (ev.drogue != null) ev.drogueAlt = h[idxAt(ev.drogue)];
   // GPS: the landing spot from the pad's position, where the file has latitude and longitude
   let land = null;
   {
@@ -639,6 +649,83 @@ export function altCompute(P, map) {
     warn,
     coast,
   };
+}
+/**
+ * The apogee charge, found from the curve when the file has no event flags. Coasting up, the rocket slows smoothly
+ * (gravity and a drag that falls off with speed); a charge that fires before apogee splits it and opens a chute, so it
+ * suddenly slows harder. Falling after apogee it speeds up at nearly 1 g until a chute opens and suddenly stops that.
+ * The deceleration is compared just before and just after each moment from 1 s after burnout to 5 s after apogee, and
+ * the biggest sudden change of at least 0.5 g counts as the charge, one before apogee first.
+ * @param {number[]} T times, s
+ * @param {number[]} vel vertical speeds, m/s
+ * @param {number} tL liftoff time
+ * @param {number} burn burnout, s after liftoff
+ * @param {number} tApo apogee, s after liftoff
+ * @param {number} tEnd the end of the useful record, s after liftoff
+ * @returns {{t:number, jump:number}|null} the charge's time after liftoff and the change in g
+ */
+function altCharge(T, vel, tL, burn, tApo, tEnd) {
+  const G = 9.80665,
+    n = T.length;
+  if (n < 20) return null;
+  // the acceleration: a straight line fitted to the speed over ±0.25 s
+  const acc = new Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) {
+    let sx = 0,
+      sy = 0,
+      sxx = 0,
+      sxy = 0,
+      k = 0;
+    for (let j = i; j >= 0 && T[j] >= T[i] - 0.25; j--)
+      if (isFinite(vel[j])) {
+        sx += T[j];
+        sy += vel[j];
+        sxx += T[j] * T[j];
+        sxy += T[j] * vel[j];
+        k++;
+      }
+    for (let j = i + 1; j < n && T[j] <= T[i] + 0.25; j++)
+      if (isFinite(vel[j])) {
+        sx += T[j];
+        sy += vel[j];
+        sxx += T[j] * T[j];
+        sxy += T[j] * vel[j];
+        k++;
+      }
+    const den = k * sxx - sx * sx;
+    if (k >= 3 && den) acc[i] = (k * sxy - sx * sy) / den;
+  }
+  const mean = (a, b) => {
+    let s = 0,
+      k = 0;
+    for (let j = 0; j < n; j++)
+      if (T[j] - tL >= a && T[j] - tL <= b && isFinite(acc[j])) {
+        s += acc[j];
+        k++;
+      }
+    return k >= 2 ? s / k : NaN;
+  };
+  // a change climbing comes first (a charge before apogee); falling, the moment just around apogee is skipped, where a
+  // chute already open turns its pull from down to up
+  let up = null,
+    down = null;
+  const t0 = burn + 1.5,
+    t1 = Math.min(tApo + 5, tEnd - 1);
+  for (let i = 0; i < n; i++) {
+    const t = T[i] - tL;
+    if (t < t0 || t > t1 || (t > tApo - 0.2 && t < tApo + 0.6)) continue;
+    const before = mean(t - 0.9, t - 0.15),
+      after = mean(t + 0.15, t + 0.9);
+    if (!isFinite(before) || !isFinite(after)) continue;
+    if (t < tApo) {
+      const jump = (before - after) / G;
+      if (jump >= 0.5 && (!up || jump > up.jump)) up = { t, jump };
+    } else {
+      const jump = (after - before) / G;
+      if (jump >= 0.5 && (!down || jump > down.jump)) down = { t, jump };
+    }
+  }
+  return up || down;
 }
 /**
  * Accelerometer units: [name, m/s²].

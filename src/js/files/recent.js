@@ -60,7 +60,7 @@ async function recentReq(mode, fn) {
  * Every recent file, newest first ([] if storage is unavailable).
  * @returns {Promise<object[]>}
  */
-async function recentList() {
+export async function recentList() {
   try {
     return ((await recentReq("readonly", (st) => st.getAll())) || []).sort((a, b) => b.when - a.when);
   } catch (e) {
@@ -202,7 +202,7 @@ export async function renderRecent() {
  * Opens a recent file again from its stored copy.
  * @param {string} id
  */
-async function openRecent(id) {
+export async function openRecent(id) {
   const rep = document.getElementById("orkreport"),
     e = await recentGet(id);
   if (!e) {

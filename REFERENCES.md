@@ -35,6 +35,25 @@ books, and two reports whose release could not be confirmed, are only cited here
 | Box, Bishop and Hunt (2009; copyrighted preprint) | Estimating the dynamic and aerodynamic parameters of passively controlled high power rockets for flight simulation | Cross-check of the drag build-up |
 | Box, Bishop and Hunt, *J. Aerospace Eng.* 24(1), 31–45 (2011; copyrighted) | A stochastic six-degree-of-freedom flight simulator for passively controlled high power rockets | Monte Carlo approach, cross-check |
 
+## Altimeters
+
+The altimeter list in `src/js/flightlog/altimeters.js` (what each one shows after a flight and the limits of its
+sensors) comes from the makers' manuals and spec pages. Where a maker doesn't publish a figure, the app leaves it
+blank rather than guess.
+
+| Altimeter | Source | Used for |
+| --- | --- | --- |
+| Jolly Logic AltimeterTwo | [User guide](https://user.xmission.com/~huxley/rockets/altimetertwo/AltimeterTwoUserGuide.pdf); [eRockets spec page](https://www.erockets.biz/jolly-logic-altimeter-two-jol-2/) | 24 g including gravity (about 23 g added); top speed added up from the accelerometer, low when the limit is reached; its ten readings in order; 29,500 ft |
+| Jolly Logic AltimeterTwo Gen64 | [Jolly Logic Gen64 notes](https://www.asp-rocketry.com/uploaded_files/files/JollyLogicAltTwoGen64.pdf) | 64 g; apogee to ejection is negative when the charge fires before apogee |
+| Jolly Logic AltimeterThree | [eRockets spec page](https://www.erockets.biz/jolly-logic-altimeter-three-iphone-android-jol-3/) | 29,500 ft calibrated range (accelerometer range not published) |
+| Featherweight Raven3 / Raven4 | [Raven3 manual](https://manuals.online/featherweight/accessories/raven3/user-manual/11fiu); [Raven4 manual](https://dept.aem.umn.edu/~./faculty/flaten/Rocketry_Remote_Lessons_Fall_2021/Raven4_user_manual_2020aug15.pdf) | ±105 g axial; 100,000 ft; beeps the apogee |
+| Featherweight Blue Raven, Blue Jay | [Blue Raven](https://contrailrockets.com/product/featherweight-blue-raven-altimeter); [Blue Jay](https://contrailrockets.com/product/featherweight-blue-jay-altimeter) | ±400 g (high-range) and ±32 g; summary max altitude and max velocity; phone-app export |
+| Missile Works RRC3 | [LOC Precision RRC3](https://www.locprecision.com/welcome-back-missileworks/); [RRC3+](https://locprecision.com/products/missile-works-rrc3) | Barometric only; 40,000 ft (Sport), 100,000 ft (Xtreme/+); 20 Hz altitude and velocity log |
+| PerfectFlite StratoLogger / StratoLoggerCF | [StratoLogger manual](https://wikis.mit.edu/confluence/download/attachments/119328235/StratoLogger%20manual.pdf?api=v2); [StratoLoggerCF sheet](https://dept.aem.umn.edu/~./faculty/flaten/Rocketry_Remote_Lessons_Fall_2021/StratoLoggerCF_info.pdf) | Barometric; 100,000 ft; beeps the peak altitude in feet, then the top speed in mph |
+| Eggtimer (classic), Quantum, Quasar | [Eggtimer manual](https://manualmachine.com/eggtimerrocketry/eggtimer/21491758-user-manual); [Quasar](https://manualedistruzioni.it/eggtimer-rocketry/gps/quasar/user-manual/t657) | Barometric; 29,500 ft (classic); summary of apogee, top speed and events; CSV columns T (ms), Alt (ft), Veloc (ft/s) |
+| Eggtimer Proton | [Proton manual](https://manuals.online/eggtimer-rocketry/motherboard/proton/user-manual/1ullt) | 120 g; 60,000 ft |
+| Altus Metrum TeleMetrum, TeleMega | [TeleMetrum](https://altusmetrum.org/TeleMetrum/); [TeleMega](https://altusmetrum.org/TeleMega/) | ±200 g (ADXL375); barometer to about 100,000 ft |
+
 ## Not used yet
 
 | Report | Title | Could be used for |

@@ -154,8 +154,10 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
   `physics/flow-streams.js` (slender-body potential flow, supersonic flow along Mach lines, and the drag model's
   transition and separation rules); both are drawn only and feed no number.
 - **Recovery** (`recovery/ejection-charge.js`): black powder charge sizes for each compartment.
-- **Flight log** (`flightlog/`): real flights logged with altimeter files (several makers' CSV formats, Excel), compared
-  with the prediction, and a drag correction fitted to them.
+- **Flight log** (`flightlog/`): real flights logged with altimeter files (several makers' CSV formats, Excel), the
+  readings off an altimeter's display (`altimeters.js`: each altimeter's readings and sensor limits), or just the
+  apogee; Flight vs prediction (`flight-compare.js`) flies the design the way each flight was flown and compares event
+  by event; and a drag correction fitted to them.
 - **Weather** (`weather/`): the forecast for the site and winds aloft.
 - **Report** (`report/pdf-report.js`): the PDF flight report (jsPDF) and file downloads on each platform.
 - **Animation** (`animation/`): the flight replayed as a side view, and its video export.
@@ -193,7 +195,8 @@ Functions and variables of one feature share a prefix, which also tells you the 
 | `bld` | the rocket builder (`bldNew`, `bldFields`, `bldRender`, `bldToOrk`...) | `builder/` |
 | `fl` | the flight log (`flList`, `flFit`, `flOpen`...) | `flightlog/flight-log.js` |
 | `cal` | drag calibration | `flightlog/drag-calibration.js` |
-| `alt` | altimeter files | `flightlog/` |
+| `alt` | altimeter files and the altimeter list | `flightlog/` |
+| `fc` | Flight vs prediction | `flightlog/flight-compare.js` |
 | `md` | motor delays and the motor configuration picker | `ui/motor-delay.js` |
 | `mc` | landing dispersion (Monte Carlo) | `physics/monte-carlo.js` |
 | `wt` | the Wind Tunnel | `ui/wind-tunnel.js` |

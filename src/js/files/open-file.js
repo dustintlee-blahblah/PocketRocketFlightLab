@@ -39,7 +39,7 @@ import { unzipEntries, unzipOrk } from "./unzip.js";
 import { zipOthers } from "./zip.js";
 import { applyCal, calGet, calSet, calStale } from "../flightlog/drag-calibration.js";
 import { flDeleted, flList, flPut, setFlNow } from "../flightlog/flight-log.js";
-import { zipData, zipEntries } from "../flightlog/xlsx.js";
+import { altIncoming, zipData, zipEntries } from "../flightlog/xlsx.js";
 import { classifyUser, dupMotor } from "../motors/catalog-lookup.js";
 import { clusterOf, findMotor } from "../motors/clusters.js";
 import { parseEng, parseRse } from "../motors/motor-files.js";
@@ -650,6 +650,12 @@ export function start() {
   document.getElementById("orkfile").addEventListener("change", async (e) => {
     const f = e.target.files[0];
     if (!f) return;
+    // an altimeter's log (not a design file) opens in the Flight Log, for the design open now
+    if (!DESIGN_EXT.test(f.name) && /\.(csv|txt|tsv|xlsx|pf2|log|dat)$/i.test(f.name)) {
+      e.target.value = "";
+      altIncoming(f);
+      return;
+    }
     try {
       const buf = await f.arrayBuffer();
       const xml = await unzipOrk(buf);
