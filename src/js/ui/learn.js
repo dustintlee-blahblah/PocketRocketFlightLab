@@ -1,14 +1,42 @@
 /**
- * The Learn page: short chapters on how rockets fly and how this app works them out (learn-content.js), reached from
- * Settings and from the "Learn more" line in the help boxes of a few key fields.
+ * The Learn page: chapters in three levels (learn-content.js), picked at the top and remembered, reached from Settings
+ * and from the "Learn more" line in the help boxes of a few key fields.
  */
 import { esc } from "../core/helpers.js";
+import { store } from "../core/storage.js";
 import { openLink } from "./donate.js";
 import { learnChapters } from "./learn-content.js";
 
 let learnFocus = null;
 /**
- * Shows the list of chapters, or one chapter.
+ * The Learn page's levels: the chapters' group, its label on the switch, who it is for, and the mark beside its
+ * chapters (a number to read in order, or a symbol).
+ */
+const LEARN_LEVELS = [
+  ["Getting started", "Getting started", "New to rocketry, or to simulators: start here, in order.", "n"],
+  [
+    "Mid & high power",
+    "Mid & high power",
+    "For H to K motors and up: certification, waivers, electronics and going fast. Examples are 38–54 mm rockets.",
+    "◆",
+  ],
+  [
+    "Technical",
+    "Technical",
+    "The physics and the numbers: methods, equations, sources and how well it matches real flights.",
+    "+",
+  ],
+];
+/**
+ * The level picked (remembered between visits), as a chapter group.
+ * @returns {string}
+ */
+function learnLevel() {
+  const v = store.get("rfs-learn-level");
+  return LEARN_LEVELS.some((l) => l[0] === v) ? v : LEARN_LEVELS[0][0];
+}
+/**
+ * Shows the list of chapters for the level picked, or one chapter.
  * @param {string|null} id the chapter's id, or null for the list
  */
 function learnShow(id) {
@@ -17,28 +45,35 @@ function learnShow(id) {
     body = dlg.querySelector(".body"),
     foot = dlg.querySelector(".foot"),
     all = learnChapters(),
-    i = all.findIndex((c) => c.id === id);
-  if (i < 0) {
-    head.innerHTML = `<h2 id="learn-title">Learn</h2><p>How rockets fly, and how this sim works.</p>`;
-    let grp = "",
-      n = 0,
-      h = "";
-    for (const c of all) {
-      if (c.group !== grp) {
-        grp = c.group;
-        h += `<div class="grp">${esc(grp)}</div>`;
-      }
-      const basic = c.group === all[0].group;
-      h += `<button type="button" class="ch${basic ? "" : " deep"}" data-ch="${c.id}"><span class="n" aria-hidden="true">${basic ? ++n : "+"}</span><span><b>${esc(c.title)}</b><span>${esc(c.sub)}</span></span></button>`;
-    }
-    body.innerHTML = h;
+    c = all.find((x) => x.id === id);
+  if (!c) {
+    const lv = learnLevel(),
+      L = LEARN_LEVELS.find((l) => l[0] === lv);
+    head.innerHTML = `<h2 id="learn-title">Learn</h2><p>How rockets fly, and how this sim works.</p>
+      <div class="cmpseg learnlv" role="tablist" aria-label="Level">${LEARN_LEVELS.map(
+        ([g, label]) =>
+          `<button type="button" role="tab" data-lv="${esc(g)}" aria-selected="${g === lv}"${g === lv ? ' class="on"' : ""}>${esc(label)}</button>`,
+      ).join("")}</div>`;
+    let n = 0;
+    body.innerHTML =
+      `<p class="note lvnote">${esc(L[2])}</p>` +
+      all
+        .filter((x) => x.group === lv)
+        .map(
+          (x) =>
+            `<button type="button" class="ch${L[3] === "n" ? "" : " deep"}" data-ch="${x.id}"><span class="n" aria-hidden="true">${L[3] === "n" ? ++n : L[3]}</span><span><b>${esc(x.title)}</b><span>${esc(x.sub)}</span></span></button>`,
+        )
+        .join("");
     foot.innerHTML = `<button class="btn" type="button" data-close>Close</button>`;
   } else {
-    const c = all[i],
-      basic = c.group === all[0].group,
-      num = basic ? `${i + 1}. ` : "",
-      prev = all[i - 1],
-      next = all[i + 1];
+    const L = LEARN_LEVELS.find((l) => l[0] === c.group) || LEARN_LEVELS[0],
+      same = all.filter((x) => x.group === c.group),
+      i = same.indexOf(c),
+      num = L[3] === "n" ? `${i + 1}. ` : "",
+      prev = same[i - 1],
+      next = same[i + 1];
+    // a chapter opened from a help box shows its own level when you go back to the list
+    store.set("rfs-learn-level", c.group);
     head.innerHTML = `<button type="button" class="linkbtn crumb" data-ch="">‹ Learn · ${esc(c.group)}</button><h2 id="learn-title">${num}${esc(c.title)}</h2>`;
     body.innerHTML = c.html;
     foot.innerHTML = `<div class="row mrow lnav">${prev ? `<button class="btn ghost" type="button" data-ch="${prev.id}">‹ ${esc(prev.title)}</button>` : "<span></span>"}${next ? `<button class="btn" type="button" data-ch="${next.id}">${esc(next.title)} ›</button>` : `<button class="btn" type="button" data-close>Close</button>`}</div>`;
@@ -73,6 +108,11 @@ export function start() {
   dlg.addEventListener("click", (e) => {
     const t = e.target;
     if (t === dlg || t.closest("[data-close]")) return learnClose();
+    const lv = t.closest("[data-lv]");
+    if (lv) {
+      store.set("rfs-learn-level", lv.dataset.lv);
+      return learnShow(null);
+    }
     const ch = t.closest("[data-ch]");
     if (ch) return learnShow(ch.dataset.ch || null);
     // outside links open in the browser (the Android app hands them on)

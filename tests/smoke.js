@@ -225,14 +225,28 @@ const { chromium } = require("playwright");
     document.getElementById("s-learn").click();
   });
   m = await look("learn", () => {
-    const ids = [...document.querySelectorAll("#learn .ch")].map((x) => x.dataset.ch),
-      out = { shown: document.getElementById("learn").hidden ? 0 : 1, chapters: ids.length, empty: 0, drawings: 0 };
-    for (const id of ids) {
-      document.querySelector(`#learn [data-ch="${id}"]`).click();
-      if (document.querySelector("#learn .body").textContent.length < 400) out.empty++;
-      if (document.querySelector("#learn .body figure svg")) out.drawings++;
-      document.querySelector("#learn .crumb").click();
+    const out = {
+      shown: document.getElementById("learn").hidden ? 0 : 1,
+      chapters: 0,
+      empty: 0,
+      drawings: 0,
+      levels: 0,
+    };
+    // each level, then each of its chapters
+    const lvs = [...document.querySelectorAll("#learn [data-lv]")].map((x) => x.dataset.lv);
+    out.levels = lvs.length;
+    for (const lv of lvs) {
+      document.querySelector(`#learn [data-lv="${lv}"]`).click();
+      const ids = [...document.querySelectorAll("#learn .ch")].map((x) => x.dataset.ch);
+      out.chapters += ids.length;
+      for (const id of ids) {
+        document.querySelector(`#learn [data-ch="${id}"]`).click();
+        if (document.querySelector("#learn .body").textContent.length < 400) out.empty++;
+        if (document.querySelector("#learn .body figure svg")) out.drawings++;
+        document.querySelector("#learn .crumb").click();
+      }
     }
+    document.querySelector(`#learn [data-lv="${lvs[0]}"]`).click();
     document.querySelector("#learn [data-close]").click();
     out.closed = document.getElementById("learn").hidden ? 1 : 0;
     const ib = document.querySelector('.ib[data-learn="motors"]');
@@ -245,9 +259,10 @@ const { chromium } = require("playwright");
     return out;
   });
   need("Learn: opens from Settings", m.shown, 1);
-  need("Learn: chapters", m.chapters, 10);
+  need("Learn: three levels", m.levels, 3);
+  need("Learn: chapters", m.chapters, 20);
   need("Learn: chapters with text (none empty)", -m.empty, 0);
-  need("Learn: chapters with a drawing", m.drawings, 9);
+  need("Learn: chapters with a drawing", m.drawings, 19);
   need("Learn: closes", m.closed, 1);
   need("Learn: a help box links to it", m.more, 1);
   need("Learn: the link opens its chapter", m.toChapter, 1);

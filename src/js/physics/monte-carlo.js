@@ -341,6 +341,8 @@ export function renderApoTol() {
   el.innerHTML = up === dn ? `±${up}` : `<span>+${up}</span><span>−${dn}</span>`;
   el.classList.toggle("two", up !== dn);
   el.title = what;
+  // phones have no hover: a tap says the same
+  el.onclick = () => prToast(what);
   el.setAttribute("aria-label", what);
 }
 /**

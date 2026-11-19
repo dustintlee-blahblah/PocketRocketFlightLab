@@ -1,10 +1,12 @@
 /**
- * The Learn page's chapters: how rockets fly and how this app works them out, for beginners, and a deeper chapter
- * on the drag model. Each chapter is plain HTML with a simple drawing (inline SVG in the page's own colors, so it
+ * The Learn page's chapters, in three levels: Getting started (how rockets fly and how this app works them out), Mid &
+ * high power (certification, waivers, dual deploy, flutter, Mach 1, staging, altimeters) and Technical (the drag and
+ * stability models, the equations of motion and the atmosphere, validation). Each chapter is plain HTML with a simple drawing (inline SVG in the page's own colors, so it
  * works offline and in both themes) and a "Try it in the app" note. The numbers given are the guidelines the app
  * itself uses (the RSO Checklist's), so the two agree; the technical detail behind the drag chapter is in
  * AERODYNAMICS.md and VALIDATION.md, which it links to.
  */
+import { APO_ACCURACY } from "../../data/apogee-accuracy.js";
 
 /**
  * The opening of each drawing: a 300-wide picture that scales to the page, its lines in the text color.
@@ -144,10 +146,110 @@ export function learnChapters() {
       `<text x="150" y="90" text-anchor="middle" stroke="none" fill="currentColor">Mach number</text>`,
     "Each band uses its own methods, blended where they meet. The transonic band has no theory, only measurements.",
   );
+  // ---- Mid & high power, and Technical: drawings ----
+  const CERT = fig(
+    svgOpen(128, "Motor impulse classes and the certification levels that allow them") +
+      ["H", "I", "J", "K", "L", "M", "N", "O"]
+        .map(
+          (c, i) =>
+            `<rect x="${14 + i * 34}" y="${84 - i * 9}" width="28" height="${18 + i * 9}" rx="3"${i < 2 ? "" : i < 5 ? ' stroke="var(--accent)"' : ' fill="currentColor" fill-opacity=".18"'}/><text x="${28 + i * 34}" y="118" text-anchor="middle" stroke="none" fill="currentColor">${c}</text>`,
+        )
+        .join("") +
+      `<g stroke="none" fill="currentColor"><text x="48" y="64" text-anchor="middle">Level 1</text><text x="150" y="40" text-anchor="middle" fill="var(--accent)">Level 2</text><text x="252" y="14" text-anchor="middle">Level 3</text></g>`,
+    "Each letter is up to twice the total impulse of the one before: H starts at 160 N·s, O ends at 40,960 N·s.",
+  );
+  const WAIVER = fig(
+    svgOpen(120, "A predicted apogee with its 1-sigma and 90% ranges under a waiver ceiling") +
+      `<path d="M20 20 L280 20" stroke="var(--accent)" stroke-dasharray="6 4"/><text x="276" y="14" text-anchor="end" stroke="none" fill="var(--accent)">waiver ceiling</text>` +
+      `<rect x="80" y="34" width="60" height="78" rx="4" fill="currentColor" fill-opacity=".08" stroke-opacity=".5"/>` +
+      `<rect x="80" y="54" width="60" height="40" rx="4" fill="currentColor" fill-opacity=".18"/>` +
+      `<path d="M70 70 L150 70" stroke-width="2.4"/>` +
+      `<g stroke="none" fill="currentColor"><text x="156" y="74">predicted apogee</text><text x="156" y="58">1σ: the ± shown</text><text x="156" y="40">top of the 90% range</text><text x="156" y="108">bottom of the 90% range</text></g>`,
+    "The ± beside the apogee is the typical (1σ) spread; the waiver check uses the top of the wider 90% range.",
+  );
+  const DUAL = fig(
+    svgOpen(150, "A dual deploy flight: drogue at apogee, main low, with backups") +
+      `<path d="M10 140 L290 140" stroke-opacity=".5"/>` +
+      `<path d="M30 138 C44 70 80 22 126 16 C150 14 166 30 182 62 L214 118 C222 128 230 134 240 138" />` +
+      `<circle cx="126" cy="16" r="4" fill="var(--accent)" stroke="var(--accent)"/><circle cx="214" cy="118" r="4" fill="var(--accent)" stroke="var(--accent)"/>` +
+      `<g stroke="none" fill="currentColor"><text x="132" y="12">apogee: drogue (backup +1–2 s)</text><text x="200" y="54">falls fast,</text><text x="200" y="66">50–100 ft/s</text><text x="224" y="100" fill="var(--accent)">main at</text><text x="224" y="112" fill="var(--accent)">500–1,000 ft</text><text x="244" y="132">15–20 ft/s</text><text x="46" y="118">Mach lockout</text><text x="46" y="130">while fast</text></g>`,
+    "The drogue comes out at apogee, the main near the ground; each event has a backup, and the motor's charge is the last.",
+  );
+  const FLUTTER = fig(
+    svgOpen(128, "Airspeed against the fins' flutter speed through a flight") +
+      `<path d="M30 112 L285 112 M30 112 L30 10" stroke-opacity=".5"/>` +
+      `<path stroke="var(--accent)" stroke-width="2.2" d="M30 112 L52 26 C70 30 110 60 170 92 C210 104 250 110 285 112"/>` +
+      `<path d="M30 40 C100 36 180 30 285 24" stroke-dasharray="5 4"/>` +
+      `<g stroke="none" fill="currentColor"><text x="160" y="124" text-anchor="middle">time</text><text x="285" y="42" text-anchor="end">flutter speed:</text><text x="285" y="54" text-anchor="end">rises as the air thins</text><text x="62" y="18" fill="var(--accent)">airspeed peaks at burnout</text></g>`,
+    "Flutter is likeliest at burnout, low down where the air is thick; the app compares the two all the way up.",
+  );
+  const SHOCK = fig(
+    svgOpen(126, "Shock waves on a rocket flying faster than sound") +
+      `<path d="M60 63 Q90 50 112 50 L240 50 L262 38 L262 88 L240 76 L112 76 Q90 76 60 63Z"/>` +
+      `<path d="M60 63 L130 8 M60 63 L130 118" stroke="var(--accent)"/><path d="M236 50 L282 16 M236 76 L282 110" stroke="var(--accent)" stroke-opacity=".7"/>` +
+      `<g stroke="none" fill="currentColor"><text x="134" y="16" fill="var(--accent)">bow shock</text><text x="20" y="66">M > 1</text><text x="140" y="96">drag rises,</text><text x="140" y="108">the CP moves,</text><text x="140" y="120">pressure jumps</text></g>`,
+    "Past Mach 1 the air can't move aside ahead of the rocket, so shocks form at the nose and fins.",
+  );
+  const STAGE = fig(
+    svgOpen(140, "A two-stage flight: booster burnout, separation, coast and sustainer ignition") +
+      `<path d="M10 132 L290 132" stroke-opacity=".5"/>` +
+      `<path d="M40 130 C52 96 66 74 84 60" stroke-width="2.4"/><path d="M84 60 C100 48 116 42 132 38" stroke-dasharray="4 4"/><path d="M132 38 C170 26 214 18 268 14" stroke="var(--accent)" stroke-width="2.4"/>` +
+      `<path d="M84 60 C92 80 96 108 100 130" stroke-dasharray="2 4" stroke-opacity=".6"/>` +
+      `<g stroke="none" fill="currentColor"><text x="44" y="104" text-anchor="end">booster</text><text x="78" y="44" text-anchor="end">separation</text><text x="104" y="124">booster recovers</text><text x="140" y="58" fill="var(--accent)">sustainer lit: only if</text><text x="140" y="70" fill="var(--accent)">high and straight enough</text></g>`,
+    "The booster drops away, the sustainer coasts a moment, and its altimeter lights it only if the lockouts allow.",
+  );
+  const LOGFIG = fig(
+    svgOpen(126, "An altimeter's curve against the prediction, with an early charge") +
+      `<path d="M30 112 L285 112 M30 112 L30 10" stroke-opacity=".5"/>` +
+      `<path stroke="var(--accent)" stroke-dasharray="5 4" d="M30 112 C60 50 110 22 170 18 C200 18 230 40 280 100"/>` +
+      `<path stroke-width="2" d="M30 112 C60 52 108 30 140 26 L152 24 C170 26 210 52 270 106"/>` +
+      `<path d="M140 20 L146 26 L140 32 L134 26Z" fill="var(--panel)"/>` +
+      `<g stroke="none" fill="currentColor"><text x="140" y="66" text-anchor="middle">charge before apogee</text><text x="214" y="12" fill="var(--accent)">predicted</text><text x="140" y="100" text-anchor="middle">altimeter (solid)</text></g>`,
+    "Solid: what the altimeter logged. Dashed: the design flown the same way. Here the charge fired while still climbing.",
+  );
+  const CPFIG = fig(
+    svgOpen(132, "Where the lift on each part acts, and the CP they add up to") +
+      `<path d="M30 60 Q60 44 84 44 L240 44 L262 30 L262 90 L240 76 L84 76 Q60 76 30 60Z"/>` +
+      arrowSvg(56, 104, 56, 66, "nose", 56, 116) +
+      arrowSvg(160, 100, 160, 80, "body", 160, 112) +
+      arrowSvg(246, 112, 246, 82, "fins", 246, 124, true) +
+      `<circle cx="196" cy="60" r="6" fill="var(--accent)" stroke="var(--accent)"/><text x="196" y="22" text-anchor="middle" stroke="none" fill="var(--accent)">CP: the lifts' balance point</text>`,
+    "Each part's lift acts at its own point; the CP is where their sum acts, weighted by how much each part lifts.",
+  );
+  const ATMFIG = fig(
+    svgOpen(148, "Temperature against height in the standard atmosphere") +
+      `<path d="M40 128 L285 128 M40 128 L40 10" stroke-opacity=".5"/>` +
+      `<path stroke="var(--accent)" stroke-width="2.2" d="M180 128 L90 70 L90 52 L110 28 L150 12"/>` +
+      `<path d="M210 128 L120 70" stroke-dasharray="4 4"/>` +
+      `<g stroke="none" fill="currentColor"><text x="160" y="144" text-anchor="middle">temperature</text><text x="26" y="70" transform="rotate(-90 26 70)" text-anchor="middle">height</text><text x="96" y="64">11 km: tropopause</text><text x="196" y="112">a hot day, shifted</text></g>`,
+    "Standard layers, shifted to the field's temperature through the lowest 11 km and fading back to standard by 15 km.",
+  );
+  const B = APO_ACCURACY.bands,
+    pctTxt = (x) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(1)}%`;
+  const VALFIG = fig(
+    svgOpen(150, "The app's apogee accuracy by speed band: 1-sigma and 90% ranges") +
+      `<path d="M42 75 L285 75" stroke-opacity=".35"/>` +
+      B.map((b, i) => {
+        const x = 90 + i * 80,
+          Y = (f) => 75 - f * 280,
+          lo90 = b.mean - b.k90 * b.sd,
+          hi90 = b.mean + b.k90 * b.sd,
+          lo1 = b.mean - b.k68 * b.sd,
+          hi1 = b.mean + b.k68 * b.sd;
+        return (
+          `<rect x="${x - 14}" y="${Y(hi90).toFixed(1)}" width="28" height="${(Y(lo90) - Y(hi90)).toFixed(1)}" rx="3" fill="currentColor" fill-opacity=".08" stroke-opacity=".5"/>` +
+          `<rect x="${x - 14}" y="${Y(hi1).toFixed(1)}" width="28" height="${(Y(lo1) - Y(hi1)).toFixed(1)}" rx="3" fill="currentColor" fill-opacity=".2"/>` +
+          `<path d="M${x - 18} ${Y(b.mean).toFixed(1)} L${x + 18} ${Y(b.mean).toFixed(1)}" stroke="var(--accent)" stroke-width="2.2"/>` +
+          `<text x="${x}" y="146" text-anchor="middle" stroke="none" fill="currentColor">${b.lo === 0 ? "below 0.8" : b.hi > 9 ? "above " + b.lo : b.lo + "–" + b.hi}</text>`
+        );
+      }).join("") +
+      `<g stroke="none" fill="currentColor"><text x="36" y="79" text-anchor="end">0</text><text x="36" y="23" text-anchor="end">+20%</text><text x="36" y="135" text-anchor="end">−20%</text></g>`,
+    "Where real apogees landed against the prediction, by top Mach: the mean (line), 1σ (dark) and 90% (light) ranges.",
+  );
   return [
     {
       id: "forces",
-      group: "The basics",
+      group: "Getting started",
       title: "The four forces",
       sub: "Thrust, weight, drag and lift",
       html:
@@ -165,7 +267,7 @@ export function learnChapters() {
     },
     {
       id: "flight",
-      group: "The basics",
+      group: "Getting started",
       title: "A flight, pad to landing",
       sub: "Six phases, and where they show in Results",
       html:
@@ -183,7 +285,7 @@ export function learnChapters() {
     },
     {
       id: "stability",
-      group: "The basics",
+      group: "Getting started",
       title: "Stability",
       sub: "CG, CP and calibers",
       html:
@@ -201,7 +303,7 @@ export function learnChapters() {
     },
     {
       id: "motors",
-      group: "The basics",
+      group: "Getting started",
       title: "Motors",
       sub: "Letters, impulse, thrust curves, delays",
       html:
@@ -219,7 +321,7 @@ export function learnChapters() {
     },
     {
       id: "drag",
-      group: "The basics",
+      group: "Getting started",
       title: "Drag",
       sub: "What Cd means and what changes it",
       html:
@@ -239,7 +341,7 @@ export function learnChapters() {
     },
     {
       id: "weather",
-      group: "The basics",
+      group: "Getting started",
       title: "Weather and the launch site",
       sub: "Altitude, temperature, wind",
       html:
@@ -256,7 +358,7 @@ export function learnChapters() {
     },
     {
       id: "recovery",
-      group: "The basics",
+      group: "Getting started",
       title: "Recovery",
       sub: "Descent rate, chute size, drift",
       html:
@@ -273,7 +375,7 @@ export function learnChapters() {
     },
     {
       id: "simulator",
-      group: "The basics",
+      group: "Getting started",
       title: "How the simulator works",
       sub: "And how far to trust it",
       html:
@@ -292,8 +394,138 @@ export function learnChapters() {
         ),
     },
     {
+      id: "cert",
+      group: "Mid & high power",
+      title: "Certification flights",
+      sub: "Level 1 to Level 3: the motor, the rocket, what the RSO looks at",
+      html:
+        `<p>Motors from H up are high power, and buying and flying them takes a certification from the NAR or Tripoli. Each level is earned with one successful flight on a motor of that level, and opens the next band of letters.</p>` +
+        CERT +
+        `<ul><li><b>Level 1: H and I</b> (160 to 640 N·s). For adults: both organizations require you to be 18. Build a rocket, fly it on an H or I, and recover it undamaged, with a certified member watching. Tripoli asks for a single motor (no clusters or staging) and a parachute, and doesn't count a landing faster than 35 ft/s. Juniors can start earlier: the NAR's Junior HPR program takes members 14 to 17 to H and I motors with an adult Level 1 sponsor who handles the motor; Tripoli's mentoring program starts at 12.</li>` +
+        `<li><b>Level 2: J, K and L</b> (to 5,120 N·s). A written exam comes first: rules, motor codes, range safety and stability. The NAR's is 40 questions from a published pool of 100, passed at 35. Then a certification flight on a J, K or L with an active recovery system (in practice, a parachute deployed by the motor or an altimeter).</li>` +
+        `<li><b>Level 3: M, N and O</b> (to 40,960 N·s). A project, planned and approved before you build. Tripoli asks for drawings, a parts list, the recovery wiring and your flight simulations, approved by two members of its Technical Advisory Panel, and for two fully separate electronics systems (batteries, switches, altimeters and charges) for every recovery event. The NAR's Level 3 Certification Committee reviews the project and witnesses the flight in the same spirit.</li></ul>` +
+        `<p>On the day, the Range Safety Officer looks at the same things the app's RSO Checklist does: the CG and CP marked on the rocket and a stability margin of at least one caliber, a motor that is retained and right for the rocket, enough speed off the rail, sound recovery, and a predicted apogee under the field's ceiling. A Level 1 rocket is usually a 38 to 54 mm (1.5 to 2.1 in) airframe on a 29 or 38 mm motor mount.</p>` +
+        `<p class="note">Rules checked in November 2026 on the <a href="https://nar.org/?p=32269" target="_blank" rel="noopener">NAR</a> and <a href="https://www.tripoli.org/Certification" target="_blank" rel="noopener">Tripoli</a> certification pages. They change: check the current procedures before you fly.</p>` +
+        tryIt(
+          "set your certification level in Settings and the flight type to Certification on the Range tab: the RSO Checklist adds a Certification attempt row for your level. The PDF report on Results brings the simulation to the RSO.",
+        ),
+    },
+    {
+      id: "waiver",
+      group: "Mid & high power",
+      title: "Waivers and predicting apogee",
+      sub: "The ± beside the apogee, and how much margin to leave",
+      html:
+        `<p>A high-power flight goes into airspace the FAA controls, so every launch has a ceiling. Going over it is the one mistake a simulation is most often asked to prevent.</p>` +
+        `<ul><li><b>The FAA's classes</b> (14 CFR Part 101): a model rocket (Class 1) carries no more than 125 g of propellant and weighs no more than 1,500 g. A high-power rocket (Class 2) is anything bigger, up to 40,960 N·s for all its motors together; more than that is Class 3.</li>` +
+        `<li><b>Class 2 needs permission for the airspace:</b> usually a waiver the club holds, with a ceiling and a radius, and air traffic control told 24 hours to 3 days ahead. The waiver gives the ceiling above sea level or above the ground: check which, since the field's elevation is the difference.</li>` +
+        `<li><b>The weather limits</b> come with it: no flying into a cloud, nor where more than five-tenths of the sky is covered at any height the rocket reaches, nor with less than five miles' visibility. People not involved must be at least 1,500 ft away or a quarter of the expected apogee, whichever is more.</li></ul>` +
+        WAIVER +
+        `<p><b>The ± beside the apogee</b> is how far off a prediction like this one typically is, measured: the app's predictions for real flights with recorded apogees, split by top speed. For each band, the typical miss (one standard deviation, 1σ, about two flights in three) and a wider range that holds about nine flights in ten. The ranges are uneven where the app has tended to predict high or low, and they widen when the rocket's weight is estimated from its parts rather than weighed.</p>` +
+        `<p><b>The waiver check</b> in the RSO Checklist uses the top of the 90% range, not the predicted apogee itself: about one flight in twenty could go higher still. What pushes a flight higher than predicted: a lighter rocket than entered, a hot motor or a hot day, a smoother finish than set. What brings it lower: weight added at the field, wind (the rocket turns into it), a rough finish, rail buttons and seams.</p>` +
+        `<p>To narrow the range: weigh the rocket ready to fly and enter it, and after a flight, log the altimeter's reading and calibrate the drag to it.</p>` +
+        `<p class="note">FAA rules checked in November 2026 in <a href="https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-101" target="_blank" rel="noopener">14 CFR Part 101</a>.</p>` +
+        tryIt(
+          "enter the waiver on the Range tab (and whether it is above the ground or sea level). Tap the ± on Results to see both ranges; the RSO Checklist's Apogee vs. waiver row shows the margin.",
+        ),
+    },
+    {
+      id: "dualdeploy",
+      group: "Mid & high power",
+      title: "Dual deploy and electronics",
+      sub: "Drogue at apogee, main low, backups and Mach lockout",
+      html:
+        `<p>A rocket that opens its main chute at 3,000 ft drifts a long way. Dual deploy splits the recovery in two: a small drogue (or none, just the rocket's parts falling apart) at apogee, and the main close to the ground.</p>` +
+        DUAL +
+        `<ul><li><b>Under the drogue</b> the rocket comes down fast, typically 50 to 100 ft/s (15 to 30 m/s), so the wind has little time to carry it. Faster than that, the main's opening gets harsh.</li>` +
+        `<li><b>The main</b> opens at a set height, usually 500 to 1,000 ft, and brings it down at 15 to 20 ft/s (4.5 to 6 m/s).</li>` +
+        `<li><b>The altimeter</b> reads the air pressure, finds apogee where it stops falling, and fires the charges. A second altimeter on its own battery and switch backs up the first, set to fire a second or two later and a little lower, so the two charges don't fire at once. Tripoli requires two fully separate systems at Level 3. The motor's ejection charge, set to fire after apogee, can be the last backup.</li>` +
+        `<li><b>Mach lockout.</b> Near the speed of sound the air pressure around the rocket jumps, and a barometric altimeter can read it as apogee and fire early, at full speed. Altimeters let you ignore the pressure for a set time after liftoff: set it past the time the rocket is above Mach 0.8.</li>` +
+        `<li><b>Static ports.</b> The altimeter bay needs holes so the pressure inside follows the air outside: follow your altimeter maker's rule for their size, and use three or four around the bay so a side wind doesn't fool it.</li>` +
+        `<li><b>Charges and shear pins.</b> Each charge must break the shear pins and push the section apart, but not so hard it damages the rocket. Size it, then ground test it in the real rocket before flying.</li></ul>` +
+        `<p>Two failures to plan for: a charge that fires while the rocket is still fast (a zipper, where the shock cord slices the airframe), and a main that opens too high (long drift) or too low (not open in time).</p>` +
+        tryIt(
+          "in the builder, set the drogue to open at apogee and the main at a height. The RSO Checklist rates the drogue and landing speeds and the main's opening load, and gives the Mach lockout time; the Ejection Charge Calculator sizes the charges.",
+        ),
+    },
+    {
+      id: "flutter",
+      group: "Mid & high power",
+      title: "Fin flutter and strength",
+      sub: "Why fins fail near Mach 1, and what stiffens them",
+      html:
+        `<p>Fin flutter is a fin twisting and bending back and forth in the airflow, faster and further each cycle, until it breaks off. It needs no flaw in the fin: above a certain speed the air feeds the vibration more energy than the fin can soak up. That is its <b>flutter speed</b>.</p>` +
+        FLUTTER +
+        `<p>The app estimates it with Martin's criterion (NACA TN 4197, 1958), which NACA wrote as a first check for missile fins:</p>` +
+        `<p class="eq">V<sub>f</sub> = a √( G / ( 1.337 · AR³ · p · (λ + 1) / ((AR + 2) · (t/c)³) ) )</p>` +
+        `<p>a is the speed of sound and p the air pressure where the rocket is; G is the fin material's shear modulus (how hard it is to twist); AR is the fin's aspect ratio (span² / area); λ the tip chord over the root chord; t/c its thickness over its root chord.</p>` +
+        `<ul><li><b>Thickness matters most:</b> the flutter speed grows with (t/c) to the power 1.5, so 25% thicker fins flutter about 40% faster.</li>` +
+        `<li><b>A stiffer material</b> raises it with √G: in the app's table, G-10 fiberglass fins flutter at about twice the speed of plywood ones. Wood and woven cloth twist much more easily than their bending stiffness suggests, which the app allows for.</li>` +
+        `<li><b>A shorter span</b> (lower aspect ratio) and <b>more taper</b> help. Tip-to-tip cloth over the fins stiffens them most of all.</li>` +
+        `<li><b>Thin air helps:</b> higher up, the lower pressure raises the flutter speed, so the risk is greatest at burnout low down.</li></ul>` +
+        `<p>The estimate is rough and meant to be cautious: real materials vary, and the method doesn't model a fin's attachment. Treat 80% of the flutter speed as the line to stay under.</p>` +
+        tryIt(
+          "set each fin set's material and thickness in the builder. The RSO Checklist's Fin flutter row shows the flight's peak airspeed as a share of the flutter speed; try a thicker fin or G-10 and watch it fall.",
+        ),
+    },
+    {
+      id: "mach",
+      group: "Mid & high power",
+      title: "Flying through Mach 1",
+      sub: "What changes in drag and stability, and in the prediction",
+      html:
+        `<p>Many high-power flights pass the speed of sound. Through Mach 0.8 to 1.2 the air around the rocket changes character, and several things change with it at once.</p>` +
+        SHOCK +
+        `<ul><li><b>Drag rises steeply.</b> Shock waves form on the nose and fins, and Cd can double between Mach 0.8 and just past 1, then eases off. A motor that pushes the rocket only just past Mach 1 often buys surprisingly little extra height.</li>` +
+        `<li><b>Stability shifts.</b> The CP moves as the fins' lift changes through the transonic range. Well past Mach 1 the fins lose lift faster than the nose does, so the CP creeps forward and the margin shrinks. Check the stability at top speed, not only on the pad.</li>` +
+        `<li><b>Shape matters more.</b> Thin fins with sharp or beveled edges, a long pointed nose (a Von Kármán or ogive), and few bumps cut the wave drag. Square fin edges cost the most here.</li>` +
+        `<li><b>Loads and heat.</b> Fins, nose and joints carry their highest loads near top speed. Flutter is likeliest here; past Mach 2 the skin also heats noticeably.</li>` +
+        `<li><b>Barometric altimeters</b> can be fooled by the pressure jump: use a Mach lockout.</li>` +
+        `<li><b>The prediction is least certain.</b> No theory covers the transonic range, so every simulator works from measurements there. The app's measured accuracy is shown by speed band in the Technical level's Validation chapter, and the ± on Results widens to match.</li></ul>` +
+        tryIt(
+          "the Wind Tunnel on the Rocket tab plots Cd and the CP against Mach. Results shows the top Mach, and the RSO Checklist flags the transonic window, the Mach lockout time and the flutter margin.",
+        ),
+    },
+    {
+      id: "staging",
+      group: "Mid & high power",
+      title: "Staging and airstarts",
+      sub: "Separation, ignition timing and the rules",
+      html:
+        `<p>A staged rocket carries a second motor up before lighting it, so it starts higher and lighter. An airstart is any motor lit in flight: the sustainer of a two-stage rocket, or the outer motors of a cluster lit after the center one.</p>` +
+        STAGE +
+        `<ul><li><b>Model rockets</b> often stage directly: the booster's burnout flame lights the sustainer through the joint, with no electronics.</li>` +
+        `<li><b>High-power stages</b> separate (by drag, or a small charge), and the sustainer is lit by electronics after a set time or at a set height.</li>` +
+        `<li><b>Lockouts</b> keep a sustainer from lighting if something went wrong: staging altimeters can refuse to fire below a set height, or when the rocket is tilted past a set angle (a sustainer lit pointing sideways goes where it points).</li>` +
+        `<li><b>The booster needs recovery too.</b> It falls from separation and needs its own chute or streamer.</li>` +
+        `<li><b>Coast time</b> trades off: a longer coast before lighting the sustainer saves drag, but the rocket slows, tilts in the wind and loses stability before the sustainer gets it moving again.</li></ul>` +
+        `<p><b>The rules.</b> All motors count together toward the FAA's limits and the safe distances: the NAR's High Power Safety Code puts staged and clustered rockets in a "complex" column with larger distances (for a K motor, 300 ft rather than 200). Tripoli's Unified Safety Code says the order to arm at the pad: recovery electronics first, then staging, then the launch igniter. Tripoli doesn't allow staged or clustered rockets for Level 1 or Level 3 certification; the NAR allows them for Level 2 up to 5,120 N·s, with at least one J, K or L motor. Many ranges ask to review a staged flight before it flies.</p>` +
+        `<p class="note">Rules checked in November 2026 in the <a href="https://www.nar.org/?p=74" target="_blank" rel="noopener">NAR High Power Rocket Safety Code</a> and the <a href="https://tripoli.org/safety" target="_blank" rel="noopener">Tripoli Unified Safety Code</a>.</p>` +
+        tryIt(
+          "add a booster in the builder and pick both motors on the Motor tab; Sustainer ignition lockouts are on the Range tab. Results shows the sustainer's ignition height and tilt, and the booster's own flight down.",
+        ),
+    },
+    {
+      id: "altimeter",
+      group: "Mid & high power",
+      title: "Reading your altimeter",
+      sub: "Flight vs prediction: what each difference points at",
+      html:
+        `<p>An altimeter turns a prediction into a check. Compare the flight with the prediction event by event, and each difference points at a different cause.</p>` +
+        LOGFIG +
+        `<ul><li><b>Top speed off by more than a few percent:</b> drag hardly changes the boost, so look at the weight (weigh the rocket) or the motor (a different delay grain or reload, or a hot or cold motor).</li>` +
+        `<li><b>Boost right, apogee off:</b> the coast is where drag shows. The real rocket losing more height than predicted points at more drag: a rougher finish, rail buttons, seams, fin edges. Calibrating the drag to the flight corrects the rest of that rocket's predictions.</li>` +
+        `<li><b>Charge before apogee:</b> the logged top altitude isn't a full apogee. The rocket came apart still climbing; compare the coast up to the charge instead, and pick a longer delay next time.</li>` +
+        `<li><b>Charge well after apogee:</b> the rocket was falling, which is harder on the recovery.</li>` +
+        `<li><b>Acceleration at the altimeter's limit:</b> many small altimeters read acceleration only to about 23 g, and work out top speed from it. A flight that pulls harder reads low on both.</li>` +
+        `<li><b>Barometric altimeters</b> turn pressure into height assuming a standard day. On a hot day the real height is higher than they say, by about 1% for every 3 °C (5 °F) above standard.</li></ul>` +
+        tryIt(
+          "import the altimeter's file in the Flight Log, or type in what its display showed, then tap Compare: the curves, each event's error and what the differences point at.",
+        ),
+    },
+    {
       id: "dragmodel",
-      group: "Going deeper",
+      group: "Technical",
       title: "The drag model",
       sub: "Each part, its method and its sources",
       html:
@@ -361,8 +593,73 @@ export function learnChapters() {
         `<p>The full reference, with every equation, the speed where each method hands over, every constant fitted to a measurement and the known gaps, is in the project's source: <a href="https://github.com/dustintlee-blahblah/PocketRocketFlightLab/blob/main/AERODYNAMICS.md" target="_blank" rel="noopener">AERODYNAMICS.md</a>, <a href="https://github.com/dustintlee-blahblah/PocketRocketFlightLab/blob/main/VALIDATION.md" target="_blank" rel="noopener">VALIDATION.md</a> and <a href="https://github.com/dustintlee-blahblah/PocketRocketFlightLab/blob/main/REFERENCES.md" target="_blank" rel="noopener">REFERENCES.md</a>.</p>`,
     },
     {
+      id: "stabmodel",
+      group: "Technical",
+      title: "The stability model",
+      sub: "Barrowman, body lift, fin–body carryover",
+      html:
+        `<p>Stability comes from where the air's sideways force acts when the rocket flies at a small angle to the airflow (the angle of attack, α). Each part makes a normal force that grows with α, at a slope C<sub>Nα</sub> and acting at its own point; the CP is their weighted average.</p>` +
+        CPFIG +
+        `<p class="eq">x<sub>CP</sub> = Σ C<sub>Nα,i</sub> x<sub>i</sub> / Σ C<sub>Nα,i</sub>&nbsp;&nbsp;&nbsp; static margin = (x<sub>CP</sub> − x<sub>CG</sub>) / d</p>` +
+        `<ul><li><b>Nose, shoulders and boattails:</b> Barrowman's slender-body theory (1966–67): C<sub>Nα</sub> = 2(A<sub>2</sub> − A<sub>1</sub>)/A<sub>ref</sub> at each section's centroid. A nose gives 2; a boattail gives a negative slope, pulling the CP forward. Above Mach 1 the nose and the body behind it follow measured charts for ogive- and cone-cylinders (MIL-HDBK-762).</li>` +
+        `<li><b>Fins below Mach 0.9:</b> Diederich's lift-slope formula with the Prandtl–Glauert correction, as Barrowman uses it, worked strip by strip so any outline works; the CP at a quarter of the mean chord.</li>` +
+        `<li><b>Fins above Mach 1.5:</b> linear supersonic theory (Ackeret), K/β with a tip loss, β = √(M² − 1); blended between 0.9 and 1.5. The fin lift falls as 1/β, which is why the CP moves forward at high Mach.</li>` +
+        `<li><b>Fins and body together:</b> the body between the fins raises their lift by Barrowman's 1 + r/(s + r). Above Mach 0.9, the fins' lift carried onto the body comes from Pitts, Nielsen and Kaattari (NACA Report 1307).</li>` +
+        `<li><b>Body lift across the flow:</b> at larger angles the body's side area adds lift, K·(side area/A<sub>ref</sub>)·sin²α with K = 1.1, acting mid-body. It moves the CP back as α grows, so the static CP is quoted at a typical 2°.</li>` +
+        `<li><b>Five or more fins</b> shield each other (OpenRocket's factors); fins stall from about 18° to 35°.</li></ul>` +
+        `<p>The flight also needs <b>damping</b>: how quickly a swing dies out. The app works out pitch and roll damping from the same parts, so a rocket that is stable but under-damped weaves in the flight, as real ones do.</p>` +
+        `<p>Checked against wind-tunnel data: the Arcas sounding rocket's CP from Mach 0.6 to 4.6 (NASA TN D-4013 and D-4014) within 3.1% of body length on average.</p>` +
+        tryIt(
+          "the Wind Tunnel's CP against Mach, and the Results stability chart through the flight. AERODYNAMICS.md lists every term with its source.",
+        ),
+    },
+    {
+      id: "motion",
+      group: "Technical",
+      title: "Equations of motion and the atmosphere",
+      sub: "What is integrated, the time step, the standard atmosphere",
+      html:
+        `<p>The app flies the rocket as a rigid body with six degrees of freedom: three for where it is and three for which way it points.</p>` +
+        `<ul><li><b>The state</b> is the position, the velocity, the rocket's axis (as a direction), and its pitch, yaw and roll rates. Mass, the CG and the moments of inertia change as the motor burns.</li>` +
+        `<li><b>Forces:</b> thrust along the axis (with any misalignment you set); gravity, falling off with height above sea level; drag along the airflow and the normal force across it, from the airspeed relative to the wind; and the earth's rotation (Coriolis), from the site's latitude.</li>` +
+        `<li><b>Moments:</b> the normal force acting at the CP, about the CG, turns the rocket into the airflow; damping slows the swing; fin cant spins it.</li>` +
+        `<li><b>Integration:</b> a fourth-order Runge–Kutta step, 0.002 s on the rail and under power, 0.01 s coasting and up to 0.2 s under a chute, shortened while a canopy fills or the drag changes quickly.</li>` +
+        `<li><b>Phases:</b> on the rail (guided until the rocket leaves it), free flight (tumbling if it goes unstable), and under drogue and main. Lower stages drop away and are flown down on their own.</li></ul>` +
+        `<p class="eq">m dv/dt = T + m g + D + N + F<sub>Coriolis</sub>&nbsp;&nbsp;&nbsp; I dω/dt = M<sub>aero</sub> + M<sub>damping</sub></p>` +
+        ATMFIG +
+        `<p><b>The atmosphere</b> is the U.S. Standard Atmosphere 1976 to 86 km, shifted to the field's own temperature and pressure. The shift holds through the troposphere and fades out between 11 and 15 km, where a season's warmth or cold is gone (U.S. Standard Atmosphere Supplements, 1966). Humidity lowers the density a little and raises the speed of sound (through the virtual temperature); viscosity follows Sutherland's law. A forecast's temperatures aloft replace the standard ones where they reach.</p>` +
+        `<p><b>Wind</b> grows with height (by a profile you pick, or the forecast's winds aloft), with gusts, and the rocket turns into it off the rail.</p>` +
+        tryIt(
+          "Results' charts show the flight as it was integrated, and Export CSV writes it out step by step for your own analysis.",
+        ),
+    },
+    {
+      id: "validation",
+      group: "Technical",
+      title: "Validation",
+      sub: "Measured flights by speed band, mean and σ",
+      html:
+        `<p>How far to trust a simulation is a measurement, not a feeling. The app is checked against real flights with recorded apogees, wind-tunnel data and other simulators, and the flights it was never tuned on count most.</p>` +
+        VALFIG +
+        `<div class="tblwrap"><table><thead><tr><th>Top speed</th><th>Flights</th><th>Mean</th><th>σ</th><th>1σ range</th><th>90% range</th></tr></thead><tbody>` +
+        B.map(
+          (b) =>
+            `<tr><td>${b.lo === 0 ? "below Mach 0.8" : b.hi > 9 ? "above Mach " + b.lo : "Mach " + b.lo + "–" + b.hi}</td><td>${b.n}</td><td>${pctTxt(b.mean)}</td><td>${(b.sd * 100).toFixed(1)}%</td><td>${pctTxt(b.mean - b.k68 * b.sd)} to ${pctTxt(b.mean + b.k68 * b.sd)}</td><td>${pctTxt(b.mean - b.k90 * b.sd)} to ${pctTxt(b.mean + b.k90 * b.sd)}</td></tr>`,
+        ).join("") +
+        `</tbody></table></div>` +
+        `<p>The table is where real apogees landed against the app's prediction (negative: lower), over ${APO_ACCURACY.flights} flights from Mach 0.55 to 3.6 measured by altimeters, GPS, accelerometers and optical tracking. With this few flights the ranges are prediction intervals for one more flight: Student's t for that many flights, widened by √(1 + 1/n). They are the ranges behind the ± on Results and the waiver check, and they are worked out again from the flights whenever flights are added.</p>` +
+        `<ul><li><b>Below Mach 0.8</b> the app is closest: drag here is mostly friction and base drag, both well measured.</li>` +
+        `<li><b>Mach 0.8 to 1.2</b> is the hardest band for every simulator: shocks come and go, and only measurements cover it. One flight (Raven, 22% under its prediction) sets much of this band's spread.</li>` +
+        `<li><b>Above Mach 1.2</b> the app has tended to predict high. The cause is being looked for in the drag model itself, rather than covered with a correction factor.</li></ul>` +
+        `<p>Other checks: drag against NACA and NASA wind-tunnel and free-flight data within about 6% from Mach 1.2 to 3; the Arcas CP within 3.1% of length; and OpenRocket's own example files flown side by side.</p>` +
+        tryIt(
+          "log your own flights in the Flight Log and tap Compare: for your rocket, they are the best check of all. VALIDATION.md has every flight and comparison above, and how to run them yourself.",
+        ) +
+        `<p><a href="https://github.com/dustintlee-blahblah/PocketRocketFlightLab/blob/main/VALIDATION.md" target="_blank" rel="noopener">VALIDATION.md</a></p>`,
+    },
+    {
       id: "reading",
-      group: "Going deeper",
+      group: "Technical",
       title: "Further reading",
       sub: "Where to go next",
       html:

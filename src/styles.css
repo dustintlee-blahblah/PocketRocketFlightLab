@@ -3809,3 +3809,12 @@ table.cmpt {
 .flgrid.fl2 .fld label {
   font-size: 0.78rem;
 }
+.learn .learnlv {
+  margin: 10px 0 0;
+}
+.learn .lvnote {
+  margin: 0 0 10px;
+}
+.apogee .tol {
+  cursor: pointer;
+}
