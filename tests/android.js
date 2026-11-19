@@ -61,10 +61,12 @@ const shot = (name) => {
 
 /** Java crashes and the page's console errors in the device log since it was cleared */
 function deviceErrors() {
-  const log = adbQuiet("logcat", "-d", "-v", "brief", "AndroidRuntime:E", "chromium:I", "*:S");
+  const log = adbQuiet("logcat", "-d", "-v", "brief", "AndroidRuntime:E", "chromium:I", "PocketRocket:W", "*:S");
   const out = [];
   for (const line of log.split("\n")) {
     if (/FATAL EXCEPTION|Process: com\.dustinlee/.test(line)) out.push(line.trim());
+    // the page's process ending counts even when the app starts the page again
+    if (/page process ended|Renderer process \(\d+\) crash detected/.test(line)) out.push(line.trim());
     if (/CONSOLE.*(Uncaught|TypeError|ReferenceError|SyntaxError)/.test(line)) out.push(line.trim());
   }
   return out;
@@ -85,6 +87,13 @@ function deviceDiag(why) {
     )
     .slice(-50);
   for (const l of keep) console.log("       " + l.trim().slice(0, 240));
+  // a native crash's stack: which library it was in (the WebView's, the emulator's graphics, ...)
+  const frames = log
+    .split("\n")
+    .filter((l) => /F\/DEBUG.*(#\d+ pc|signal \d+|Abort message|Cmdline|backtrace)/.test(l))
+    .slice(0, 40);
+  if (frames.length) console.log("       native crash:");
+  for (const l of frames) console.log("       " + l.trim().slice(0, 240));
   const mem = adbQuiet("shell", "cat", "/proc/meminfo")
     .split("\n")
     .filter((l) => !/Scheduling restart of crashed service|Rescheduling restart/.test(l))

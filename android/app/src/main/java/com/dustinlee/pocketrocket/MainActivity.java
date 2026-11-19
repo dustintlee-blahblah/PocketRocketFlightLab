@@ -17,6 +17,7 @@
  */
 package com.dustinlee.pocketrocket;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -27,11 +28,15 @@ import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.graphics.Rect;
+import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -53,17 +58,32 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         // debug builds only: lets the device test (tests/android.js) drive the page over the WebView's DevTools socket
         if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
+        buildWeb();
+        try {
+            String u = getSharedPreferences("files", 0).getString("source", null);
+            if (u != null && u.length() > 0) sourceUri = Uri.parse(u);
+        } catch (Exception e) { sourceUri = null; }
+        // a file shared to the app (or opened with it) from another app
+        if (state == null) takeIntent(getIntent());
+        if (state != null) web.restoreState(state);
+        else web.loadUrl("file:///android_asset/index.html");
+    }
+
+    // the WebView and its settings; called again if the page's process ends (see onRenderProcessGone)
+    void buildWeb() {
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         web.setWebChromeClient(new Chrome(this));
+        web.setWebViewClient(new Client());
         web.addJavascriptInterface(new Bridge(this), "PocketRocketApp");
         setContentView(web);
         // tell the page when the on-screen keyboard opens or closes, so it can bring the launch bar back
         web.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             public void onGlobalLayout() {
+                if (web == null) return;
                 Rect r = new Rect();
                 web.getWindowVisibleDisplayFrame(r);
                 int full = web.getRootView().getHeight();
@@ -74,14 +94,49 @@ public class MainActivity extends Activity {
                 }
             }
         });
-        try {
-            String u = getSharedPreferences("files", 0).getString("source", null);
-            if (u != null && u.length() > 0) sourceUri = Uri.parse(u);
-        } catch (Exception e) { sourceUri = null; }
-        // a file shared to the app (or opened with it) from another app
-        if (state == null) takeIntent(getIntent());
-        if (state != null) web.restoreState(state);
-        else web.loadUrl("file:///android_asset/index.html");
+    }
+
+    // times the page has been restarted, for the limit in onRenderProcessGone
+    final java.util.ArrayList<Long> restarts = new java.util.ArrayList<>();
+
+    class Client extends WebViewClient {
+        // links leave the app as they did before the app had a WebViewClient: web pages, mail and maps open in the
+        // app that handles them; the app's own pages (file:, and the page's blob: and data: links) stay here
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+            if (!req.isForMainFrame()) return false;
+            String sch = req.getUrl().getScheme();
+            if (sch == null || sch.equals("file") || sch.equals("about") || sch.equals("blob") || sch.equals("data")
+                    || sch.equals("javascript")) return false;
+            try { startActivity(new Intent(Intent.ACTION_VIEW, req.getUrl())); }
+            catch (Exception e) { toast("No app is installed to open this link."); }
+            return true;
+        }
+
+        // The page runs in its own process, which Android may end (short of memory) or which may crash (a graphics
+        // driver, say). Without this the app closes with it; instead the page is started again, as when the app
+        // opens (designs and settings are kept in the page's storage). More than 3 restarts in a minute and the app
+        // closes rather than loop.
+        @TargetApi(26)
+        @Override
+        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail d) {
+            if (view != web) return true;
+            long now = System.currentTimeMillis();
+            while (!restarts.isEmpty() && now - restarts.get(0) > 60000) restarts.remove(0);
+            restarts.add(now);
+            android.util.Log.w("PocketRocket", "page process ended (" + (d.didCrash() ? "crashed" : "closed by Android")
+                    + "), restart " + restarts.size());
+            if (restarts.size() > 3) return false;
+            ViewGroup parent = (ViewGroup) view.getParent();
+            if (parent != null) parent.removeView(view);
+            view.destroy();
+            web = null;
+            buildWeb();
+            web.loadUrl("file:///android_asset/index.html");
+            toast(d.didCrash() ? "The page stopped unexpectedly and was reopened."
+                    : "The page was closed to free memory and was reopened.");
+            return true;
+        }
     }
 
     @Override
