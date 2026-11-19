@@ -38,6 +38,14 @@ const adbQuiet = (...a) => {
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const problems = [];
+// a run that stops early (a promise left waiting with nothing else to do) must not pass
+let finished = false;
+process.on("exit", (code) => {
+  if (!finished && code === 0) {
+    console.log("FAIL the test stopped before it finished");
+    process.exitCode = 1;
+  }
+});
 const fail = (what) => {
   console.log("  FAIL " + what);
   problems.push(what);
@@ -167,6 +175,7 @@ async function main() {
       fail("debug app: no WebView DevTools socket (is WebView debugging on in debug builds?)");
     } else {
       adb("forward", "tcp:9333", "localabstract:" + sock);
+      console.log("  ..   connecting to the WebView over DevTools (" + sock + ")");
       // Android WebView's DevTools has no browser contexts, which Playwright's connectOverCDP sets up first, so the
       // page is driven over plain DevTools messages instead
       const errs = [];
@@ -177,7 +186,7 @@ async function main() {
       await page.addInitScript(`window.PR_EXPOSE = true; window.PR_NO_ASK = true;
         localStorage.setItem("rfs-disclaimer-v2", JSON.stringify({ accepted: true, version: "2026-11-02" }));
         sessionStorage.setItem("rfs-splash", "1");`);
-      await page.evaluate(() => location.reload());
+      await page.reload();
       await sleep(6000);
       const pg = page;
 
@@ -278,6 +287,7 @@ async function main() {
     console.log(`${problems.length} problem(s)`);
     process.exit(1);
   }
+  finished = true;
   console.log("no problems");
 }
 
@@ -285,16 +295,35 @@ async function main() {
 // clicks the first visible match as a tap would (counted as a user's gesture, so a file picker may open);
 // onError gets uncaught page errors.
 async function cdpPage(base, onError) {
-  const list = await (await fetch(base + "/json")).json();
+  const within = (pr, ms, what) => {
+    let t;
+    return Promise.race([
+      pr,
+      new Promise((_, no) => (t = setTimeout(() => no(new Error(`no answer in ${ms / 1000} s: ${what}`)), ms))),
+    ]).finally(() => clearTimeout(t));
+  };
+  const list = await within(
+    fetch(base + "/json").then((r) => r.json()),
+    30000,
+    "the WebView's DevTools page list",
+  );
   const t = list.find((x) => x.type === "page") || list[0];
   if (!t) throw new Error("no page in the WebView's DevTools list");
   const ws = new WebSocket(t.webSocketDebuggerUrl);
-  await new Promise((ok, no) => {
-    ws.onopen = ok;
-    ws.onerror = () => no(new Error("couldn't open the WebView's DevTools connection"));
-  });
+  await within(
+    new Promise((ok, no) => {
+      ws.onopen = ok;
+      ws.onerror = () => no(new Error("couldn't open the WebView's DevTools connection"));
+    }),
+    30000,
+    "opening the WebView's DevTools connection",
+  );
   let id = 0;
   const waiting = new Map();
+  ws.onclose = () => {
+    for (const w of waiting.values()) w.no(new Error("the WebView closed its DevTools connection"));
+    waiting.clear();
+  };
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.id && waiting.has(m.id)) {
@@ -307,10 +336,14 @@ async function cdpPage(base, onError) {
     }
   };
   const send = (method, params = {}) =>
-    new Promise((ok, no) => {
-      waiting.set(++id, { ok, no });
-      ws.send(JSON.stringify({ id, method, params }));
-    });
+    within(
+      new Promise((ok, no) => {
+        waiting.set(++id, { ok, no });
+        ws.send(JSON.stringify({ id, method, params }));
+      }),
+      60000,
+      method,
+    );
   await send("Runtime.enable");
   await send("Page.enable");
   const run = async (expr) => {
@@ -329,6 +362,7 @@ async function cdpPage(base, onError) {
   return {
     evaluate: (fn) => run(`(${fn})()`),
     addInitScript: (src) => send("Page.addScriptToEvaluateOnNewDocument", { source: src }),
+    reload: () => send("Page.reload"),
     async click(sel) {
       const ok = await run(`(() => {
         const el = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.offsetParent !== null);
