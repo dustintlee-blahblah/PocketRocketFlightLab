@@ -1,5 +1,6 @@
 # Checks every push and every pull request: formatting, lint, the regression, smoke and save-and-reopen tests, the drag benchmarks,
-# the phone-size walkthrough (its light and dark screenshots kept as the walkthrough-screenshots artifact),
+# the phone-size walkthrough (its light and dark screenshots kept for 7 days as the walkthrough-screenshots artifact when
+# a test fails),
 # and that the Android app builds.
 
 name: Check
@@ -30,6 +31,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends poppler-utils
 
       - name: Formatting
         run: npm run format:check
@@ -55,22 +57,33 @@ jobs:
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag
 
+      - name: Inputs drive the outputs (Range, Motor and builder fields; strange values leave nothing broken)
+        run: node tests/inputs.js
+
+      - name: Exports read back (PDF report, flight data CSV, Flight Log backup and CSV, Save a copy)
+        run: node tests/exports.js
+
       - name: Walkthrough at phone size (every screen in light and dark; no errors, nothing too wide, no blank chart)
         run: node tests/walkthrough.js
 
       - name: Keep the walkthrough's screenshots
-        if: always()
+        # only when something failed: that's when they're worth looking at, and they'd only take up storage otherwise
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: walkthrough-screenshots
-          path: test-results/walkthrough
+          path: |
+            test-results/walkthrough
+            test-results/exports
           if-no-files-found: ignore
+          retention-days: 7
 
       - name: Keep the built page
         uses: actions/upload-artifact@v4
         with:
           name: pocket-rocket-flight-lab-html
           path: web/pocket-rocket-flight-lab.html
+          retention-days: 7
 
   android:
     name: Android app builds
@@ -103,6 +116,7 @@ jobs:
         with:
           name: app-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
 
       # only where the signing secrets exist (this repository, not forks or pull requests from them): catches signing
       # problems before a release does

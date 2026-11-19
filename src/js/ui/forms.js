@@ -152,6 +152,53 @@ export const FIELDS = {
   "g-motortemp": [["motorDT", "Motor temperature above air", "dtemp", "L", 0]],
 };
 /**
+ * The range each Range-tab number can take, in the app's own units (metres, °C, pascals, fractions for %). A value
+ * typed outside it is held at the nearer end and the field shows what is used: a rocket can't launch from 1,000 km up
+ * or in a 1,000 mph wind, and simulating one only gives a misleading answer. The ends are wide: the highest launch
+ * sites and the hardest weather a club would fly in, with room to spare.
+ */
+const FIELD_LIMITS = {
+  ignMinAlt: [0, 100000],
+  ignMaxTilt: [0, 90],
+  mcN: [10, 1000],
+  mcWind: [0, 1],
+  mcDir: [0, 180],
+  mcImp: [0, 0.5],
+  mcMass: [0, 0.5],
+  mcBal: [0, 0.5],
+  mcCd: [0, 1],
+  mcAngle: [0, 30],
+  mcMis: [0, 10],
+  mcDelay: [0, 1],
+  mcChute: [0, 1],
+  mcThermal: [0, 10],
+  thrustMis: [0, 10],
+  finMis: [0, 10],
+  cgOff: [0, 0.1],
+  elev: [-500, 6000],
+  waiver: [0, 200000],
+  recRadius: [0, 100000],
+  rail: [0.1, 50],
+  angle: [0, 45],
+  railDir: [-360, 720],
+  cone: [0, 90],
+  tempC: [-50, 60],
+  pressure: [40000, 110000],
+  humidity: [0, 1],
+  dewC: [-80, 60],
+  wind: [0, 45],
+  windRef: [0.5, 1000],
+  windDir: [-360, 720],
+  turb: [0, 1],
+  ceiling: [0, 20000],
+  cloudLow: [0, 1],
+  cloudMid: [0, 1],
+  cloudHigh: [0, 1],
+  vis: [0, 200000],
+  precip: [0, 1],
+  motorDT: [-60, 60],
+};
+/**
  * Draws every form group in FIELDS with the current values and units, and the notes that go with them.
  */
 export function renderForms() {
@@ -224,6 +271,20 @@ export function renderForms() {
           changed();
         });
       } else {
+        // leaving the field: a value held at the end of its range shows what is used, and says so
+        el.addEventListener("change", () => {
+          const v = parseFloat(el.value),
+            lim = FIELD_LIMITS[k];
+          if (!lim || !isFinite(v) || dim === "int" || O[k] == null) return;
+          const raw = fromDisp(v, dim);
+          if (raw >= lim[0] - 1e-9 && raw <= lim[1] + 1e-9) return;
+          el.value = +toDisp(O[k], dim).toFixed(dim === "temp" ? 1 : (DIMS[units][dim]?.[2] ?? 2));
+          el.dataset.shown = el.value;
+          if (window.prToast)
+            prToast(
+              `${lab}: ${el.value} ${dim === "pct" ? "%" : uname(dim)} is the ${raw > lim[1] ? "most" : "least"} the simulation takes.`,
+            );
+        });
         el.addEventListener("input", () => {
           const v = parseFloat(el.value);
           if (el.value.trim() === "" && ["pressure", "humidity", "dewC"].includes(k)) {
@@ -234,6 +295,8 @@ export function renderForms() {
           } // cleared: back to standard air
           if (!isFinite(v)) return;
           O[k] = dim === "int" ? Math.max(1, Math.round(v)) : fromDisp(v, dim);
+          const lim = FIELD_LIMITS[k];
+          if (lim && !(k === "pressure" && O[k] === 0)) O[k] = Math.min(lim[1], Math.max(lim[0], O[k]));
           // the dispersion spreads don't change the flight itself: keep the results, just remember the setting
           if (RANGE_KEYS.includes(k)) {
             store.set("rfs-launch", L);

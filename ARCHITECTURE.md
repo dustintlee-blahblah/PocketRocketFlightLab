@@ -319,17 +319,27 @@ with the fonts and PDF library switched to bundled copies.
 - `tests/roundtrip.js` changes every editor field of every builder part through the real input, saves with the app's own
   save, reopens with its own open, and fails if a field was lost or the flight changed. A new part type goes in `TYPES`
   at its top; a field that legitimately reads back differently goes in `SAME`, with the reason.
+- `tests/inputs.js` types into the fields as a person would and checks the results move the way physics says: a higher
+  or hotter field or lower pressure raises the apogee; wind adds drift and lowers it; a longer rail is faster off it;
+  a tilted rail, a misaligned motor or fin; the waiver and recovery-area checks; a bigger motor found through the
+  Motor tab's search; and the builder's parachute, fin, body and nose sizes on a new design. The direction is tested,
+  not the amount (golden.js watches amounts). Then every Range-tab number gets 0, a negative, a huge number, nothing
+  and letters, and Results must show no NaN, undefined or Infinity.
+- `tests/exports.js` reads back what the app writes, through its buttons: each example's PDF report (pages, its text
+  has the rocket, motor and the apogee Results shows, no NaN; its pages drawn to test-results/exports), the flight data
+  CSV (every column numeric, time forward, its highest altitude the apogee), the Flight Log's backup (export, empty,
+  import: the same flights) and CSV, and Save a copy (reopened, the same apogee). Needs poppler-utils.
 - `tests/walkthrough.js` goes through every screen at phone width (412 px) in light and dark: each tab with its panels
   opened, each part of the builder, the add-a-part and library windows, Results with the recovery plan, Monte Carlo
   and the animation, the Flight Log's forms, an altimeter log and Flight vs prediction, settings, Learn, About and the
   legal text. It fails on a page or console error, on anything wider than the screen (outside something meant to scroll
   sideways), and on a visible chart that was never drawn. Its screenshots (test-results/walkthrough, with an index.html
-  to compare light and dark) are kept from every Check run as the walkthrough-screenshots artifact. A new screen or
+  to compare light and dark) are kept for 7 days as the walkthrough-screenshots artifact when a Check run fails. A new screen or
   window goes in its `SCREENS` list.
 - `tests/android.js` runs on an Android emulator after each release (`.github/workflows/device.yml`): the release APK is
   installed, opened and watched for crashes; a debug build of the same commit, whose WebView opens its DevTools socket,
   is driven through a simulation, a design file opened with Android's own file picker, and an altimeter log shared to
-  the app. Screenshots from the device are kept as the android-screenshots artifact.
+  the app. Screenshots from the device are kept (7 days, as android-screenshots) when it fails.
 - `tests/drag-benchmarks.js` compares the drag model with published wind-tunnel and free-flight measurements.
 - `validation/` checks the app against OpenRocket and NASA's Arcas wind-tunnel data; VALIDATION.md has the results.
-- The regression, smoke, save-and-reopen, walkthrough and drag tests run on every push and pull request (`.github/workflows/check.yml`), with lint, formatting and an Android build.
+- The regression, smoke, save-and-reopen, inputs, exports, walkthrough and drag tests run on every push and pull request (`.github/workflows/check.yml`), with lint, formatting and an Android build.

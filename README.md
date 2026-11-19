@@ -68,6 +68,8 @@ tests/golden-snapshot.json          the recorded results (examples and builder d
 tests/drag-benchmarks.js            the drag model against published NACA measurements
 tests/smoke.js                      clicks through the tabs and controls; fails on any page error or an empty screen
 tests/roundtrip.js                  changes every field of every builder part, saves, reopens and compares
+tests/inputs.js                     each input moves the results the way physics says; odd values break nothing
+tests/exports.js                    PDF report, flight data CSV, Flight Log backup and Save a copy, read back
 tests/walkthrough.js                every screen at phone size in light and dark: screenshots; fails on errors, overflow, blank charts
 tests/android.js                    the Android app on an emulator: opens, runs, opens a design file, takes a shared log
 tools/set-build.js                  sets the build number everywhere it appears

@@ -1,7 +1,7 @@
 # The Android app on an Android emulator (tests/android.js): after each release, the release's own APK is installed,
 # opened and watched for crashes; then a debug build of the same commit is driven through a simulation, a design file
-# opened through Android's file picker, and an altimeter log shared to the app. Screenshots from the device are kept as
-# the android-screenshots artifact. Run it by hand too (Actions > Device test > Run workflow): it then tests the
+# opened through Android's file picker, and an altimeter log shared to the app. Screenshots from the device are kept for 7
+# days as the android-screenshots artifact when the test fails. Run it by hand too (Actions > Device test > Run workflow): it then tests the
 # latest release.
 
 name: Device test
@@ -75,9 +75,11 @@ jobs:
           script: node tests/android.js --release rel/PocketRocketFlightLab.apk --debug android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Keep the device's screenshots
-        if: always()
+        # only when something failed: that's when they're worth looking at, and they'd only take up storage otherwise
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: android-screenshots
           path: test-results/android/*.png
           if-no-files-found: ignore
+          retention-days: 7

@@ -18,6 +18,8 @@
     "test:coast": "node build.js && node tests/coast.js",
     "test:altimeters": "node build.js && node tests/altimeter-logs.js",
     "test:walkthrough": "node build.js && node tests/walkthrough.js",
+    "test:inputs": "node build.js && node tests/inputs.js",
+    "test:exports": "node build.js && node tests/exports.js",
     "validate:arcas": "node build.js && node validation/arcas.js",
     "validate:openrocket": "node build.js && node validation/openrocket.js",
     "validate:accuracy": "node build.js && node validation/accuracy.js",
