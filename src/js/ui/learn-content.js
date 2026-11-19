@@ -513,7 +513,7 @@ export function learnChapters() {
       html:
         `<p>An altimeter turns a prediction into a check. Compare the flight with the prediction event by event, and each difference points at a different cause.</p>` +
         LOGFIG +
-        `<ul><li><b>Top speed off by more than a few percent:</b> drag hardly changes the boost, so look at the weight (weigh the rocket) or the motor (a different delay grain or reload, or a hot or cold motor).</li>` +
+        `<ul><li><b>Top speed off by more than a few percent:</b> drag hardly changes the boost, so look at the weight (weigh the rocket) or the motor (a different reload, or a hot or cold motor).</li>` +
         `<li><b>Boost right, apogee off:</b> the coast is where drag shows. The real rocket losing more height than predicted points at more drag: a rougher finish, rail buttons, seams, fin edges. Calibrating the drag to the flight corrects the rest of that rocket's predictions.</li>` +
         `<li><b>Charge before apogee:</b> the logged top altitude isn't a full apogee. The rocket came apart still climbing; compare the coast up to the charge instead, and pick a longer delay next time.</li>` +
         `<li><b>Charge well after apogee:</b> the rocket was falling, which is harder on the recovery.</li>` +
