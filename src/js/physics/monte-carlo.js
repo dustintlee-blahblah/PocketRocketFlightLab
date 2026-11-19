@@ -2,6 +2,7 @@
  * Landing dispersion (Monte Carlo): many flights with their inputs varied, their apogees and landing points, the
  * likely apogee range shown on the Results tab, and the landing-ellipse drawing.
  */
+import { APO_ACCURACY } from "../../data/apogee-accuracy.js";
 import { L, series, units } from "../design/defaults.js";
 import { simulate } from "./simulate.js";
 import { isThree } from "./staging.js";
@@ -249,34 +250,63 @@ export function mcBearing(angE) {
   return (((90 - (angE * 180) / Math.PI) % 180) + 180) % 180;
 }
 /* the likely apogee range: the flight-to-flight spread from the dispersion run (motor, delay, weight, drag, wind, rail),
-   combined (root-sum-square) with an allowance for the model itself. The model allowances are judgment figures from how
-   amateur rocket simulators generally compare with real flights, as 90% half-widths: 6% for a weighed rocket below Mach 0.8;
-   12% low and 7% high when the weight and CG are only estimated (built rockets usually come out heavier); 3% once the drag
-   has been calibrated to one of your own flights; plus 5% at Mach 0.8 or faster, where drag is least certain. */
+   combined (root-sum-square) with the model's own accuracy. The model's part comes from the measured flights in the
+   validation set (src/data/apogee-accuracy.js, written by validation/flights.js): for the flight's band of top speeds,
+   the mean and standard deviation of where real apogees landed against the prediction, as a prediction interval (Student's
+   t for that many flights), so the range is uneven where the app has tended to predict high or low; the predicted apogee
+   itself is not moved. Two parts aren't measured by those flights, which were weighed and not calibrated: an estimated
+   weight and CG add 10% low and 3.6% high at 90% (built rockets usually come out heavier than their parts add up to;
+   judgment figures), and a drag calibrated to one of your own flights replaces the band's figures with 3% at 90%. */
 /**
- * The likely apogee range: the dispersion run's spread combined with an allowance for the model itself.
+ * The likely apogee range: the dispersion run's spread combined with the model's measured accuracy for this speed.
  * @param {object} st the flight's summary (from simulate)
  * @param {object} D design
- * @returns {object|null} lo and hi (m), the percentages and what went into them; null without a valid flight
+ * @returns {object|null} lo and hi (m, about 90%), lo1 and hi1 (m, 1σ: about 2 flights in 3), the fractions and what
+ *   went into them; null without a valid flight
  */
 export function apoRange(st, D) {
   if (!st || st.error || !(st.maxAlt > 0)) return null;
   const cal = D.dragScale > 0 && Math.abs(D.dragScale - 1) > 1e-6,
     est = D.massKnown === false,
-    fast = (st.maxMach || 0) >= 0.8;
-  let mLo = cal ? 0.03 : est ? 0.12 : 0.06,
-    mHi = cal ? 0.03 : est ? 0.07 : 0.06;
-  if (fast) {
-    mLo = Math.hypot(mLo, 0.05);
-    mHi = Math.hypot(mHi, 0.05);
-  }
+    mach = st.maxMach || 0,
+    B = APO_ACCURACY.bands,
+    band = B.find((b) => mach >= b.lo && mach < b.hi) || B[B.length - 1],
+    Z90 = 1.645;
+  // the model, at a level: how far above and below the prediction real apogees landed (fractions of it)
+  const model = (k) =>
+    cal
+      ? { lo: (0.03 * k) / band.k90, hi: (0.03 * k) / band.k90 }
+      : { lo: Math.max(0, -(band.mean - k * band.sd)), hi: Math.max(0, band.mean + k * band.sd) };
   const mc = lastMC && lastSim && lastMC.when === lastSim.when && lastMC.am > 0 ? lastMC : null;
+  // the dispersion run's 5–95% spread, and an estimated weight's allowance, both at 90%
   const cLo = mc ? Math.max(0, (mc.am - mc.p05) / mc.am) : 0,
-    cHi = mc ? Math.max(0, (mc.p95 - mc.am) / mc.am) : 0;
-  const lo = Math.hypot(mLo, cLo),
-    hi = Math.hypot(mHi, cHi),
+    cHi = mc ? Math.max(0, (mc.p95 - mc.am) / mc.am) : 0,
+    eLo = est ? 0.1 : 0,
+    eHi = est ? 0.036 : 0;
+  const m90 = model(band.k90),
+    m68 = model(band.k68),
+    s = 1 / Z90,
+    lo = Math.hypot(m90.lo, eLo, cLo),
+    hi = Math.hypot(m90.hi, eHi, cHi),
+    lo1 = Math.hypot(m68.lo, eLo * s, cLo * s),
+    hi1 = Math.hypot(m68.hi, eHi * s, cHi * s),
     A = st.maxAlt;
-  return { lo: A * (1 - lo), hi: A * (1 + hi), loPct: lo, hiPct: hi, mLo, mHi, cLo, cHi, mc: !!mc, cal, est, fast };
+  return {
+    lo: A * (1 - lo),
+    hi: A * (1 + hi),
+    lo1: A * (1 - lo1),
+    hi1: A * (1 + hi1),
+    loPct: lo,
+    hiPct: hi,
+    mLo: m90.lo,
+    mHi: m90.hi,
+    cLo,
+    cHi,
+    mc: !!mc,
+    cal,
+    est,
+    band,
+  };
 }
 /**
  * An end of the apogee range in the units shown, rounded: to 10 above 1,000, otherwise to 1.
@@ -289,8 +319,9 @@ export function apoRound(v) {
   return (Math.round(d / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 /**
- * The small tolerance beside the apogee on the Results tab: ±x when the likely range is even, +a over −b when it is not
- * (built rockets usually come out heavier, so an estimated weight leans low). The range is apoRange's, rounded like it.
+ * The small tolerance beside the apogee on the Results tab: the typical (1σ) range, ±x when it is even, +a over −b when it
+ * is not (where the app has tended to predict high or low, or an estimated weight leans low). The range is apoRange's,
+ * rounded like it; the waiver check uses the top of its 90% range.
  */
 export function renderApoTol() {
   const el = document.getElementById("apotol");
@@ -304,9 +335,9 @@ export function renderApoTol() {
   const A = toDisp(lastSim.st.maxAlt, "alt"),
     q = Math.abs(A) >= 1000 ? 10 : 1,
     r = (v) => Math.max(q, Math.round(v / q) * q).toLocaleString(undefined, { maximumFractionDigits: 0 }),
-    up = r(toDisp(R.hi, "alt") - A),
-    dn = r(A - toDisp(R.lo, "alt")),
-    what = `Likely range ${apoRound(R.lo)}–${apoRound(R.hi)} ${uname("alt")} (about 90%)${R.mc ? ", with the dispersion run" : ""}`;
+    up = r(toDisp(R.hi1, "alt") - A),
+    dn = r(A - toDisp(R.lo1, "alt")),
+    what = `Typical range ${apoRound(R.lo1)}–${apoRound(R.hi1)} ${uname("alt")} (1σ, about 2 flights in 3); 90% range ${apoRound(R.lo)}–${apoRound(R.hi)}${R.mc ? ", with the dispersion run" : ""}`;
   el.innerHTML = up === dn ? `±${up}` : `<span>+${up}</span><span>−${dn}</span>`;
   el.classList.toggle("two", up !== dn);
   el.title = what;

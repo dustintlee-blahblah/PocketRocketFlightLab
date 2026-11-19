@@ -488,10 +488,10 @@ export function rsoChecks(st, S, m, D, LL) {
           "Apogee vs. waiver",
           `${fmt(hi, "alt")} of ${fmt(ceil, "alt")} ${uname("alt")}`,
           hi > ceil
-            ? `${st.maxAlt > ceil ? `Over the ceiling by ${fmt(st.maxAlt - ceil, "alt")} ${uname("alt")} at the predicted apogee` : `The predicted apogee is under the ceiling, but the top of the likely range is over it by ${fmt(hi - ceil, "alt")} ${uname("alt")}`}. Use a smaller motor or add weight.`
+            ? `${st.maxAlt > ceil ? `Over the ceiling by ${fmt(st.maxAlt - ceil, "alt")} ${uname("alt")} at the predicted apogee` : `The predicted apogee is under the ceiling, but the top of the 90% apogee range is over it by ${fmt(hi - ceil, "alt")} ${uname("alt")}`}. Use a smaller motor or add weight.`
             : hi > 0.9 * ceil
-              ? `The top of the likely apogee range is within 10% of the ceiling; a hot motor or less drag could take it over.`
-              : `${Math.round((hi / ceil) * 100)}% of the ceiling, at the top of the likely apogee range.`,
+              ? `The top of the 90% apogee range is within 10% of the ceiling; a hot motor or less drag could take it over.`
+              : `${Math.round((hi / ceil) * 100)}% of the ceiling, at the top of the 90% apogee range.`,
         );
     }
   }
@@ -516,7 +516,7 @@ export function rsoChecks(st, S, m, D, LL) {
         `${Math.round(cov.c * 100)}%${cov.c > 0 ? ` at ${fmt(cov.z, "alt")} ${uname("alt")}` : ""}`,
         cov.c > 0.5
           ? hp.hpr
-            ? `More than five-tenths cloud cover below the top of the likely apogee range. ${tag}: it may not be flown to an altitude where clouds cover more than half the sky. Wait for clearer skies or use a smaller motor.`
+            ? `More than five-tenths cloud cover below the top of the 90% apogee range. ${tag}: it may not be flown to an altitude where clouds cover more than half the sky. Wait for clearer skies or use a smaller motor.`
             : `More than half the sky is cloudy below the predicted apogee. The five-tenths limit is written for high-power flights, but the rocket must still not go into any cloud.`
           : `${tag}: at most ${Math.round(cov.c * 100)}% cover at the heights it flies through${cov.from === "bands" ? " (worked out from the low, mid and high cloud cover)" : " (from the forecast's cloud cover at each level)"}. Forecasts are rough; look at the sky before launch.`,
       );

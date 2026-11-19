@@ -541,7 +541,7 @@ function buildReportPdf() {
       col(C.muted);
       const r = apoRound;
       T(
-        `Likely ${r(R.lo)}–${r(R.hi)} ${uname("alt")} (flight-to-flight variation${R.mc ? "" : " not yet run"} plus model uncertainty)`,
+        `Typical ${r(R.lo1)}–${r(R.hi1)}, 90% range ${r(R.lo)}–${r(R.hi)} ${uname("alt")} (flight-to-flight variation${R.mc ? "" : " not yet run"} plus the model's measured accuracy)`,
         MX,
         y + 50,
       );

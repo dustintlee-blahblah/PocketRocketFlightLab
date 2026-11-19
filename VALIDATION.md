@@ -549,6 +549,27 @@ The same measurement is in the app: import a flight's altimeter file with an acc
 Log and it shows the drag the coast measured and can calibrate to it (`tests/coast.js` checks it against a flight of
 known drag).
 
+## The apogee range on the Results tab
+
+The small ± beside the apogee, and the top of the range the waiver check uses, come from the measured flights above.
+For the flight's band of top speeds, `validation/flights.js --accuracy` takes where each real apogee landed against the
+app's prediction and writes the mean and standard deviation to `src/data/apogee-accuracy.js`:
+
+| Top speed | Flights | Mean | Standard deviation | 1σ range (shown) | 90% range (waiver check) |
+|---|---|---|---|---|---|
+| Below Mach 0.8 | 8 | −1.4% | 4.6% | −6.6% to +3.9% | −10.6% to +7.9% |
+| Mach 0.8–1.2 | 6 | −0.5% | 9.1% | −11.4% to +10.4% | −20.3% to +19.4% |
+| Above Mach 1.2 | 9 | −4.6% | 9.3% | −15.1% to +5.8% | −22.8% to +13.6% |
+
+Negative is lower than predicted. With this few flights each range is a prediction interval for one more flight
+(Student's t for that many flights, widened by √(1 + 1/n)), so the 1σ range is a little wider than one standard
+deviation; the ranges tighten as flights are added. The range is uneven where the app has tended to predict high or low,
+but the predicted apogee itself isn't moved. The flights were weighed and not calibrated, so two allowances are added
+(root-sum-square) by judgment: an estimated weight widens the range 10% down and 3.6% up (at 90%), and a drag
+calibrated to one of your own flights replaces the band's figures with 3%. The dispersion run's spread is added the same
+way. Mach 0.8–1.2 is wide on both sides because of one flight (Raven, 22% under its prediction); the shared flights
+(Partizon −3.5%, Concept 98 +0.3%) aren't in it, because their design files aren't in this repository.
+
 ## Running the checks
 
 You need the built page (`node build.js`) and Playwright's Chromium (`npx playwright install chromium`).
@@ -559,6 +580,7 @@ npm run test:drag                                        # drag against the NACA
 npm run validate:openrocket -- --jar OpenRocket-24.12.jar   # apogee against OpenRocket's examples
 npm run validate:accuracy                                # every measured rocket, by speed band
 npm run validate:flights                                 # apogee against measured flights
+node validation/flights.js --accuracy src/data/apogee-accuracy.js   # the Results tab's apogee range from them
 npm run validate:logged                                  # apogee and coast drag against weighed, logged flights
 npm run validate:qu8k                                    # drag above Mach 2 against Qu8k's flight recorder
 npm run validate:proto                                   # drag from Mach 2.1 down against Proto's flight recorder
