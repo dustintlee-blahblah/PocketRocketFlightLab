@@ -302,17 +302,30 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 
 Compared as true heights the app is 9.4% off (+8.7%) and RASAero II 5.4% (+1.8%).
 
-Two more flights, shared by flyers through the app and not in this repository (their design files stay out of it):
+Three more flights, shared by flyers with their permission (their design files stay out of this repository). The two
+Estes flights were logged by an altimeter that reports peak and average acceleration, coast-to-apogee and
+apogee-to-ejection times, ejection altitude and top speed; its accelerometer stops at about 23 g, and above that its
+acceleration and top speed read low.
 
-- A **CT Concept 98 with an external fin can** on a Cesaroni 6251M1400 (Mach 1.6, Black Rock), **GPS apogee about
-  17,400 ft**. With the launch conditions of its saved run the app gives 18,075 ft (+3.9%) and OpenRocket 24.12
-  16,875 ft (−3.0%). The drag model adopted in build 288 raised it from 17,417 ft (+0.1%); later builds moved it under 1%.
-- An **Estes Ascender** on an AeroTech H135W (Mach 0.79), apogee **4,030 ft** and top speed **880 ft/s** as logged by the
-  flyer. The app's top speed agrees (879 ft/s), but its apogee is 4,807 ft (+19%) on a delay long enough to reach apogee.
-  Set to its shortest delay, 6 s, the charge fires at 4,037 ft, still climbing, which matches the logged apogee; the delay
-  flown is being checked with the flyer, so this flight isn't graded yet.
+| Flight | Mach | Measured | App | |
+|---|---|---|---|---|
+| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.6 | GPS apogee about 17,400 ft | 18,075 ft (being checked) | +3.9% |
+| Estes Partizon, AeroTech I205W | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft) | 4,116 ft | −3.4% |
+| Estes Ascender, AeroTech H135W | 0.79 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 876 ft/s, 22.0 g | see below |
 
-Neither is in the averages above, which cover the RASAero II files only.
+- **Concept 98**: with the launch conditions of its saved run; OpenRocket 24.12 gives 16,875 ft (−3.0%). The drag model
+  adopted in build 288 raised the app's figure from 17,417 ft (+0.1%).
+- **Partizon**: flown at the launch conditions saved with the file, on a 10 s delay, which puts the charge 0.6 s before
+  apogee as on the flight; the app's coast from burnout to apogee, 10.6 s, matches the altimeter's 10.8 s. The
+  altimeter's peak of 23.0 g is its limit (the app gives 47 g), so its 905 ft/s top speed reads low (the app
+  gives 1,101 ft/s).
+- **Ascender**: the charge fired while the rocket was still climbing, so its 4,030 ft top altitude is short of a full
+  apogee and isn't graded. Its boost is: peak acceleration and top speed agree within 4%, below the altimeter's limit.
+  The app passes 3,943 ft about 5.6 s after burnout, which fits the motor's shortest delay (6 s); with that delay the app
+  gives 4,224 ft for the highest point after ejection (+4.8% on the logged 4,030 ft). Without the early charge it would
+  have reached 4,807 ft.
+
+None of these is in the averages above, which cover the RASAero II files only.
 
 **The app is 7% off on these flights, a little high, and 9% above Mach 1.2.** None of its constants were set from
 these flights, and the comparison is not entirely independent of RASAero II either: these are the flights RASAero
