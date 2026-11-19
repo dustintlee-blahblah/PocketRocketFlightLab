@@ -542,8 +542,8 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
         }
       }
       // the motors chosen when the file was saved (one that doesn't fit its mount isn't written into the design), as long
-      // as the file hasn't been changed since by another program
-      if (saved && saved.text && saved.text === prHash(xml)) {
+      // as the file hasn't been changed since by another program; a stored run chosen when opening flies its own motors
+      if (saved && saved.text && saved.text === prHash(xml) && !(pk && pk.kind === "run")) {
         const ok = (id) => typeof id === "string" && !!findMotor(id);
         if (ok(saved.motorId)) store.set("rfs-motor", setMotorId(saved.motorId));
         if (D.twoStage && ok(saved.boostId)) store.set("rfs-bmotor", setBoostId(saved.boostId));

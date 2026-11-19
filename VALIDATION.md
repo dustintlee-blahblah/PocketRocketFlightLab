@@ -302,10 +302,17 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 
 Compared as true heights the app is 9.4% off (+8.7%) and RASAero II 5.4% (+1.8%).
 
-One more flight, shared by a flyer and not in this repository: a **CT Concept 98 with an external fin can** on a
-Cesaroni 6251M1400 (Mach 1.6, Black Rock), **GPS apogee about 17,400 ft**. With the launch conditions of its run saved in
-the app, the app gave 17,417 ft (+0.1%) and OpenRocket 24.12 16,875 ft (−3.0%); that was under the model before build 288
-and has not been rerun. It isn't in the averages above, which cover the RASAero II files only.
+Two more flights, shared by flyers through the app and not in this repository (their design files stay out of it):
+
+- A **CT Concept 98 with an external fin can** on a Cesaroni 6251M1400 (Mach 1.6, Black Rock), **GPS apogee about
+  17,400 ft**. With the launch conditions of its saved run the app gives 18,075 ft (+3.9%) and OpenRocket 24.12
+  16,875 ft (−3.0%). The drag model adopted in build 288 raised it from 17,417 ft (+0.1%); later builds moved it under 1%.
+- An **Estes Ascender** on an AeroTech H135W (Mach 0.79), apogee **4,030 ft** and top speed **880 ft/s** as logged by the
+  flyer. The app's top speed agrees (879 ft/s), but its apogee is 4,807 ft (+19%) on a delay long enough to reach apogee.
+  Set to its shortest delay, 6 s, the charge fires at 4,037 ft, still climbing, which matches the logged apogee; the delay
+  flown is being checked with the flyer, so this flight isn't graded yet.
+
+Neither is in the averages above, which cover the RASAero II files only.
 
 **The app is 7% off on these flights, a little high, and 9% above Mach 1.2.** None of its constants were set from
 these flights, and the comparison is not entirely independent of RASAero II either: these are the flights RASAero
