@@ -150,7 +150,7 @@ export function bldRenderTree() {
   if (!el) return;
   let h = "";
   const multi = BLD.stages.length > 1;
-  h += `<button class="bldrow stage${bldSel === BLD_ROOT ? " on" : ""}" data-id="${BLD_ROOT}"><b>ROCKET</b><span>TOP LEVEL</span></button>`;
+  h += `<button class="bldrow stage${bldSel === BLD_ROOT ? " on" : ""}" data-id="${BLD_ROOT}"><b>Whole Rocket</b><span>TOP LEVEL</span></button>`;
   BLD.stages.forEach((st, si) => {
     if (multi)
       h += `<button class="bldrow stage${bldSel === st.id ? " on" : ""}" data-id="${st.id}"><b>${esc(st.name)}</b><span>stage ${si + 1}</span></button>`;

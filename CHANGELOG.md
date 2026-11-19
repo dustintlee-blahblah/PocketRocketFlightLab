@@ -4,6 +4,23 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 326 (2026-11-19)
+
+**Range tab**
+- **Get Current Location**, beside Get directions, fills the site's latitude and longitude from the device's location (GPS), with how close the fix is. Location is asked for only when the button is tapped, and the position goes only into the field. The Android app asks for location permission the first time.
+
+**Results**
+- **Recovery Plan starts folded**: tap Show to open it. It is still worked out after each Launch, and the PDF report still has it.
+
+**Rocket builder**
+- The top row of the parts list reads **Whole Rocket** (was ROCKET).
+
+**Android app**
+- If the page's process ends (Android short of memory, or a graphics driver crash), the app starts the page again with a short message instead of closing; designs and settings are kept. Links still open in the phone's browser, mail and map apps.
+
+**Testing**
+- The Android emulator test now drives the debug app end to end (a simulation, a design file opened through Android's file picker, an altimeter log shared to the app): it talks to the page over plain DevTools, reconnects if the connection drops, can't pass by stopping early, and runs on the plain Android image (4 GB) because Google Play services kept crashing on the Google image and taking the app with it.
+
 ## Build 325 (2026-11-19)
 
 **Results**

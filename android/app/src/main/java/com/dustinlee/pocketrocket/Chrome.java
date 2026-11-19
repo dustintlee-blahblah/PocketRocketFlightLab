@@ -18,6 +18,7 @@
 package com.dustinlee.pocketrocket;
 
 import android.net.Uri;
+import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -33,5 +34,11 @@ public class Chrome extends WebChromeClient {
     public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
         activity.openChooser(callback);
         return true;
+    }
+
+    // the page asks for the phone's location (Get Current Location): Android's permission first, if not yet given
+    @Override
+    public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+        activity.askLocation(origin, callback);
     }
 }

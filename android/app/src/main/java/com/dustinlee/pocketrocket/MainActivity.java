@@ -19,7 +19,10 @@ package com.dustinlee.pocketrocket;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
@@ -30,6 +33,7 @@ import android.util.Base64;
 import android.graphics.Rect;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.webkit.GeolocationPermissions;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -45,6 +49,7 @@ import java.io.OutputStream;
 public class MainActivity extends Activity {
     static final int REQ_OPEN = 1;
     static final int REQ_SAVE = 2;
+    static final int REQ_LOCATION = 3;
     WebView web;
     ValueCallback<Uri[]> fileCallback;
     byte[] pendingSave;
@@ -76,6 +81,7 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
+        s.setGeolocationEnabled(true);
         web.setWebChromeClient(new Chrome(this));
         web.setWebViewClient(new Client());
         web.addJavascriptInterface(new Bridge(this), "PocketRocketApp");
@@ -137,6 +143,35 @@ public class MainActivity extends Activity {
                     : "The page was closed to free memory and was reopened.");
             return true;
         }
+    }
+
+    // Get Current Location: the page's request waits here while Android asks the user for location permission
+    String locOrigin;
+    GeolocationPermissions.Callback locCallback;
+
+    boolean hasLocation() {
+        if (Build.VERSION.SDK_INT < 23) return true;
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    void askLocation(String origin, GeolocationPermissions.Callback cb) {
+        if (hasLocation()) { cb.invoke(origin, true, false); return; }
+        if (locCallback != null) locCallback.invoke(locOrigin, false, false);
+        locOrigin = origin;
+        locCallback = cb;
+        requestPermissions(new String[] { Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION }, REQ_LOCATION);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int request, String[] perms, int[] results) {
+        super.onRequestPermissionsResult(request, perms, results);
+        if (request != REQ_LOCATION || locCallback == null) return;
+        // not kept by the WebView: if the user later turns the permission off in Settings, the page asks again
+        locCallback.invoke(locOrigin, hasLocation(), false);
+        locCallback = null;
+        locOrigin = null;
     }
 
     @Override

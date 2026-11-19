@@ -215,6 +215,8 @@ const SCREENS = [
       bldApply();
       runNow();
       showTab("results");
+      const f = document.querySelector('[data-fold="recbody"]');
+      if (f.getAttribute("aria-expanded") !== "true") f.click();
       document.getElementById("recpanel").scrollIntoView();
     },
   ],

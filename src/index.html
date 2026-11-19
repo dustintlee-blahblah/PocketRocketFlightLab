@@ -59,7 +59,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">325</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">326</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -164,8 +164,8 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
     </div>
 
     <div class="panel" id="recpanel" hidden>
-      <h2>Recovery Plan<button class="ib" type="button" data-title="Recovery Plan" data-info="Each charge as it would fire (the primary altimeter's, a backup altimeter's and the motor's), the flight flown again as if a charge failed, the time and drift under each chute, the main's opening load and the altimeter bay's static ports.&#10;&#10;Set a backup altimeter, the bay's size and the harness's rated load in the builder, under Whole rocket: Recovery electronics." aria-label="About Recovery Plan">i</button></h2>
-      <div id="recbody"></div>
+      <div class="foldhead"><h2 style="margin:0">Recovery Plan<button class="ib" type="button" data-title="Recovery Plan" data-info="Each charge as it would fire (the primary altimeter's, a backup altimeter's and the motor's), the flight flown again as if a charge failed, the time and drift under each chute, the main's opening load and the altimeter bay's static ports.&#10;&#10;Set a backup altimeter, the bay's size and the harness's rated load in the builder, under Whole rocket: Recovery electronics." aria-label="About Recovery Plan">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="recbody" aria-expanded="false" aria-controls="recbody">Show</button></div>
+      <div id="recbody" hidden></div>
     </div>
 
     <div class="panel" id="animpanel" hidden>
@@ -235,7 +235,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="sitemgr" id="sitemgr" hidden></div>
       <div class="fld"><label for="sitecoord">Latitude, longitude</label><div class="in"><input id="sitecoord" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="40.218224, -112.246072"></div></div>
       <p class="note" id="sitecoordmsg" aria-live="polite" style="margin:4px 0 4px">Paste both from a map app, separated by a comma. North and east are positive.</p>
-      <div class="row" style="margin:2px 0 6px"><button class="btn ghost" id="sitedir" type="button">Get directions</button></div>
+      <div class="row" style="margin:2px 0 6px"><button class="btn ghost" id="sitedir" type="button">Get directions</button><button class="btn ghost" id="sitegps" type="button">Get Current Location</button></div>
       <p class="subh">Range</p>
       <div class="grid" id="g-range"></div>
       <div class="sitegrid" style="margin-top:8px">

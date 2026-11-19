@@ -230,6 +230,52 @@ function siteCoordSet() {
   return true;
 }
 /**
+ * Fills the coordinates with where the device is now (its GPS or network location), as if they had been typed.
+ * Nothing is sent anywhere: the position comes from the device and only goes into the field.
+ */
+function siteHere() {
+  const el = document.getElementById("sitecoord"),
+    m = document.getElementById("sitecoordmsg"),
+    b = document.getElementById("sitegps");
+  const say = (t, bad) => {
+    m.textContent = t;
+    m.style.color = bad ? "var(--bad)" : "";
+  };
+  if (!navigator.geolocation) {
+    say("This device or browser can’t give its location here. Paste the coordinates from a map app instead.", true);
+    return;
+  }
+  const label = b.textContent;
+  b.disabled = true;
+  b.textContent = "Locating…";
+  say("Finding where you are. Outdoors with a clear sky works best and can take a few seconds.");
+  const done = () => {
+    b.disabled = false;
+    b.textContent = label;
+  };
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      done();
+      const c = pos.coords;
+      el.value = fmtLatLon(c.latitude, c.longitude);
+      if (siteCoordSet() && isFinite(c.accuracy))
+        m.textContent += ` From this device’s location, to within about ${fmt(c.accuracy, "alt")} ${uname("alt")}.`;
+    },
+    (e) => {
+      done();
+      say(
+        e && e.code === 1
+          ? "Location permission is off for this app or page. Allow it in the device’s or browser’s settings, or paste the coordinates from a map app."
+          : e && e.code === 3
+            ? "No location fix in time. Turn on location (GPS) and try again, ideally outdoors."
+            : "Couldn’t get the device’s location. Turn on location (GPS) and try again, or paste the coordinates from a map app.",
+        true,
+      );
+    },
+    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+  );
+}
+/**
  * Opens directions to the site (see the note above).
  *
  * The site's coordinates handed to the map app: on Android a geo: link (the phone's default map app); in a browser,
@@ -752,6 +798,7 @@ export function start() {
     );
   }
   document.getElementById("sitedir").onclick = siteDirections;
+  document.getElementById("sitegps").onclick = siteHere;
   document.getElementById("wxgo").onclick = wxFetch;
   document.getElementById("aloftclear").onclick = () => {
     L.aloft = [];
