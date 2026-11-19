@@ -167,16 +167,17 @@ async function main() {
       fail("debug app: no WebView DevTools socket (is WebView debugging on in debug builds?)");
     } else {
       adb("forward", "tcp:9333", "localabstract:" + sock);
-      const browser = await chromium.connectOverCDP("http://127.0.0.1:9333");
-      const page = browser.contexts()[0].pages()[0];
+      // Android WebView's DevTools has no browser contexts, which Playwright's connectOverCDP sets up first, so the
+      // page is driven over plain DevTools messages instead
       const errs = [];
-      page.on("pageerror", (e) => errs.push(e.message));
-      // past the first-run screens, as a person who has accepted them
-      await page.evaluate(() => {
+      const browser = await cdpPage("http://127.0.0.1:9333", (m) => errs.push(m));
+      const page = browser;
+      // past the first-run screens, as a person who has accepted them, with the page's test hooks on (as in
+      // tests/walkthrough.js), then a dual-deploy example
+      await page.addInitScript(`window.PR_EXPOSE = true; window.PR_NO_ASK = true;
         localStorage.setItem("rfs-disclaimer-v2", JSON.stringify({ accepted: true, version: "2026-11-02" }));
-        sessionStorage.setItem("rfs-splash", "1");
-        location.reload();
-      });
+        sessionStorage.setItem("rfs-splash", "1");`);
+      await page.evaluate(() => location.reload());
       await sleep(6000);
       const pg = page;
 
@@ -184,11 +185,13 @@ async function main() {
       await pg.evaluate(() => {
         const d = document.getElementById("legal");
         if (d) d.hidden = true;
+        return openExample(EXAMPLES.length - 1);
       });
+      await sleep(2000);
       await pg.click("#t-rocket");
       await sleep(800);
       await pg.click("#runbtn");
-      await sleep(4000);
+      await sleep(5000);
       await pg.click("#t-results");
       await sleep(1000);
       const apo = await pg.evaluate(() => document.getElementById("apogee").textContent);
@@ -211,7 +214,7 @@ async function main() {
       await pg.click("#t-rocket");
       await sleep(800);
       const before = await pg.evaluate(() => document.getElementById("rname")?.textContent || "");
-      await pg.click('label[for="orkfile"]:visible');
+      await pg.click('label[for="orkfile"]');
       await sleep(3000);
       shot("debug-picker");
       let found = await tapText(/^devicetest\.ork$/, 3);
@@ -276,6 +279,67 @@ async function main() {
     process.exit(1);
   }
   console.log("no problems");
+}
+
+// A page in Android WebView, over DevTools: evaluate(fn) runs fn in the page and returns its value; click(selector)
+// clicks the first visible match as a tap would (counted as a user's gesture, so a file picker may open);
+// onError gets uncaught page errors.
+async function cdpPage(base, onError) {
+  const list = await (await fetch(base + "/json")).json();
+  const t = list.find((x) => x.type === "page") || list[0];
+  if (!t) throw new Error("no page in the WebView's DevTools list");
+  const ws = new WebSocket(t.webSocketDebuggerUrl);
+  await new Promise((ok, no) => {
+    ws.onopen = ok;
+    ws.onerror = () => no(new Error("couldn't open the WebView's DevTools connection"));
+  });
+  let id = 0;
+  const waiting = new Map();
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.id && waiting.has(m.id)) {
+      const w = waiting.get(m.id);
+      waiting.delete(m.id);
+      m.error ? w.no(new Error(m.error.message)) : w.ok(m.result);
+    } else if (m.method === "Runtime.exceptionThrown") {
+      const d = m.params.exceptionDetails;
+      onError((d.exception && d.exception.description) || d.text);
+    }
+  };
+  const send = (method, params = {}) =>
+    new Promise((ok, no) => {
+      waiting.set(++id, { ok, no });
+      ws.send(JSON.stringify({ id, method, params }));
+    });
+  await send("Runtime.enable");
+  await send("Page.enable");
+  const run = async (expr) => {
+    const r = await send("Runtime.evaluate", {
+      expression: expr,
+      awaitPromise: true,
+      returnByValue: true,
+      userGesture: true,
+    });
+    if (r.exceptionDetails)
+      throw new Error(
+        (r.exceptionDetails.exception && r.exceptionDetails.exception.description) || r.exceptionDetails.text,
+      );
+    return r.result.value;
+  };
+  return {
+    evaluate: (fn) => run(`(${fn})()`),
+    addInitScript: (src) => send("Page.addScriptToEvaluateOnNewDocument", { source: src }),
+    async click(sel) {
+      const ok = await run(`(() => {
+        const el = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.offsetParent !== null);
+        if (!el) return false;
+        el.click();
+        return true;
+      })()`);
+      if (!ok) throw new Error("nothing visible to click: " + sel);
+    },
+    close: async () => ws.close(),
+  };
 }
 
 module.exports = { makeFiles };
