@@ -102,20 +102,13 @@ function deviceDiag(why) {
   console.log("       " + mem);
 }
 
-/** the app's memory use (total PSS, the WebView's page process included), for the log */
+/** the app's memory use, for the log. Only the app's own process is asked: the WebView's page process runs
+ * sandboxed and crashes when asked for a memory report (dumpsys meminfo --package did that on Android 14) */
 function appMemory() {
-  const tot = (pkg) => {
-    const m = adbQuiet("shell", "dumpsys", "meminfo", pkg).match(/TOTAL PSS:\s*(\d+)|TOTAL:?\s+(\d+)/);
-    return m ? +(m[1] || m[2]) : 0;
-  };
-  const app = tot(PKG),
-    page = adbQuiet("shell", "dumpsys", "meminfo", "--package", PKG)
-      .split("\n")
-      .filter((l) => /sandboxed_process/.test(l))
-      .map((l) => +(l.match(/([\d,]+)K:/) || [0, "0"])[1].replace(/,/g, ""))
-      .reduce((a, b) => a + b, 0);
+  const m = adbQuiet("shell", "dumpsys", "meminfo", PKG).match(/TOTAL PSS:\s*(\d+)|TOTAL:?\s+(\d+)/);
+  const app = m ? +(m[1] || m[2]) : 0;
   const avail = (adbQuiet("shell", "cat", "/proc/meminfo").match(/MemAvailable:\s*(\d+)/) || [])[1];
-  return `app ${Math.round(app / 1024)} MB, page process ${Math.round(page / 1024)} MB, device free ${Math.round((avail || 0) / 1024)} MB`;
+  return `app ${Math.round(app / 1024)} MB, device free ${Math.round((avail || 0) / 1024)} MB`;
 }
 
 /** the app's WebView DevTools socket, forwarded to tcp:9333; null when the app isn't running */
