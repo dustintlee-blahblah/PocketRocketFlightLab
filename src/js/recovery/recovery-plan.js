@@ -325,3 +325,84 @@ function recHtml(P) {
     h += `<p class="note">Enter the altimeter bay's length (the builder, Whole rocket) for its static port size.</p>`;
   return h;
 }
+/**
+ * The recovery plan as plain text for the flight report: blocks with a title, and a table (head and rows) or lines of
+ * text. The same figures as the Results tab's panel.
+ * @returns {object[]|null} [{title, head?, rows?, lines?}], or null when the flight has no chute
+ */
+export function recPlanText() {
+  const st = lastSim && lastSim.st;
+  if (!st || st.error || st.noChute) return null;
+  const P = recPlan();
+  if (!P) return null;
+  const A = (v) => (v != null && isFinite(v) ? `${fmt(v, "alt")} ${uname("alt")}` : "-"),
+    V = (v) => (v != null && isFinite(v) ? `${fmt(v, "speed")} ${uname("speed")}` : "-"),
+    S = (v) => (v != null && isFinite(v) ? `${v.toFixed(1)} s` : "-"),
+    rel = (r) => (r == null ? "" : `${r >= 0 ? "+" : "-"}${Math.abs(r).toFixed(1)} s`),
+    tag = { good: "OK", warn: "Check", bad: "Unsafe" },
+    out = [];
+  if (P.charges.length) {
+    const lines = [];
+    const early = P.charges.find((c) => c.rel < -0.5);
+    if (early)
+      lines.push(
+        `The ${early.who.toLowerCase()}'s ${early.what} charge fires ${Math.abs(early.rel).toFixed(1)} s before apogee, while the rocket is still climbing.`,
+      );
+    if (P.alti && !P.rec.bakOn && P.charges.every((c) => c.who !== "Motor"))
+      lines.push("No backup charge: one altimeter and a plugged motor. If the altimeter fails, nothing opens.");
+    out.push({
+      title: "The charges, in order",
+      head: ["Charge", "After apogee", "Height", "Speed"],
+      rows: P.charges.map((c) => [
+        `${c.what[0].toUpperCase() + c.what.slice(1)} (${c.who.toLowerCase()})`,
+        rel(c.rel),
+        A(c.alt),
+        V(c.va) + (c.vz > 0.5 ? ", climbing" : ""),
+      ]),
+      lines,
+    });
+  }
+  if (P.cases.length)
+    out.push({
+      title: "If a charge fails",
+      head: ["Case", "First opens", "Lands at", "Drift"],
+      rows: P.cases.map((c) => [
+        `${c.name}: ${c.note}`,
+        c.o.open ? `${rel(c.o.tRel)}, ${A(c.o.alt)}, ${V(c.o.v)}` : "nothing opens",
+        `${V(c.o.land)} (${tag[recGrade(c.o)]})`,
+        A(c.o.drift),
+      ]),
+      grades: P.cases.map((c) => recGrade(c.o)),
+    });
+  if (P.legs) {
+    const L = P.legs,
+      rows = [];
+    if (L.drogue) rows.push(["Under the drogue", S(L.drogue.t), A(L.drogue.d)]);
+    rows.push([`Under the ${L.drogue ? "main" : "chute"}`, S(L.main.t), A(L.main.d)]);
+    rows.push(["Lands from the pad", "", A(L.total)]);
+    out.push({ title: "Time and drift under each chute", head: ["", "Time", "Drift"], rows });
+  }
+  if (P.mains.length > 1)
+    out.push({
+      title: "The main opening higher or lower",
+      head: ["Main opens at", "Time down", "Lands from the pad"],
+      rows: P.mains.map((x) => [A(x.h) + (x.set ? " (set)" : ""), S(x.t), A(x.drift)]),
+    });
+  const lines = [];
+  if (P.load) {
+    const r = P.load.rating,
+      pct = r > 0 ? P.load.F / r : null;
+    lines.push(
+      `${P.dual ? "Main" : "Chute"} opening load: ${P.load.g.toFixed(0)} g at the descent weight, about ${fmt(P.load.F, "force")} ${uname("force")}` +
+        (r > 0
+          ? `, ${Math.round(pct * 100)}% of the ${fmt(r, "force")} ${uname("force")} rating.`
+          : " (no rating entered)."),
+    );
+  }
+  if (P.ports)
+    lines.push(
+      `Static ports for a ${fmt(P.ports.dia, "len")} by ${fmt(P.ports.len, "len")} ${uname("len")} bay: one hole of ${fmt(P.ports.one, "small")} ${uname("small")}, or four of ${fmt(P.ports.four, "small")} ${uname("small")} (PerfectFlite's rule).`,
+    );
+  if (lines.length) out.push({ title: "Opening load and static ports", lines });
+  return out;
+}

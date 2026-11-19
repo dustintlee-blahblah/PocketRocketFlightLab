@@ -15,6 +15,7 @@ import { noseSpec } from "../physics/geometry.js";
 import { apoRange, apoRound, lastMC, MC_K68, MC_K95, mcBearing } from "../physics/monte-carlo.js";
 import { airInertia } from "../physics/simulate.js";
 import { fullStack, isThree } from "../physics/staging.js";
+import { recPlanText } from "../recovery/recovery-plan.js";
 import { chartEvents, niceTicks } from "../ui/charts.js";
 import { supNote } from "../ui/donate.js";
 import { TGT_NAME } from "../ui/motor-tab.js";
@@ -681,6 +682,73 @@ function buildReportPdf() {
       y += lines.length * 12 + 2;
     });
     y += 8;
+  }
+  // ---- the recovery plan: each charge in order, the flight with charges failing, time and drift under each chute,
+  // the opening load and static ports (as on the Results tab)
+  const plan = recPlanText();
+  if (plan && plan.length) {
+    if (y + 60 > PH - 50) {
+      doc.addPage();
+      y = 50;
+    }
+    font("bold", 10);
+    col(C.ink);
+    T("Recovery plan", MX, y);
+    y += 14;
+    for (const b of plan) {
+      if (y + 40 > PH - 50) {
+        doc.addPage();
+        y = 50;
+      }
+      font("bold", 8);
+      col(C.muted);
+      T(b.title.toUpperCase(), MX, y);
+      y += 11;
+      if (b.head) {
+        // the first column takes the room the others don't need
+        const n = b.head.length,
+          wOther = n > 3 ? 92 : 110,
+          w = [CW - wOther * (n - 1), ...Array(n - 1).fill(wOther)],
+          x = w.map((_, i) => MX + w.slice(0, i).reduce((a, v) => a + v, 0));
+        font("bold", 8);
+        col(C.ink);
+        b.head.forEach((h, i) => T(h, x[i] + 3, y));
+        y += 4;
+        col(C.line, "draw");
+        doc.setLineWidth(0.6);
+        doc.line(MX, y, MX + CW, y);
+        y += 9;
+        b.rows.forEach((r, ri) => {
+          font("normal", 8.5);
+          const cells = r.map((c, i) => doc.splitTextToSize(pdfSafe(c), w[i] - 6)),
+            h = Math.max(...cells.map((c) => c.length)) * 10 + 3;
+          if (y + h > PH - 50) {
+            doc.addPage();
+            y = 50;
+          }
+          cells.forEach((c, i) => {
+            const g = b.grades && i === 2 ? b.grades[ri] : null;
+            col(g === "bad" ? C.bad : g === "warn" ? C.warn : C.ink);
+            doc.text(c, x[i] + 3, y);
+          });
+          y += h;
+          col(C.line, "draw");
+          doc.line(MX, y - 8, MX + CW, y - 8);
+        });
+      }
+      font("normal", 9);
+      col(C.ink);
+      for (const ln of b.lines || []) {
+        const L = doc.splitTextToSize(pdfSafe(ln), CW);
+        if (y + L.length * 11 > PH - 50) {
+          doc.addPage();
+          y = 50;
+        }
+        doc.text(L, MX, y);
+        y += L.length * 11 + 2;
+      }
+      y += 8;
+    }
   }
   /**
    * Starts a new page if there isn't room for a block of height h.

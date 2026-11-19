@@ -114,6 +114,14 @@ const num = (s) => parseFloat(String(s).replace(/[^\d.-]/g, ""));
     ok(`${w}: PDF names the motor`, text.replace(/\s+/g, "").includes(String(R.motor).replace(/\s+/g, "")), R.motor);
     const apoDigits = String(R.apo).match(/[\d,]+/)[0];
     ok(`${w}: PDF's apogee is the Results tab's (${apoDigits})`, text.includes(apoDigits), apoDigits);
+    const chute = await p.evaluate(() => !lastSim.st.noChute);
+    if (chute) {
+      ok(
+        `${w}: PDF has the recovery plan`,
+        /Recovery plan/.test(text) && /THE CHARGES, IN ORDER|IF A CHARGE FAILS/.test(text),
+      );
+      ok(`${w}: PDF's recovery plan has the time under each chute`, /TIME AND DRIFT UNDER EACH CHUTE/.test(text));
+    }
     run("pdftoppm", "-r", "45", "-png", pdf, path.join(OUT, `example-${i + 1}-page`));
 
     // flight data (CSV)
