@@ -77,8 +77,9 @@ function deviceDiag(why) {
   const log = adbQuiet("logcat", "-d", "-b", "main,system,crash", "-v", "brief");
   const keep = log
     .split("\n")
+    .filter((l) => !/Scheduling restart of crashed service|Rescheduling restart/.test(l))
     .filter((l) =>
-      /FATAL|AndroidRuntime|crash|Crash|died|Died|Killing|lowmemorykiller|lmkd|signal \d+|Render process|renderer|RenderProcessGone|cr_|chromium.*(ERROR|FATAL)|pocketrocket|ANR/.test(
+      /FATAL|AndroidRuntime|crash|Crash|died|Died|Killing|lowmemorykiller|lmkd|low memory|Low on memory|kswapd|signal \d+|Render process|renderer|RenderProcessGone|cr_|chromium.*(ERROR|FATAL)|pocketrocket|ANR/.test(
         l,
       ),
     )
@@ -86,9 +87,26 @@ function deviceDiag(why) {
   for (const l of keep) console.log("       " + l.trim().slice(0, 240));
   const mem = adbQuiet("shell", "cat", "/proc/meminfo")
     .split("\n")
+    .filter((l) => !/Scheduling restart of crashed service|Rescheduling restart/.test(l))
     .filter((l) => /MemTotal|MemAvailable/.test(l))
     .join("; ");
   console.log("       " + mem);
+}
+
+/** the app's memory use (total PSS, the WebView's page process included), for the log */
+function appMemory() {
+  const tot = (pkg) => {
+    const m = adbQuiet("shell", "dumpsys", "meminfo", pkg).match(/TOTAL PSS:\s*(\d+)|TOTAL:?\s+(\d+)/);
+    return m ? +(m[1] || m[2]) : 0;
+  };
+  const app = tot(PKG),
+    page = adbQuiet("shell", "dumpsys", "meminfo", "--package", PKG)
+      .split("\n")
+      .filter((l) => /sandboxed_process/.test(l))
+      .map((l) => +(l.match(/([\d,]+)K:/) || [0, "0"])[1].replace(/,/g, ""))
+      .reduce((a, b) => a + b, 0);
+  const avail = (adbQuiet("shell", "cat", "/proc/meminfo").match(/MemAvailable:\s*(\d+)/) || [])[1];
+  return `app ${Math.round(app / 1024)} MB, page process ${Math.round(page / 1024)} MB, device free ${Math.round((avail || 0) / 1024)} MB`;
 }
 
 /** the app's WebView DevTools socket, forwarded to tcp:9333; null when the app isn't running */
@@ -238,6 +256,7 @@ async function main() {
 
       // a simulation: an example rocket, Launch, the apogee on Results
       console.log("  ..   opening an example and launching it");
+      console.log("  ..   memory: " + appMemory());
       await pg.evaluate(() => {
         const d = document.getElementById("legal");
         if (d) d.hidden = true;
@@ -258,6 +277,7 @@ async function main() {
 
       // a design file, through Open design file and Android's file picker
       console.log("  ..   opening a design file through the file picker");
+      console.log("  ..   memory: " + appMemory());
       adb("push", files.ork, "/sdcard/Download/devicetest.ork");
       adbQuiet(
         "shell",
@@ -294,6 +314,7 @@ async function main() {
         : found && fail(`the design file didn't open (name before "${before}", after "${opened.name}")`);
 
       console.log("  ..   sharing an altimeter log to the app");
+      console.log("  ..   memory: " + appMemory());
       // an altimeter log shared from another app (put where the app may read it: its own files, through run-as,
       // which debug builds allow; a real share hands the app a content:// link with permission to read it)
       adb("push", files.log, "/data/local/tmp/devicetest-log.csv");
@@ -323,6 +344,7 @@ async function main() {
         ? pass("a shared altimeter log opens the log screen")
         : fail("a shared altimeter log didn't open the log screen");
 
+      console.log("  ..   memory at the end: " + appMemory());
       errs.length ? fail("page errors: " + errs.slice(0, 3).join(" | ")) : pass("no page errors");
       await browser.close().catch(() => {});
     }
