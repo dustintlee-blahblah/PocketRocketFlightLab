@@ -313,7 +313,7 @@ acceleration and top speed read low.
 | Estes Partizon, AeroTech I205W | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft) | 4,116 ft | −3.4% |
 | Estes Ascender, AeroTech H135W | 0.79 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 876 ft/s, 22.0 g | see below |
 
-- **Concept 98**: as the flyer set it up, with its pair of rail buttons, a painted (not smooth) part, the field's
+- **Concept 98**: as the flyer set it up, with its pair of rail buttons, its tail cone painted rather than smooth, the field's
   3,898 ft elevation and its saved weather. Before the rail buttons and paint were added the app gave 18,075 ft (+3.9%);
   OpenRocket 24.12 gives 16,875 ft (−3.0%) on that earlier file.
 - **Partizon**: flown at the launch conditions saved with the file, on a 10 s delay, which puts the charge 0.6 s before
