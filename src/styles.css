@@ -538,7 +538,8 @@ h2 {
   align-items: end;
 }
 .apogee {
-  font: 700 3.4rem/0.95 var(--f-display);
+  --apo: 3.4rem;
+  font: 700 var(--apo) / 0.95 var(--f-display);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -549,18 +550,20 @@ h2 {
   margin-left: 4px;
 }
 .apogee.long {
-  font-size: clamp(2.3rem, 11vw, 3.4rem);
+  --apo: clamp(2.3rem, 11vw, 3.4rem);
 }
 .apogee .tol {
   font: 600 0.8rem/1.05 var(--f-body, inherit);
   margin-left: 6px;
-  vertical-align: 0.9em;
+  /* top of the tolerance level with the top of the digits (text-top sits at the font's ascent, above them) */
+  vertical-align: text-top;
+  position: relative;
+  top: calc(var(--apo) * 0.18);
   white-space: nowrap;
 }
 .apogee .tol.two {
   display: inline-flex;
   flex-direction: column;
-  vertical-align: 0.35em;
 }
 .motorchip {
   display: flex;
