@@ -161,6 +161,7 @@ public class MainActivity extends Activity {
             }
         } catch (Exception e) { u = null; }
         if (u == null) return;
+        android.util.Log.i("PocketRocket", "file shared to the app: " + u);
         String name = null;
         Cursor c = null;
         try {
@@ -186,9 +187,11 @@ public class MainActivity extends Activity {
                 inData = Base64.encodeToString(bo.toByteArray(), 2);
             }
         } catch (Exception e) {
+            android.util.Log.w("PocketRocket", "couldn't read the shared file: " + e);
             toast("Couldn't read that file.");
             return;
         }
+        android.util.Log.i("PocketRocket", "shared file read: " + name);
         if (web != null) web.evaluateJavascript("(window.prIncoming&&window.prIncoming())", null);
     }
 

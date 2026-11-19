@@ -253,8 +253,26 @@ async function main() {
         if (!(await page.evaluate(() => typeof openExample === "function")))
           throw new Error("the page's test hooks aren't there after two reloads");
       }
+      await page.evaluate(() => {
+        const o = window.prToast;
+        window.__toasts = [];
+        window.prToast = (m) => (window.__toasts.push(m), o(m));
+      });
       console.log("  ..   past the first-run screens");
       const pg = page;
+      // what the page shows: the design file open, dialogs, its last messages (toasts are recorded as they come)
+      const pageState = () =>
+        pg.evaluate(() => ({
+          file: (typeof SOURCE !== "undefined" && SOURCE && SOURCE.name) || "",
+          design: document.documentElement.classList.contains("nodesign") ? "none" : "open",
+          sim: typeof lastSim !== "undefined" && !!lastSim,
+          dialogs: [...document.querySelectorAll("[role=dialog],.modal,[id$=modal],[id$=confirm]")]
+            .filter((m) => !m.hidden && m.offsetParent !== null)
+            .map((m) => m.id),
+          toasts: window.__toasts || [],
+        }));
+      const focus = () =>
+        (adbQuiet("shell", "dumpsys", "window").match(/mCurrentFocus=.*?\{[^ ]+ [^ ]+ ([^}]+)\}/) || [])[1] || "?";
 
       // a simulation: an example rocket, Launch, the apogee on Results
       console.log("  ..   opening an example and launching it");
@@ -292,10 +310,19 @@ async function main() {
       );
       await pg.click("#t-rocket");
       await sleep(800);
-      const before = await pg.evaluate(() => document.getElementById("rname")?.textContent || "");
+      const before = (await pageState()).file;
       await pg.click('label[for="orkfile"]');
       await sleep(3000);
       shot("debug-picker");
+      console.log(`  ..   after Open design file: ${focus()}; page ${JSON.stringify(await pageState())}`);
+      console.log(
+        "  ..   on screen: " +
+          uiNodes()
+            .map((n) => n.text || n.desc)
+            .filter(Boolean)
+            .slice(0, 25)
+            .join(" | "),
+      );
       let found = await tapText(/^devicetest\.ork$/, 3);
       if (!found) {
         // not among the recent files: through the picker's menu to Downloads
@@ -307,13 +334,11 @@ async function main() {
       if (!found) fail("the file picker didn't show devicetest.ork");
       await sleep(5000);
       shot("debug-design-opened");
-      const opened = await pg.evaluate(() => ({
-        name: document.getElementById("rname")?.textContent || "",
-        file: document.body.innerText.includes("devicetest"),
-      }));
-      found && opened.file
-        ? pass(`the design file opened (${opened.name.trim()})`)
-        : found && fail(`the design file didn't open (name before "${before}", after "${opened.name}")`);
+      const opened = await pageState();
+      console.log(`  ..   after picking the file: ${focus()}; page ${JSON.stringify(opened)}`);
+      found && /devicetest/.test(opened.file)
+        ? pass(`the design file opened (${opened.file})`)
+        : found && fail(`the design file didn't open (file open before "${before}", after "${opened.file}")`);
 
       console.log("  ..   sharing an altimeter log to the app");
       console.log("  ..   memory: " + appMemory());
@@ -338,6 +363,18 @@ async function main() {
       );
       await sleep(5000);
       shot("debug-shared-log");
+      console.log(
+        "  ..   the app's files: " + adbQuiet("shell", "run-as", PKG, "ls", "-l", "files").replace(/\n/g, " | "),
+      );
+      console.log(
+        "  ..   app log: " +
+          adbQuiet("logcat", "-d", "-v", "brief", "PocketRocket:V", "*:S")
+            .split("\n")
+            .filter((l) => /PocketRocket/.test(l))
+            .slice(-5)
+            .join(" | "),
+      );
+      console.log(`  ..   after the share: ${focus()}; page ${JSON.stringify(await pageState())}`);
       const log = await pg.evaluate(() => ({
         open: !document.getElementById("altmodal").hidden,
         title: document.getElementById("alttitle")?.textContent,
