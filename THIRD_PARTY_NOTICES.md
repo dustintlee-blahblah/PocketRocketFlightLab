@@ -232,17 +232,14 @@ more than one curve, the certification curve is used.
 
 == Parts catalog ==
 The builder's parts catalog (makers' body tubes, nose cones, transitions, couplers, rings, bulkheads, launch lugs,
-parachutes and streamers) is built from the component files distributed with OpenRocket: the openrocket-database
-project (https://github.com/dbcook/openrocket-database), Copyright 2014-2022 Dave Cook, licensed under the Apache
-License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0), and OpenRocket's own component lists
-(https://github.com/openrocket/openrocket), GNU GPL v3. Among OpenRocket's own lists, the parachute files for b2
-Rocketry, Front Range Rocket Recovery, Fruity Chutes, Rocketman and Spherachutes are Copyright 2022 by H. Craig
-Miller, compiled from information those makers provided. The files were converted to the app's compact format
-(tools/parts-catalog/): sizes in millimetres, one entry per part number, impossible sizes left out, and a listed
-weight turned into the material density for tubes, couplers, rings and bulkheads. Top Flight Recovery's X-Type
-parachutes, which those files leave out, were added by this app (tools/parts-catalog/extra/) from the sizes, part
-numbers, weights and descent-rate chart that retailers publish for them. Part numbers and makers' names belong to their
-makers, who are not affiliated with this app.
+parachutes and streamers) is built from the openrocket-database project (https://github.com/dbcook/openrocket-database),
+Copyright 2014-2022 Dave Cook, licensed under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0), converted to the app's compact format (tools/parts-catalog/): sizes in
+millimetres, one entry per part number, impossible sizes left out, and a listed weight turned into the material density
+for tubes, couplers, rings and bulkheads. The parachutes of Fruity Chutes, Rocketman, Spherachutes, b2 Rocketry
+(SkyAngle) and Top Flight Recovery (X-Type) were added by this app (tools/parts-catalog/extra/) from the sizes, weights,
+drag coefficients and descent ratings those makers publish, as each script there records. Part numbers and makers'
+names belong to their makers, who are not affiliated with this app.
 
 == Launch site photo and terrain ==
 The 3D flight view's ground photo comes from the U.S. Geological Survey's imagery service (The National Map,
@@ -252,7 +249,7 @@ the U.S. public domain; the app credits the USGS on the picture. Map services an
 Survey, National Geospatial Program.
 
 == Design file compatibility ==
-The app opens and saves OpenRocket (.ork) and RockSim (.rkt) design files for compatibility. OpenRocket and RockSim are separate programs and are not affiliated with this app.
+The app opens and saves OpenRocket (.ork) and RockSim (.rkt) design files and opens RASAero II (.CDX1) design files, for compatibility. OpenRocket, RockSim and RASAero II are separate programs and are not affiliated with this app.
 
 
 == Weather forecasts ==

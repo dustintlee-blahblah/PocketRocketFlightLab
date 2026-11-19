@@ -606,7 +606,7 @@ export function learnChapters() {
         `<li><b>Fins above Mach 1.5:</b> linear supersonic theory (Ackeret), K/β with a tip loss, β = √(M² − 1); blended between 0.9 and 1.5. The fin lift falls as 1/β, which is why the CP moves forward at high Mach.</li>` +
         `<li><b>Fins and body together:</b> the body between the fins raises their lift by Barrowman's 1 + r/(s + r). Above Mach 0.9, the fins' lift carried onto the body comes from Pitts, Nielsen and Kaattari (NACA Report 1307).</li>` +
         `<li><b>Body lift across the flow:</b> at larger angles the body's side area adds lift, K·(side area/A<sub>ref</sub>)·sin²α with K = 1.1, acting mid-body. It moves the CP back as α grows, so the static CP is quoted at a typical 2°.</li>` +
-        `<li><b>Five or more fins</b> shield each other (OpenRocket's factors); fins stall from about 18° to 35°.</li></ul>` +
+        `<li><b>Five or more fins</b> shield each other (MIL-HDBK-762's factors); fins stall from about 18° to 35°.</li></ul>` +
         `<p>The flight also needs <b>damping</b>: how quickly a swing dies out. The app works out pitch and roll damping from the same parts, so a rocket that is stable but under-damped weaves in the flight, as real ones do.</p>` +
         `<p>Checked against wind-tunnel data: the Arcas sounding rocket's CP from Mach 0.6 to 4.6 (NASA TN D-4013 and D-4014) within 3.1% of body length on average.</p>` +
         tryIt(

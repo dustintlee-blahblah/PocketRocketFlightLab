@@ -10,15 +10,15 @@ python3 tools/parts-catalog/build_catalog.py orc/datafiles/components --compare 
 python3 tools/parts-catalog/build_catalog.py orc/datafiles/components             # write the catalog
 ```
 
-The source is OpenRocket's component files (`.orc`, XML): `database/` is Dave Cook's
-[openrocket-database](https://github.com/dbcook/openrocket-database) (Apache License 2.0), and `internal/` is
-OpenRocket's own lists (GPL v3), among them the parachute makers' files compiled by H. Craig Miller. See
-THIRD_PARTY_NOTICES.md.
+The source is Dave Cook's [openrocket-database](https://github.com/dbcook/openrocket-database) (`database/` in the
+jar: `.orc` files, XML, Apache License 2.0), and this app's own lists in `extra/`. OpenRocket's own lists (`internal/`,
+GPL v3) are not read: since November 2026 the parachute makers they covered are listed in `extra/` from each maker's
+own published specifications, and FlisKits (which sells only kits now and publishes no part sizes) and Front Range
+Rocket Recovery (custom chutes, no published Cd or weights) are left out. See THIRD_PARTY_NOTICES.md.
 
 How it chooses:
 
-- **`database/` first.** A maker listed there is taken from there only; `internal/` adds the makers it lacks
-  (parachute makers, FlisKits and others). Makers listed under two names get one.
+- **Makers listed under two names get one.**
 - **One entry per part number** of a maker and kind; a repeat is left out.
 - **Kinds the builder has.** An engine block is listed with the centering rings. Rail buttons are left out (the
   builder has its own sizes).
@@ -35,10 +35,24 @@ How it chooses:
 - **Units.** Sizes are stored in mm and weights in g; the app converts them to metres and kg when it unpacks a list
   (`src/js/builder/parts-catalog.js`).
 
-## The app's own additions (`extra/`)
+## The app's own lists (`extra/`)
 
-Parts OpenRocket's files leave out, in the same `.orc` format, read after them. Each is written by a script beside
-this file; don't edit the `.orc` by hand.
+Parts gathered for this app from the makers' own published specifications (never from OpenRocket's files), in the same
+`.orc` format, read after `database/`. Each is written by a script beside this file that names its sources; don't edit
+the `.orc` by hand. Most makers publish no part numbers: those lists use the app's own (RM-, SA-). The shared writer is
+`chutes.py`; where a maker states no Cd, it is worked out from the maker's own rating (the weight brought down at a
+stated speed, sea-level air).
+
+- **Fruity Chutes** (`fruity_chutes.py`, 50): Iris Ultra Standard, Compact, Light and Ultralight (Cd 2.2, as stated) and
+  Classic Elliptical (1.5-1.6 stated; 1.55), with each listing's weight, packed size and gore count. Part numbers are
+  the store's SKUs without the colour suffix; designs saved with the older zero-padded numbers (IFC-036-N) still match.
+- **Rocketman** (`rocketman.py`, 127): Standard, High Performance and Ultra-Light High-Performance (Cd 2.2), Ultra-Light
+  Parabolic, Pro Experimental Drogue, Kevlar and Ballistic Mach II (0.97), Elliptical (1.6), Ultra-Light Annular and
+  Checkered Ring Sail (from the ratings).
+- **Spherachutes** (`spherachutes.py`, 49): hemispherical Classic, Heavy Duty and Ultralight, and the minis, at Cd 0.75
+  on the size (the cloth across), and the Apex drogues (0.61).
+- **b2 Rocketry SkyAngle** (`b2_skyangle.py`, 20): Classic, Classic II and CERT-3, as equivalent round chutes (the line
+  length as the diameter, the Cd from b2's tested 20 ft/s loads), as b2's own Cd is on an area it doesn't give.
 
 - **Top Flight Recovery X-Type parachutes** (`top_flight_xtype.py` writes `extra/top_flight_xtype.orc`): the X-Type
   (10 to 90 in.), thin mill X-Type (10 to 30 in.) and Ultra X-Type HD (18 to 90 in.), 28 chutes. OpenRocket models
@@ -50,5 +64,6 @@ this file; don't edit the `.orc` by hand.
   calculated from the fabric and lines, except the three thin mill sizes whose weights retailers list.
 
 ```
+python3 tools/parts-catalog/fruity_chutes.py; python3 tools/parts-catalog/rocketman.py; python3 tools/parts-catalog/spherachutes.py; python3 tools/parts-catalog/b2_skyangle.py
 python3 tools/parts-catalog/top_flight_xtype.py --print   # writes extra/top_flight_xtype.orc, prints each chute's Cd
 ```

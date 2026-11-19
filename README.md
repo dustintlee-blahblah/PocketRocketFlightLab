@@ -23,7 +23,7 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
   build-up, wind with height and gusts, and the earth's rotation
 - Single, two- and three-stage rockets, motor clusters and airstarts
 - Opens OpenRocket, RockSim and RASAero II files and saves OpenRocket files, keeping everything the app doesn't edit
-- Rocket builder with a catalog of about 3,800 makers' parts, motor comparison, landing dispersion (Monte Carlo),
+- Rocket builder with a catalog of about 3,700 makers' parts, motor comparison, landing dispersion (Monte Carlo),
   fin flutter checks
 - Recovery Plan: primary and backup altimeter charges in order, the flight flown again as if a charge
   failed, time and drift under each chute, the main's opening load, and static port sizes

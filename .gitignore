@@ -25,3 +25,4 @@ web/
 # local regression snapshots (tests/golden-snapshot.json is the committed one)
 /golden-snapshot.json
 *.golden.json
+__pycache__/

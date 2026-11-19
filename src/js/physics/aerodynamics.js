@@ -1155,8 +1155,11 @@ export function aero(D) {
   const last = segs[segs.length - 1],
     baseArea = Math.PI * last.r2 * last.r2;
   /* fin-fin interference: more than four fins around the body at one station shield each other, so each set's lift is
-     scaled by the count of all fins on the same body overlapping it along its length (Barrowman's 3- and 4-fin results don't cover more;
-     factors as in OpenRocket: 5 fins 0.948, 6 0.913, 7 0.854, 8 0.81, more 0.75) */
+     scaled by the count of all fins on the same body overlapping it along its length (Barrowman's 3- and 4-fin results don't cover more).
+     MIL-HDBK-762 (Design of Aerodynamically Stabilized Free Rockets, 1990, p. 5-24) gives six fins 1.37 and eight fins
+     1.62 times the normal force of four, against the 1.5 and 2 that adding fins alone would give: 0.913 and 0.81 of
+     each fin's share. Five and seven fins are interpolated between (0.948, 0.854); past eight, 0.75 is held (no data).
+     OpenRocket uses the same factors (Niskanen's thesis, 2009, equation 3.54, from the same handbook page). */
   const finInterK = (n) => (n <= 4 ? 1 : n === 5 ? 0.948 : n === 6 ? 0.913 : n === 7 ? 0.854 : n === 8 ? 0.81 : 0.75);
   const fins = finSetsOf(D)
     .filter((f) => f && f.n > 0 && f.a > 0 && f.s > 0)
@@ -1394,11 +1397,17 @@ function podAero(pd, finish) {
   };
 }
 /**
- * A set of tube fins (short open tubes around the body), as OpenRocket models them (TubeFinSetCalc): each tube's lift
- * from Ribner's ring-airfoil result ("The ring airfoil in nonaxial flow", J. Aeronautical Sciences 14(9), 1947,
- * equation 5), CNα = 2π²·r·c·A′/(1 + A′) with A′ = (2/π)·(2r/c), acting at a quarter of the chord at low speed; its
- * outside surface less the strip the body hides, for skin friction; and its front face, the flow through it, and the
- * wedge-shaped gap where it meets the body, for pressure drag.
+ * A set of tube fins (short open tubes around the body, each touching it): each tube's lift from Ribner's ring-airfoil
+ * result ("The ring airfoil in nonaxial flow", J. Aeronautical Sciences 14(9), 1947, equation 5), CNα = 2π²·r·c·A′/(1 + A′)
+ * with A′ = (2/π)·(2r/c), acting at a quarter of the chord at low speed; its outside surface less the strip the body
+ * hides, for skin friction; and its front face, the flow through it, and the wedge-shaped gap where it meets the body,
+ * for pressure drag. (The same breakdown OpenRocket uses, so designs fly alike in both.)
+ * The gap, by plane geometry: with the body's radius R and the tube's r touching, the line from the body's center
+ * tangent to the tube meets it a distance d = √((R + r)² − r²) out, at an angle θ₁ = acos(r/(R + r)) from the line of
+ * centers at the tube's center and θ₂ = π/2 − θ₁ at the body's. The two right triangles either side of the line of
+ * centers make a kite of area d·r; less the tube's sector (r²·θ₁, both halves) and the body's (R²·θ₂), what remains is
+ * the gap on both sides of one tube. The tube's outside is wetted over 2(π − θ₁) of its circumference, and the body
+ * loses 2θ₂·R of its own under it.
  * @param {object} tf tube fin set from the design: {n, len, ro, ri, x, rb}
  * @param {number} Aref reference area, m²
  * @param {number} finish surface roughness, m
@@ -1811,7 +1820,7 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
     for (const it of pd.aft) base += (pd.k * it.k * cb * it.area) / S;
     base += (pd.k * cb * pd.baseArea) / S;
   }
-  // tube fins (OpenRocket's TubeFinSetCalc): friction on each tube's outside; the flow through it (Darcy–Weisbach, with the
+  // tube fins (tubeFinAero above): friction on each tube's outside; the flow through it (Darcy–Weisbach, with the
   // Swamee–Jain friction factor); 0.7 of the stagnation and base pressure on its front face; and both on the gap at the body
   for (const t of A.tubeFins || []) {
     if (t.cdo > 0) {

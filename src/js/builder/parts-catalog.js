@@ -171,9 +171,11 @@ function partValues(kind, e) {
 function partFind(p) {
   const kind = partKind(p);
   if (!kind || !p.cat || !p.cat.pn) return null;
-  const mk = (p.cat.mk || "").toLowerCase(),
-    pn = p.cat.pn.toLowerCase();
-  return partList(kind).find((e) => e.pn.toLowerCase() === pn && e.mk.toLowerCase() === mk) || null;
+  // part numbers written with or without zero padding (an older list's IFC-036-N is the maker's IFC-36-N)
+  const norm = (s) => s.toLowerCase().replace(/(^|-)0+(?=\d)/g, "$1"),
+    mk = (p.cat.mk || "").toLowerCase(),
+    pn = norm(p.cat.pn);
+  return partList(kind).find((e) => norm(e.pn) === pn && e.mk.toLowerCase() === mk) || null;
 }
 /**
  * Whether a part labelled with a catalog part still has that part's sizes (true also when the catalog doesn't have the
