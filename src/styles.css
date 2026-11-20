@@ -1288,6 +1288,20 @@ h2 + .subh {
 .bldeditcol {
   position: relative;
 }
+/* everything under Whole Rocket in the Design Tree, set in from it with a line down its side */
+.bldunder {
+  margin: 4px 0 0 9px;
+  padding-left: 7px;
+  border-left: 2px solid var(--line);
+}
+/* the Recovery row: the rocket's recovery configuration, first under the rocket */
+.bldrow.bldrecrow {
+  margin-top: 2px;
+}
+/* its name stays whole; the summary beside it gives way */
+.bldrow.bldrecrow b {
+  flex-shrink: 0;
+}
 .bldtreehead {
   display: flex;
   align-items: center;
@@ -2719,6 +2733,30 @@ html.typing .runbar {
   padding: 6px 10px;
   font: 600 0.8rem var(--f-body);
   cursor: pointer;
+}
+/* the 3D view's event notices (Apogee, a charge firing, a chute opening): chips across the top, under the camera bar,
+   as the 2D view draws them */
+.anim3dev {
+  position: absolute;
+  top: 52px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.anim3dev span {
+  padding: 6px 11px;
+  border-radius: 8px;
+  background: rgba(21, 32, 42, 0.85);
+  color: #fff;
+  font: 600 0.86rem var(--f-body);
+  white-space: nowrap;
+}
+.anim3dev span.fresh {
+  background: rgba(196, 72, 20, 0.95);
 }
 .anim3dstate {
   position: absolute;

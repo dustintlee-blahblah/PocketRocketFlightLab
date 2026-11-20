@@ -59,7 +59,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">333</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">334</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -164,7 +164,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
     </div>
 
     <div class="panel" id="recpanel" hidden>
-      <div class="foldhead"><h2 style="margin:0">Recovery Plan<button class="ib" type="button" data-title="Recovery Plan" data-info="Each charge as it would fire (each altimeter's and the motor's, and a chute release opening), the flight flown again as if each one failed, the time and drift under each chute, the main's opening load and the altimeter bay's static ports.&#10;&#10;How the rocket is recovered is set in the builder, under Whole rocket, Recovery: motor ejection, one altimeter or two, with or without a chute release. The bay's size and the harness's rated load are there too." aria-label="About Recovery Plan">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="recbody" aria-expanded="false" aria-controls="recbody">Show</button></div>
+      <div class="foldhead"><h2 style="margin:0">Recovery Plan<button class="ib" type="button" data-title="Recovery Plan" data-info="Each charge as it would fire (each altimeter's and the motor's, and a chute release opening), the flight flown again as if each one failed, the time and drift under each chute, the main's opening load and the altimeter bay's static ports.&#10;&#10;How the rocket is recovered is set in the builder: select Recovery in the Design Tree for motor ejection, one altimeter or two, with or without a chute release. The bay's size and the harness's rated load are there too." aria-label="About Recovery Plan">i</button></h2><button class="rsomore foldbtn" type="button" data-fold="recbody" aria-expanded="false" aria-controls="recbody">Show</button></div>
       <div id="recbody" hidden></div>
     </div>
 
@@ -536,6 +536,7 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
   <div class="animtop"><h2 id="animtitle">Flight animation</h2><div class="animtopbtns"><button class="btn ghost" id="anim3dbtn" type="button">3D view</button><button class="btn ghost" id="animvideo" type="button">Export video</button></div></div>
   <div class="animstage"><canvas id="animcv" aria-label="Animated side view of the flight"></canvas><canvas id="anim3d" aria-label="The flight in 3D" hidden></canvas>
     <div class="anim3dbar" id="anim3dbar" hidden><div class="seg2" role="group" aria-label="Camera"><button type="button" data-cam="chase" aria-pressed="true">Chase</button><button type="button" data-cam="ground" aria-pressed="false">Flight line</button><button type="button" data-cam="over" aria-pressed="false">Whole flight</button></div><label class="anim3dphoto"><input type="checkbox" id="anim3dphoto"> Site photo</label></div>
+    <div class="anim3dev" id="anim3dev" aria-live="polite" hidden></div>
     <div class="anim3dstate" id="anim3dstate" hidden></div>
     <div class="anim3dnote"><span id="anim3dhint" hidden>Drag to look around · pinch or scroll to zoom</span><span id="anim3dcredit" hidden>Imagery: U.S. Geological Survey</span></div><div class="animcount" id="animcount" aria-live="assertive" hidden></div></div>
   <div class="animhud" id="animhud"></div>

@@ -1,5 +1,5 @@
 /**
- * The rocket's recovery configuration (builder, Whole rocket, Recovery): how its parachutes are deployed. One of
+ * The rocket's recovery configuration (the builder's Recovery row, in the Design Tree): how its parachutes are deployed. One of
  *
  *   "motor"   the motor's ejection charge does it
  *   "one"     one altimeter fires an apogee charge and (with a main) a main charge
@@ -240,6 +240,19 @@ export function recSync(model) {
       else delete c.release;
     }
   });
+}
+/**
+ * The recovery configuration in a few words, for the Design Tree's Recovery row: "Two altimeters · release" (with a chute release).
+ * @param {object} model
+ * @returns {string}
+ */
+export function recSummary(model) {
+  const S = (model && model.settings) || {},
+    cfg = S.recCfg || "custom";
+  return (
+    { motor: "Motor ejection", one: "One altimeter", two: "Two altimeters", custom: "Custom" }[cfg] +
+    (cfg !== "custom" && S.crOn ? " · release" : "")
+  );
 }
 /**
  * True when a parachute or streamer's opening comes from the recovery configuration (it is in the top stage, and the

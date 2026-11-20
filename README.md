@@ -25,7 +25,7 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
 - Opens OpenRocket, RockSim and RASAero II files and saves OpenRocket files, keeping everything the app doesn't edit
 - Rocket builder with a catalog of about 3,700 makers' parts, motor comparison, landing dispersion (Monte Carlo),
   fin flutter checks
-- Recovery set in one place (motor ejection, one altimeter or two, with or without a chute release), and a
+- Recovery set in one place, its own row of the Design Tree (motor ejection, one altimeter or two, with or without a chute release), and a
   Recovery Plan: every charge in order, the flight flown again as if each one failed, time and drift under each chute, the main's opening load, and static port sizes
 - The flight animated in 2D or in 3D, over an aerial photo of the launch site on its own terrain (USGS imagery and elevation, United States)
 - The simulated flight as a data file (CSV), and a PDF flight report

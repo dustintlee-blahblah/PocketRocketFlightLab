@@ -327,8 +327,7 @@ export function animDraw(target) {
   }
   const mainOpen = chute && (st.single || (st.tMain != null && t >= st.tMain));
   // dual deployment with no drogue: nothing opens until the main
-  const noDrogue = !st.single && !(RD.drogueDia > 0),
-    mainOpenAtDep = st.single || (st.tMain != null && tDep != null && st.tMain <= tDep + 1e-6);
+  const noDrogue = !st.single && !(RD.drogueDia > 0);
   const freefall = chute && !mainOpen && noDrogue;
   // coming down ballistic, the drawn attitude is the simulated one: a stable rocket swings over and falls nose first
   const staged = st.staged && st.tSep != null && t >= st.tSep;
@@ -656,18 +655,11 @@ export function animDraw(target) {
      the altimeter's drogue (apogee) charge just aft of the middle, the main charge forward of it. It lasts about 0.2 s
      of flight time (longer when the playback is sped up, so a frame still catches it) */
   if (pose) {
-    let evs = [];
-    try {
-      evs = chargeEvents(st, RD, out) || [];
-    } catch (_) {
-      evs = [];
-    }
-    const dur = 0.2 * Math.max(1, ANIM.speed || 1);
-    for (const e of evs) {
-      const age = t - e.t;
-      if (!(age >= 0 && age < dur)) continue;
+    for (const { e, k: prog, at } of animFlashes(t)) {
+      const age = prog,
+        dur = 1;
       let P = pose,
-        f = e.motor ? 0.82 : /Main/.test(e.name) ? 0.32 : 0.55;
+        f = at;
       if (e.booster) {
         if (!bpos || !ANIM.boo) continue;
         P = { x: SX(bpos[0]), y: SY(bpos[1]), ux: 0.3, uz: -1, len: size * 0.5, frac: 1 };
@@ -782,28 +774,7 @@ export function animDraw(target) {
     c.restore();
   }
   // event notices: across the top of the window, above the flight
-  const dur = (2.5 / Math.max(ANIM.speed, 1)) * 1.5;
-  // every charge, named for what it does: the motor's delay charge, or the altimeter/timer charge for each chute
-  const evs = [
-    [st.tb, "Burnout"],
-    [st.tApo, `Apogee ${fmt(st.maxAlt, "alt")} ${uname("alt")}`],
-    ...chargeEvents(st, RD, out).map((c) => [
-      c.t,
-      c.motor ? `${c.name} fires (${+c.delay.toFixed(1)} s)` : `${c.name} fires`,
-    ]),
-    [
-      st.noChute || (noDrogue && !mainOpenAtDep) ? null : tDep,
-      mainOpenAtDep ? (st.single ? "Chute opens" : "Main opens") : "Drogue opens",
-    ],
-    [mainOpenAtDep || st.tMain == null ? null : st.tMain, "Main opens"],
-    [st.tSep1, "First stage drops"],
-    [st.tSep, "Staging"],
-    [st.tumble ? st.tumble.t : st.noChute ? tDep : null, "Tumbling"],
-    [st.tLand, "Landed"],
-  ]
-    .filter((e) => e[0] != null && t >= e[0] && t - e[0] < dur)
-    .sort((a, b) => a[0] - b[0])
-    .slice(-3);
+  const evs = animNotices(t);
   if (evs.length) {
     let fs = 14;
     const widths = () =>
@@ -835,6 +806,65 @@ export function animDraw(target) {
       xx += w + 8;
     });
   }
+}
+/**
+ * The event notices showing at a time of the flight, for the 2D and 3D views alike: burnout, apogee, every charge
+ * (named for what it does: the motor's delay charge, or the altimeter or timer charge for each chute), each chute
+ * opening, staging, tumbling and landing. Each shows for a few seconds (less when the playback is sped up); the three
+ * newest are kept.
+ * @param {number} t flight time, s
+ * @returns {Array[]} [time, text], oldest first
+ */
+export function animNotices(t) {
+  const { out, st, D: RD } = lastSim,
+    tDep = st.tDeploy,
+    noDrogue = !st.single && !(RD.drogueDia > 0),
+    mainOpenAtDep = st.single || (st.tMain != null && tDep != null && st.tMain <= tDep + 1e-6),
+    dur = (2.5 / Math.max(ANIM.speed, 1)) * 1.5;
+  let charges = [];
+  try {
+    charges = chargeEvents(st, RD, out) || [];
+  } catch (_) {
+    charges = [];
+  }
+  return [
+    [st.tb, "Burnout"],
+    [st.tApo, `Apogee ${fmt(st.maxAlt, "alt")} ${uname("alt")}`],
+    ...charges.map((c) => [c.t, c.motor ? `${c.name} fires (${+c.delay.toFixed(1)} s)` : `${c.name} fires`]),
+    [
+      st.noChute || (noDrogue && !mainOpenAtDep) ? null : tDep,
+      mainOpenAtDep ? (st.single ? "Chute opens" : "Main opens") : "Drogue opens",
+    ],
+    [mainOpenAtDep || st.tMain == null ? null : st.tMain, "Main opens"],
+    [st.tSep1, "First stage drops"],
+    [st.tSep, "Staging"],
+    [st.tumble ? st.tumble.t : st.noChute ? tDep : null, "Tumbling"],
+    [st.tLand, "Landed"],
+  ]
+    .filter((e) => e[0] != null && t >= e[0] && t - e[0] < dur)
+    .sort((a, b) => a[0] - b[0])
+    .slice(-3);
+}
+/**
+ * The charges firing at a time of the flight, for the flash each makes inside the body (2D and 3D): which charge,
+ * how far through its flash it is (0 to 1), and where along the rocket it is, as a fraction of the length from the
+ * nose: the motor's delay charge near the tail, the apogee charge just aft of the middle, the main charge forward of
+ * it. A flash lasts about 0.2 s of flight time (longer when the playback is sped up, so a frame still catches it).
+ * @param {number} t flight time, s
+ * @returns {{e:object, k:number, at:number}[]}
+ */
+export function animFlashes(t) {
+  const { out, st, D: RD } = lastSim;
+  let evs = [];
+  try {
+    evs = chargeEvents(st, RD, out) || [];
+  } catch (_) {
+    evs = [];
+  }
+  const dur = 0.2 * Math.max(1, ANIM.speed || 1);
+  return evs
+    .filter((e) => e.t != null && t - e.t >= 0 && t - e.t < dur)
+    .map((e) => ({ e, k: (t - e.t) / dur, at: e.motor ? 0.82 : /Main/.test(e.name) ? 0.32 : 0.55 }));
 }
 /**
  * Start-up: what this module does when the app opens (called once, in order, from main.js).

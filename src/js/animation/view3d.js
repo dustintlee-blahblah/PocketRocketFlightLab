@@ -7,7 +7,9 @@
  * of downwind, z up) are turned into these by the wind's direction, so the picture has north where the photo has it.
  */
 import { ANIM, animAt } from "./animation.js";
+import { animFlashes, animNotices } from "./scenery.js";
 import { sitePhoto, sitePhotoAgain, sitePhotoState } from "./site-photo.js";
+import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { lastSim } from "../ui/results.js";
 import { fmt, uname } from "../ui/units.js";
@@ -1041,6 +1043,31 @@ export function anim3dDraw() {
     );
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
+  /* a charge firing: a short flash inside the body, as in the 2D view (the motor's delay charge near the tail, the
+     apogee charge just aft of the middle, the main charge forward of it). Discs facing the camera, brightest at the
+     middle, added to what is behind them */
+  {
+    const fl = animFlashes(t).filter((f) => !f.e.booster);
+    if (fl.length) {
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.disable(gl.DEPTH_TEST);
+      for (const f of fl) {
+        const c = add(lying, mul(dir, (1 - f.at) * len * big)),
+          toEye = norm(sub(eye, c)),
+          k = 1 - f.k,
+          r = Math.max(len * big * 0.45, body.R * big * 6) * (0.6 + 0.6 * Math.sin(Math.PI * Math.min(1, f.k * 2)));
+        for (const [sc, col] of [
+          [1, [0.86, 0.24, 0.04, 0.3 * k]],
+          [0.62, [0.94, 0.36, 0.08, 0.5 * k]],
+          [0.36, [1, 0.77, 0.24, 0.8 * k]],
+          [0.16, [1, 1, 0.92, k]],
+        ])
+          drawMesh(V3.fixed.disc, place(c, toEye, 0, r * sc), col, 0);
+      }
+      gl.enable(gl.DEPTH_TEST);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+  }
   gl.depthMask(true);
   /**
    * Draws lines through points (x, y, z each) in one colour.
@@ -1090,6 +1117,16 @@ export function anim3dDraw() {
   document.getElementById("animhud").innerHTML = ANIM.countEnd
     ? ""
     : `${t > 0 ? `<b>${phase}</b>` : ""}<span>T+${t.toFixed(1)} s</span><span>Altitude ${fmt(z, "alt")} ${uname("alt")}</span><span>Vertical speed ${fmt(vz, "speed")} ${uname("speed")}</span><span>${Math.abs(dw) < 0.5 ? "Over the pad" : `${fmt(Math.abs(dw), "alt")} ${uname("alt")} ${dw > 0 ? "downwind" : "upwind"}`}</span>${big > 1.5 ? `<span>Rocket drawn ${big >= 10 ? Math.round(big) : big.toFixed(1)}× size</span>` : ""}`;
+  // event notices, as the 2D view draws across its top (Burnout, Apogee, each charge firing, each chute opening)
+  {
+    const box = document.getElementById("anim3dev"),
+      ev = ANIM.countEnd ? [] : animNotices(t),
+      html = ev.map((e) => `<span${t - e[0] < 0.6 ? ' class="fresh"' : ""}>${esc(e[1])}</span>`).join("");
+    if (box && box.dataset.h !== html) {
+      box.dataset.h = html;
+      box.innerHTML = html;
+    }
+  }
   const sc = document.getElementById("animscrub");
   if (document.activeElement !== sc) sc.value = String(t);
 }
@@ -1110,6 +1147,7 @@ export function anim3dSet(on) {
   document.getElementById("anim3d").hidden = !on;
   document.getElementById("animcv").hidden = on;
   document.getElementById("anim3dbar").hidden = !on;
+  document.getElementById("anim3dev").hidden = !on;
   // the video is of the 2D view: from 3D the button says so, and switches to it
   document.getElementById("animvideo").textContent = on ? "Export 2D video" : "Export video";
   if (!V3.bad) document.getElementById("anim3dbtn").textContent = on ? "2D view" : "3D view";

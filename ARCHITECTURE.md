@@ -156,7 +156,7 @@ computed. In outline (AERODYNAMICS.md has every term, its source at each speed, 
   `physics/flow-streams.js` (slender-body potential flow, supersonic flow along Mach lines, and the drag model's
   transition and separation rules); both are drawn only and feed no number.
 - **Recovery** (`recovery/ejection-charge.js`): black powder charge sizes for each compartment. How the rocket is
-  recovered is one setting of the builder's Whole rocket block (`builder/recovery-config.js`): motor ejection, one
+  recovered is one setting, the Recovery row of the builder's Design Tree (`builder/recovery-config.js`): motor ejection, one
   altimeter or two (each with its own apogee delay and main height, and optionally its model), with or without a chute
   release. Each parachute of the top stage has only a role (drogue or main); its opening event, which is what the
   .ork holds and the flight reads, is written from the configuration by `recSync()` whenever the design changes. A

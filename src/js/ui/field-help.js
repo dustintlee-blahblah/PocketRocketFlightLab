@@ -166,7 +166,7 @@ export function bldInfo(F) {
     crOn: "Tick this when the main (or the only parachute) is wrapped in a chute release, such as a Jolly Logic Chute Release. The first charge (the motor's, or an altimeter's apogee charge) puts the bundled chute out, the rocket comes down fast on the bundle, and the release lets the chute open at its set height. It gives a dual deploy's shorter walk from a single charge.\n\nThe Recovery Plan also flies the flight as if the release stayed shut.",
     crAlt:
       "The height above the pad the chute release is set to open at. 300 to 500 ft (90 to 150 m) is usual. With an altimeter's main charge as well, the chute opens at whichever is lower.",
-    role: "Drogue: the small parachute (or streamer) that opens at the first charge, at apogee or at the motor's ejection charge. Main: the large one that opens lower down, at the main charge or when its chute release opens. Which charges there are is set under Whole rocket, Recovery.",
+    role: "Drogue: the small parachute (or streamer) that opens at the first charge, at apogee or at the motor's ejection charge. Main: the large one that opens lower down, at the main charge or when its chute release opens. Which charges there are is set under Recovery, in the Design Tree.",
     bayDia:
       "The inside diameter of the altimeter bay, for its static port size (Results, Recovery plan). Blank uses the body's diameter.",
     bayLen:

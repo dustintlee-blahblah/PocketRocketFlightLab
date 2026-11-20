@@ -2,7 +2,7 @@
  * The Rocket tab's parts editor: the parts tree, adding parts, and the editor for the selected part (its fields, how
  * they're drawn and wired up, and the fin shape editor).
  */
-import { BLD, BLD_ROOT, bldChanged, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
+import { BLD, BLD_REC, BLD_ROOT, bldChanged, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
 import { bldCalcOv, bldCalcPartMass } from "./derive.js";
 import { BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
 import { finDxfFlip, finDxfLoad, finDxfNote, finDxfSave } from "./fin-dxf.js";
@@ -29,7 +29,7 @@ import {
   bldRodFor,
 } from "./model.js";
 import { partAsListed, partKind, partPick } from "./parts-catalog.js";
-import { REC_DEFAULTS, recManaged } from "./recovery-config.js";
+import { REC_DEFAULTS, recManaged, recSummary } from "./recovery-config.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import {
@@ -151,7 +151,9 @@ export function bldRenderTree() {
   if (!el) return;
   let h = "";
   const multi = BLD.stages.length > 1;
-  h += `<button class="bldrow stage${bldSel === BLD_ROOT ? " on" : ""}" data-id="${BLD_ROOT}"><b>Whole Rocket</b><span>TOP LEVEL</span></button>`;
+  h += `<button class="bldrow stage${bldSel === BLD_ROOT ? " on" : ""}" data-id="${BLD_ROOT}"><b>Whole Rocket</b><span>TOP LEVEL</span></button><div class="bldunder">`;
+  // how the rocket is recovered: a row of its own, first under the rocket
+  h += `<button class="bldrow stage bldrecrow${bldSel === BLD_REC ? " on" : ""}" data-id="${BLD_REC}"><b>Recovery</b><span>${esc(recSummary(BLD))}</span></button>`;
   BLD.stages.forEach((st, si) => {
     if (multi)
       h += `<button class="bldrow stage${bldSel === st.id ? " on" : ""}" data-id="${st.id}"><b>${esc(st.name)}</b><span>stage ${si + 1}</span></button>`;
@@ -161,7 +163,7 @@ export function bldRenderTree() {
         h += `<button class="bldrow kid${bldSel === k.id ? " on" : ""}" data-id="${k.id}"><b>${esc(k.name)}</b><span>${esc(bldSum(k))}</span></button>`;
     });
   });
-  el.innerHTML = h;
+  el.innerHTML = h + `</div>`;
   el.querySelectorAll(".bldrow").forEach(
     (b) =>
       (b.onclick = () => {
@@ -364,7 +366,7 @@ function bldOpensText(p) {
           : `Opens at the main charge, at ${h}.`
         : +p.delay > 0
           ? `Opens at the apogee charge, ${+(+p.delay).toFixed(1)} s after apogee.`
-          : "Opens at the apogee charge.") + " Set under Whole rocket, Recovery (the top row of the Design Tree)."
+          : "Opens at the apogee charge.") + " Set under Recovery, in the Design Tree."
   );
 }
 /**
@@ -379,34 +381,39 @@ export function bldRenderEdit() {
     return;
   }
   if (f.root) {
-    let h = `<div class="bldh">Whole rocket</div><div class="grid">`;
-    for (const [key, label, kind, dim, obj, opts] of bldRootFields()) {
-      // a heading: a new group of fields
-      if (key === "#") {
-        h += `</div><div class="bldh">${esc(label)}</div><div class="grid">`;
-        continue;
+    /** the fields of one block as HTML */
+    const block = (title, list) => {
+      let h = `<div class="bldh">${esc(title)}</div><div class="grid">`;
+      for (const [key, label, kind, dim, obj, opts] of list) {
+        // a heading: a new group of fields
+        if (key === "#") {
+          h += `</div><div class="bldh">${esc(label)}</div><div class="grid">`;
+          continue;
+        }
+        // a line of text among the fields
+        if (key === "!") {
+          h += `</div><p class="note bldfnote">${esc(label)}</p><div class="grid">`;
+          continue;
+        }
+        const O = obj || BLD;
+        h += bldFieldHtml(
+          {
+            key,
+            label,
+            kind,
+            dim,
+            opts,
+            on: kind === "ovr" ? bldOvOn(O, key) : undefined,
+            armed: kind === "ovr" && O[key + "On"] === true,
+            calc: kind === "ovr" ? bldCalcOv(key, 0) : undefined,
+          },
+          O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : REC_DEFAULTS[key]),
+        );
       }
-      // a line of text among the fields
-      if (key === "!") {
-        h += `</div><p class="note bldfnote">${esc(label)}</p><div class="grid">`;
-        continue;
-      }
-      const O = obj || BLD;
-      h += bldFieldHtml(
-        {
-          key,
-          label,
-          kind,
-          dim,
-          opts,
-          on: kind === "ovr" ? bldOvOn(O, key) : undefined,
-          armed: kind === "ovr" && O[key + "On"] === true,
-          calc: kind === "ovr" ? bldCalcOv(key, 0) : undefined,
-        },
-        O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : REC_DEFAULTS[key]),
-      );
-    }
-    el.innerHTML = h + `</div>`;
+      return h + `</div>`;
+    };
+    // the Recovery row shows the recovery configuration; Whole Rocket, everything else about the rocket
+    el.innerHTML = f.rec ? block("Recovery", bldRootFields("rec")) : block("Whole rocket", bldRootFields("main"));
     bldWire(el, null, "root");
     return;
   }

@@ -340,7 +340,7 @@ export function orkRecovery(rd, nd, S, SRC, twoStage, motor) {
         nd.ejChuteDelay = dd;
         if (!(mo && mo.ej != null))
           rd.notes.push(
-            "The chute is set to open at the motor ejection charge, but the motor is plugged, so that chute never opens. Choose a delay under Motor Delay on the Motor tab, or choose an altimeter in the builder (Whole rocket, Recovery).",
+            "The chute is set to open at the motor ejection charge, but the motor is plugged, so that chute never opens. Choose a delay under Motor Delay on the Motor tab, or choose an altimeter in the builder (Recovery, in the Design Tree).",
           );
       } else if (first.ev === "launch") {
         nd.deployMode = "timer";

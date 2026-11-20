@@ -37,6 +37,8 @@ const TYPES = [
   ["bump", "kid"],
   ["stage", "stage"],
   ["rocket", "root"],
+  // the Design Tree's Recovery row: the rocket's recovery configuration (kept with the rocket's settings)
+  ["recovery", "rec"],
 ];
 
 /* Differences that are not losses, each for a stated reason. A field named here is still checked by the flight
@@ -104,18 +106,24 @@ const SAME = [
           return a;
         };
         T.target = () =>
-          where === "root" ? BLD : where === "stage" ? BLD.stages[0] : T.all(BLD, type).find((n) => n.id === T.id);
+          where === "root" || where === "rec"
+            ? BLD
+            : where === "stage"
+              ? BLD.stages[0]
+              : T.all(BLD, type).find((n) => n.id === T.id);
         // a part's own fields. Left out: its children, its id, and a mount's motor type (the file names it; a motor
         // just chosen doesn't carry it). For the rocket and a stage, the rocket-wide settings go with it.
         T.strip = (o) =>
-          JSON.stringify(where === "root" || where === "stage" ? { ...o, settings: BLD.settings } : o, (k, v) =>
-            k === "kids" ||
-            k === "parts" ||
-            k === "stages" ||
-            k === "id" ||
-            (k === "type" && /^(single|reload|hybrid)$/.test(v))
-              ? undefined
-              : v,
+          JSON.stringify(
+            where === "root" || where === "rec" || where === "stage" ? { ...o, settings: BLD.settings } : o,
+            (k, v) =>
+              k === "kids" ||
+              k === "parts" ||
+              k === "stages" ||
+              k === "id" ||
+              (k === "type" && /^(single|reload|hybrid)$/.test(v))
+                ? undefined
+                : v,
           );
         // what the design flies like: weight, balance, drag at two speeds and the flight's main figures
         T.sig = () => {
@@ -144,7 +152,8 @@ const SAME = [
         };
         // which one of its kind the part is, so it can be found again in the reopened design
         T.index = () => T.all(BLD, type).findIndex((n) => n.id === T.id);
-        T.at = (i) => (where === "root" ? BLD : where === "stage" ? BLD.stages[0] : T.all(BLD, type)[i]);
+        T.at = (i) =>
+          where === "root" || where === "rec" ? BLD : where === "stage" ? BLD.stages[0] : T.all(BLD, type)[i];
         if (where === "part" || where === "kid") {
           const tube = T.all(BLD, "tube")[0],
             R = tube.od / 2;
@@ -156,7 +165,7 @@ const SAME = [
           }
           T.id = t.id;
           setBldSel(t.id);
-        } else setBldSel(where === "root" ? BLD_ROOT : BLD.stages[0].id);
+        } else setBldSel(where === "root" ? BLD_ROOT : where === "rec" ? "__recovery" : BLD.stages[0].id);
         bldChanged(true);
         bldRender();
         return document.querySelectorAll("[id^=bf-]").length;
@@ -229,7 +238,15 @@ const SAME = [
       p.evaluate((snap) => {
         setBLD(JSON.parse(snap));
         bldChanged(true);
-        setBldSel(T.where === "root" ? BLD_ROOT : T.where === "stage" ? BLD.stages[0].id : T.id);
+        setBldSel(
+          T.where === "root"
+            ? BLD_ROOT
+            : T.where === "rec"
+              ? "__recovery"
+              : T.where === "stage"
+                ? BLD.stages[0].id
+                : T.id,
+        );
         bldRender();
       }, snap);
     const snap0 = await p.evaluate(() => JSON.stringify(BLD));
@@ -279,9 +296,11 @@ const SAME = [
       () =>
         (T.where === "root"
           ? bldSel === BLD_ROOT
-          : T.where === "stage"
-            ? bldSel === BLD.stages[0].id
-            : bldSel === T.id) && !!T.target(),
+          : T.where === "rec"
+            ? bldSel === "__recovery"
+            : T.where === "stage"
+              ? bldSel === BLD.stages[0].id
+              : bldSel === T.id) && !!T.target(),
     );
     if (!showing) {
       fails.push(`${label}: the part under test couldn't be selected again after the reopen`);

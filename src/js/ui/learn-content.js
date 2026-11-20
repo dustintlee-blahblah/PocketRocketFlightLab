@@ -505,7 +505,7 @@ export function learnChapters() {
         `<li><b>Charges and shear pins.</b> Each charge must break the shear pins and push the section apart, but not so hard it damages the rocket. Size it, then ground test it in the real rocket before flying.</li></ul>` +
         `<p>Two failures to plan for: a charge that fires while the rocket is still fast (a zipper, where the shock cord slices the airframe), and a main that opens too high (long drift) or too low (not open in time).</p>` +
         tryIt(
-          "in the builder, select Whole rocket (the top row of the Design Tree) and under Recovery choose One altimeter or Two altimeters, with each one's apogee delay and main height; a chute release can be added to any set-up. The RSO Checklist rates the drogue and landing speeds and the main's opening load, and gives the Mach lockout time; the Ejection Charge Calculator sizes the charges. The Recovery Plan on Results lists every charge in order, flies the rocket again as if each altimeter failed and as if both did, and gives the time and drift under each chute and the static port size.",
+          "in the builder, select Recovery in the Design Tree and choose One altimeter or Two altimeters, with each one's apogee delay and main height; a chute release can be added to any set-up. The RSO Checklist rates the drogue and landing speeds and the main's opening load, and gives the Mach lockout time; the Ejection Charge Calculator sizes the charges. The Recovery Plan on Results lists every charge in order, flies the rocket again as if each altimeter failed and as if both did, and gives the time and drift under each chute and the static port size.",
         ),
     },
     {

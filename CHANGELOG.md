@@ -4,6 +4,17 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 334 (2026-11-20)
+
+**Builder**
+
+- **Recovery has its own row in the Design Tree**, first under Whole Rocket, showing the configuration at a glance ("Two altimeters · release" with a chute release). Select it for the deployment choice, the altimeters, the chute release and the recovery hardware; Whole Rocket keeps the name, finish, weight and drag.
+- **The Design Tree is set in under Whole Rocket**, with a line down its side, so it reads that every stage and part belongs to the rocket at the top.
+
+**Flight animation**
+
+- **The 3D view shows each charge firing**: the same short flash inside the body as the 2D view (the motor's charge near the tail, the apogee charge aft of the middle, the main charge forward of it), and the same notices across the top (Burnout, Apogee, each charge firing, each chute opening, Landed).
+
 ## Build 333 (2026-11-20)
 
 **Recovery**

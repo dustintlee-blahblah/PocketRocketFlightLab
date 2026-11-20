@@ -82,7 +82,7 @@ export function bldFields(p) {
             ? [["delay", "Time after liftoff", "num", "time"]]
             : []),
   ];
-  // a parachute whose opening comes from the recovery configuration (Whole rocket, Recovery) shows its role instead
+  // a parachute whose opening comes from the recovery configuration (the Recovery row) shows its role instead
   const role = recManaged(BLD, p)
     ? recChutes(BLD).length > 1
       ? [
@@ -347,10 +347,13 @@ export function bldFields(p) {
   return [];
 }
 /**
- * The fields of the rocket itself: name, finish, inertia, drag adjustments.
+ * The fields of the rocket itself: name, finish, inertia, drag adjustments (the Whole Rocket row), and its recovery
+ * (the Recovery row).
+ * @param {"main"|"rec"} [part] only the Whole Rocket row's fields, or only the Recovery row's; both when left out
  * @returns {Array[]}
  */
-export function bldRootFields() {
+export function bldRootFields(part) {
+  if (part === "rec") return bldRecFields();
   const two = BLD.stages.length > 1,
     s0 = BLD.stages[0];
   return [
@@ -379,11 +382,11 @@ export function bldRootFields() {
     ],
     // the fin fillets (OpenRocket's per-fin-set fillet radius, set once here for every fin set; blank leaves a file's own)
     ["finFillet", "Fin fillet radius", "num", "len", BLD.settings],
-    ...bldRecFields(),
+    ...(part === "main" ? [] : bldRecFields()),
   ];
 }
 /**
- * The Recovery block of the Whole rocket fields: how the parachutes are deployed (motor ejection, one altimeter, two
+ * The Recovery row's fields: how the parachutes are deployed (motor ejection, one altimeter, two
  * altimeters; a chute release with any of them), then the recovery hardware (the altimeter bay, for its static ports,
  * and the main's rated load). See recovery-config.js.
  * @returns {Array[]}
@@ -414,7 +417,6 @@ function bldRecFields() {
         ? `Motor ejection charge: plugged, so nothing backs the altimeter${cfg === "two" ? "s" : ""} up (Motor Delay, on the Motor tab).`
         : `Motor ejection charge: kept as a backup, ${+ej.toFixed(1)} s after burnout (Motor Delay, on the Motor tab).`;
   return [
-    ["#", "Recovery"],
     ["recCfg", "Deployment", "sel", null, S, REC_CONFIGS],
     ...(cfg === "custom"
       ? [["!", "Each parachute opens on its own setting: select a parachute in the Design Tree to change it."]]

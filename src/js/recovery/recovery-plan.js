@@ -367,7 +367,7 @@ function recHtml(P) {
     if (early)
       h += `<p class="note cmpnote">The ${esc(early.who.toLowerCase())}'s ${esc(early.what)} charge fires ${Math.abs(early.rel).toFixed(1)} s before apogee, while the rocket is still climbing.</p>`;
     if (recNoBackup(P))
-      h += `<div class="cmpban warn"><b>No backup charge.</b>One altimeter and a plugged motor: if the altimeter fails, nothing opens. Add a second altimeter (the builder, Whole rocket, Recovery), or fly a motor with a delay set to fire after apogee.</div>`;
+      h += `<div class="cmpban warn"><b>No backup charge.</b>One altimeter and a plugged motor: if the altimeter fails, nothing opens. Add a second altimeter (the builder: Recovery, in the Design Tree), or fly a motor with a delay set to fire after apogee.</div>`;
     for (const n of P.notes)
       h += n.bad ? `<div class="cmpban warn">${esc(n.t)}</div>` : `<p class="note cmpnote">${esc(n.t)}</p>`;
   }
@@ -404,13 +404,13 @@ function recHtml(P) {
     h += `<div class="subh">The ${P.dual ? "main" : "chute"}'s opening load</div><p class="note" style="margin:0">${P.load.g.toFixed(0)} g on the rocket at its descent weight, about ${fmt(P.load.F, "force")} ${uname("force")}${
       r > 0
         ? `: <b class="${g}">${Math.round(pct * 100)}%</b> of the ${fmt(r, "force")} ${uname("force")} the chute and harness are rated to. ${pct > 1 ? "Over the rating: use a stronger harness, or slow the opening (a larger drogue, or a slower-opening or reefed main)." : pct > 0.5 ? "Over half the rating: a faster opening than predicted (a gust, a late charge) could reach it." : "Under half the rating."}`
-        : ". Enter the chute and harness's rated load (the builder, Whole rocket) to compare."
+        : ". Enter the chute and harness's rated load (the builder: Recovery, in the Design Tree) to compare."
     }</p>`;
   }
   if (P.ports)
     h += `<div class="subh">Static ports</div><p class="note" style="margin:0">For a ${fmt(P.ports.dia, "len")} ${uname("len")} by ${fmt(P.ports.len, "len")} ${uname("len")} bay: one hole of ${fmt(P.ports.one, "small")} ${uname("small")}, or four of ${fmt(P.ports.four, "small")} ${uname("small")} spaced evenly around it (PerfectFlite's rule; follow your own altimeter maker's if it gives one).</p>`;
   else if (P.alti)
-    h += `<p class="note">Enter the altimeter bay's length (the builder, Whole rocket) for its static port size.</p>`;
+    h += `<p class="note">Enter the altimeter bay's length (the builder: Recovery, in the Design Tree) for its static port size.</p>`;
   return h;
 }
 /**

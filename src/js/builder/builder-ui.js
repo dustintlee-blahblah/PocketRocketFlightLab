@@ -30,6 +30,8 @@ export var BLD = null,
   bldSel = null;
 var bldT = null;
 export const BLD_ROOT = "__rocket";
+/** the Design Tree's Recovery row: the rocket's recovery configuration (recovery-config.js), which isn't a part */
+export const BLD_REC = "__recovery";
 /**
  * Finds a part (or stage, or the rocket) by id, with where it sits.
  * @param {string} id
@@ -37,6 +39,8 @@ export const BLD_ROOT = "__rocket";
  */
 export function bldFind(id) {
   if (id === BLD_ROOT) return { root: true };
+  // the Recovery row belongs to the whole rocket, as its settings do
+  if (id === BLD_REC) return { root: true, rec: true };
   for (const [si, st] of BLD.stages.entries()) {
     if (st.id === id) return { stage: st, si };
     for (const [pi, p] of st.parts.entries()) {

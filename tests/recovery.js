@@ -292,9 +292,12 @@ const ok = (what, cond, got) => {
         Object.assign(BLD.settings, { recCfg: cfg, crOn: false, ...extra });
         bldApply();
         showTab("rocket");
-        document.querySelector(".bldrow.stage").click();
+        document.querySelector('.bldrow[data-id="__recovery"]').click();
         await new Promise((r) => setTimeout(r, 250));
         const ids = [...document.querySelectorAll("#bldedit [id^=bf-]")].map((e) => e.id.slice(3)),
+          recRow = document.querySelector('.bldrow[data-id="__recovery"]'),
+          rowText = recRow.textContent,
+          rowFirst = recRow === document.querySelector(".bldunder").firstElementChild,
           heads = [...document.querySelectorAll("#bldedit .bldh")].map((e) => e.textContent),
           opts = [...document.querySelectorAll("#bf-recCfg option")].map((o) => o.textContent);
         // a parachute's own fields
@@ -305,6 +308,8 @@ const ok = (what, cond, got) => {
         await new Promise((r) => setTimeout(r, 250));
         return {
           ids,
+          rowText,
+          rowFirst,
           heads,
           opts,
           chute: [...document.querySelectorAll("#bldedit [id^=bf-]")].map((e) => e.id.slice(3)),
@@ -314,6 +319,17 @@ const ok = (what, cond, got) => {
       [cfg, extra],
     );
   let f = await fields("motor");
+  // Recovery is a row of the Design Tree, first under Whole Rocket, with the configuration beside its name
+  ok(
+    "builder: Recovery is its own row, first under Whole Rocket, and says the configuration",
+    f.rowFirst &&
+      /^Recovery/.test(f.rowText) &&
+      /Motor ejection/.test(f.rowText) &&
+      f.ids.includes("recCfg") &&
+      f.ids.includes("bayLen") &&
+      !f.ids.includes("finish"),
+    f,
+  );
   ok(
     "builder: the three configurations, then Custom",
     f.opts.length === 4 &&
@@ -360,10 +376,34 @@ const ok = (what, cond, got) => {
     !f.ids.some((k) => /^a[12]|^cr/.test(k)) && f.chute.includes("deploy") && !f.chute.includes("role"),
     f,
   );
+  // the row says what is set, and Whole Rocket no longer holds the recovery fields
+  const row = await p.evaluate(async () => {
+    Object.assign(BLD.settings, { recCfg: "two", crOn: true });
+    bldApply();
+    bldRender();
+    const text = document.querySelector('.bldrow[data-id="__recovery"] span').textContent;
+    document.querySelector('.bldrow[data-id="__rocket"]').click();
+    await new Promise((r) => setTimeout(r, 250));
+    const whole = [...document.querySelectorAll("#bldedit [id^=bf-]")].map((e) => e.id.slice(3));
+    Object.assign(BLD.settings, { crOn: false });
+    return { text, whole };
+  });
+  ok(
+    "builder: the Recovery row reads Two altimeters with a chute release",
+    /Two altimeters/.test(row.text) && /release/.test(row.text),
+    row.text,
+  );
+  ok(
+    "builder: Whole Rocket has the rocket's own fields, not recovery's",
+    row.whole.includes("finish") &&
+      row.whole.includes("name") &&
+      !row.whole.some((k) => /^rec|^a[12]|^cr|^bay|^mainRating/.test(k)),
+    row.whole,
+  );
   const models = await p.evaluate(async () => {
     Object.assign(BLD.settings, { recCfg: "one" });
     bldApply();
-    document.querySelector(".bldrow.stage").click();
+    document.querySelector('.bldrow[data-id="__recovery"]').click();
     await new Promise((r) => setTimeout(r, 250));
     return [...document.querySelectorAll("#bf-a1Model option")].map((o) => o.textContent);
   });
