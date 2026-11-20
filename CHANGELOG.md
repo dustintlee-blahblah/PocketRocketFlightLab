@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 331 (2026-11-20)
+
+**Builder**
+
+- **STEP fin fillets blend smoothly**: OpenCascade now makes the fillet round the whole fin root, so it wraps the leading and trailing edges and runs tangent onto the body tube, for every fin shape (trapezoid, elliptical, free-form) and edge (square, rounded, bevelled, double wedge, airfoil). With a fillet on, a bladed edge's 0.3 mm flat becomes a 0.3 mm round nose and the bevel's crease into full thickness is rounded off, which the fillet needs; elliptical fins are a true ellipse, and airfoil or double-wedge elliptical fins are built from chordwise sections. Odd shapes it can't do still get the trimmed fillets.
+- **Rail buttons and launch lugs in the STEP file sit halfway between two fins**, never inside one.
+
 ## Build 330 (2026-11-19)
 
 **Builder**

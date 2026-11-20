@@ -59,6 +59,32 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
   const b = await run("no fillet", make(0));
   ok(a.info.volume > b.info.volume, "the fillet adds material");
   ok(
+    a.info.filletMethod === "OpenCascade",
+    "the fillet flows round the rounded fin edges onto the tube (" + a.info.filletMethod + ")",
+  );
+  for (const [shape, e] of [
+    ["trapezoid", "beveled"],
+    ["trapezoid", "airfoil"],
+    ["elliptical", "beveled"],
+    ["elliptical", "airfoil"],
+    ["freeform", "beveled"],
+    ["freeform", "doublewedge"],
+  ]) {
+    const r = await run(
+      `${shape} ${e} with fillet`,
+      make(0.002, (f) => {
+        f.shape = shape;
+        f.edge = e;
+        f.t = 0.003;
+        if (shape === "freeform") f.pts = "0,0\n0.05,0.06\n0.09,0.07\n0.11,0.04\n0.16,0.0\n";
+      }),
+    );
+    ok(
+      r.info.filletMethod === "OpenCascade",
+      `the fillet flows round ${shape} ${e} fin edges (${r.info.filletMethod})`,
+    );
+  }
+  ok(
     Math.abs(a.info.volume - b.info.volume - 640) < 150,
     `2 mm fillet volume near 640 mm3 (${(a.info.volume - b.info.volume).toFixed(0)})`,
   );
@@ -135,6 +161,29 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
   );
   const withBtn = await run("rail buttons", make(0));
   ok(withBtn.info.volume - none.info.volume > 400, "the rail buttons add material");
+  // the rail buttons stand halfway between two fins, whatever direction the file gave them
+  for (const [n, rot] of [
+    [3, 0],
+    [4, 0],
+    [4, 30],
+  ]) {
+    const set = (f, m) => ((f.n = n), (f.rot = rot), m);
+    const a = await R.importSTEP(new Blob([(await buildStep(R, make(0, set))).text])),
+      b = await R.importSTEP(
+        new Blob([
+          (
+            await buildStep(
+              R,
+              make(0, (f, m) => (set(f, m), bare(m))),
+            )
+          ).text,
+        ]),
+      );
+    const bb = a.cut(b).boundingBox,
+      c = bb.center,
+      ang = (((Math.atan2(c[2], c[1]) * 180) / Math.PI - rot + 720) % (360 / n)) - 180 / n;
+    ok(Math.abs(ang) < 1, `rail buttons midway between ${n} fins at ${rot} deg (${ang.toFixed(2)} deg off)`);
+  }
   const add = async (label, build) => {
     const r = await run(
       label,

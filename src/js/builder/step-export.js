@@ -71,6 +71,27 @@ function stepSeamAngle(fins) {
   return best;
 }
 /**
+ * Where a launch lug or the rail buttons go round the body: halfway between two neighbouring fins, so they never sit
+ * in a fin (and the rail clears the fins on both sides). Of the gaps between fins, the one nearest the part's own
+ * direction; with no fins, the part's own direction.
+ * @param {number[]} fins the angles the fins sit at, degrees
+ * @param {number} dir the part's own direction, degrees
+ * @returns {number} degrees
+ */
+function stepGuideAngle(fins, dir) {
+  const a = [...new Set(fins.map((f) => Math.round((((f % 360) + 360) % 360) * 1e6) / 1e6))].sort((p, q) => p - q);
+  if (!a.length) return dir;
+  const gaps = a.map((f, i) => {
+    const next = i + 1 < a.length ? a[i + 1] : a[0] + 360;
+    return (f + next) / 2;
+  });
+  const off = (g) => {
+    const d = (((g - dir) % 360) + 360) % 360;
+    return Math.min(d, 360 - d);
+  };
+  return gaps.reduce((b, g) => (off(g) < off(b) - 1e-9 ? g : b), gaps[0]) % 360;
+}
+/**
  * One body part (nose, tube or transition) as a solid of revolution about the x axis, in mm.
  * @param {object} R replicad
  * @param {object} b layout body
@@ -133,7 +154,7 @@ function stepPartSolid(R, b) {
  * @param {object[]} bodies layout bodies
  * @returns {{solid:object, x0:number, x1:number}|null} the solid and the x range of its root that lies on the body, mm
  */
-function stepFinSolid(R, k, xf, bodies, flat, grow = 0) {
+function stepFinSolid(R, k, xf, bodies, flat, grow = 0, arcs = true) {
   const P = finDxfOutline(k);
   if (P.length < 3) return null;
   const t = Math.max(+k.t || 0, 0.0002) * STEP_MM + 2 * grow;
@@ -177,7 +198,13 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0) {
       .sketchOnPlane("XY", -t / 2)
       .extrude(t);
   };
-  const M = pts.map((p) => [xf + p[0], surf(xf + p[0]) + p[1]]);
+  // the root goes a hair under the body's surface: the fin's faces are flat across its thickness but the body curves
+  // away from them, so a root exactly on the surface would leave a sliver of step at its ends
+  const dive = (x) => {
+    const q = surf(x);
+    return q > t ? q - Math.sqrt(q * q - (t / 2) * (t / 2)) + 0.02 : 0;
+  };
+  const M = pts.map((p) => [xf + p[0], surf(xf + p[0]) + p[1] - (p[1] === 0 ? dive(xf + p[0]) : 0)]);
   let solid = poly(M);
   // the edge sections; they keep an edge flat instead of a knife edge
   let edgesSkipped = false;
@@ -192,15 +219,23 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0) {
       ? ((+k.root || 0) + (+k.tip || 0)) * 0.5 * STEP_MM
       : Math.abs(area) / Math.max(...pts.map((p) => p[1]), 1e-9);
   const edges = stepEdges(k, t, flat + 2 * grow, cMean);
-  if (edges.le || edges.te) {
+  // the fat fin the trimmed fillets are cut with, and the fins under them, keep the polyline section
+  if (grow || !arcs) for (const e of [edges.le, edges.te]) if (e) e.arc = e.nose = false;
+  // an elliptical fin for the fillet: a true half-ellipse with its edge sections swept round it, so it has no creases
+  let smoothEll = null;
+  if (k.shape === "elliptical" && arcs && !grow) {
+    try {
+      smoothEll = stepEllipseFin(R, xa, xb, surf, dive, (+k.span || 0) * STEP_MM, t, edges);
+    } catch (e) {
+      smoothEll = null;
+    }
+  }
+  if (smoothEll) solid = smoothEll;
+  else if (edges.le || edges.te) {
     if (k.shape === "trapezoid") {
       const n = M.length;
-      if (edges.le) {
-        solid = solid.intersect(stepEdgeBody(R, edges.le, M[0], M[1], 1, t));
-      }
-      if (edges.te) {
-        solid = solid.intersect(stepEdgeBody(R, edges.te, M[n - 1], M[n - 2], -1, t));
-      }
+      if (edges.le) solid = solid.intersect(stepEdgeBody(R, edges.le, M[0], M[1], 1, t));
+      if (edges.te) solid = solid.intersect(stepEdgeBody(R, edges.te, M[n - 1], M[n - 2], -1, t));
     } else {
       try {
         const r = stepCurvedEdges(R, solid, M, ri, edges, t, k.shape === "elliptical" ? 0 : 0.25);
@@ -216,9 +251,194 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0) {
   if (fb - fa > 1e-6) {
     const xs = [fa, ...bodies.map((b) => b.x * STEP_MM).filter((x) => x > fa + 1e-6 && x < fb - 1e-6), fb];
     const inner = Math.max(Math.min(...xs.map(surf)) * 0.4, 0.05);
-    solid = solid.fuse(poly([...xs.map((x) => [x, surf(x)]), [fb, inner], [fa, inner]]));
+    solid = solid.fuse(poly([...xs.map((x) => [x, surf(x) - dive(x)]), [fb, inner], [fa, inner]]));
   }
   return { solid, x0: fa, x1: fb, edgesSkipped };
+}
+/**
+ * An elliptical fin drawn as a true half-ellipse on a straight body tube (not the many-sided outline), its edge
+ * sections swept round the curve, leading over the leading half and trailing over the trailing half. With no creases
+ * along its edges, OpenCascade can roll a fillet round its root. Null where the body under it is not straight or a
+ * section can't be drawn smooth.
+ * @param {object} R replicad
+ * @param {number} xa start of the root, mm
+ * @param {number} xb end of the root, mm
+ * @param {function(number):number} surf body radius under the root, mm
+ * @param {function(number):number} dive how far the root goes under the surface, mm
+ * @param {number} span fin span, mm
+ * @param {number} t fin thickness, mm
+ * @param {{le:number[][]|null, te:number[][]|null}} edges stepEdges
+ * @returns {object|null} the fin (without the block under its root)
+ */
+function stepEllipseFin(R, xa, xb, surf, dive, span, t, edges) {
+  const xm = (xa + xb) / 2,
+    a = (xb - xa) / 2,
+    y0 = surf(xa) - dive(xa);
+  if (!(a > 0 && span > 0) || Math.abs(surf(xb) - surf(xa)) > 1e-6 || Math.abs(surf(xm) - surf(xa)) > 1e-6) return null;
+  let solid = R.draw([xa, y0])
+    .halfEllipseTo([xb, y0], span, false)
+    .close()
+    .sketchOnPlane("XY", -t / 2)
+    .extrude(t);
+  const { le, te } = edges;
+  if (!le && !te) return solid;
+  const h2 = t / 2 + 1,
+    H = h2 + 5;
+  // the C-shaped cutter: everything outside the section, a little way in from the edge
+  const cutter = (prof) => (pl) => {
+    const sm = stepSmoothSection(prof, h2, 2);
+    return stepDrawSection(
+      R.draw([-3, H]).lineTo([-3, -H]).lineTo([sm.far, -H]).lineTo([sm.far, -h2]),
+      sm.ops,
+      (q) => q,
+    )
+      .lineTo([sm.far, H])
+      .close()
+      .sketchOnPlane(pl);
+  };
+  // a section deeper than the curve's tightest bend would fold the swept cutter over itself
+  const bend = Math.min((a * a) / span, (span * span) / a);
+  for (const p of [le, te]) {
+    const sm = p && stepSmoothSection(p, h2, 2);
+    if (p && !sm) return null;
+    // too deep to sweep (an airfoil or double wedge reaches in to mid-chord): built from chordwise sections instead
+    if (p && sm.far > 0.8 * bend) return stepEllipseLoft(R, xa, xb, y0, span, t, edges);
+  }
+  // the path runs a little below the root at each end, straight on, so the cutter reaches past the fin's bottom
+  const sweep = (path, prof) => path.done().sketchOnPlane("XY").sweepSketch(cutter(prof));
+  const same =
+    le && te && JSON.stringify(le) === JSON.stringify(te) && JSON.stringify(le.nose) === JSON.stringify(te.nose);
+  if (same) {
+    solid = solid.cut(
+      sweep(
+        R.draw([xa, y0 - 2])
+          .lineTo([xa, y0])
+          .halfEllipseTo([xb, y0], span, false)
+          .lineTo([xb, y0 - 2]),
+        le,
+      ),
+    );
+  } else {
+    if (le)
+      solid = solid.cut(
+        sweep(
+          R.draw([xa, y0 - 2])
+            .lineTo([xa, y0])
+            .ellipseTo([xm, y0 + span], a, span, 0, false, false),
+          le,
+        ),
+      );
+    if (te)
+      solid = solid.cut(
+        sweep(
+          R.draw([xm, y0 + span])
+            .ellipseTo([xb, y0], a, span, 0, false, false)
+            .lineTo([xb, y0 - 2]),
+          te,
+        ),
+      );
+  }
+  return solid;
+}
+/**
+ * An elliptical fin whose edge sections reach far in (an airfoil or double wedge, thickest at mid-chord), as a loft
+ * through chordwise sections up the span: each the leading section from the front and the trailing one from the back,
+ * scaled to the chord at that height, smooth everywhere (round noses, the double wedge's ridge rounded off over a
+ * couple of mm), and closing to a point at the tip. Null for sections it can't draw.
+ * @param {object} R replicad
+ * @param {number} xa start of the root, mm
+ * @param {number} xb end of the root, mm
+ * @param {number} y0 height of the root, mm
+ * @param {number} span fin span, mm
+ * @param {number} t fin thickness, mm
+ * @param {{le:number[][]|null, te:number[][]|null}} edges stepEdges
+ * @returns {object|null}
+ */
+function stepEllipseLoft(R, xa, xb, y0, span, t, edges) {
+  const h = t / 2,
+    xm = (xa + xb) / 2,
+    a = (xb - xa) / 2;
+  // one side of a section, from its edge (u = 0) in: the top half's nose and rise to full thickness
+  const side = (prof, cl) => {
+    if (!prof) return { nose: "square", top: [0, h], rise: [], full: 0 };
+    if (prof.arc) return { nose: "arc", top: [h, h], rise: [], full: h };
+    const m = prof.nose;
+    if (!m) return null;
+    const b = m.half ? cl / 2 : Math.min(m.b, cl / 2),
+      cp = m.kind === "airfoil" ? [b / 2, h] : [b, h],
+      sl = (cp[1] - m.hf) / cp[0],
+      rn = m.hf / (Math.sqrt(1 + sl * sl) - sl),
+      tx = (rn - sl * m.hf) / (1 + sl * sl),
+      ty = m.hf + sl * tx;
+    if (m.kind === "airfoil") return { nose: "tip", top: [tx, ty], rise: [["Q", [b, h], cp]], full: b };
+    const e = Math.min(0.25 * b, 2);
+    if (m.half) return { nose: "tip", top: [tx, ty], rise: [["L", [b - e, h - sl * e]]], full: b, ridge: [b, h] };
+    return {
+      nose: "tip",
+      top: [tx, ty],
+      rise: [
+        ["L", [b - e, h - sl * e]],
+        ["Q", [b + e, h], [b, h]],
+      ],
+      full: b + e,
+    };
+  };
+  const section = (y, cl) => {
+    const L = side(edges.le, cl),
+      T = side(edges.te, cl);
+    if (!L || !T) return null;
+    if (!!L.ridge !== !!T.ridge || (!L.ridge && L.full + T.full > cl + 1e-6)) return null;
+    const x0 = xm - cl / 2,
+      // a point in (u from the leading edge, half-thickness) to the plane's (x, z): its y axis is -z
+      PL = (p) => [x0 + p[0], -p[1]],
+      PT = (p) => [x0 + cl - p[0], -p[1]],
+      flip = (p) => [p[0], -p[1]];
+    const ops = (d, list, P) => {
+      for (const [op, p, c] of list) d = op === "L" ? d.lineTo(P(p)) : d.quadraticBezierCurveTo(P(p), P(c));
+      return d;
+    };
+    // round or bladed: an arc through the edge's middle; square: straight across
+    const nose = (d, S, to, P) => (S.nose === "square" ? d.lineTo(P(to)) : d.threePointsArcTo(P(to), P([0, 0])));
+    // top from the leading nose to the trailing one, then the bottom back
+    let d = R.draw(PL(L.top));
+    d = ops(d, L.rise, PL);
+    if (L.ridge) d = d.quadraticBezierCurveTo(PT(T.rise[0][1]), PL(L.ridge));
+    else if (cl - T.full - L.full > 1e-6) d = d.lineTo(PT([T.full, h]));
+    const back = (S) => {
+      // a side's rise run backwards: the points it passes, from full thickness out to the nose top
+      const pts = [S.top, ...S.rise.map((o) => o[1])];
+      return S.rise.map((o, i) => [o[0], pts[i], o[2]]).reverse();
+    };
+    d = ops(d, back(T), PT);
+    d = nose(d, T, flip(T.top), PT);
+    d = ops(
+      d,
+      T.rise.map(([op, p, c]) => [op, flip(p), c && flip(c)]),
+      PT,
+    );
+    if (T.ridge) d = d.quadraticBezierCurveTo(PL(flip(L.rise[0][1])), PT(flip(T.ridge)));
+    else if (cl - T.full - L.full > 1e-6) d = d.lineTo(PL([L.full, -h]));
+    d = ops(
+      d,
+      back(L).map(([op, p, c]) => [op, flip(p), c && flip(c)]),
+      PL,
+    );
+    d = nose(d, L, L.top, PL);
+    return d.close().sketchOnPlane(new R.Plane([0, y, 0], [1, 0, 0], [0, 1, 0]));
+  };
+  // stations: below the root (straight on), then closer together towards the tip, where the chord shrinks fastest
+  const ys = [y0 - 2, y0],
+    n = 24,
+    top = Math.sqrt(1 - Math.pow(Math.max(6 * t, 4) / (2 * a), 2));
+  for (let i = 1; i <= n; i++) ys.push(y0 + span * top * Math.sin(((i / n) * Math.PI) / 2));
+  const sk = [];
+  for (const y of ys) {
+    const u = Math.min(Math.max((y - y0) / span, 0), 1),
+      s = section(y, 2 * a * Math.sqrt(1 - u * u));
+    if (!s) return null;
+    sk.push(s);
+  }
+  return sk[0].loftWith(sk.slice(1), { endPoint: [xm, y0 + span, 0] });
 }
 /** The flat left on a sharp (bladed) fin edge instead of a knife edge a mesher cannot fill, m: about a sanded fin's. */
 const STEP_EDGE_FLAT = 0.0003;
@@ -245,17 +465,21 @@ function stepEdgeProfile(type, len, t, flat, c) {
       const a = (i / STEP_EDGE_PIECES) * (Math.PI / 2);
       P.push([h * (1 - Math.cos(a)), h * Math.sin(a)]);
     }
+    // a true half-round (stepEdgeBody draws it as an arc, which OpenCascade can fillet along; a polyline it can't)
+    P.arc = true;
     return P;
   }
   if (hf >= h * 0.999) return null;
   if (type === "wedge" || type === "doublewedge") {
     const b = Math.min(type === "doublewedge" ? c / 2 : len > 0 ? len : 0.2 * c, c / 2);
-    return b > 0
-      ? [
-          [0, hf],
-          [b, h],
-        ]
-      : null;
+    if (!(b > 0)) return null;
+    const P = [
+      [0, hf],
+      [b, h],
+    ];
+    // drawn smooth for the fillet: round nose, straight face, the crease into the full thickness rounded off
+    P.nose = hf > 1e-6 ? { kind: "wedge", b, h, hf, half: b >= c / 2 - 1e-9 } : null;
+    return P;
   }
   if (type === "airfoil") {
     const P = [];
@@ -263,6 +487,8 @@ function stepEdgeProfile(type, len, t, flat, c) {
       const u = i / STEP_EDGE_PIECES;
       P.push([(u * c) / 2, hf + (h - hf) * (1 - (1 - u) * (1 - u))]);
     }
+    // the section is a parabola: one quadratic Bezier, from the flat to full thickness at half chord
+    P.nose = hf > 1e-6 ? { kind: "airfoil", b: c / 2, h, hf, half: true } : null;
     return P;
   }
   return null;
@@ -287,6 +513,70 @@ function stepEdges(k, t, flat, c) {
   if ((e === "airfoil" || e === "doublewedge") && !eTE) te = stepEdgeProfile(e, 0, t, flat, c);
   else te = stepEdgeProfile(kind(teKind === "wedge" ? "wedge" : teKind), bt, t, flat, c);
   return { le, te };
+}
+/**
+ * An edge section drawn with smooth curves, for the fillet: OpenCascade can roll a fillet along a section without
+ * creases, not along a polyline. A rounded edge is a true half-round; a bladed edge's flat is drawn as a round nose of
+ * about its width, tangent to the faces, and its way to full thickness has no crease (a wedge's corner is rounded off
+ * over a couple of mm, an airfoil's parabola is one quadratic Bezier). Null for a section that is drawn as a polyline.
+ * @param {number[][]} prof stepEdgeProfile
+ * @param {number} h2 half-thickness of the strip the section is drawn in, mm (more than the fin's)
+ * @param {number} [deep] how far in past full thickness the path ends, mm
+ * @returns {{far:number, ops:object[]}|null} the path from (far, -h2) round the edge to (far, h2), in (distance in
+ *   from the edge, half-thickness)
+ */
+function stepSmoothSection(prof, h2, deep = 1000) {
+  if (prof.arc) {
+    const hh = prof[prof.length - 1][1],
+      q = Math.SQRT1_2,
+      far = hh + deep;
+    return {
+      far,
+      ops: [
+        ["L", [hh, -h2]],
+        ["L", [hh, -hh]],
+        ["A", [0, 0], [hh * (1 - q), -hh * q]],
+        ["A", [hh, hh], [hh * (1 - q), hh * q]],
+        ["L", [hh, h2]],
+        ["L", [far, h2]],
+      ],
+    };
+  }
+  if (!prof.nose) return null;
+  const { kind, b, h, hf } = prof.nose,
+    // the face starts along the line from the flat towards the Bezier's control point (airfoil) or the wedge's corner
+    cp = kind === "airfoil" ? [b / 2, h] : [b, h],
+    sl = (cp[1] - hf) / cp[0],
+    rn = hf / (Math.sqrt(1 + sl * sl) - sl),
+    tx = (rn - sl * hf) / (1 + sl * sl),
+    ty = hf + sl * tx,
+    e = Math.min(0.25 * b, 2),
+    end = kind === "airfoil" ? b : b + e,
+    far = end + deep;
+  const ops = [
+    ["L", [end + 1, -h2]],
+    ["L", [end, -h]],
+  ];
+  if (kind === "airfoil") ops.push(["Q", [tx, -ty], [cp[0], -cp[1]]]);
+  else ops.push(["Q", [b - e, -(h - sl * e)], [b, -h]], ["L", [tx, -ty]]);
+  ops.push(["A", [tx, ty], [0, 0]]);
+  if (kind === "airfoil") ops.push(["Q", [b, h], cp]);
+  else ops.push(["L", [b - e, h - sl * e]], ["Q", [b + e, h], [b, h]]);
+  ops.push(["L", [end + 1, h2]], ["L", [far, h2]]);
+  return { far, ops };
+}
+/**
+ * Draws a stepSmoothSection path onto a drawing.
+ * @param {object} d replicad drawing, at the path's start
+ * @param {object[]} ops the path
+ * @param {function(number[]):number[]} S maps a section point to the drawing's
+ * @returns {object} the drawing
+ */
+function stepDrawSection(d, ops, S) {
+  for (const [op, p, c] of ops)
+    d =
+      op === "L" ? d.lineTo(S(p)) : op === "Q" ? d.quadraticBezierCurveTo(S(p), S(c)) : d.threePointsArcTo(S(p), S(c));
+  return d;
 }
 /**
  * How far in from the edge a section is within 10% of its full thickness.
@@ -342,6 +632,22 @@ function stepCurvedEdges(R, solid, M, ri, edges, t, thr) {
   const h2 = t / 2 + 1;
   // one C-shaped cutter per piece: everything outside the section's outline
   const cutter = (prof, sd) => {
+    const o = [sd.a[0] - sd.d[0] * sd.e0, sd.a[1] - sd.d[1] * sd.e0, 0];
+    const pl = new R.Plane(o, [sd.inward[0], sd.inward[1], 0], [sd.d[0], sd.d[1], 0]);
+    const smooth = stepSmoothSection(prof, h2);
+    if (smooth) {
+      const H = h2 + 5,
+        S = (q) => q;
+      return stepDrawSection(
+        R.draw([-3, H]).lineTo([-3, -H]).lineTo([smooth.far, -H]).lineTo([smooth.far, -h2]),
+        smooth.ops,
+        S,
+      )
+        .lineTo([smooth.far, H])
+        .close()
+        .sketchOnPlane(pl)
+        .extrude(sd.L + sd.e0 + sd.e1);
+    }
     const last = prof[prof.length - 1],
       prev = prof[prof.length - 2] || [last[0] - 1, last[1]],
       m = last[0] > prev[0] ? (last[1] - prev[1]) / (last[0] - prev[0]) : 0;
@@ -356,8 +662,6 @@ function stepCurvedEdges(R, solid, M, ri, edges, t, thr) {
     const P = [[-3, H], [-3, -H], [far, -H], ...bottom.reverse(), ...top, [far, H]].filter(
       (q, i, aa) => i === 0 || Math.abs(q[0] - aa[i - 1][0]) > 1e-9 || Math.abs(q[1] - aa[i - 1][1]) > 1e-9,
     );
-    const o = [sd.a[0] - sd.d[0] * sd.e0, sd.a[1] - sd.d[1] * sd.e0, 0];
-    const pl = new R.Plane(o, [sd.inward[0], sd.inward[1], 0], [sd.d[0], sd.d[1], 0]);
     let d = R.draw(P[0]);
     for (let i = 1; i < P.length; i++) d = d.lineTo(P[i]);
     return d
@@ -416,6 +720,14 @@ function stepEdgeBody(R, prof, p0, p1, side, t) {
     (q, i, a) => i === 0 || Math.abs(q[0] - a[i - 1][0]) > 1e-9 || Math.abs(q[1] - a[i - 1][1]) > 1e-9,
   );
   const pl = new R.Plane([o[0], o[1], 0], [1, 0, 0], [0, 1, 0]);
+  const smooth = stepSmoothSection(prof, h2);
+  if (smooth) {
+    const S = (q) => [side * q[0], q[1]];
+    return stepDrawSection(R.draw(S([smooth.far, -h2])), smooth.ops, S)
+      .close()
+      .sketchOnPlane(pl)
+      .extrude(L + 2 * ext, { extrusionDirection: v });
+  }
   let d = R.draw([side * pts[0][0], pts[0][1]]);
   for (let i = 1; i < pts.length; i++) d = d.lineTo([side * pts[i][0], pts[i][1]]);
   return d
@@ -464,9 +776,10 @@ function stepFilletWedge(R, r, h, rho, x0, x1, side) {
  * @param {object} R replicad
  * @param {object[]} bodies layout bodies (bldLayout)
  * @param {string[]} warnings gets a line for any that could not be made
+ * @param {number[]} [fins] the fins' angles, degrees: lugs and rail buttons go halfway between two of them
  * @returns {object[]} replicad solids
  */
-function stepOuterParts(R, bodies, warnings) {
+function stepOuterParts(R, bodies, warnings, fins = []) {
   const out = [],
     sink = 0.5;
   const turn = (s, a) => (a ? s.rotate(a, [0, 0, 0], [1, 0, 0]) : s);
@@ -508,12 +821,17 @@ function stepOuterParts(R, bodies, warnings) {
             rail = bldRailLug(k);
           if (!(len > 0)) continue;
           if (rail) {
-            out.push(turn(box(x0, len, rail.w * STEP_MM, q.lo - sink, q.hi + rail.h * STEP_MM), +k.dir || 0));
+            out.push(
+              turn(
+                box(x0, len, rail.w * STEP_MM, q.lo - sink, q.hi + rail.h * STEP_MM),
+                stepGuideAngle(fins, +k.dir || 0),
+              ),
+            );
           } else {
             const ro = (k.od * STEP_MM) / 2,
               ri = ((k.id_ || 0) * STEP_MM) / 2,
               em = Math.min(0.15 * ro * 2, 0.6 * (ro - ri));
-            out.push(turn(rod(x0, len, q.hi + ro - em, ro, ri), +k.dir || 0));
+            out.push(turn(rod(x0, len, q.hi + ro - em, ro, ri), stepGuideAngle(fins, +k.dir || 0)));
           }
         } else if (k.type === "buttons") {
           const P = k.size === "custom" && k.dims ? k.dims : BLD_BUTTONS[k.size] || BLD_BUTTONS["1010"];
@@ -528,7 +846,7 @@ function stepOuterParts(R, bodies, warnings) {
             const stack = post(xc, y - sink, ro, base + sink)
               .fuse(post(xc, y + base - 0.05, rn, hh - base - fl + 0.1))
               .fuse(post(xc, y + hh - fl, ro, fl));
-            out.push(turn(stack, +k.dir || 0));
+            out.push(turn(stack, stepGuideAngle(fins, +k.dir || 0)));
           }
         } else {
           const q = span(x0, x0 + len),
@@ -570,10 +888,108 @@ function stepOuterParts(R, bodies, warnings) {
   return out;
 }
 /**
+ * The glue fillets where the fins meet a straight body tube, made by OpenCascade's own fillet on the finished fin and
+ * tube: the fillet runs round the fin's whole root, wrapping the leading and trailing edges and blending into the
+ * tube. The tube is made longer than the real one while this is done, so a fin that ends flush with the base still
+ * has tube to roll the fillet onto, and cut back to the real length afterwards. Returns null when OpenCascade can't
+ * do it for this shape, so the caller can use the simpler trimmed fillets instead.
+ * @param {object} R replicad
+ * @param {object[]} bodies layout bodies (bldLayout)
+ * @param {object[]} fins the fin sets (stepFinSolid's result with k, xf and ang)
+ * @param {object} host the tube(s) with the fins fused on, before the fillet
+ * @param {number} r tube radius, mm
+ * @param {number} rho fillet radius, mm
+ * @param {number} xa start of the tube(s), mm
+ * @param {number} xb end of the tube(s), mm
+ * @param {number} seam angle of the tube's seam, degrees
+ * @param {number} flat edge flat, mm
+ * @param {number} expect the fillet volume to expect, mm3 (a result far from it is a failed fillet)
+ * @returns {Promise<object|null>}
+ */
+async function stepOcFillet(R, bodies, fins, host, r, rho, xa, xb, seam, flat, expect) {
+  const ext = Math.max(12, 4 * rho),
+    bx = bodies.map((b) => ({ ...b }));
+  bx[0].x -= ext / STEP_MM;
+  bx[0].len += ext / STEP_MM;
+  bx[bx.length - 1].len += ext / STEP_MM;
+  let local = R.makeCylinder(r, xb - xa + 2 * ext, [xa - ext, 0, 0], [1, 0, 0]);
+  // OpenCascade puts the tube's seam at some angle: turn it to the one used for the rest of the rocket
+  const sl = local.edges.find((e) => {
+    const a = e.startPoint,
+      b = e.endPoint;
+    return Math.abs(a.x - b.x) > 1 && Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.z - b.z) < 1e-6;
+  });
+  if (sl)
+    local = local.rotate(seam - (Math.atan2(sl.startPoint.z, sl.startPoint.y) * 180) / Math.PI, [0, 0, 0], [1, 0, 0]);
+  const span = [Infinity, -Infinity];
+  for (const f of fins) {
+    const g = stepFinSolid(R, f.k, f.xf, bx, flat);
+    if (!g) continue;
+    span[0] = Math.min(span[0], g.x0);
+    span[1] = Math.max(span[1], g.x1);
+    for (const a of f.ang) local = local.fuse(a ? g.solid.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : g.solid.clone());
+  }
+  const onTube = (p) => Math.abs(Math.hypot(p.y, p.z) - r) < 0.02;
+  const pick = (e) => {
+    const a = e.startPoint,
+      m = e.pointAt(0.5),
+      b = e.endPoint;
+    if (!onTube(a) || !onTube(m) || !onTube(b)) return null;
+    if (m.x < span[0] - 0.5 || m.x > span[1] + 0.5) return null;
+    // the tube's seam is not a fin joint
+    const ang = (Math.atan2(m.z, m.y) * 180) / Math.PI,
+      dA = Math.abs(((ang - seam + 540) % 360) - 180);
+    if (Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.z - b.z) < 1e-6 && dA < 0.5) return null;
+    return rho;
+  };
+  let out = local.fillet(pick);
+  // back to the real tube: cut off the extra length (and the fillet on it), then put the fins' overhang back
+  const cap = rho + 0.5;
+  out = out
+    .cut(R.makeCylinder(r + cap, ext + 1, [xb, 0, 0], [1, 0, 0]))
+    .cut(R.makeCylinder(r + cap, ext + 1, [xa - ext - 1, 0, 0], [1, 0, 0]));
+  // (only what was cut off: fusing a whole fin back onto itself can confuse OpenCascade)
+  for (const f of fins) {
+    const bb = f.solid.boundingBox.bounds;
+    for (const [hit, x0] of [
+      [bb[1][0] > xb + 1e-6, xb],
+      [bb[0][0] < xa - 1e-6, xa - ext - 1],
+    ]) {
+      if (!hit) continue;
+      const piece = f.solid.clone().intersect(R.makeCylinder(r + cap, ext + 1, [x0, 0, 0], [1, 0, 0]));
+      for (const a of f.ang) out = out.fuse(a ? piece.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : piece.clone());
+    }
+  }
+  const v0 = R.measureVolume(host);
+  let d = R.measureVolume(out) - v0;
+  if (!(d > 0.3 * expect && d < 2.5 * expect)) {
+    // OpenCascade sometimes measures a fresh fillet badly, though the faces are right: written to STEP and read back,
+    // the solid is clean, so judge (and keep) that
+    try {
+      const blob = R.exportSTEP([{ shape: out, name: "fillet" }], { unit: "mm", modelUnit: "mm" });
+      out = await R.importSTEP(new Blob([await blob.text()]));
+      d = R.measureVolume(out) - v0;
+    } catch (e) {
+      return null;
+    }
+  }
+  let valid = true;
+  try {
+    const oc = R.getOC(),
+      chk = new oc.BRepCheck_Analyzer(out.wrapped, true, false);
+    valid = chk.IsValid_2();
+    chk.delete();
+  } catch (e) {
+    valid = true;
+  }
+  return valid && d > 0.3 * expect && d < 2.5 * expect ? out : null;
+}
+/**
  * The rocket's outside as one solid, as a STEP file.
  * @param {object} R the replicad module, with OpenCascade set up (setOC)
  * @param {object} model the builder model (BLD)
- * @param {{fillet?:number}} [opts] fillet radius in metres (default: the model's fin fillet radius)
+ * @param {{fillet?:number, edgeFlat?:number, plainFillets?:boolean}} [opts] fillet radius in metres (default: the
+ *   model's fin fillet radius); plainFillets skips OpenCascade's fillet
  * @returns {Promise<{text:string, info:{volume:number, faces:number, length:number, finSets:number, fillet:number,
  *   warnings:string[]}}>}
  */
@@ -606,7 +1022,14 @@ export async function buildStep(R, model, opts = {}) {
         if (idx.length) sets.push({ k: c.k, x: xa, idx, ang });
       }),
   );
-  const seam = stepSeamAngle(sets.flatMap((s) => s.ang));
+  // the seam keeps clear of the fins and of the lugs and rail buttons between them
+  const finAng = sets.flatMap((s) => s.ang),
+    guides = bodies.flatMap((b) =>
+      b.kids
+        .filter((c) => c.k.type === "lug" || c.k.type === "buttons")
+        .map((c) => stepGuideAngle(finAng, +c.k.dir || 0)),
+    );
+  const seam = stepSeamAngle([...finAng, ...guides]);
   let solids = bodies.map((b) => {
     const s = stepPartSolid(R, b);
     return s ? s.rotate(seam, [0, 0, 0], [1, 0, 0]) : null;
@@ -630,37 +1053,62 @@ export async function buildStep(R, model, opts = {}) {
       .map((i) => bodies[i])
       .every((b) => Math.abs(b.r1 - b.r2) < 1e-9 && Math.abs(b.r1 - bodies[g.parts[0]].r1) < 1e-9);
   const pieces = [];
-  let filletDone = 0,
+  let filletMethod = "",
+    filletDone = 0,
     taperedSkipped = false;
   for (const g of [...groups.values()].sort((a, b) => a.parts[0] - b.parts[0])) {
     let host = null;
     for (const i of g.parts) if (solids[i]) host = host ? fusePart(host, solids[i], i) : solids[i];
     if (!host) continue;
-    const fins = [];
-    for (const s of g.sets) {
-      const f = stepFinSolid(R, s.k, s.x, bodies, flat);
-      if (f && f.edgesSkipped) edgesSkipped = true;
-      if (f) fins.push({ ...f, k: s.k, xf: s.x, ang: s.ang, t: Math.max(+s.k.t || 0, 0.0002) * STEP_MM });
-    }
-    for (const f of fins)
-      for (const a of f.ang) host = host.fuse(a ? f.solid.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : f.solid.clone());
+    const base = host;
+    let fins = [];
+    // the fins on the body: with the rounded edges as true arcs (what OpenCascade's fillet needs), or as polylines
+    const finned = (arcs) => {
+      fins = [];
+      for (const s of g.sets) {
+        const f = stepFinSolid(R, s.k, s.x, bodies, flat, 0, arcs);
+        if (f && f.edgesSkipped) edgesSkipped = true;
+        if (f) fins.push({ ...f, k: s.k, xf: s.x, ang: s.ang, t: Math.max(+s.k.t || 0, 0.0002) * STEP_MM });
+      }
+      let h = base;
+      for (const f of fins)
+        for (const a of f.ang) h = h.fuse(a ? f.solid.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : f.solid.clone());
+      return h;
+    };
+    host = finned(fr > 0 && isTubeHost(g));
     if (fins.length && fr > 0) {
       // the fillets are built directly (stepFilletWedge) where the body has one radius under the fins; on a taper
       // (a boattail) the joint isn't a straight line and they are left out, and the file says so
       if (isTubeHost(g)) {
         const rHost = bodies[g.parts[0]].r1 * STEP_MM;
-        for (const f of fins) {
-          // both sides' fillets along the whole root, then trimmed to the fin made thicker by the fillet radius all
-          // round (its planform and its edge sections): they end flush with the fin's edges and fade out along a
-          // rounded or beveled one instead of standing out past it
-          let w = null;
-          for (const side of [1, -1]) {
-            const q = stepFilletWedge(R, rHost, f.t / 2, fr, f.x0, f.x1, side);
-            if (q) w = w ? w.fuse(q) : q;
+        const xa = bodies[g.parts[0]].x * STEP_MM,
+          xb = (bodies[g.parts[g.parts.length - 1]].x + bodies[g.parts[g.parts.length - 1]].len) * STEP_MM,
+          expect = fins.reduce((q, f) => q + f.ang.length * 2 * (1 - Math.PI / 4) * fr * fr * (f.x1 - f.x0), 0);
+        let oc = null;
+        try {
+          if (!opts.plainFillets) oc = await stepOcFillet(R, bodies, fins, host, rHost, fr, xa, xb, seam, flat, expect);
+        } catch (e) {
+          oc = null;
+        }
+        if (oc) {
+          host = oc;
+          filletMethod = "OpenCascade";
+        } else {
+          filletMethod = filletMethod || "trimmed";
+          host = finned(false);
+          for (const f of fins) {
+            // both sides' fillets along the whole root, then trimmed to the fin made thicker by the fillet radius all
+            // round (its planform and its edge sections): they end flush with the fin's edges and fade out along a
+            // rounded or beveled one instead of standing out past it
+            let w = null;
+            for (const side of [1, -1]) {
+              const q = stepFilletWedge(R, rHost, f.t / 2, fr, f.x0, f.x1, side);
+              if (q) w = w ? w.fuse(q) : q;
+            }
+            const fat = stepFinSolid(R, f.k, f.xf, bodies, flat, fr);
+            if (w && fat) w = w.intersect(fat.solid);
+            if (w) for (const a of f.ang) host = host.fuse(a ? w.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : w.clone());
           }
-          const fat = stepFinSolid(R, f.k, f.xf, bodies, flat, fr);
-          if (w && fat) w = w.intersect(fat.solid);
-          if (w) for (const a of f.ang) host = host.fuse(a ? w.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : w.clone());
         }
         filletDone += g.sets.length;
       } else taperedSkipped = true;
@@ -677,11 +1125,29 @@ export async function buildStep(R, model, opts = {}) {
     );
   let all = pieces[0];
   for (let i = 1; i < pieces.length; i++) all = all.fuse(pieces[i]);
-  for (const o of stepOuterParts(R, bodies, warnings)) all = all.fuse(o);
+  for (const o of stepOuterParts(
+    R,
+    bodies,
+    warnings,
+    sets.flatMap((s) => s.ang),
+  ))
+    all = all.fuse(o);
   const volume = R.measureVolume(all);
   if (!(volume > 0)) throw new Error("The solid came out empty or inside out; the shape has a problem.");
   const blob = R.exportSTEP([{ shape: all, name: model.name || "Rocket" }], { unit: "mm", modelUnit: "mm" });
   const text = await blob.text();
+  // OpenCascade's fillet can leave a solid that reads back from the file differently (round a bladed edge's narrow
+  // flat, say): check what was written, and use the plain fillets instead if it does
+  if (filletMethod === "OpenCascade" && !opts.plainFillets) {
+    let same = false;
+    try {
+      const back = R.measureVolume(await R.importSTEP(new Blob([text])));
+      same = Math.abs(back - volume) < 2e-6 * volume;
+    } catch (e) {
+      same = false;
+    }
+    if (!same) return buildStep(R, model, { ...opts, plainFillets: true });
+  }
   return {
     text,
     info: {
@@ -690,6 +1156,7 @@ export async function buildStep(R, model, opts = {}) {
       length: all.boundingBox.bounds[1][0],
       finSets: sets.length,
       fillet: filletDone ? fr : 0,
+      filletMethod,
       warnings,
     },
   };
