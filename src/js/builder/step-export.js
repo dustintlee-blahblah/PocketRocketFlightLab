@@ -253,6 +253,8 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0, arcs = true) {
     const inner = Math.max(Math.min(...xs.map(surf)) * 0.4, 0.05);
     solid = solid.fuse(poly([...xs.map((x) => [x, surf(x) - dive(x)]), [fb, inner], [fa, inner]]));
   }
+  // (the cuts and joins above can leave the fin as a compound holding the one solid: later joins need the solid itself)
+  if ((solid.solids || []).length === 1) solid = solid.solids[0];
   return { solid, x0: fa, x1: fb, edgesSkipped };
 }
 /**
@@ -753,8 +755,7 @@ function stepFilletWedge(R, r, h, rho, x0, x1, side) {
   if (!(rho > 0) || !(r > h) || !(x1 - x0 > 1e-6)) return null;
   const d = r + rho,
     vc = h + rho,
-    uc = Math.sqrt(d * d - vc * vc),
-    e = Math.min(h * 0.5, 0.3);
+    uc = Math.sqrt(d * d - vc * vc);
   // where the fillet circle touches the body and where it touches the fin; its middle, for the arc
   const tb = [(uc * r) / d, (vc * r) / d],
     a1 = -Math.PI / 2,
@@ -762,8 +763,9 @@ function stepFilletWedge(R, r, h, rho, x0, x1, side) {
     am = (a1 + a2) / 2, // both between -180° and -90°: no wrapping
     mid = [uc + rho * Math.cos(am), vc + rho * Math.sin(am)];
   const S = (p) => [p[0], p[1] * side];
-  const wedge = R.draw(S([r * 0.9, h - e]))
-    .lineTo(S([uc, h - e]))
+  // in to the fin's mid-plane: where a bevel thins the fin, the fillet (trimmed to the bevel by the caller) still meets it
+  const wedge = R.draw(S([r * 0.9, 0]))
+    .lineTo(S([uc, 0]))
     .lineTo(S([uc, h]))
     .threePointsArcTo(S(tb), S(mid))
     .lineTo(S([tb[0] * 0.9, tb[1] * 0.9]))
@@ -888,6 +890,192 @@ function stepOuterParts(R, bodies, warnings, fins = []) {
   return out;
 }
 /**
+ * The glue fillets of one fin on a straight body tube, built to follow the fin's own section: a loft through
+ * cross-sections along the root, each a round fillet tangent to the tube and to the fin's side where it touches it.
+ * The fillet is full size where the fin is full thickness and narrows with the fin along a bevel or an airfoil's nose,
+ * so it hugs the bevel down to the edge and ends there with the fin (as a modeller's fillet does), instead of standing
+ * out past the edge or burying it. The fin's thickness is read from the finished fin itself, so this works for any
+ * outline and edge section, swept edges included.
+ * @param {object} R replicad
+ * @param {{solid:object, x0:number, x1:number, t:number}} fin the fin at angle 0 (stepFinSolid), t its thickness, mm
+ * @param {number} r tube radius, mm
+ * @param {number} rho fillet radius, mm
+ * @param {number} xa start of the tube, mm
+ * @param {number} xb end of the tube, mm
+ * @returns {{sides:object[], over:number[][]}|null} the two sides' fillets and the x ranges past the tube's ends to cut
+ *   off once they are joined on; null if they can't be made
+ */
+function stepLoftFillet(R, fin, r, rho, xa, xb) {
+  const hFull = fin.t / 2,
+    mesh = fin.solid.mesh({ tolerance: 0.02, angularTolerance: 0.3 }),
+    V = mesh.vertices,
+    T = mesh.triangles;
+  // the fin's half-thickness at (x, y): the highest of its skin's triangles over that point; in strips along x
+  const x0 = fin.x0 - 1,
+    strips = Array.from({ length: Math.ceil(fin.x1 - fin.x0 + 2) + 1 }, () => []);
+  for (let i = 0; i < T.length; i += 3) {
+    const xs = [V[3 * T[i]], V[3 * T[i + 1]], V[3 * T[i + 2]]],
+      lo = Math.max(0, Math.floor(Math.min(...xs) - x0)),
+      hi = Math.min(strips.length - 1, Math.floor(Math.max(...xs) - x0));
+    for (let b = lo; b <= hi; b++) strips[b].push(i);
+  }
+  const half = (x, y) => {
+    const strip = strips[Math.floor(x - x0)];
+    let best = 0;
+    if (!strip) return 0;
+    for (const i of strip) {
+      const a = 3 * T[i],
+        b = 3 * T[i + 1],
+        c = 3 * T[i + 2],
+        den = (V[b + 1] - V[c + 1]) * (V[a] - V[c]) + (V[c] - V[b]) * (V[a + 1] - V[c + 1]);
+      if (Math.abs(den) < 1e-12) continue;
+      const w0 = ((V[b + 1] - V[c + 1]) * (x - V[c]) + (V[c] - V[b]) * (y - V[c + 1])) / den,
+        w1 = ((V[c + 1] - V[a + 1]) * (x - V[c]) + (V[a] - V[c]) * (y - V[c + 1])) / den,
+        w2 = 1 - w0 - w1;
+      if (w0 < -1e-9 || w1 < -1e-9 || w2 < -1e-9) continue;
+      best = Math.max(best, w0 * V[a + 2] + w1 * V[b + 2] + w2 * V[c + 2]);
+    }
+    return best;
+  };
+  // one station's fillet: where it touches the tube and the fin, and the arc's middle, in (y, z) on the +z side
+  const station = (x) => {
+    const h0 = half(x, r + 0.05);
+    if (!(h0 > 0.02)) return null;
+    // no taller than the fin is at this station (behind a swept leading edge the fin starts low and the fillet with it)
+    let lo = r + 0.05,
+      hi = r + 1.5 * rho + 1;
+    if (half(x, hi) > 0.01) lo = hi;
+    else
+      for (let i = 0; i < 14; i++) {
+        const md = (lo + hi) / 2;
+        if (half(x, md) > 0.01) lo = md;
+        else hi = md;
+      }
+    let rad = Math.min(rho * Math.min(1, h0 / hFull), 0.7 * (lo - r));
+    if (!(rad > 0.03)) return null;
+    for (let shrink = 0; shrink < 6; shrink++, rad *= 0.6) {
+      let yq = r + rad,
+        out = null;
+      for (let it = 0; it < 6; it++) {
+        const hp = half(x, yq);
+        if (!(hp > 0.01)) {
+          out = null;
+          break;
+        }
+        const up = half(x, yq + 0.2),
+          dn = half(x, yq - 0.2),
+          sl = up > 0 && dn > 0 ? Math.max(-1, Math.min(1, (up - dn) / 0.4)) : 0,
+          L = Math.hypot(1, sl),
+          d = [1 / L, sl / L],
+          n = [-sl / L, 1 / L],
+          B = [yq + rad * n[0], hp + rad * n[1]],
+          bd = B[0] * d[0] + B[1] * d[1],
+          disc = bd * bd - (B[0] * B[0] + B[1] * B[1]) + (r + rad) * (r + rad);
+        if (!(disc >= 0)) {
+          out = null;
+          break;
+        }
+        const u = -bd + Math.sqrt(disc),
+          C = [B[0] + u * d[0], B[1] + u * d[1]],
+          tf = [C[0] - rad * n[0], C[1] - rad * n[1]],
+          tb = [(C[0] * r) / (r + rad), (C[1] * r) / (r + rad)],
+          m = [tb[0] + tf[0] - 2 * C[0], tb[1] + tf[1] - 2 * C[1]],
+          ml = Math.hypot(m[0], m[1]);
+        // The arc is not left exactly tangent to the tube and the fin (OpenCascade can't join surfaces that only
+        // touch): its centre is moved a hair towards the corner, so it crosses both at about 3 degrees, and it runs on
+        // a little way inside each.
+        const eps = 0.0015 * rad,
+          Cx = [C[0] + (eps * m[0]) / ml, C[1] + (eps * m[1]) / ml],
+          ab = Math.atan2(tb[1] - C[1], tb[0] - C[0]),
+          af = Math.atan2(tf[1] - C[1], tf[0] - C[0]),
+          turn = Math.sin(af - ab) > 0 ? 1 : -1,
+          more = Math.sqrt(2 * 0.0015) + 0.08,
+          at = (q) => [Cx[0] + rad * Math.cos(q), Cx[1] + rad * Math.sin(q)];
+        out = {
+          tb,
+          tf,
+          pb: at(ab - turn * more),
+          pf: at(af + turn * more),
+          mid: [Cx[0] + (rad * m[0]) / ml, Cx[1] + (rad * m[1]) / ml],
+        };
+        if (Math.abs(tf[0] - yq) < 1e-3) break;
+        yq = tf[0];
+      }
+      if (out && out.tf[0] > r * 0.99 && out.tf[1] < out.tb[1]) return out;
+    }
+    return null;
+  };
+  // stations along the root, closer together towards its ends, where the edges' sections are
+  const n = 40,
+    st = [];
+  for (let i = 0; i <= n; i++) {
+    // (the fin is measured a hair inside its ends, but the end sections sit exactly on them: an end flush with the
+    // tube's lies in the same plane, not a micron off it)
+    const x = fin.x0 + (fin.x1 - fin.x0) * ((1 - Math.cos((Math.PI * i) / n)) / 2),
+      q = station(Math.min(Math.max(x, fin.x0 + 1e-3), fin.x1 - 1e-3));
+    st.push(q && { x, ...q });
+  }
+  // the longest unbroken run of them
+  let run = [],
+    cur = [];
+  for (const q of [...st, null]) {
+    if (q) cur.push(q);
+    else {
+      if (cur.length > run.length) run = cur;
+      cur = [];
+    }
+  }
+  if (run.length < 3) return null;
+  // an end flush with the tube's end: the fillet is made to run 2 mm past it, and the caller cuts it back to the end
+  // once it is on the tube, since an end face made in the same plane as the tube's doesn't join reliably
+  const over = [];
+  if (run[0].x < xa + 0.01) {
+    run.unshift({ ...run[0], x: xa - 2 });
+    over.push([xa - 3, xa]);
+  }
+  if (run[run.length - 1].x > xb - 0.01) {
+    run.push({ ...run[run.length - 1], x: xb + 2 });
+    over.push([xb, xb + 3]);
+  }
+  const sideSolid = (sg) => {
+    const S = (p) => [p[0], sg * p[1]];
+    const sk = run.map((q) => {
+      // the arc, then round well inside the fin and the tube (sides close under their skins don't join reliably)
+      const zi = 0.3 * q.pf[1],
+        k = (r - 0.5) / Math.hypot(q.pb[0], q.pb[1]);
+      return R.draw(S(q.pb))
+        .threePointsArcTo(S(q.pf), S(q.mid))
+        .lineTo(S([q.pf[0], zi]))
+        .lineTo(S([Math.sqrt((r - 0.5) * (r - 0.5) - zi * zi), zi]))
+        .lineTo(S([q.pb[0] * k, q.pb[1] * k]))
+        .close()
+        .sketchOnPlane("YZ", q.x);
+    });
+    return sk[0].loftWith(sk.slice(1), { ruled: true });
+  };
+  const a = sideSolid(1),
+    b = sideSolid(-1);
+  if (!(Math.abs(R.measureVolume(a)) > 0) || !(Math.abs(R.measureVolume(b)) > 0)) return null;
+  return { sides: [a, b], over };
+}
+/**
+ * Whether OpenCascade's own checker finds a shape sound (faces closed up, no overlaps).
+ * @param {object} R replicad
+ * @param {object} shape
+ * @returns {boolean} true if sound (or the checker isn't there)
+ */
+function stepValid(R, shape) {
+  try {
+    const oc = R.getOC(),
+      chk = new oc.BRepCheck_Analyzer(shape.wrapped, true, false),
+      ok = chk.IsValid_2();
+    chk.delete();
+    return ok;
+  } catch (e) {
+    return true;
+  }
+}
+/**
  * The glue fillets where the fins meet a straight body tube, made by OpenCascade's own fillet on the finished fin and
  * tube: the fillet runs round the fin's whole root, wrapping the leading and trailing edges and blending into the
  * tube. The tube is made longer than the real one while this is done, so a fin that ends flush with the base still
@@ -943,6 +1131,8 @@ async function stepOcFillet(R, bodies, fins, host, r, rho, xa, xb, seam, flat, e
     return rho;
   };
   let out = local.fillet(pick);
+  // (a fillet can come back as a compound holding the one solid; the cuts and joins below need the solid itself)
+  if ((out.solids || []).length === 1) out = out.solids[0];
   // back to the real tube: cut off the extra length (and the fillet on it), then put the fins' overhang back
   const cap = rho + 0.5;
   out = out
@@ -961,27 +1151,18 @@ async function stepOcFillet(R, bodies, fins, host, r, rho, xa, xb, seam, flat, e
     }
   }
   const v0 = R.measureVolume(host);
-  let d = R.measureVolume(out) - v0;
-  if (!(d > 0.3 * expect && d < 2.5 * expect)) {
-    // OpenCascade sometimes measures a fresh fillet badly, though the faces are right: written to STEP and read back,
-    // the solid is clean, so judge (and keep) that
-    try {
-      const blob = R.exportSTEP([{ shape: out, name: "fillet" }], { unit: "mm", modelUnit: "mm" });
-      out = await R.importSTEP(new Blob([await blob.text()]));
-      d = R.measureVolume(out) - v0;
-    } catch (e) {
-      return null;
-    }
-  }
-  let valid = true;
+  // OpenCascade sometimes leaves a fresh fillet slightly off (it measures, and writes, a little differently from what it
+  // holds), though the faces are right: written to STEP and read back, the solid is clean, so judge and keep that
+  if ((out.solids || []).length === 1) out = out.solids[0];
   try {
-    const oc = R.getOC(),
-      chk = new oc.BRepCheck_Analyzer(out.wrapped, true, false);
-    valid = chk.IsValid_2();
-    chk.delete();
+    const blob = R.exportSTEP([{ shape: out, name: "fillet" }], { unit: "mm", modelUnit: "mm" }),
+      sol = (await R.importSTEP(new Blob([await blob.text()]))).solids || [];
+    if (sol.length === 1) out = sol[0];
   } catch (e) {
-    valid = true;
+    // keep the solid as it is: the finished file is checked again
   }
+  const d = R.measureVolume(out) - v0;
+  const valid = stepValid(R, out);
   return valid && d > 0.3 * expect && d < 2.5 * expect ? out : null;
 }
 /**
@@ -994,6 +1175,22 @@ async function stepOcFillet(R, bodies, fins, host, r, rho, xa, xb, seam, flat, e
  *   warnings:string[]}}>}
  */
 export async function buildStep(R, model, opts = {}) {
+  if (opts.plainFillets) return stepBuild(R, model, opts);
+  // the fillets are made the best way that gives a sound file: OpenCascade's own fillet or the section-following
+  // ones; then the section-following ones alone, on the plain fins and then on the smooth-edged ones; then the plain
+  // trimmed fillets
+  for (const o of [opts, { ...opts, noOcFillet: true }, { ...opts, noOcFillet: true, otherFins: true }]) {
+    try {
+      const r = await stepBuild(R, model, o);
+      if (r && r.info.filletMethod !== "trimmed") return r;
+    } catch (e) {
+      // OpenCascade's fillet can leave a solid the later joins choke on: on to the next way
+    }
+  }
+  return stepBuild(R, model, { ...opts, plainFillets: true });
+}
+/** buildStep's work (see there). */
+async function stepBuild(R, model, opts = {}) {
   const lay = bldLayout(model),
     bodies = lay.bodies.filter((b) => b.len > 0);
   if (!bodies.length) throw new Error("The rocket has no body parts yet.");
@@ -1084,15 +1281,54 @@ export async function buildStep(R, model, opts = {}) {
         const xa = bodies[g.parts[0]].x * STEP_MM,
           xb = (bodies[g.parts[g.parts.length - 1]].x + bodies[g.parts[g.parts.length - 1]].len) * STEP_MM,
           expect = fins.reduce((q, f) => q + f.ang.length * 2 * (1 - Math.PI / 4) * fr * fr * (f.x1 - f.x0), 0);
-        let oc = null;
-        try {
-          if (!opts.plainFillets) oc = await stepOcFillet(R, bodies, fins, host, rHost, fr, xa, xb, seam, flat, expect);
-        } catch (e) {
-          oc = null;
+        // Fins with a bladed edge (bevel, wedge, airfoil) get fillets that follow the fin's section (stepLoftFillet).
+        // Square and rounded fins get OpenCascade's own fillet, which runs round the fin's ends, and the section-
+        // following ones if that fails.
+        const bladed = fins.some((f) => {
+          const e = stepEdges(f.k, f.t, flat, 1);
+          return [e.le, e.te].some((q) => q && !q.arc);
+        });
+        const lofted = async () => {
+          // each fin gets its two fillets first (a small join), then the finished fins go on the tube
+          // (first on the fins with their plain edges, a 0.3 mm flat on a bladed one and a many-sided round one: the
+          // smooth sections made for OpenCascade's fillet don't always join to the tube soundly, except on an elliptical
+          // airfoil fin, where it is the other way round; opts.otherFins tries the other kind when the first fails)
+          const smooth = fins.some((f) => f.k.shape === "elliptical" && f.k.edge === "airfoil");
+          host = finned(opts.otherFins ? !smooth : smooth);
+          let h = base;
+          const v0 = R.measureVolume(host);
+          for (const f of fins) {
+            const made = stepLoftFillet(R, f, rHost, fr, xa, xb);
+            if (!made) return null;
+            let ff = f.solid.clone().fuse(made.sides[0]).fuse(made.sides[1]);
+            if ((ff.solids || []).length === 1) ff = ff.solids[0];
+            for (const a of f.ang) h = h.fuse(a ? ff.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : ff.clone());
+            for (const [p, q] of made.over) {
+              const w = 2 * (rHost + fr);
+              h = h.cut(R.makeBox([p, -w, -w], [q, w, w]));
+            }
+          }
+          if ((h.solids || []).length === 1) h = h.solids[0];
+          const d = R.measureVolume(h) - v0;
+          return stepValid(R, h) && d > 0.02 * expect && d < 2.5 * expect ? h : null;
+        };
+        let oc = null,
+          how = "OpenCascade";
+        for (const way of opts.plainFillets ? [] : bladed || opts.noOcFillet ? ["lofted"] : ["OpenCascade", "lofted"]) {
+          try {
+            oc =
+              way === "lofted"
+                ? await lofted()
+                : await stepOcFillet(R, bodies, fins, host, rHost, fr, xa, xb, seam, flat, expect);
+          } catch (e) {
+            oc = null;
+          }
+          how = way;
+          if (oc) break;
         }
         if (oc) {
           host = oc;
-          filletMethod = "OpenCascade";
+          filletMethod = how;
         } else {
           filletMethod = filletMethod || "trimmed";
           host = finned(false);
@@ -1125,6 +1361,9 @@ export async function buildStep(R, model, opts = {}) {
     );
   let all = pieces[0];
   for (let i = 1; i < pieces.length; i++) all = all.fuse(pieces[i]);
+  // (a join that OpenCascade gets wrong can drop a whole piece)
+  if (!(R.measureVolume(all) > 0.999 * Math.max(...pieces.map((q) => R.measureVolume(q)))))
+    throw new Error("The parts of the rocket could not be joined into one solid.");
   for (const o of stepOuterParts(
     R,
     bodies,
@@ -1132,21 +1371,35 @@ export async function buildStep(R, model, opts = {}) {
     sets.flatMap((s) => s.ang),
   ))
     all = all.fuse(o);
-  const volume = R.measureVolume(all);
+  let volume = R.measureVolume(all);
   if (!(volume > 0)) throw new Error("The solid came out empty or inside out; the shape has a problem.");
-  const blob = R.exportSTEP([{ shape: all, name: model.name || "Rocket" }], { unit: "mm", modelUnit: "mm" });
-  const text = await blob.text();
-  // OpenCascade's fillet can leave a solid that reads back from the file differently (round a bladed edge's narrow
-  // flat, say): check what was written, and use the plain fillets instead if it does
-  if (filletMethod === "OpenCascade" && !opts.plainFillets) {
-    let same = false;
+  const write = async (shape) =>
+    (await R.exportSTEP([{ shape, name: model.name || "Rocket" }], { unit: "mm", modelUnit: "mm" })).text();
+  let text = await write(all);
+  // OpenCascade's fillet can leave a solid that reads back from the file a little differently from what it held (a big
+  // fillet round a bladed edge's narrow nose, say). Then what was read back is the rocket: it must be sound and read
+  // back the same when written again, or the plain fillets are used instead
+  if (filletMethod && filletMethod !== "trimmed" && !opts.plainFillets) {
+    const same = (a, b) => Math.abs(a - b) < 2e-6 * Math.max(a, b);
+    let ok = false;
     try {
-      const back = R.measureVolume(await R.importSTEP(new Blob([text])));
-      same = Math.abs(back - volume) < 2e-6 * volume;
+      let back = await R.importSTEP(new Blob([text])),
+        vb = R.measureVolume(back);
+      if (same(vb, volume)) ok = true;
+      else if (Math.abs(vb - volume) < 0.002 * volume && stepValid(R, back)) {
+        const t2 = await write(back),
+          v2 = R.measureVolume(await R.importSTEP(new Blob([t2])));
+        if (same(v2, vb)) {
+          ok = true;
+          all = back;
+          volume = vb;
+          text = t2;
+        }
+      }
     } catch (e) {
-      same = false;
+      ok = false;
     }
-    if (!same) return buildStep(R, model, { ...opts, plainFillets: true });
+    if (!ok) return null;
   }
   return {
     text,

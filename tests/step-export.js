@@ -59,7 +59,7 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
   const b = await run("no fillet", make(0));
   ok(a.info.volume > b.info.volume, "the fillet adds material");
   ok(
-    a.info.filletMethod === "OpenCascade",
+    a.info.filletMethod !== "trimmed",
     "the fillet flows round the rounded fin edges onto the tube (" + a.info.filletMethod + ")",
   );
   for (const [shape, e] of [
@@ -79,11 +79,25 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
         if (shape === "freeform") f.pts = "0,0\n0.05,0.06\n0.09,0.07\n0.11,0.04\n0.16,0.0\n";
       }),
     );
-    ok(
-      r.info.filletMethod === "OpenCascade",
-      `the fillet flows round ${shape} ${e} fin edges (${r.info.filletMethod})`,
-    );
+    ok(r.info.filletMethod !== "trimmed", `the fillet flows round ${shape} ${e} fin edges (${r.info.filletMethod})`);
   }
+  // rounded fins ending flush with the tube's end, a 6 mm fillet; and a square leading edge with a tapered trailing one
+  for (const [name, set] of [
+    ["6 mm fillet, rounded fins flush with the base", (f) => (f.edge = "rounded")],
+    ["tapered trailing edge", (f) => Object.assign(f, { edge: "square", edgeTE: "sharp" })],
+  ]) {
+    const r = await run(name, make(0.006, set));
+    ok(r.info.filletMethod !== "trimmed", `${name}: the fillet follows the fin (${r.info.filletMethod})`);
+  }
+  // a big fillet (0.7 in) on thick, swept, bevelled fins still flows round the bevels and the edge
+  {
+    const r = await run(
+      "0.7 in fillet, swept bevelled fins",
+      make(0.0178, (f) => Object.assign(f, { edge: "beveled", t: 0.0048, sweep: 0.08, tip: 0.06 })),
+    );
+    ok(r.info.filletMethod !== "trimmed", `a 0.7 in fillet flows round swept bevelled fins (${r.info.filletMethod})`);
+  }
+
   ok(
     Math.abs(a.info.volume - b.info.volume - 640) < 150,
     `2 mm fillet volume near 640 mm3 (${(a.info.volume - b.info.volume).toFixed(0)})`,

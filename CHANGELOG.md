@@ -4,6 +4,12 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 332 (2026-11-20)
+
+**Builder**
+
+- **STEP fin fillets follow the fin's section**: on fins with a bevelled, airfoil, double-wedge or tapered edge (and on rounded fins with a large fillet), the fillet is built from cross-sections along the root, each a round fillet touching the tube and the fin's own surface there. It is full size where the fin is full thickness and narrows with the fin to its leading and trailing edges, as a real fillet does, instead of standing out past the edge or burying a bevel. Works on trapezoid, elliptical and free-form fins, swept edges included. Square fins, and rounded ones with a small fillet, keep the fillet that runs round the fin's ends. Bladed edges end in the 0.3 mm flat again. These exports take longer (tens of seconds).
+
 ## Build 331 (2026-11-20)
 
 **Builder**
