@@ -45,6 +45,11 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: "commonjs", globals: { ...globals.node } },
   },
   {
+    // the STEP export's library script: an ES module bundled for the browser (tools/build-step-kernel.js)
+    files: ["tools/step-kernel/**/*.js"],
+    languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: { ...globals.browser } },
+  },
+  {
     // the page-side code in the tests, validation scripts and screenshot tool runs in the browser, against the app's
     // names (exposed as globals)
     files: ["tests/**/*.js", "validation/**/*.js", "tools/screenshots.js"],

@@ -87,6 +87,7 @@ jobs:
         run: |
           npm ci
           node build.js
+          node tools/build-step-kernel.js
 
       - name: Build the signed APK
         if: steps.tag.outputs.exists == 'false'
@@ -118,5 +119,7 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk "out/PocketRocketFlightLab-v${V}-build${N}.apk"
           cp out/PocketRocketFlightLab-v${V}-build${N}.apk out/PocketRocketFlightLab.apk
           cp web/pocket-rocket-flight-lab.html "out/pocket-rocket-flight-lab-v${V}-build${N}.html"
+          cp web/step-kernel.js out/step-kernel.js
+          cp node_modules/replicad-opencascadejs/LICENSE out/step-kernel-LICENSE-LGPL-2.1.txt
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
             --title "Pocket Rocket Flight Lab ${V} (build ${N})" --notes-file notes.md out/*

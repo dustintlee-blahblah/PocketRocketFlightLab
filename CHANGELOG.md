@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 328 (2026-11-19)
+
+**Builder**
+
+- **Fin fillet radius** in the Whole rocket block, like OpenRocket's: the glue fillet along every fin root, kept in .ork files and counted in the rocket's weight. Leave it blank to keep each fin set's value from the file.
+- **STEP** button, top right of the Design Tree: exports the rocket full size (millimetres) as one closed solid for CFD, outer surfaces only, with the base closed flat and the fin fillets. Fillets are made on straight body tubes only. It needs step-kernel.js (30 MB, bundled in the Android app) beside the web page.
+
 ## Build 327 (2026-11-19)
 
 **Flight Log**

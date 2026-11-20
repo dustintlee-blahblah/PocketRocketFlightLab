@@ -25,7 +25,7 @@ android {
         applicationId "com.dustinlee.pocketrocketpro"
         minSdk 24
         targetSdk 34
-        versionCode 327
+        versionCode 328
         versionName "1.0"
     }
 
@@ -85,4 +85,9 @@ tasks.register("generateWebAsset") {
         out.setText(html, "UTF-8")
     }
 }
-tasks.named("preBuild") { dependsOn("generateWebAsset") }
+// The STEP export's 3D kernel (web/step-kernel.js, from tools/build-step-kernel.js) goes in beside the page.
+tasks.register("copyStepKernel", Copy) {
+    from(rootProject.file("../web/step-kernel.js"))
+    into("$buildDir/generated/webAsset")
+}
+tasks.named("preBuild") { dependsOn("generateWebAsset", "copyStepKernel") }

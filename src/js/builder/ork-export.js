@@ -55,6 +55,15 @@ export function bldToOrk(model, L, opts = {}) {
     const d = k.dens != null && isFinite(k.dens) ? k.dens : (std || list[0])[1];
     return `<material type="${type}" density="${n(d)}">${e(k.mat || list[0][0])}</material>`;
   };
+  /**
+   * What a fin set keeps from its file (tabs, fillet), with the rocket-wide fillet radius in place of the file's when
+   * one is set (0 is written too, so a file's own fillet doesn't come back when the file is merged on save).
+   */
+  const finXtraXml = (k) => {
+    const x = k.finXtra || "";
+    if (S.finFillet == null || !isFinite(S.finFillet)) return x;
+    return `${x.replace(/<filletradius>[^<]*<\/filletradius>/g, "")}<filletradius>${n(Math.max(S.finFillet, 0))}</filletradius>`;
+  };
   const bulk = (k) => matX(k, "bulk", BLD_BULK),
     surf = (k) => matX(k, "surface", BLD_SURF),
     line = (k) => matX(k, "line", BLD_LINE);
@@ -158,7 +167,7 @@ export function bldToOrk(model, L, opts = {}) {
       pr = Math.max(R * 0.9, 0.005);
     switch (k.type) {
       case "fins": {
-        const base = `${head(k)}${fin(k)}${bulk(k)}${k.finXtra || ""}<fincount>${k.n}</fincount><rotation>${n(k.rot || 0)}</rotation><thickness>${n(k.t)}</thickness><crosssection>${k.edge}</crosssection><cant>${n(k.cant || 0)}</cant>${(k.edge === "beveled" || k.edgeTE === "sharp") && (+k.bevLE > 0 || +k.bevTE > 0) ? `<prflbevelle>${n(k.edge === "beveled" ? +k.bevLE || 0 : 0)}</prflbevelle><prflbevelte>${n(+k.bevTE || 0)}</prflbevelte>` : ""}${(k.edge === "beveled" || k.edge === "doublewedge") && +k.ler > 0 ? `<prflleradius>${n(+k.ler)}</prflleradius>` : ""}${finTeEdge(k.edgeTE) ? `<prfltrailingedge>${finTeEdge(k.edgeTE)}</prfltrailingedge>` : ""}`;
+        const base = `${head(k)}${fin(k)}${bulk(k)}${finXtraXml(k)}<fincount>${k.n}</fincount><rotation>${n(k.rot || 0)}</rotation><thickness>${n(k.t)}</thickness><crosssection>${k.edge}</crosssection><cant>${n(k.cant || 0)}</cant>${(k.edge === "beveled" || k.edgeTE === "sharp") && (+k.bevLE > 0 || +k.bevTE > 0) ? `<prflbevelle>${n(k.edge === "beveled" ? +k.bevLE || 0 : 0)}</prflbevelle><prflbevelte>${n(+k.bevTE || 0)}</prflbevelte>` : ""}${(k.edge === "beveled" || k.edge === "doublewedge") && +k.ler > 0 ? `<prflleradius>${n(+k.ler)}</prflleradius>` : ""}${finTeEdge(k.edgeTE) ? `<prfltrailingedge>${finTeEdge(k.edgeTE)}</prfltrailingedge>` : ""}`;
         if (k.shape === "elliptical")
           return `<ellipticalfinset>${base}<rootchord>${n(k.root)}</rootchord><height>${n(k.span)}</height></ellipticalfinset>`;
         if (k.shape === "freeform") {

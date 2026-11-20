@@ -691,6 +691,19 @@ export function bldFromOrk(xml, info) {
     }
   });
   if (rcd) model.settings.cdOverride = parseFloat(rcd.textContent) || 0;
+  // fin fillets: when every fin set has the same radius, it is the rocket-wide one the Whole rocket field shows;
+  // fin sets that differ keep their own, as the file wrote them
+  {
+    const fins = model.stages.flatMap((st) => st.parts.flatMap((q) => (q.kids || []).filter((k) => k.type === "fins")));
+    const rad = (k) => {
+      const m = /<filletradius>\s*([^<]*?)\s*<\/filletradius>/.exec(k.finXtra || "");
+      return m ? parseFloat(m[1]) || 0 : 0;
+    };
+    if (fins.length && fins.every((k) => rad(k) === rad(fins[0])) && rad(fins[0]) > 0) {
+      model.settings.finFillet = rad(fins[0]);
+      for (const k of fins) k.finXtra = k.finXtra.replace(/<filletradius>[^<]*<\/filletradius>/g, "");
+    }
+  }
   // a whole-rocket weight or balance from a RockSim file goes on the first stage
   if (model.stages.length === 1) {
     const s0 = model.stages[0];

@@ -566,7 +566,7 @@ function bldFieldHtml(F, val) {
       break;
     case "num": {
       const dim = F.dim || "none",
-        blankable = ["delay", "mmDelay", "knownCg"].includes(F.key),
+        blankable = ["delay", "mmDelay", "knownCg", "finFillet"].includes(F.key),
         v = blankable && (val == null || val === "") ? "" : num(val ?? 0, dim);
       // a value the app works out (turning inertia) fills the field until one is typed
       const calc = F.calc != null && !(+val > 0);
@@ -860,6 +860,9 @@ function bldWire(el, p, mode, si) {
           (key === "mmDelay" ? p.mm : O).delay = null;
         } else if (blank && key === "knownCg") {
           delete O.knownCg;
+        } else if (blank && key === "finFillet") {
+          // cleared: each fin set keeps the radius its file gave it (none, for a new design)
+          delete O.finFillet;
         } else {
           const v = parseFloat(raw);
           if (!isFinite(v)) return;

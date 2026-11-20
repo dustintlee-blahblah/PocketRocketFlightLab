@@ -13,7 +13,7 @@ const FIN_DXF_ARC = 180;
  * @param {object} k fin part of the builder
  * @returns {number[][]}
  */
-function finDxfOutline(k) {
+export function finDxfOutline(k) {
   if (k.shape === "freeform") {
     const P = bldPts(k).pts;
     if (P.length < 3) return [];

@@ -1288,6 +1288,24 @@ h2 + .subh {
 .bldeditcol {
   position: relative;
 }
+.bldtreehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.bldtreehead .btn {
+  padding: 4px 10px;
+  min-height: 30px;
+  font-size: 0.82rem;
+}
+#bldstepmsg {
+  margin: 0 0 10px;
+}
+#bldstepmsg.bad {
+  color: var(--bad);
+}
 .bldundo {
   position: absolute;
   top: 10px;

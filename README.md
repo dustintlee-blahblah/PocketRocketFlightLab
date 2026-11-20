@@ -174,7 +174,8 @@ again with `npm run test:record` and commit it with the change, saying in the co
 
 Build it (`node build.js`), then open `web/pocket-rocket-flight-lab.html` in a browser. Each release also carries the
 built page. It loads its fonts from Google Fonts and the PDF
-library (jsPDF) from cdnjs; everything else is in the file.
+library (jsPDF) from cdnjs; everything else is in the file, except the STEP export's 3D kernel: run
+`node tools/build-step-kernel.js` and keep `web/step-kernel.js` beside the page (releases carry it as `step-kernel.js`).
 
 ## Building the Android app
 

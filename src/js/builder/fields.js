@@ -360,6 +360,8 @@ export function bldRootFields() {
         ["natural", "Natural transition (very smooth, no joints near the nose)"],
       ],
     ],
+    // the fin fillets (OpenRocket's per-fin-set fillet radius, set once here for every fin set; blank leaves a file's own)
+    ["finFillet", "Fin fillet radius", "num", "len", BLD.settings],
     // recovery electronics: the backup altimeter, the altimeter bay (for its static ports) and the main's rated load
     ["#", "Recovery electronics"],
     ["bakOn", "A backup altimeter fires its own charges", "check", null, BLD.settings],

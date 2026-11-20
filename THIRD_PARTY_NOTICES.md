@@ -53,7 +53,7 @@ with others.
 
 The OFL allows the licensed fonts to be used, studied, modified and
 redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded, 
+fonts, including any derivative works, can be bundled, embedded,
 redistributed and/or sold with any software provided that any reserved
 names are not used by derivative works. The fonts and derivatives,
 however, cannot be released under any other type of license. The
@@ -149,7 +149,7 @@ with others.
 
 The OFL allows the licensed fonts to be used, studied, modified and
 redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded, 
+fonts, including any derivative works, can be bundled, embedded,
 redistributed and/or sold with any software provided that any reserved
 names are not used by derivative works. The fonts and derivatives,
 however, cannot be released under any other type of license. The
@@ -247,6 +247,20 @@ https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer),
 from the USGS 3D Elevation Program (https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer). USGS-authored data and maps are in
 the U.S. public domain; the app credits the USGS on the picture. Map services and data available from U.S. Geological
 Survey, National Geospatial Program.
+
+== STEP export (3D model kernel) ==
+The STEP export is built with Open CASCADE Technology (OCCT), compiled to WebAssembly by replicad-opencascadejs, and
+the replicad library. This code makes use of, and is based on, facilities provided by the Open CASCADE Technology
+software (https://dev.opencascade.org). They ship as one separate file, step-kernel.js, loaded only when the STEP
+button is used; it is not part of the app page.
+- Open CASCADE Technology: Copyright 1999-2025 Open CASCADE SAS and others, GNU Lesser General Public License
+  version 2.1 with the Open CASCADE Exception 1.0 (https://dev.opencascade.org/resources/licensing). Its source is at
+  https://git.dev.opencascade.org/gitweb/?p=occt.git and the WebAssembly build's at
+  https://github.com/sgenoud/replicad (packages/replicad-opencascadejs). step-kernel.js is rebuilt from those packages,
+  at the versions pinned in package-lock.json, by `node tools/build-step-kernel.js`; swapping in a rebuilt or modified
+  step-kernel.js (beside the web page, or by rebuilding the Android app from this repository) is permitted and
+  supported.
+- replicad: Copyright 2023 QuaroTech Sàrl, MIT License (https://github.com/sgenoud/replicad).
 
 == Design file compatibility ==
 The app opens and saves OpenRocket (.ork) and RockSim (.rkt) design files and opens RASAero II (.CDX1) design files, for compatibility. OpenRocket, RockSim and RASAero II are separate programs and are not affiliated with this app.
