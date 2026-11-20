@@ -133,10 +133,10 @@ function stepPartSolid(R, b) {
  * @param {object[]} bodies layout bodies
  * @returns {{solid:object, x0:number, x1:number}|null} the solid and the x range of its root that lies on the body, mm
  */
-function stepFinSolid(R, k, xf, bodies, flat) {
+function stepFinSolid(R, k, xf, bodies, flat, grow = 0) {
   const P = finDxfOutline(k);
   if (P.length < 3) return null;
-  const t = Math.max(+k.t || 0, 0.0002) * STEP_MM;
+  const t = Math.max(+k.t || 0, 0.0002) * STEP_MM + 2 * grow;
   let pts = P.map(([x, y]) => [x * STEP_MM, y * STEP_MM]);
   if (k.shape === "elliptical") {
     // the outline comes as a fine polygon: thin it to STEP_ELLIPSE_PIECES pieces
@@ -180,9 +180,7 @@ function stepFinSolid(R, k, xf, bodies, flat) {
   const M = pts.map((p) => [xf + p[0], surf(xf + p[0]) + p[1]]);
   let solid = poly(M);
   // the edge sections; they keep an edge flat instead of a knife edge
-  let inLE = 0,
-    inTE = 0,
-    edgesSkipped = false;
+  let edgesSkipped = false;
   let area = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i],
@@ -193,24 +191,20 @@ function stepFinSolid(R, k, xf, bodies, flat) {
     k.shape === "trapezoid"
       ? ((+k.root || 0) + (+k.tip || 0)) * 0.5 * STEP_MM
       : Math.abs(area) / Math.max(...pts.map((p) => p[1]), 1e-9);
-  const edges = stepEdges(k, t, flat, cMean);
+  const edges = stepEdges(k, t, flat + 2 * grow, cMean);
   if (edges.le || edges.te) {
     if (k.shape === "trapezoid") {
       const n = M.length;
       if (edges.le) {
         solid = solid.intersect(stepEdgeBody(R, edges.le, M[0], M[1], 1, t));
-        inLE = stepFullIn(edges.le, t);
       }
       if (edges.te) {
         solid = solid.intersect(stepEdgeBody(R, edges.te, M[n - 1], M[n - 2], -1, t));
-        inTE = stepFullIn(edges.te, t);
       }
     } else {
       try {
         const r = stepCurvedEdges(R, solid, M, ri, edges, t, k.shape === "elliptical" ? 0 : 0.25);
         solid = r.solid;
-        inLE = r.inLE;
-        inTE = r.inTE;
       } catch (e) {
         edgesSkipped = true;
       }
@@ -224,7 +218,7 @@ function stepFinSolid(R, k, xf, bodies, flat) {
     const inner = Math.max(Math.min(...xs.map(surf)) * 0.4, 0.05);
     solid = solid.fuse(poly([...xs.map((x) => [x, surf(x)]), [fb, inner], [fa, inner]]));
   }
-  return { solid, x0: Math.max(fa, xa + inLE), x1: Math.min(fb, xb - inTE), edgesSkipped };
+  return { solid, x0: fa, x1: fb, edgesSkipped };
 }
 /** The flat left on a sharp (bladed) fin edge instead of a knife edge a mesher cannot fill, m: about a sanded fin's. */
 const STEP_EDGE_FLAT = 0.0003;
@@ -322,7 +316,7 @@ function stepFullIn(pr, t) {
  * @param {{le:number[][]|null, te:number[][]|null}} edges stepEdges
  * @param {number} t thickness, mm
  * @param {number} thr a piece whose outward normal points less than this far along x (0 to 1) gets no section
- * @returns {{solid:object, inLE:number, inTE:number}} inLE/inTE: how far along the root the fin is full thickness
+ * @returns {{solid:object}}
  */
 function stepCurvedEdges(R, solid, M, ri, edges, t, thr) {
   const n = M.length;
@@ -345,8 +339,6 @@ function stepCurvedEdges(R, solid, M, ri, edges, t, thr) {
     const c = p.d[0] * q.d[1] - p.d[1] * q.d[0];
     return { concave: ccw ? c < 0 : c > 0, ang: Math.atan2(Math.abs(c), p.d[0] * q.d[0] + p.d[1] * q.d[1]) };
   };
-  let inLE = 0,
-    inTE = 0;
   const h2 = t / 2 + 1;
   // one C-shaped cutter per piece: everything outside the section's outline
   const cutter = (prof, sd) => {
@@ -387,14 +379,8 @@ function stepCurvedEdges(R, solid, M, ri, edges, t, thr) {
     sd.e0 = ext(prev, true);
     sd.e1 = ext(next, false);
     solid = solid.cut(cutter(prof, sd));
-    if (ri >= 0 && (sd.i === (ri + 1) % n || sd.i === (ri + n - 1) % n)) {
-      // the pieces at the root's ends set how far along the root the fin is full thickness
-      const along = sf / Math.max(Math.abs(sd.nx), 0.3);
-      if (sd.nx < 0) inLE = Math.max(inLE, along);
-      else inTE = Math.max(inTE, along);
-    }
   });
-  return { solid, inLE, inTE };
+  return { solid };
 }
 /**
  * The solid that keeps one edge's section: a prism of the section's outline (half-thickness against distance from
@@ -654,7 +640,7 @@ export async function buildStep(R, model, opts = {}) {
     for (const s of g.sets) {
       const f = stepFinSolid(R, s.k, s.x, bodies, flat);
       if (f && f.edgesSkipped) edgesSkipped = true;
-      if (f) fins.push({ ...f, ang: s.ang, t: Math.max(+s.k.t || 0, 0.0002) * STEP_MM });
+      if (f) fins.push({ ...f, k: s.k, xf: s.x, ang: s.ang, t: Math.max(+s.k.t || 0, 0.0002) * STEP_MM });
     }
     for (const f of fins)
       for (const a of f.ang) host = host.fuse(a ? f.solid.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : f.solid.clone());
@@ -663,12 +649,19 @@ export async function buildStep(R, model, opts = {}) {
       // (a boattail) the joint isn't a straight line and they are left out, and the file says so
       if (isTubeHost(g)) {
         const rHost = bodies[g.parts[0]].r1 * STEP_MM;
-        for (const f of fins)
-          for (const a of f.ang)
-            for (const side of [1, -1]) {
-              const w = stepFilletWedge(R, rHost, f.t / 2, fr, f.x0, f.x1, side);
-              if (w) host = host.fuse(a ? w.rotate(a, [0, 0, 0], [1, 0, 0]) : w);
-            }
+        for (const f of fins) {
+          // both sides' fillets along the whole root, then trimmed to the fin made thicker by the fillet radius all
+          // round (its planform and its edge sections): they end flush with the fin's edges and fade out along a
+          // rounded or beveled one instead of standing out past it
+          let w = null;
+          for (const side of [1, -1]) {
+            const q = stepFilletWedge(R, rHost, f.t / 2, fr, f.x0, f.x1, side);
+            if (q) w = w ? w.fuse(q) : q;
+          }
+          const fat = stepFinSolid(R, f.k, f.xf, bodies, flat, fr);
+          if (w && fat) w = w.intersect(fat.solid);
+          if (w) for (const a of f.ang) host = host.fuse(a ? w.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : w.clone());
+        }
         filletDone += g.sets.length;
       } else taperedSkipped = true;
     }
