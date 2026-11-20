@@ -1,4 +1,4 @@
 // Pocket Rocket Flight Lab: Android wrapper around the web app in ../web
 plugins {
-    id "com.android.application" version "8.7.3" apply false
+    id "com.android.application" version "9.5.1" apply false
 }
