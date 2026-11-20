@@ -1,9 +1,11 @@
 /**
- * The recovery plan on the Results tab: each charge as it would fire (the primary altimeter's, a backup altimeter's
- * and the motor's), the flight flown again as if the primary altimeter failed and as if every altimeter did, the time
- * and drift under the drogue and the main (and with the main set higher or lower), the main's opening load against its
- * rated load, and the altimeter bay's static ports.
+ * The recovery plan on the Results tab: each charge as it would fire (each altimeter's and the motor's, and a chute
+ * release opening), the flight flown again as if each of them failed, the time and drift under the drogue and the main
+ * (and with the main set higher or lower), the main's opening load against its rated load, and the altimeter bay's
+ * static ports. It reads the rocket's recovery configuration (builder/recovery-config.js): motor ejection, one
+ * altimeter or two, with or without a chute release.
  */
+import { recAltimeter } from "../builder/recovery-config.js";
 import { esc } from "../core/helpers.js";
 import { simulate } from "../physics/simulate.js";
 import { lastSim } from "../ui/results.js";
@@ -98,36 +100,70 @@ function recGrade(o) {
   return "good";
 }
 /**
- * The design with only some charges working: which chutes still open, and when.
+ * The flight's recovery set-up, from the design's recovery configuration (a design the builder made) or, without one
+ * (or with "custom"), from how the flight itself deploys.
  * @param {object} D the design
- * @param {string} which "backup" (the primary altimeter failed) or "motor" (every altimeter failed)
- * @returns {object|null} the design to fly, or null when that case doesn't apply
+ * @returns {{cfg:string, alts:object[], mainCharge:boolean, cr:boolean, crAlt:number, dual:boolean, alti:boolean}}
+ *   cfg "motor", "one" or "two"; alts: each altimeter's apogee delay (s), main height (m), name and model
  */
-function recFailDesign(D, which) {
+function recSetup(D) {
   const R = D.rec || {},
     dual = D.recovery !== "single",
-    alti = (D.deployMode || "apogee") === "apogee";
-  if (which === "backup") {
-    if (!R.bakOn) return null;
-    return {
-      ...D,
-      deployMode: "apogee",
-      deployDelay: +R.bakDelay || 0,
-      // the motor's charge is the one that failed, when it was the primary
-      ...(alti ? {} : { ejDelay: null }),
-      mainAlt: dual ? Math.max(0, D.mainAlt - (+R.bakMainDrop || 0)) : D.mainAlt,
-    };
-  }
-  // every altimeter failed: only the motor's charge is left, pushing on the compartment nearest the tail
-  if (!alti) return null;
-  const plugged = D.ejDelay == null,
-    none = { ...D, recovery: "single", mainDia: 0, mainCd: 0, drogueDia: 0, extraChutes: [] };
-  if (plugged) return none;
-  if (!dual) return { ...D, deployMode: "motor" };
-  const aftMain = D.aftChute === "main" || !(D.drogueDia > 0);
+    alti = (D.deployMode || "apogee") === "apogee",
+    known = R.cfg === "motor" || R.cfg === "one" || R.cfg === "two",
+    cfg = known ? R.cfg : alti ? "one" : "motor",
+    cr = known ? !!R.crOn : !!D.chuteRelease,
+    alt = (k, who) => ({
+      who,
+      apo: +R[k + "Apo"] || 0,
+      main: +R[k + "Main"] || 0,
+      model: recAltimeter(R[k + "Model"]),
+    });
+  return {
+    cfg,
+    dual,
+    alti,
+    cr,
+    crAlt: D.mainAlt,
+    mainCharge: known ? !!R.mainCharge : dual && !D.chuteRelease,
+    alts: !known
+      ? alti
+        ? [{ who: "Altimeter", apo: +D.deployDelay || 0, main: D.mainAlt, model: null }]
+        : dual
+          ? [{ who: "Altimeter", apo: null, main: D.mainAlt, model: null }]
+          : []
+      : cfg === "two"
+        ? [alt("a1", "Altimeter 1"), alt("a2", "Altimeter 2")]
+        : cfg === "one"
+          ? [alt("a1", "Altimeter")]
+          : [],
+  };
+}
+/**
+ * The design with no parachute at all: nothing opens.
+ * @param {object} D
+ * @returns {object}
+ */
+const recNone = (D) => ({ ...D, recovery: "single", mainDia: 0, mainCd: 0, drogueDia: 0, extraChutes: [] });
+/**
+ * The design with every altimeter failed: only the motor's charge is left, pushing on the compartment nearest the tail.
+ * @param {object} D the design
+ * @param {object} U recSetup
+ * @returns {{D:object, note:string}}
+ */
+function recMotorOnly(D, U) {
+  const dual = U.dual,
+    aftMain = D.aftChute === "main" || !(D.drogueDia > 0);
+  if (D.ejDelay == null) return { D: recNone(D), note: "plugged motor: nothing fires" };
+  if (!dual) return { D: { ...D, deployMode: "motor" }, note: "the motor's charge deploys the chute" };
+  if (aftMain && U.cr)
+    return { D: { ...D }, note: "the motor's charge puts the chute out; the chute release still opens it" };
   return aftMain
-    ? { ...D, recovery: "single", deployMode: "motor" }
-    : { ...D, recovery: "single", mainDia: D.drogueDia, mainCd: D.drogueCd, deployMode: "motor" };
+    ? { D: { ...D, recovery: "single", deployMode: "motor" }, note: "the motor's charge pushes out the main" }
+    : {
+        D: { ...D, recovery: "single", mainDia: D.drogueDia, mainCd: D.drogueCd, deployMode: "motor" },
+        note: "the motor's charge pushes out the drogue; the main stays packed",
+      };
 }
 /**
  * The recovery plan for the last run: worked out once per run (a few more flights are flown for it).
@@ -139,58 +175,100 @@ function recPlan() {
   const { D: D0, L: L0, m, mb, st } = lastSim,
     R0 = { out: lastSim.out, st },
     rec = D0.rec || {},
-    dual = D0.recovery !== "single",
-    alti = (D0.deployMode || "apogee") === "apogee",
+    U = recSetup(D0),
+    { dual, alti, cfg } = U,
     fly = (D2) => {
       const r = simulate(D2, L0, m, mb, { noRef: true });
       return r.st.error ? null : r;
     };
-  const P = { dual, alti, rec, charges: [], cases: [], legs: null, mains: [], load: null, ports: null };
+  const P = {
+    dual,
+    alti,
+    rec,
+    cfg,
+    U,
+    charges: [],
+    cases: [],
+    notes: [],
+    legs: null,
+    mains: [],
+    load: null,
+    ports: null,
+  };
+  const hasDrogue = dual && D0.drogueDia > 0;
   // each charge as it would fire, on the flight as set
   if (st.tApo != null) {
-    const add = (who, what, t) => {
+    const add = (who, what, t, model) => {
       if (t == null || !(t > 0) || (st.tLand != null && t > st.tLand)) return;
       const vz = recAt(R0.out, "vel", t),
         va = recSpeed(R0.out, t);
-      P.charges.push({ who, what, t, rel: t - st.tApo, alt: recAt(R0.out, "alt", t), vz, va });
+      P.charges.push({ who, what, t, rel: t - st.tApo, alt: recAt(R0.out, "alt", t), vz, va, model });
     };
-    const first = dual ? "drogue" : "chute";
-    if (alti) add("Primary altimeter", first, st.tApo + (+D0.deployDelay || 0));
-    if (rec.bakOn) add("Backup altimeter", first, st.tApo + (+rec.bakDelay || 0));
-    // with the motor's charge first, a dual deploy's main is still the altimeter's
-    if (dual) add("Primary altimeter", "main", recDownThrough(R0, D0.mainAlt));
-    if (dual && rec.bakOn) add("Backup altimeter", "main", recDownThrough(R0, D0.mainAlt - (+rec.bakMainDrop || 0)));
+    // what the first charge puts out: the drogue; the one chute; the chute, bundled in its release; or (a main with
+    // no drogue) nothing but the two halves
+    const first = hasDrogue ? "drogue" : !dual ? "chute" : U.cr && !U.mainCharge ? "chute, bundled" : "separation",
+      mainWhat = U.cr ? "main, bundled" : "main";
+    for (const a of U.alts) {
+      const name = a.model ? `${a.model.brand} ${a.model.name}` : "";
+      if (a.apo != null) add(a.who, first, st.tApo + a.apo, name);
+      // with the motor's charge first, a dual deploy's main is still the altimeter's
+      if (U.mainCharge) add(a.who, mainWhat, recDownThrough(R0, a.main), name);
+    }
     if (st.tEject != null)
-      add("Motor", dual ? (D0.aftChute === "main" || !(D0.drogueDia > 0) ? "main" : "drogue") : "chute", st.tEject);
-    P.charges.sort((a, b) => a.t - b.t);
-  }
-  // the flight as set, then with charges failing
-  P.cases.push({ name: "As set", note: "every charge works", o: recOutcome(st) });
-  {
-    const b = recFailDesign(D0, "backup");
-    const r = b && fly(b);
-    if (r)
-      P.cases.push(
-        alti
-          ? { name: "Primary fails", note: "the backup does it", o: recOutcome(r.st) }
-          : { name: "Motor charge fails", note: "the backup fires at apogee", o: recOutcome(r.st) },
+      add(
+        "Motor",
+        dual ? (D0.aftChute === "main" || !hasDrogue ? (U.cr ? "chute, bundled" : "main") : "drogue") : "chute",
+        st.tEject,
       );
-  }
-  if (alti) {
-    const mo = recFailDesign(D0, "motor");
-    if (mo) {
-      const r = fly(mo);
-      const note =
-        D0.ejDelay == null
-          ? "plugged motor: nothing fires"
-          : !dual
-            ? "the motor's charge deploys the chute"
-            : D0.aftChute === "main" || !(D0.drogueDia > 0)
-              ? "the motor's charge pushes out the main"
-              : "the motor's charge pushes out the drogue; the main stays packed";
-      if (r) P.cases.push({ name: rec.bakOn ? "Both fail" : "Altimeter fails", note, o: recOutcome(r.st) });
+    if (U.cr)
+      add("Chute release", hasDrogue || U.mainCharge ? "main opens" : "chute opens", recDownThrough(R0, U.crAlt));
+    P.charges.sort((a, b) => a.t - b.t);
+    // what the chosen altimeters can do
+    for (const a of U.alts) {
+      const M = a.model;
+      if (!M) continue;
+      const nm = `${M.brand} ${M.name}`;
+      if (M.fires === "apogee" && U.mainCharge)
+        P.notes.push({
+          bad: true,
+          t: `The ${nm} fires an apogee charge only: it can't fire the main charge. Choose another altimeter for the main, or use a chute release.`,
+        });
+      if (M.accG > 0 && st.maxAcc > M.accG * 9.80665)
+        P.notes.push({
+          t: `This flight peaks at ${(st.maxAcc / 9.80665).toFixed(0)} g, past the ${nm}'s ${M.accG} g accelerometer.`,
+        });
+      if (M.maxAlt > 0 && st.apogee > M.maxAlt * 0.3048)
+        P.notes.push({
+          t: `This flight goes higher than the ${nm} reads (${fmt(M.maxAlt * 0.3048, "alt")} ${uname("alt")}).`,
+        });
     }
   }
+  // the flight as set, then with each charge failing
+  P.cases.push({ name: "As set", note: "every charge works", o: recOutcome(st) });
+  const tryCase = (name, note, D2) => {
+    const r = D2 && fly(D2);
+    if (r) P.cases.push({ name, note, o: recOutcome(r.st) });
+  };
+  if (cfg === "two")
+    U.alts.forEach((a, i) => {
+      const o = U.alts[1 - i];
+      tryCase(`${a.who} fails`, `${o.who.toLowerCase()} does it`, {
+        ...D0,
+        deployMode: "apogee",
+        deployDelay: o.apo,
+        mainAlt: U.mainCharge ? (U.cr ? Math.min(o.main, +rec.crAlt || o.main) : o.main) : D0.mainAlt,
+      });
+    });
+  if (alti && U.alts.length) {
+    const mo = recMotorOnly(D0, U);
+    tryCase(cfg === "two" ? "Both altimeters fail" : "Altimeter fails", mo.note, mo.D);
+  } else if (cfg === "motor" && D0.ejDelay != null) tryCase("Motor charge fails", "nothing else fires", recNone(D0));
+  if (U.cr)
+    tryCase(
+      "Chute release stays shut",
+      hasDrogue ? "it comes down under the drogue alone" : "the chute stays bundled",
+      hasDrogue ? { ...D0, recovery: "single", mainDia: D0.drogueDia, mainCd: D0.drogueCd } : recNone(D0),
+    );
   // time and drift under each chute
   if (st.tDeploy != null && st.tLand != null) {
     const p0 = recPos(R0, st.tDeploy),
@@ -237,6 +315,14 @@ function recPlan() {
   return P;
 }
 /**
+ * True when one altimeter is all there is: no second altimeter, and no motor charge.
+ * @param {object} P recPlan
+ * @returns {boolean}
+ */
+function recNoBackup(P) {
+  return P.alti && P.cfg === "one" && P.charges.every((c) => c.who !== "Motor");
+}
+/**
  * Draws the recovery plan on the Results tab.
  */
 export function renderRecovery() {
@@ -274,14 +360,16 @@ function recHtml(P) {
     h += `<div class="subh">The charges, in order</div><table class="cmpt rect"><thead><tr><th>Charge</th><th>After apogee</th><th>Height</th><th>Speed</th></tr></thead><tbody>${P.charges
       .map(
         (c) =>
-          `<tr><td>${esc(c.what[0].toUpperCase() + c.what.slice(1))}<small>${esc(c.who)}</small></td><td>${c.rel >= 0 ? "+" : "−"}${Math.abs(c.rel).toFixed(1)} s</td><td>${A(c.alt)}</td><td>${V(c.va)}${c.vz > 0.5 ? "<small>climbing</small>" : ""}</td></tr>`,
+          `<tr><td>${esc(c.what[0].toUpperCase() + c.what.slice(1))}<small>${esc(c.who)}${c.model ? `, ${esc(c.model)}` : ""}</small></td><td>${c.rel >= 0 ? "+" : "−"}${Math.abs(c.rel).toFixed(1)} s</td><td>${A(c.alt)}</td><td>${V(c.va)}${c.vz > 0.5 ? "<small>climbing</small>" : ""}</td></tr>`,
       )
       .join("")}</tbody></table>`;
-    const early = P.charges.find((c) => c.rel < -0.5);
+    const early = P.charges.find((c) => c.rel < -0.5 && c.who !== "Chute release");
     if (early)
       h += `<p class="note cmpnote">The ${esc(early.who.toLowerCase())}'s ${esc(early.what)} charge fires ${Math.abs(early.rel).toFixed(1)} s before apogee, while the rocket is still climbing.</p>`;
-    if (P.alti && !P.rec.bakOn && P.charges.every((c) => c.who !== "Motor"))
-      h += `<div class="cmpban warn"><b>No backup charge.</b>One altimeter and a plugged motor: if the altimeter fails, nothing opens. Add a backup altimeter, or fly a motor with a delay set to fire after apogee.</div>`;
+    if (recNoBackup(P))
+      h += `<div class="cmpban warn"><b>No backup charge.</b>One altimeter and a plugged motor: if the altimeter fails, nothing opens. Add a second altimeter (the builder, Whole rocket, Recovery), or fly a motor with a delay set to fire after apogee.</div>`;
+    for (const n of P.notes)
+      h += n.bad ? `<div class="cmpban warn">${esc(n.t)}</div>` : `<p class="note cmpnote">${esc(n.t)}</p>`;
   }
   if (P.cases.length) {
     h += `<div class="subh">If a charge fails</div><table class="cmpt rect"><thead><tr><th>Case</th><th>First opens</th><th>Lands at</th><th>Drift</th></tr></thead><tbody>${P.cases
@@ -292,7 +380,7 @@ function recHtml(P) {
       .join("")}</tbody></table>`;
     const worst = P.cases.slice(1).find((c) => recGrade(c.o) === "bad");
     if (worst)
-      h += `<p class="note cmpnote">${esc(worst.name)}: ${worst.o.open ? `it lands at ${V(worst.o.land)}, too fast to land undamaged` : "nothing opens and it falls ballistic"}. ${P.rec.bakOn ? "" : "A backup altimeter on its own battery and switch covers this. "}</p>`;
+      h += `<p class="note cmpnote">${esc(worst.name)}: ${worst.o.open ? `it lands at ${V(worst.o.land)}, too fast to land undamaged` : "nothing opens and it falls ballistic"}. ${P.cfg !== "one" ? "" : "A second altimeter on its own battery and switch covers this. "}</p>`;
   }
   if (P.legs) {
     const L = P.legs;
@@ -343,18 +431,19 @@ export function recPlanText() {
     out = [];
   if (P.charges.length) {
     const lines = [];
-    const early = P.charges.find((c) => c.rel < -0.5);
+    const early = P.charges.find((c) => c.rel < -0.5 && c.who !== "Chute release");
     if (early)
       lines.push(
         `The ${early.who.toLowerCase()}'s ${early.what} charge fires ${Math.abs(early.rel).toFixed(1)} s before apogee, while the rocket is still climbing.`,
       );
-    if (P.alti && !P.rec.bakOn && P.charges.every((c) => c.who !== "Motor"))
+    if (recNoBackup(P))
       lines.push("No backup charge: one altimeter and a plugged motor. If the altimeter fails, nothing opens.");
+    for (const n of P.notes) lines.push(n.t);
     out.push({
       title: "The charges, in order",
       head: ["Charge", "After apogee", "Height", "Speed"],
       rows: P.charges.map((c) => [
-        `${c.what[0].toUpperCase() + c.what.slice(1)} (${c.who.toLowerCase()})`,
+        `${c.what[0].toUpperCase() + c.what.slice(1)} (${c.who.toLowerCase()}${c.model ? `, ${c.model}` : ""})`,
         rel(c.rel),
         A(c.alt),
         V(c.va) + (c.vz > 0.5 ? ", climbing" : ""),

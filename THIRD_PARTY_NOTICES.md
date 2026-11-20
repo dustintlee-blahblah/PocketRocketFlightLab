@@ -248,8 +248,8 @@ from the USGS 3D Elevation Program (https://elevation.nationalmap.gov/arcgis/res
 the U.S. public domain; the app credits the USGS on the picture. Map services and data available from U.S. Geological
 Survey, National Geospatial Program.
 
-== STEP export (3D model kernel) ==
-The STEP export is built with Open CASCADE Technology (OCCT), compiled to WebAssembly by replicad-opencascadejs, and
+== CAD export: STEP and STL (3D model kernel) ==
+The CAD export is built with Open CASCADE Technology (OCCT), compiled to WebAssembly by replicad-opencascadejs, and
 the replicad library. This code makes use of, and is based on, facilities provided by the Open CASCADE Technology
 software (https://dev.opencascade.org). They ship as one separate file, step-kernel.js, loaded only when the STEP
 button is used; it is not part of the app page.

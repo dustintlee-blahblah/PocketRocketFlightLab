@@ -25,8 +25,8 @@ The screenshots are taken from the built app by `node tools/screenshots.js`.
 - Opens OpenRocket, RockSim and RASAero II files and saves OpenRocket files, keeping everything the app doesn't edit
 - Rocket builder with a catalog of about 3,700 makers' parts, motor comparison, landing dispersion (Monte Carlo),
   fin flutter checks
-- Recovery Plan: primary and backup altimeter charges in order, the flight flown again as if a charge
-  failed, time and drift under each chute, the main's opening load, and static port sizes
+- Recovery set in one place (motor ejection, one altimeter or two, with or without a chute release), and a
+  Recovery Plan: every charge in order, the flight flown again as if each one failed, time and drift under each chute, the main's opening load, and static port sizes
 - The flight animated in 2D or in 3D, over an aerial photo of the launch site on its own terrain (USGS imagery and elevation, United States)
 - The simulated flight as a data file (CSV), and a PDF flight report
 - Flight log with altimeter imports (Featherweight, Altus Metrum, Eggtimer, PerfectFlite, Missile
@@ -174,7 +174,7 @@ again with `npm run test:record` and commit it with the change, saying in the co
 
 Build it (`node build.js`), then open `web/pocket-rocket-flight-lab.html` in a browser. Each release also carries the
 built page. It loads its fonts from Google Fonts and the PDF
-library (jsPDF) from cdnjs; everything else is in the file, except the STEP export's 3D kernel: run
+library (jsPDF) from cdnjs; everything else is in the file, except the CAD export's (STEP and STL) 3D kernel: run
 `node tools/build-step-kernel.js` and keep `web/step-kernel.js` beside the page (releases carry it as `step-kernel.js`).
 
 ## Building the Android app

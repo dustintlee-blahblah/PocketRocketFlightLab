@@ -862,6 +862,7 @@ export function start() {
       return true;
     }
     for (const [id, b] of [
+      ["cadmodal", "cadcancel"],
       ["flchoose", "flchcancel"],
       ["altmodal", "altcancel"],
       ["flallmodal", "flallclose"],

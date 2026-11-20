@@ -1516,6 +1516,10 @@ h2 + .subh {
 label.flchoice:focus-within {
   border-color: var(--accent);
 }
+/* a line of text among the builder's fields */
+.bldfnote {
+  margin: 2px 0 10px;
+}
 .flsub {
   margin: 14px 0 2px;
   font-size: 0.95rem;

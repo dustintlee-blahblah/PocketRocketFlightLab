@@ -121,7 +121,8 @@ export function fieldInfo(k) {
  * @returns {string}
  */
 export function bldInfo(F) {
-  const k = F.key,
+  // the second altimeter's fields read as the first's
+  const k = F.key.replace(/^a2/, "a1"),
     t = F.p ? F.p.type : null,
     two = typeof BLD !== "undefined" && BLD && BLD.stages.length > 1;
   const LU = uname("len");
@@ -152,12 +153,20 @@ export function bldInfo(F) {
       "Extra drag coefficient for things the parts don’t include, such as camera shrouds, switch bands or screw heads. Usually 0.",
     cdOverride:
       "The rocket’s drag coefficient. Off, it’s calculated from the shape and finish at every speed (the field shows it at Mach 0.3). Switch Override on to use one fixed Cd at every speed instead, such as RockSim’s fixed Cd or one from a real flight.",
-    bakOn:
-      "A second altimeter on its own battery and switch, firing its own apogee and main charges a little after the first, so one failure doesn't lose the recovery. Tripoli requires two fully separate systems for Level 3.\n\nThe Recovery plan on the Results tab flies the flight again as if the first altimeter failed, and as if both did, and says whether the recovery would still be safe.",
-    bakDelay:
-      "How long after apogee the backup altimeter fires its apogee charge. 1 to 2 seconds after the primary is usual, so the two charges don't fire together.",
-    bakMainDrop:
-      "How far below the main's set height the backup altimeter fires its main charge. 50 to 100 ft (15 to 30 m) lower is usual.",
+    recCfg:
+      "How the parachutes are deployed. This is the one place to set it; each parachute then just has a role (drogue or main).\n\nMotor ejection: the motor's own charge puts the parachute out, after the delay set under Motor Delay on the Motor tab.\n\nOne altimeter: an altimeter fires a charge at apogee and, with a separate main (or a main and no drogue), a second charge at a set height on the way down.\n\nTwo altimeters: two separate altimeters, each on its own battery and switch with its own charges, so one failure doesn't lose the recovery. Whichever fires first does the work. Tripoli requires two fully separate systems for Level 3.\n\nA chute release can be used with any of these.\n\nCustom keeps each parachute's own opening setting, for set-ups these don't cover (a timer, or a design file that doesn't fit one of them).\n\nThe Recovery Plan on the Results tab lists every charge in order and flies the flight again as if each one failed.",
+    a1Model:
+      "Which altimeter it is, if it's in the list (the ones that can fire a charge). Any altimeter leaves it open. With a model chosen, the Recovery Plan says so when the flight is past what that altimeter can do: an altimeter that fires at apogee only can't fire a main charge, and a flight can be past its accelerometer's range or the highest it reads.",
+    a1Apo:
+      "How long after apogee this altimeter fires its apogee charge. 0 fires at apogee. With two altimeters, set the second 1 to 2 seconds later so the two charges don't fire together.",
+    a1Main:
+      "The height above the pad, on the way down, where this altimeter fires its main charge. 500 to 1,000 ft (150 to 300 m) is usual. With two altimeters, set the second 50 to 100 ft (15 to 30 m) lower.",
+    recSolo:
+      "With one parachute and an altimeter: at the apogee charge it opens at apogee (single deploy). At the main charge the apogee charge only separates the rocket, which falls without a drogue until the main charge opens the parachute lower down (a dual deploy with no drogue).",
+    crOn: "Tick this when the main (or the only parachute) is wrapped in a chute release, such as a Jolly Logic Chute Release. The first charge (the motor's, or an altimeter's apogee charge) puts the bundled chute out, the rocket comes down fast on the bundle, and the release lets the chute open at its set height. It gives a dual deploy's shorter walk from a single charge.\n\nThe Recovery Plan also flies the flight as if the release stayed shut.",
+    crAlt:
+      "The height above the pad the chute release is set to open at. 300 to 500 ft (90 to 150 m) is usual. With an altimeter's main charge as well, the chute opens at whichever is lower.",
+    role: "Drogue: the small parachute (or streamer) that opens at the first charge, at apogee or at the motor's ejection charge. Main: the large one that opens lower down, at the main charge or when its chute release opens. Which charges there are is set under Whole rocket, Recovery.",
     bayDia:
       "The inside diameter of the altimeter bay, for its static port size (Results, Recovery plan). Blank uses the body's diameter.",
     bayLen:
@@ -165,7 +174,7 @@ export function bldInfo(F) {
     mainRating:
       "The load the main chute and its harness (shock cord, swivel, quick links) are rated to hold: the weakest of them. The Recovery plan compares the main's opening load with it. Blank to leave it out.",
     finFillet:
-      "The radius of the glue fillet along each side of every fin where it meets the body. It is saved in the file as OpenRocket's fin fillet radius on each fin set, adds the fillets' weight, and goes into the STEP file as a rounded joint, which matters for CFD (a fillet changes the airflow at the fin root). 0 means no fillet. Leave it blank to keep whatever a file you opened gave each fin set.",
+      "The radius of the glue fillet along each side of every fin where it meets the body. It is saved in the file as OpenRocket's fin fillet radius on each fin set, adds the fillets' weight, and goes into the STEP or STL file (Export CAD) as a rounded joint, which matters for CFD (a fillet changes the airflow at the fin root). 0 means no fillet. Leave it blank to keep whatever a file you opened gave each fin set.",
     blMode:
       "Turbulent from the nose is right for nearly all rockets, since nose tips, joints and lugs trip the airflow early.\n\nNatural transition lets the flow stay smooth (laminar) over the front of a very smooth, polished rocket, which lowers friction drag.",
     ignDelay: "Seconds between the booster burning out and the sustainer motor lighting.",

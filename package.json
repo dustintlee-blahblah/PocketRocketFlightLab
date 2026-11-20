@@ -1,6 +1,6 @@
 {
   "name": "pocket-rocket-flight-lab",
-  "version": "1.0.332",
+  "version": "1.0.333",
   "private": true,
   "description": "A flight simulator for hobby and high-power rockets that runs on a phone.",
   "author": "Dustin Lee",
@@ -21,6 +21,7 @@
     "test:inputs": "node build.js && node tests/inputs.js",
     "test:exports": "node build.js && node tests/exports.js",
     "test:step": "node tests/step-export.js",
+    "test:recovery": "node build.js && node tests/recovery.js",
     "validate:arcas": "node build.js && node validation/arcas.js",
     "validate:openrocket": "node build.js && node validation/openrocket.js",
     "validate:accuracy": "node build.js && node validation/accuracy.js",

@@ -467,7 +467,13 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
           for (const k of BLD_APP_SETTINGS) {
             const v = ss[k];
             if (v === undefined) continue;
-            if (k.endsWith("On") ? typeof v === "boolean" : k === "blMode" ? typeof v === "string" : isFinite(v))
+            if (
+              k.endsWith("On")
+                ? typeof v === "boolean"
+                : ["blMode", "recCfg", "recSolo", "a1Model", "a2Model"].includes(k)
+                  ? typeof v === "string"
+                  : v !== null && isFinite(v)
+            )
               BLD.settings[k] = v;
           }
         }

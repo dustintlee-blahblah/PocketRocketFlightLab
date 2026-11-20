@@ -188,6 +188,13 @@ const ok = (what, cond, got) => {
     flSaveAll({});
     renderFlightLog();
   });
+  // the panel starts folded: closed with nothing in view, then opened
+  m = await p.evaluate(() => ({
+    folded: document.getElementById("flbody").hidden,
+    btn: document.querySelector('[data-fold="flbody"]').textContent,
+  }));
+  ok("Flight Log starts folded", m.folded && m.btn === "Show", m);
+  await p.click('[data-fold="flbody"]');
   // one button, Compare with a real flight: a file or readings by hand; Back closes the choice
   await p.click("#flcmp");
   m = await p.evaluate(() => {
@@ -337,6 +344,8 @@ const ok = (what, cond, got) => {
   });
   ok("Edit flight from a file: its files and apogee", m.files && !m.readings && +m.apo > 0, m);
   ok("three flights logged", (await p.evaluate(() => flList().length)) === 3);
+  m = await p.evaluate(() => document.getElementById("flsumfold").textContent);
+  ok("folded summary counts the flights", /^3 flights/.test(m), m);
 
   // a log picked with Open design file goes to the Flight Log
   await p.evaluate(() => showTab("rocket"));

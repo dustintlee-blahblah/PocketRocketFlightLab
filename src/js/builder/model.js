@@ -320,6 +320,18 @@ export const BLD_APP_SETTINGS = [
   "bDryInertiaOn",
   "s1DryInertia",
   "s1DryInertiaOn",
+  // recovery (recovery-config.js); bakOn, bakDelay and bakMainDrop are an earlier build's backup altimeter, read and
+  // turned into the second altimeter
+  "recCfg",
+  "recSolo",
+  "a1Model",
+  "a1Apo",
+  "a1Main",
+  "a2Model",
+  "a2Apo",
+  "a2Main",
+  "crOn",
+  "crAlt",
   "bakOn",
   "bakDelay",
   "bakMainDrop",

@@ -4,6 +4,28 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 333 (2026-11-20)
+
+**Recovery**
+
+- **How the rocket is recovered is set in one place**: the builder, Whole Rocket, **Recovery** (it replaces Recovery electronics). Choose **Motor ejection**, **One altimeter** or **Two altimeters**. Each altimeter has its own apogee charge delay and main charge height, and optionally its model; with two, whichever fires first does the work. A **chute release** can be added to any of them, with its opening height. With one parachute and an altimeter you choose whether it opens at the apogee charge or at the main charge (no drogue).
+- **A parachute has a role, not its own opening setting**: Drogue or Main when there are two or more, with a line saying when it opens. **Custom** keeps each parachute's own setting, for timers and for design files that don't fit.
+- **Opening a design changes nothing**: the configuration is worked out from the file's parachutes and kept only if it gives exactly their settings back; otherwise the design opens as Custom. An earlier build's backup altimeter becomes Altimeter 2.
+- **Altimeter model list**: the 20 altimeters that can fire charges (the recorders are left out). The Recovery Plan says when an altimeter that fires at apogee only is asked for a main charge, and when a flight is past a model's accelerometer range or the highest it reads.
+- **Recovery Plan** names each charge (Altimeter 1, Altimeter 2, Motor, Chute release) and flies the flight again as if each failed: either altimeter, both, the motor's charge, and a chute release that stays shut.
+
+**Builder**
+
+- **Export CAD** (was Export STEP) asks for the format: **STEP**, or **STL** with a **fine** (within 0.02 mm) or **coarse** (within 0.2 mm) mesh. The STL is the same solid as the STEP (fin edges, fillets, lugs and rail buttons), binary, in millimetres, and is checked to be a closed surface holding the solid's volume before it is saved.
+
+**Results**
+
+- **Flight Log & Calibration starts folded**, with the number of flights and the drag calibration beside its title. It opens by itself when a saved flight asks about calibrating.
+
+**Testing**
+
+- `tests/recovery.js`: every recovery configuration, with and without a chute release, saved and reopened. The STEP test also meshes every rocket as STL and reads the files back as closed surfaces.
+
 ## Build 332 (2026-11-20)
 
 **Builder**

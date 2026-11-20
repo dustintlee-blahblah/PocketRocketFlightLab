@@ -1166,13 +1166,116 @@ async function stepOcFillet(R, bodies, fins, host, r, rho, xa, xb, seam, flat, e
   return valid && d > 0.3 * expect && d < 2.5 * expect ? out : null;
 }
 /**
+ * How finely the STL's triangles follow the curved surfaces: the furthest a triangle may lie from the true surface
+ * (mm), and the most its direction may turn from one triangle to the next (degrees). Fine keeps the surface within
+ * 0.02 mm and shows no facets; coarse has a few times fewer triangles.
+ */
+const STL_MESH = {
+  fine: { tolerance: 0.02, angle: 5 },
+  coarse: { tolerance: 0.2, angle: 20 },
+};
+/**
+ * The solid buildStep made, as a binary STL file: the same full-size shape in millimetres, as triangles. The mesh must
+ * be closed (every edge walked as often one way as the other) and enclose the solid's volume, or it throws.
+ * @param {object} shape buildStep's shape
+ * @param {"fine"|"coarse"} quality
+ * @param {number} volume the solid's volume, mm³ (buildStep's info.volume)
+ * @returns {{data:ArrayBuffer, triangles:number, volume:number}}
+ */
+export function buildStl(shape, quality, volume) {
+  const q = STL_MESH[quality] || STL_MESH.coarse,
+    m = shape.mesh({ tolerance: q.tolerance, angularTolerance: (q.angle * Math.PI) / 180 }),
+    V = m.vertices,
+    T = m.triangles;
+  // faces are meshed one by one, so a point on the seam between two faces is there once for each: the same point is
+  // found by its coordinates as the file holds them (32-bit numbers, which is all an STL keeps: about 0.00006 mm at
+  // 1 m), so the mesh is judged exactly as a program reading the file will see it
+  const ids = new Map(),
+    vid = new Int32Array(V.length / 3);
+  for (let i = 0; i < vid.length; i++) {
+    const k = `${Math.fround(V[3 * i])},${Math.fround(V[3 * i + 1])},${Math.fround(V[3 * i + 2])}`;
+    let id = ids.get(k);
+    if (id === undefined) ids.set(k, (id = ids.size));
+    vid[i] = id;
+  }
+  let keep = [];
+  for (let t = 0; t < T.length; t += 3) {
+    const a = vid[T[t]],
+      b = vid[T[t + 1]],
+      c = vid[T[t + 2]];
+    // a triangle whose corners are one point (a nose tip's fan, a seam) has no area: left out
+    if (a !== b && b !== c && a !== c) keep.push(t);
+  }
+  // Where a fin thins to nothing (the tip of an elliptical airfoil fin), its two faces land on the same points and
+  // leave pairs of the same triangle facing opposite ways: flaps of no thickness, taken out in pairs
+  {
+    const key = (t, flip) => {
+      const a = vid[T[t]],
+        b = vid[T[t + (flip ? 2 : 1)]],
+        c = vid[T[t + (flip ? 1 : 2)]];
+      // the same triangle, whichever corner it starts from
+      return a < b && a < c ? `${a},${b},${c}` : b < c ? `${b},${c},${a}` : `${c},${a},${b}`;
+    };
+    const seen = new Map();
+    for (const t of keep) {
+      const k = key(t, false);
+      if (!seen.has(k)) seen.set(k, []);
+      seen.get(k).push(t);
+    }
+    const gone = new Set();
+    for (const t of keep) {
+      if (gone.has(t)) continue;
+      const opp = (seen.get(key(t, true)) || []).find((x) => !gone.has(x) && x !== t);
+      if (opp !== undefined) {
+        gone.add(t);
+        gone.add(opp);
+      }
+    }
+    if (gone.size) keep = keep.filter((t) => !gone.has(t));
+  }
+  // closed: every edge is walked as often one way as the other (once each, except where the surface pinches to a
+  // line, at such a tip)
+  const edges = new Map();
+  for (const t of keep)
+    for (let e = 0; e < 3; e++) {
+      const a = vid[T[t + e]],
+        b = vid[T[t + ((e + 1) % 3)]],
+        k = a < b ? a * ids.size + b : b * ids.size + a;
+      edges.set(k, (edges.get(k) || 0) + (a < b ? 1 : -1));
+    }
+  let open = 0;
+  for (const v of edges.values()) if (v !== 0) open++;
+  const buf = new ArrayBuffer(84 + 50 * keep.length),
+    dv = new DataView(buf);
+  new Uint8Array(buf).set(new TextEncoder().encode("Pocket Rocket Flight Lab, millimetres").slice(0, 79));
+  dv.setUint32(80, keep.length, true);
+  let o = 84,
+    vol = 0;
+  for (const t of keep) {
+    const p = [0, 1, 2].map((e) => [V[3 * T[t + e]], V[3 * T[t + e] + 1], V[3 * T[t + e] + 2]]),
+      u = [p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]],
+      w = [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]],
+      n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]],
+      len = Math.hypot(n[0], n[1], n[2]) || 1;
+    vol += (p[0][0] * n[0] + p[0][1] * n[1] + p[0][2] * n[2]) / 6;
+    for (let i = 0; i < 3; i++) dv.setFloat32(o + 4 * i, n[i] / len, true);
+    for (let e = 0; e < 3; e++) for (let i = 0; i < 3; i++) dv.setFloat32(o + 12 + 12 * e + 4 * i, p[e][i], true);
+    o += 50;
+  }
+  if (open) throw new Error(`The mesh did not close (${open} open edges).`);
+  // facets cut the corners of curved surfaces, so the mesh holds a little less than the solid: never more than 2%
+  if (!(vol > 0.98 * volume && vol < 1.005 * volume))
+    throw new Error("The mesh does not enclose the solid (its volume is off).");
+  return { data: buf, triangles: keep.length, volume: vol };
+}
+/**
  * The rocket's outside as one solid, as a STEP file.
  * @param {object} R the replicad module, with OpenCascade set up (setOC)
  * @param {object} model the builder model (BLD)
  * @param {{fillet?:number, edgeFlat?:number, plainFillets?:boolean}} [opts] fillet radius in metres (default: the
  *   model's fin fillet radius); plainFillets skips OpenCascade's fillet
- * @returns {Promise<{text:string, info:{volume:number, faces:number, length:number, finSets:number, fillet:number,
- *   warnings:string[]}}>}
+ * @returns {Promise<{text:string, shape:object, info:{volume:number, faces:number, length:number, finSets:number,
+ *   fillet:number, warnings:string[]}}>} the file's text, the solid itself (for buildStl) and what was made
  */
 export async function buildStep(R, model, opts = {}) {
   if (opts.plainFillets) return stepBuild(R, model, opts);
@@ -1403,6 +1506,7 @@ async function stepBuild(R, model, opts = {}) {
   }
   return {
     text,
+    shape: all,
     info: {
       volume,
       faces: all.faces.length,

@@ -455,6 +455,16 @@ export function renderFlightLog() {
   const el = document.getElementById("fllist"),
     au = uname("alt");
   renderFlCal(list);
+  // the folded panel's summary: how many flights, and the calibration
+  {
+    const sm = document.getElementById("flsumfold"),
+      c = calGet(),
+      k = c && c.k > 0 && !calStale(c) ? c.k : null;
+    if (sm)
+      sm.textContent = list.length
+        ? `${list.length} flight${list.length > 1 ? "s" : ""}${k ? ` · drag ×${k.toFixed(2)}` : ""}`
+        : "";
+  }
   if (!list.length) {
     el.innerHTML = `<p class="note" style="margin:0 0 10px">No flights logged for ${esc(D.name || "this rocket")} yet. Tap Compare with a real flight to see how this design did against a flight you flew: import your altimeter's file, or enter what its display or beeps gave you. Save it to keep it here and calibrate the drag to it.</p>`;
     return;
@@ -1112,12 +1122,20 @@ export function flPredBox() {
     : `This device doesn't have that motor, so the current run's prediction (${fmt(lastSim.st.maxAlt, "alt")} ${uname("alt")}) is saved with the flight.`;
 }
 /**
+ * Opens the Flight Log panel if it's folded (it starts folded).
+ */
+function flUnfold() {
+  const b = document.querySelector('[data-fold="flbody"]');
+  if (b && b.getAttribute("aria-expanded") !== "true") b.click();
+}
+/**
  * After logging a flight, asks whether to use it for the calibration.
  * @param {string} id
  */
 function flAskCal(id) {
   const el = document.getElementById("flprompt");
   if (!el) return;
+  flUnfold();
   el.innerHTML = `<span>Use this flight to calibrate the drag?</span><button class="btn" type="button" id="flaskyes">Calibrate</button><button class="btn ghost" type="button" id="flaskno">Not now</button>`;
   el.hidden = false;
   document.getElementById("flaskyes").onclick = () => {

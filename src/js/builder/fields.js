@@ -4,6 +4,7 @@
  */
 import { BLD, bldFind } from "./builder-ui.js";
 import { BLD_BUMPS, BLD_BUTTONS, BLD_LUG_KINDS, bldOvOn, bldRailLug } from "./model.js";
+import { REC_CONFIGS, REC_DEFAULTS, recAltimeters, recChutes, recManaged, recMotorDelay } from "./recovery-config.js";
 import { FIN_EDGES, FIN_TE_EDGES } from "../core/units-and-fin-edges.js";
 /**
  * Nose and transition shapes offered: [shape, label].
@@ -81,6 +82,22 @@ export function bldFields(p) {
             ? [["delay", "Time after liftoff", "num", "time"]]
             : []),
   ];
+  // a parachute whose opening comes from the recovery configuration (Whole rocket, Recovery) shows its role instead
+  const role = recManaged(BLD, p)
+    ? recChutes(BLD).length > 1
+      ? [
+          [
+            "role",
+            "Role",
+            "sel",
+            [
+              ["drogue", "Drogue"],
+              ["main", "Main"],
+            ],
+          ],
+        ]
+      : []
+    : dep;
   switch (p.type) {
     case "nose":
       return [
@@ -282,7 +299,7 @@ export function bldFields(p) {
         ["name", "Name", "text"],
         ["dia", "Diameter", "num", "len"],
         ["cd", "Drag coefficient", "num", "none"],
-        ...dep,
+        ...role,
         ["lines", "Shroud lines", "int"],
         ["packLen", "Packed length", "num", "small"],
         ...posF,
@@ -294,7 +311,7 @@ export function bldFields(p) {
         ["name", "Name", "text"],
         ["len", "Length", "num", "len"],
         ["width", "Width", "num", "small"],
-        ...dep,
+        ...role,
         ["packLen", "Packed length", "num", "small"],
         ...posF,
         ...mat("surf"),
@@ -362,22 +379,74 @@ export function bldRootFields() {
     ],
     // the fin fillets (OpenRocket's per-fin-set fillet radius, set once here for every fin set; blank leaves a file's own)
     ["finFillet", "Fin fillet radius", "num", "len", BLD.settings],
-    // recovery electronics: the backup altimeter, the altimeter bay (for its static ports) and the main's rated load
-    ["#", "Recovery electronics"],
-    ["bakOn", "A backup altimeter fires its own charges", "check", null, BLD.settings],
-    ...(BLD.settings.bakOn
-      ? [
-          ["bakDelay", "Backup apogee charge, seconds after apogee", "num", "time", BLD.settings],
-          ["bakMainDrop", "Backup main charge, this far below the main's height", "num", "alt", BLD.settings],
-        ]
-      : []),
-    ["bayDia", "Altimeter bay inside diameter", "num", "len", BLD.settings],
-    ["bayLen", "Altimeter bay length", "num", "len", BLD.settings],
-    ["mainRating", "Main chute and harness rated load", "num", "force", BLD.settings],
+    ...bldRecFields(),
   ];
 }
-/** the recovery electronics' settings when not set: a backup 1 s after apogee and 100 ft (30.48 m) lower for the main */
-export const BLD_REC_DEFAULTS = { bakOn: false, bakDelay: 1, bakMainDrop: 30.48, bayDia: 0, bayLen: 0, mainRating: 0 };
+/**
+ * The Recovery block of the Whole rocket fields: how the parachutes are deployed (motor ejection, one altimeter, two
+ * altimeters; a chute release with any of them), then the recovery hardware (the altimeter bay, for its static ports,
+ * and the main's rated load). See recovery-config.js.
+ * @returns {Array[]}
+ */
+function bldRecFields() {
+  const S = BLD.settings,
+    cfg = S.recCfg || "custom",
+    n = recChutes(BLD).length,
+    solo = (S.recSolo ?? REC_DEFAULTS.recSolo) === "main",
+    alti = cfg === "one" || cfg === "two",
+    mainCharge = alti && (n > 1 || solo),
+    ej = recMotorDelay(BLD),
+    held = S.crOn ? (n > 1 ? "main" : "parachute") : "",
+    A = recAltimeters();
+  /** one altimeter's fields under its own heading; who: "" or " 1" / " 2" */
+  const one = (k, who) => [
+    ["#", `Altimeter${who}`],
+    [`${k}Model`, "Model", "sel", null, S, A],
+    [`${k}Apo`, "Apogee charge, seconds after apogee", "num", "time", S],
+    ...(mainCharge ? [[`${k}Main`, "Main charge height", "num", "alt", S]] : []),
+  ];
+  const motorNote =
+    cfg === "motor"
+      ? ej == null
+        ? "The motor is plugged, so no charge fires. Choose a delay under Motor Delay on the Motor tab."
+        : `The motor’s ejection charge fires ${+ej.toFixed(1)} s after burnout (Motor Delay, on the Motor tab).`
+      : ej == null
+        ? `Motor ejection charge: plugged, so nothing backs the altimeter${cfg === "two" ? "s" : ""} up (Motor Delay, on the Motor tab).`
+        : `Motor ejection charge: kept as a backup, ${+ej.toFixed(1)} s after burnout (Motor Delay, on the Motor tab).`;
+  return [
+    ["#", "Recovery"],
+    ["recCfg", "Deployment", "sel", null, S, REC_CONFIGS],
+    ...(cfg === "custom"
+      ? [["!", "Each parachute opens on its own setting: select a parachute in the Design Tree to change it."]]
+      : [
+          // one parachute and an altimeter: at the apogee charge, or (no drogue) at the main charge
+          ...(alti && n === 1
+            ? [
+                [
+                  "recSolo",
+                  "The parachute opens",
+                  "sel",
+                  null,
+                  S,
+                  [
+                    ["apogee", "At the apogee charge"],
+                    ["main", "At the main charge (no drogue)"],
+                  ],
+                ],
+              ]
+            : []),
+          ["!", motorNote],
+          ...(cfg === "one" ? one("a1", "") : cfg === "two" ? [...one("a1", " 1"), ...one("a2", " 2")] : []),
+          ["#", "Chute release"],
+          ["crOn", `A chute release holds the ${n > 1 ? "main" : "parachute"} closed`, "check", null, S],
+          ...(S.crOn ? [["crAlt", `It opens the ${held} at`, "num", "alt", S]] : []),
+        ]),
+    ["#", "Recovery hardware"],
+    ["bayDia", "Altimeter bay inside diameter", "num", "len", S],
+    ["bayLen", "Altimeter bay length", "num", "len", S],
+    ["mainRating", "Main chute and harness rated load", "num", "force", S],
+  ];
+}
 /**
  * The fields of a stage: name, separation and ignition settings.
  * @param {object} st stage

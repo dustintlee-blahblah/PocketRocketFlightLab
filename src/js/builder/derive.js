@@ -3,9 +3,9 @@
  * calculated values (weight, CG, turning inertia, a part's weight) the override fields show beside your own.
  */
 import { BLD, bldFind, bldSyncMotors } from "./builder-ui.js";
-import { BLD_REC_DEFAULTS } from "./fields.js";
 import { bldOvOn, bldSettings } from "./model.js";
 import { bldToOrk } from "./ork-export.js";
+import { recForFlight, recSync } from "./recovery-config.js";
 import { jclone } from "../core/helpers.js";
 import { boostId, D, firstId, L, motorId, setD } from "../design/defaults.js";
 import { parseOrk } from "../files/openrocket-import.js";
@@ -160,6 +160,8 @@ export function bldOffApply(list) {
  */
 export function bldDerive() {
   bldSyncMotors();
+  // the parachutes' opening events follow the recovery configuration
+  recSync(BLD);
   const prev = D,
     r = parseOrk(bldToOrk(BLD, L), { offIds: BLD.offIds }),
     nd = r.design,
@@ -172,9 +174,8 @@ export function bldDerive() {
   }
   nd.otherCd = S.otherCd || 0;
   nd.blMode = S.blMode || "turb";
-  // recovery electronics (recovery/recovery-plan.js)
-  nd.rec = {};
-  for (const k of Object.keys(BLD_REC_DEFAULTS)) nd.rec[k] = S[k] ?? BLD_REC_DEFAULTS[k];
+  // the recovery configuration (recovery/recovery-plan.js)
+  nd.rec = recForFlight(BLD);
   // turning inertia: a typed value, else the one worked out from the parts (parseOrk)
   if (bldOvOn(S, "dryInertia")) {
     nd.dryInertia = S.dryInertia;

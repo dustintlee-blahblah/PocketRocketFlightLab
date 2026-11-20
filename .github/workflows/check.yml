@@ -54,6 +54,9 @@ jobs:
       - name: Altimeter logs, display readings and Flight vs prediction
         run: node tests/altimeter-logs.js
 
+      - name: Recovery configurations (motor ejection, one and two altimeters, chute release; the Recovery Plan)
+        run: node tests/recovery.js
+
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag
 

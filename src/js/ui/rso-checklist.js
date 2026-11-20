@@ -386,7 +386,7 @@ export function rsoChecks(st, S, m, D, LL) {
         "bad",
         "Motor ejection delay",
         "Plugged",
-        `${st.single ? "The parachute" : "The drogue"} is set to open at the motor ejection charge, but the motor is plugged, so it never opens and the rocket comes down ballistic${!st.single && st.tMain != null ? " until the main opens" : ""}. Choose a delay under Motor Delay on the Motor tab, or set the chute to open at apogee with an altimeter.`,
+        `${st.single ? "The parachute" : "The drogue"} is set to open at the motor ejection charge, but the motor is plugged, so it never opens and the rocket comes down ballistic${!st.single && st.tMain != null ? " until the main opens" : ""}. Choose a delay under Motor Delay on the Motor tab, or choose an altimeter in the builder (Whole rocket, Recovery).`,
       );
     for (const [b, nm] of [
       [st.booster, "Booster"],

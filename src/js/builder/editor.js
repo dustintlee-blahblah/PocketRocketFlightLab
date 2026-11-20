@@ -4,7 +4,7 @@
  */
 import { BLD, BLD_ROOT, bldChanged, bldFind, bldRender, bldSel, setBldSel } from "./builder-ui.js";
 import { bldCalcOv, bldCalcPartMass } from "./derive.js";
-import { BLD_REC_DEFAULTS, BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
+import { BLD_SHAPES, BLD_SIZES, bldFields, bldRootFields, bldStageFields } from "./fields.js";
 import { finDxfFlip, finDxfLoad, finDxfNote, finDxfSave } from "./fin-dxf.js";
 import {
   BLD_BODY,
@@ -29,6 +29,7 @@ import {
   bldRodFor,
 } from "./model.js";
 import { partAsListed, partKind, partPick } from "./parts-catalog.js";
+import { REC_DEFAULTS, recManaged } from "./recovery-config.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import {
@@ -348,6 +349,25 @@ export function bldAdd(type, fill) {
   bldChanged(true);
 }
 /**
+ * When a parachute the recovery configuration opens will open, and where that is set.
+ * @param {object} p the parachute or streamer
+ * @returns {string}
+ */
+function bldOpensText(p) {
+  const h = `${fmt(p.alt || 0, "alt")} ${uname("alt")}`;
+  return (
+    (p.deploy === "ejection"
+      ? "Opens at the motor’s ejection charge."
+      : p.deploy === "altitude"
+        ? p.release
+          ? `Held closed by the chute release until ${h}.`
+          : `Opens at the main charge, at ${h}.`
+        : +p.delay > 0
+          ? `Opens at the apogee charge, ${+(+p.delay).toFixed(1)} s after apogee.`
+          : "Opens at the apogee charge.") + " Set under Whole rocket, Recovery (the top row of the Design Tree)."
+  );
+}
+/**
  * Draws the editor for the selected part, stage or rocket.
  */
 export function bldRenderEdit() {
@@ -366,6 +386,11 @@ export function bldRenderEdit() {
         h += `</div><div class="bldh">${esc(label)}</div><div class="grid">`;
         continue;
       }
+      // a line of text among the fields
+      if (key === "!") {
+        h += `</div><p class="note bldfnote">${esc(label)}</p><div class="grid">`;
+        continue;
+      }
       const O = obj || BLD;
       h += bldFieldHtml(
         {
@@ -378,7 +403,7 @@ export function bldRenderEdit() {
           armed: kind === "ovr" && O[key + "On"] === true,
           calc: kind === "ovr" ? bldCalcOv(key, 0) : undefined,
         },
-        O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : BLD_REC_DEFAULTS[key]),
+        O[key] ?? (key === "finish" ? BLD.settings.finish : key === "blMode" ? "turb" : REC_DEFAULTS[key]),
       );
     }
     el.innerHTML = h + `</div>`;
@@ -426,6 +451,8 @@ export function bldRenderEdit() {
       : `<p class="note" style="margin:0 0 10px"><a href="#" data-cat="pick">Swap for a library part</a></p>`;
   if (p.type === "raw")
     h += `<p class="note" style="margin:0 0 10px">This part came from the file and the builder can’t change its shape, but it still counts in the weight, balance and drag, and it’s kept when you save. You can rename or move it.</p>`;
+  // a parachute the recovery configuration opens: when, and where that is set
+  if (recManaged(BLD, p)) h += `<p class="note" style="margin:0 0 10px">${esc(bldOpensText(p))}</p>`;
   h += `<div class="grid">`;
   for (const [key, label, kind, opt] of fields) {
     const val =
@@ -712,7 +739,21 @@ function bldWire(el, p, mode, si) {
         full = true;
       } else if (kind === "sel") {
         O[k] = inp.value;
-        full = ["shape", "deploy", "size", "cluster", "ign", "edge", "edgeTE", "kind"].includes(key); // "edge": beveled fins show their bevel lengths; "kind": a rail lug has no diameters
+        // "edge": beveled fins show their bevel lengths; "kind": a rail lug has no diameters; the recovery
+        // configuration, a lone parachute's charge and a parachute's role change which fields show
+        full = [
+          "shape",
+          "deploy",
+          "size",
+          "cluster",
+          "ign",
+          "edge",
+          "edgeTE",
+          "kind",
+          "recCfg",
+          "recSolo",
+          "role",
+        ].includes(key);
         // a nose or transition takes its new shape's usual parameter (as OpenRocket does): a tangent ogive, a full
         // parabola, a half-power series, a von Kármán. Kept from the old shape it can mean a plain cone (an ogive or
         // parabola at 0, a power series at 1), so the new shape would look like nothing had changed.

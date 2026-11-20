@@ -197,27 +197,28 @@ const { chromium } = require("playwright");
   need("Results tab: an apogee", m.apogee, 10);
   need("Results tab: the ± tolerance beside the apogee", m.tol, 1);
   need("Results tab: recovery plan (charges and cases)", m.rec, 2);
-  // a backup altimeter: its charges are listed and the flight is flown again as if the primary failed
-  await step("backup altimeter", () => {
-    Object.assign(BLD.settings, { bakOn: true, bakDelay: 2, bayLen: 0.3, mainRating: 500 });
+  // two altimeters: each one's charges are listed and the flight is flown again as if each failed
+  await step("two altimeters", () => {
+    window.__recWas = BLD.settings.recCfg;
+    Object.assign(BLD.settings, { recCfg: "two", a2Apo: 2, bayLen: 0.3, mainRating: 500 });
     bldApply();
     runNow();
   });
   await p.waitForTimeout(1500);
   m = await look("recovery plan", () => ({
-    backup: [...document.querySelectorAll("#recbody td small")].filter((e) => /^Backup/.test(e.textContent)).length,
-    fails: [...document.querySelectorAll("#recbody td")].filter((e) =>
-      /^(Primary|Motor charge) fails/.test(e.textContent),
-    ).length,
+    backup: [...document.querySelectorAll("#recbody td small")].filter((e) => /^Altimeter 2/.test(e.textContent))
+      .length,
+    fails: [...document.querySelectorAll("#recbody td")].filter((e) => /^Altimeter [12] fails/.test(e.textContent))
+      .length,
     ports: /one hole of \d/.test(document.getElementById("recbody").textContent) ? 1 : 0,
     load: /% of the/.test(document.getElementById("recbody").textContent) ? 1 : 0,
   }));
-  need("Recovery plan: the backup altimeter's charges", m.backup, 1);
-  need("Recovery plan: flown as if the primary failed", m.fails, 1);
+  need("Recovery plan: the second altimeter's charges", m.backup, 1);
+  need("Recovery plan: flown as if each altimeter failed", m.fails, 2);
   need("Recovery plan: static port size", m.ports, 1);
   need("Recovery plan: opening load against the rating", m.load, 1);
-  await step("backup altimeter off", () => {
-    Object.assign(BLD.settings, { bakOn: false, bayLen: 0, mainRating: 0 });
+  await step("two altimeters off", () => {
+    Object.assign(BLD.settings, { recCfg: window.__recWas, bayLen: 0, mainRating: 0 });
     bldApply();
     runNow();
   });

@@ -211,7 +211,7 @@ const SCREENS = [
   [
     "recovery-backup",
     () => {
-      Object.assign(BLD.settings, { bakOn: true, bakDelay: 2, bayLen: 0.3, mainRating: 500 });
+      Object.assign(BLD.settings, { recCfg: "two", a2Apo: 2, a1Model: "mw-rrc3s", bayLen: 0.3, mainRating: 500 });
       bldApply();
       runNow();
       showTab("results");

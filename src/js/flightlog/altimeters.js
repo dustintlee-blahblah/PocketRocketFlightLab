@@ -8,6 +8,13 @@
  * The readings an altimeter can show after a flight: [key, label, dimension ("alt", "speed", "s" for seconds, "g")].
  * ap2e is negative when the charge fired before apogee.
  */
+/*
+ * Each altimeter: id, brand, name; accG, its accelerometer's range in g (null: it has none; undefined: not published);
+ * maxAlt, the highest it reads, ft; readings, what it shows after a flight; file and fileBrand, the log file it writes;
+ * how, where its readings are read; and fires, the deployment charges it can fire: "dual" (an apogee charge and a main
+ * charge at a set height; some have more outputs), "apogee" (an apogee charge only), or not there for one that only
+ * records. The builder's Recovery block lists the ones that fire.
+ */
 export const ALT_READINGS = [
   ["apo", "Max altitude", "alt"],
   ["vmax", "Top speed", "speed"],
@@ -91,6 +98,7 @@ export const ALTIMETERS = [
   // Featherweight
   {
     id: "fw-raven3",
+    fires: "dual",
     brand: "Featherweight",
     name: "Raven3",
     accG: 105,
@@ -102,6 +110,7 @@ export const ALTIMETERS = [
   },
   {
     id: "fw-raven4",
+    fires: "dual",
     brand: "Featherweight",
     name: "Raven4",
     accG: 105,
@@ -113,6 +122,7 @@ export const ALTIMETERS = [
   },
   {
     id: "fw-blueraven",
+    fires: "dual",
     brand: "Featherweight",
     name: "Blue Raven",
     accG: 400,
@@ -124,6 +134,7 @@ export const ALTIMETERS = [
   },
   {
     id: "fw-bluejay",
+    fires: "dual",
     brand: "Featherweight",
     name: "Blue Jay",
     accG: 32,
@@ -136,6 +147,7 @@ export const ALTIMETERS = [
   // Missile Works
   {
     id: "mw-rrc2p",
+    fires: "dual",
     brand: "Missile Works",
     name: "RRC2+",
     accG: null,
@@ -146,6 +158,7 @@ export const ALTIMETERS = [
   },
   {
     id: "mw-rrc2l",
+    fires: "dual",
     brand: "Missile Works",
     name: "RRC2L",
     accG: null,
@@ -156,6 +169,7 @@ export const ALTIMETERS = [
   },
   {
     id: "mw-rrc3s",
+    fires: "dual",
     brand: "Missile Works",
     name: "RRC3 Sport",
     accG: null,
@@ -167,6 +181,7 @@ export const ALTIMETERS = [
   },
   {
     id: "mw-rrc3x",
+    fires: "dual",
     brand: "Missile Works",
     name: "RRC3+ / Xtreme",
     accG: null,
@@ -179,6 +194,7 @@ export const ALTIMETERS = [
   // PerfectFlite: beeps the peak altitude in feet, then the top speed in mph
   {
     id: "pf-sl100",
+    fires: "dual",
     brand: "PerfectFlite",
     name: "StratoLogger SL100",
     accG: null,
@@ -191,6 +207,7 @@ export const ALTIMETERS = [
   },
   {
     id: "pf-slcf",
+    fires: "dual",
     brand: "PerfectFlite",
     name: "StratoLoggerCF",
     accG: null,
@@ -204,6 +221,7 @@ export const ALTIMETERS = [
   // Eggtimer: barometric, except the Proton (120 g); the summary page or download gives apogee, top speed and events
   {
     id: "et-classic",
+    fires: "dual",
     brand: "Eggtimer",
     name: "Eggtimer (classic)",
     accG: null,
@@ -215,6 +233,7 @@ export const ALTIMETERS = [
   },
   {
     id: "et-quantum",
+    fires: "dual",
     brand: "Eggtimer",
     name: "Quantum",
     accG: null,
@@ -226,6 +245,7 @@ export const ALTIMETERS = [
   },
   {
     id: "et-quasar",
+    fires: "dual",
     brand: "Eggtimer",
     name: "Quasar",
     accG: null,
@@ -237,6 +257,7 @@ export const ALTIMETERS = [
   },
   {
     id: "et-proton",
+    fires: "dual",
     brand: "Eggtimer",
     name: "Proton",
     accG: 120,
@@ -248,6 +269,7 @@ export const ALTIMETERS = [
   },
   {
     id: "et-apogee",
+    fires: "apogee",
     brand: "Eggtimer",
     name: "Eggtimer Apogee",
     accG: null,
@@ -259,6 +281,7 @@ export const ALTIMETERS = [
   // Altus Metrum: AltosUI's flight summary
   {
     id: "am-telemetrum",
+    fires: "dual",
     brand: "Altus Metrum",
     name: "TeleMetrum",
     accG: 200,
@@ -270,6 +293,7 @@ export const ALTIMETERS = [
   },
   {
     id: "am-telemega",
+    fires: "dual",
     brand: "Altus Metrum",
     name: "TeleMega",
     accG: 200,
@@ -281,6 +305,7 @@ export const ALTIMETERS = [
   },
   {
     id: "am-easymega",
+    fires: "dual",
     brand: "Altus Metrum",
     name: "EasyMega",
     accG: undefined,
@@ -292,6 +317,7 @@ export const ALTIMETERS = [
   },
   {
     id: "am-easymini",
+    fires: "dual",
     brand: "Altus Metrum",
     name: "EasyMini",
     accG: null,
@@ -303,6 +329,7 @@ export const ALTIMETERS = [
   },
   {
     id: "am-telemini",
+    fires: "dual",
     brand: "Altus Metrum",
     name: "TeleMini",
     accG: null,
@@ -314,6 +341,7 @@ export const ALTIMETERS = [
   },
   {
     id: "other",
+    fires: "dual",
     brand: "",
     name: "Another altimeter",
     accG: undefined,

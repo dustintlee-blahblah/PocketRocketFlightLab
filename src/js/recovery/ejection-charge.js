@@ -523,7 +523,7 @@ export function bpRender() {
       "Backup charge, black powder",
       `${g2(bp * 1.25)}–${g2(bp * 1.5)} g`,
       `${gr(bp * 1.25)}–${gr(bp * 1.5)} gr`,
-      "For a backup altimeter's charge on the same event: 25–50% more than the primary, so the event still happens if the primary was too small. Size each event (drogue, main) on its own.",
+      "For a second altimeter's charge on the same event: 25–50% more than the first, so the event still happens if the first was too small. Size each event (drogue, main) on its own.",
     ],
     [
       "Black powder FFFg",

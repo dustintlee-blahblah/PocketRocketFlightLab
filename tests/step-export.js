@@ -1,4 +1,4 @@
-// The STEP export, checked on the geometry it writes (no browser): for each rocket below the file reads back as ONE
+// The CAD export (STEP, and STL from the same solid), checked on the geometry it writes (no browser): for each rocket below the file reads back as ONE
 // closed solid with the same volume it was built with, 24 in rockets are 609.6 mm long (full size, millimetres),
 // the fin fillet adds material, fins that hang past the base keep the file whole, and a fin set on a boattail gives
 // the warning instead of a broken file.
@@ -18,7 +18,7 @@ const ok = (c, msg) => {
 };
 
 (async () => {
-  const entry = `export { buildStep } from ${JSON.stringify(path.join(root, "src/js/builder/step-export.js"))};
+  const entry = `export { buildStep, buildStl } from ${JSON.stringify(path.join(root, "src/js/builder/step-export.js"))};
 export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/builder/model.js"))};`;
   await esbuild.build({
     stdin: { contents: entry, resolveDir: root },
@@ -35,7 +35,7 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
     locateFile: (f) => path.join(root, "node_modules/replicad-opencascadejs/dist", f),
   });
   R.setOC(oc);
-  const { buildStep, bldDefault, bldNew } = await import(out);
+  const { buildStep, buildStl, bldDefault, bldNew } = await import(out);
   const make = (fillet, f) => {
     const m = bldDefault();
     m.settings.finFillet = fillet;
@@ -52,6 +52,61 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
       Math.abs(R.measureVolume(sh) - r.info.volume) < 1e-3 * r.info.volume,
       `${label}: reads back with the same volume`,
     );
+    // the same solid as an STL mesh: closed and holding the solid's volume (buildStl throws if not), a well-formed
+    // binary file, and the fine mesh closer to the solid than the coarse one
+    try {
+      const c = buildStl(r.shape, "coarse", r.info.volume),
+        f = buildStl(r.shape, "fine", r.info.volume),
+        dv = new DataView(f.data);
+      ok(
+        c.triangles > 100 && f.triangles > c.triangles,
+        `${label}: STL coarse ${c.triangles}, fine ${f.triangles} triangles`,
+      );
+      ok(
+        dv.getUint32(80, true) === f.triangles && f.data.byteLength === 84 + 50 * f.triangles,
+        `${label}: STL file well formed`,
+      );
+      // read back as another program would: points matched by the numbers in the file; no triangle without area,
+      // and every edge used as often one way as the other (a closed surface)
+      for (const [q, st] of [
+        ["coarse", c],
+        ["fine", f],
+      ]) {
+        const d = new DataView(st.data),
+          ids = new Map(),
+          E = new Map();
+        let o = 84,
+          flat = 0;
+        for (let i = 0; i < st.triangles; i++, o += 50) {
+          const v = [0, 1, 2].map((e) => {
+            const k = [0, 1, 2].map((j) => d.getFloat32(o + 12 + 12 * e + 4 * j, true)).join(",");
+            if (!ids.has(k)) ids.set(k, ids.size);
+            return ids.get(k);
+          });
+          if (v[0] === v[1] || v[1] === v[2] || v[0] === v[2]) flat++;
+          for (const [x, y] of [
+            [v[0], v[1]],
+            [v[1], v[2]],
+            [v[2], v[0]],
+          ]) {
+            const k = x < y ? x + "_" + y : y + "_" + x;
+            E.set(k, (E.get(k) || 0) + (x < y ? 1 : -1));
+          }
+        }
+        let holes = 0;
+        for (const n of E.values()) if (n !== 0) holes++;
+        ok(
+          holes === 0 && flat === 0,
+          `${label}: STL ${q} file is a closed surface (${holes} open edges, ${flat} flat triangles)`,
+        );
+      }
+      ok(
+        r.info.volume - f.volume < r.info.volume - c.volume && f.volume > 0.999 * r.info.volume,
+        `${label}: STL fine mesh within 0.1% of the solid's volume`,
+      );
+    } catch (e) {
+      ok(false, `${label}: STL (${e.message})`);
+    }
     return r;
   };
 
