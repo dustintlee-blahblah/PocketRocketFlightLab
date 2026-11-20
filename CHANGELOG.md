@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 329 (2026-11-19)
+
+**Builder**
+
+- **STEP fin edges follow the fin's section**: bevel, double wedge, airfoil, rounded and tapered trailing edges are in the STEP file (trapezoid, elliptical and free-form fins; curved edges are cut in short straight pieces). Sharp (bladed) edges end in a 0.3 mm flat instead of a knife edge, which a CFD mesher cannot fill with good cells. The fin fillets stop where the fin reaches full thickness.
+- **Launch lugs, rail buttons and protuberances are in the STEP file** (rod and rail lugs, every button, and each protuberance shape including the fly-away guide), joined to the body as one solid. The button now reads **Export STEP**.
+
 ## Build 328 (2026-11-19)
 
 **Builder**

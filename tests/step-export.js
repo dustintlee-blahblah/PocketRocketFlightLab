@@ -19,7 +19,7 @@ const ok = (c, msg) => {
 
 (async () => {
   const entry = `export { buildStep } from ${JSON.stringify(path.join(root, "src/js/builder/step-export.js"))};
-export { bldDefault } from ${JSON.stringify(path.join(root, "src/js/builder/model.js"))};`;
+export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/builder/model.js"))};`;
   await esbuild.build({
     stdin: { contents: entry, resolveDir: root },
     bundle: true,
@@ -35,7 +35,7 @@ export { bldDefault } from ${JSON.stringify(path.join(root, "src/js/builder/mode
     locateFile: (f) => path.join(root, "node_modules/replicad-opencascadejs/dist", f),
   });
   R.setOC(oc);
-  const { buildStep, bldDefault } = await import(out);
+  const { buildStep, bldDefault, bldNew } = await import(out);
   const make = (fillet, f) => {
     const m = bldDefault();
     m.settings.finFillet = fillet;
@@ -80,6 +80,75 @@ export { bldDefault } from ${JSON.stringify(path.join(root, "src/js/builder/mode
     "von Karman nose",
     make(0.002, (f, m) => ((m.stages[0].parts[0].shape = "haack"), (m.stages[0].parts[0].param = 0))),
   );
+  // edge sections on a 3 mm trapezoid fin set: each one removes about what the weight model says it does
+  const slab = (e) =>
+    run(
+      `${e} edges`,
+      make(0, (f) => ((f.t = 0.003), (f.edge = e), (f.n = 3))),
+    );
+  const sq = await slab("square");
+  const cut = async (e, lo, hi) => {
+    const r = await slab(e),
+      d = sq.info.volume - r.info.volume;
+    ok(d > lo && d < hi, `${e} edges take ${d.toFixed(0)} mm3 off the slabs (${lo}-${hi})`);
+  };
+  await cut("rounded", 300, 600);
+  await cut("beveled", 11000, 14500);
+  await cut("airfoil", 18000, 25000);
+  await cut("doublewedge", 25000, 38000);
+  const bev = make(0, (f) => ((f.t = 0.003), (f.edge = "beveled")));
+  const thin = await buildStep(R, bev, { edgeFlat: 0.0005 }),
+    thick = await buildStep(R, bev, { edgeFlat: 0.002 });
+  ok(thin.info.volume < thick.info.volume, "a wider edge flat leaves more fin");
+  const ellSq = await run(
+    "elliptical fins",
+    make(0, (f) => ((f.shape = "elliptical"), (f.t = 0.003), (f.edge = "square"))),
+  );
+  const ell = await run(
+    "elliptical fins with bevels",
+    make(0, (f) => ((f.shape = "elliptical"), (f.t = 0.003), (f.edge = "beveled"))),
+  );
+  const ellCut = ellSq.info.volume - ell.info.volume;
+  ok(
+    ell.info.warnings.length === 0 && ellCut > 17000 && ellCut < 24000,
+    `elliptical bevels take ${ellCut.toFixed(0)} mm3 off the fins (17000-24000)`,
+  );
+  const pts = "0,0\n0.05,0.06\n0.09,0.07\n0.11,0.04\n0.16,0.0\n";
+  const ffSq = await run(
+    "free-form fins",
+    make(0, (f) => Object.assign(f, { shape: "freeform", pts, t: 0.003, edge: "square" })),
+  );
+  const ff = await run(
+    "free-form fins with bevels",
+    make(0, (f) => Object.assign(f, { shape: "freeform", pts, t: 0.003, edge: "beveled" })),
+  );
+  ok(
+    ff.info.warnings.length === 0 && ffSq.info.volume - ff.info.volume > 10000,
+    "free-form bevels take material off the fins",
+  );
+  // parts that stand out from the body are in the file, each joined to it as one solid
+  const tubeOf = (m) => m.stages[0].parts[1];
+  const bare = (m) => (tubeOf(m).kids = tubeOf(m).kids.filter((k) => k.type !== "buttons"));
+  const none = await run(
+    "no rail buttons",
+    make(0, (f, m) => bare(m)),
+  );
+  const withBtn = await run("rail buttons", make(0));
+  ok(withBtn.info.volume - none.info.volume > 400, "the rail buttons add material");
+  const add = async (label, build) => {
+    const r = await run(
+      label,
+      make(0, (f, m) => (bare(m), tubeOf(m).kids.push(build()))),
+    );
+    ok(
+      r.info.volume > none.info.volume + 100,
+      `${label} adds material (${(r.info.volume - none.info.volume).toFixed(0)} mm3)`,
+    );
+  };
+  await add("launch lug", () => bldNew("lug", 0.0125));
+  await add("rail lug", () => Object.assign(bldNew("lug", 0.0125), { kind: "r1515", dir: 90 }));
+  for (const sh of ["bluff", "ramp", "round", "faired", "flyaway"])
+    await add(`${sh} protuberance`, () => Object.assign(bldNew("bump", 0.0125), { shape: sh, ang: 45 }));
   fs.rmSync(out, { force: true });
   console.log(bad ? `${bad} FAILED` : "all passed");
   process.exit(bad ? 1 : 0);
