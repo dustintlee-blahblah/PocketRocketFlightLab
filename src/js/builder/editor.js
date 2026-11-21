@@ -29,7 +29,7 @@ import {
   bldRodFor,
 } from "./model.js";
 import { partAsListed, partKind, partPick } from "./parts-catalog.js";
-import { REC_DEFAULTS, recManaged, recSummary } from "./recovery-config.js";
+import { REC_DEFAULTS, recManaged, recSetRole, recSummary } from "./recovery-config.js";
 import { esc } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import {
@@ -745,7 +745,8 @@ function bldWire(el, p, mode, si) {
         } else O[k] = inp.checked;
         full = true;
       } else if (kind === "sel") {
-        O[k] = inp.value;
+        if (key === "role") recSetRole(BLD, p, inp.value);
+        else O[k] = inp.value;
         // "edge": beveled fins show their bevel lengths; "kind": a rail lug has no diameters; the recovery
         // configuration, a lone parachute's charge and a parachute's role change which fields show
         full = [
@@ -915,6 +916,8 @@ function bldWire(el, p, mode, si) {
           const v = parseFloat(raw);
           if (!isFinite(v)) return;
           const val = fromDisp(v, kind === "pos" ? "len" : dim);
+          // a main charge or chute release at or below the ground would never open the parachute: the old height stays
+          if (mode === "root" && ["a1Main", "a2Main", "crAlt"].includes(key) && !(val > 0)) return;
           if (key === "mmDelay") p.mm.delay = val;
           else if (key === "mmOverhang") p.mm.overhang = val;
           else {

@@ -6,6 +6,7 @@ import { BLD, BLD_ROOT, bldMotorPicked, bldRender, bldSave, setBLD, setBldSel } 
 import { bldDerive, bldOffApply, bldOffList } from "../builder/derive.js";
 import { BLD_APP_SETTINGS, bldDefault, bldMounts, bldSettings } from "../builder/model.js";
 import { bldFromOrk } from "../builder/ork-read.js";
+import { recReconcile } from "../builder/recovery-config.js";
 import { b64ToU8, esc, jclone } from "../core/helpers.js";
 import { store } from "../core/storage.js";
 import { FIN_EDGES, finTeEdge } from "../core/units-and-fin-edges.js";
@@ -476,6 +477,7 @@ export async function loadDesignXml(xml, fileName, buf, opts = {}) {
             )
               BLD.settings[k] = v;
           }
+          recReconcile(BLD);
         }
       }
       BLD.name = r.design.name || BLD.name;

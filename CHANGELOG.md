@@ -4,6 +4,14 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 335 (2026-11-20)
+
+**Builder: recovery fields**
+
+- **A parachute's Role now swaps cleanly.** Making the drogue the main turns the old main into the drogue (it used to leave two mains and no drogue). Making the main a drogue hands the main to the other parachute (the choice used to snap back without a word).
+- **A main charge height or chute release height of zero or below is refused**, and the old height stays. It used to be stored as 0, a main that never opens.
+- **A design file edited outside the app keeps its own parachute settings.** When a file's parachute heights or delays no longer match the recovery settings saved with it (it was changed in OpenRocket, or another motor configuration deploys differently), the file's values are flown and the Recovery row is worked out again from them. The saved settings used to overwrite the file.
+
 ## Build 334 (2026-11-20)
 
 **Builder**

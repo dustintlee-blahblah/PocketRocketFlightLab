@@ -556,6 +556,94 @@ const ok = (what, cond, got) => {
   f = await fields("one", { recSolo: "main" });
   ok("builder, one parachute at the main charge: the main height shows", f.ids.includes("a1Main"), f.ids);
 
+  // ---- the fields as they are used: roles swap, a height at the ground is refused, an outside edit wins ----
+  await p.evaluate((i) => openExample(i), dualI);
+  await p.waitForTimeout(700);
+  const pick = async (id) => {
+    await p.evaluate((id) => {
+      showTab("rocket");
+      document.querySelector(`.bldrow[data-id="${id}"]`).click();
+    }, id);
+    await p.waitForTimeout(300);
+  };
+  const ids = () =>
+    p.evaluate(() => {
+      const out = [];
+      const w = (l) => {
+        for (const q of l || []) {
+          if (q.type === "chute" || q.type === "streamer") out.push([q.id, q.role, q.deploy]);
+          w(q.kids);
+        }
+      };
+      w(BLD.stages[0].parts);
+      return out;
+    });
+  await pick("__recovery");
+  await p.selectOption("#bf-recCfg", "one");
+  await p.waitForTimeout(300);
+  const R0 = await ids();
+  const dr = R0.find((c) => c[1] === "drogue"),
+    mn = R0.find((c) => c[1] === "main");
+  await pick(dr[0]);
+  await p.selectOption("#bf-role", "main");
+  await p.waitForTimeout(300);
+  let R1 = await ids();
+  ok(
+    "role: making the drogue the main makes the old main the drogue",
+    R1.find((c) => c[0] === dr[0])[2] === "altitude" && R1.find((c) => c[0] === mn[0])[2] === "apogee",
+    R1,
+  );
+  await pick(dr[0]);
+  await p.selectOption("#bf-role", "drogue");
+  await p.waitForTimeout(300);
+  R1 = await ids();
+  ok(
+    "role: making the main a drogue hands the main to the other parachute, and the field shows it",
+    R1.find((c) => c[0] === dr[0])[2] === "apogee" &&
+      R1.find((c) => c[0] === mn[0])[2] === "altitude" &&
+      (await p.evaluate(() => document.getElementById("bf-role").value)) === "drogue",
+    R1,
+  );
+  await pick("__recovery");
+  await p.fill("#bf-a1Main", "700");
+  await p.waitForTimeout(200);
+  const h0 = await p.evaluate(() => BLD.settings.a1Main);
+  await p.fill("#bf-a1Main", "-50");
+  await p.fill("#bf-a1Main", "0");
+  await p.waitForTimeout(200);
+  ok(
+    "main charge height: zero or below is refused, the old height stays",
+    (await p.evaluate(() => BLD.settings.a1Main)) === h0 && h0 > 0,
+    h0,
+  );
+  // saved, then its main height changed outside the app (as OpenRocket would): the file's height is the one flown
+  const [dl2] = await Promise.all([
+    p.waitForEvent("download"),
+    p.evaluate(() => void saveDesignFile(false, SOURCE ? {} : { name: "recovery-check" })),
+  ]);
+  const b64x = fs.readFileSync(await dl2.path()).toString("base64");
+  const again = (edit) =>
+    p.evaluate(
+      async ([b64, edit]) => {
+        const u = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        let xml = await unzipOrk(u.buffer);
+        if (edit)
+          xml = xml.replace(/<deployaltitude>[^<]*<\/deployaltitude>/g, "<deployaltitude>300.0</deployaltitude>");
+        await openDesignAsk(xml, "recovery-check.ork", u.buffer);
+        await new Promise((r) => setTimeout(r, 500));
+        return { cfg: BLD.settings.recCfg, a1: BLD.settings.a1Main, main: D.mainAlt };
+      },
+      [b64x, edit],
+    );
+  let o = await again(false);
+  ok("reopened as saved: the configuration and height are kept", o.cfg === "one" && Math.abs(o.main - h0) < 1e-6, o);
+  o = await again(true);
+  ok(
+    "reopened after an outside edit: the file's main height is flown, not the saved setting",
+    Math.abs(o.main - 300) < 1e-6 && Math.abs(o.a1 - 300) < 1e-6,
+    o,
+  );
+
   ok("no page errors", errs.length === 0, errs);
   console.log(`${checks} checks, ${fails} failed`);
   await browser.close();

@@ -242,6 +242,50 @@ export function recSync(model) {
   });
 }
 /**
+ * Gives a parachute its role, and keeps the set whole: there is one main, so choosing Main makes the old main a drogue,
+ * and making the main a drogue hands the main to the largest of the other parachutes.
+ * @param {object} model the builder model
+ * @param {object} p the parachute or streamer
+ * @param {string} role "main" or "drogue"
+ */
+export function recSetRole(model, p, role) {
+  const C = recChutes(model),
+    R = recRoles(C),
+    i = C.indexOf(p);
+  if (i < 0 || C.length < 2) return;
+  const was = R[i];
+  R[i] = role;
+  if (role === "main") R.forEach((r, j) => j !== i && r === "main" && (R[j] = "drogue"));
+  else if (was === "main") {
+    let big = -1;
+    C.forEach((c, j) => {
+      if (
+        j !== i &&
+        (big < 0 || (c.type === "chute" ? +c.dia || 0 : -1) > (C[big].type === "chute" ? +C[big].dia || 0 : -1))
+      )
+        big = j;
+    });
+    R[big] = "main";
+  }
+  C.forEach((c, j) => (c.role = R[j]));
+}
+/**
+ * After a design file is opened with recovery settings from elsewhere (saved with it, or kept from another motor
+ * configuration): when those settings wouldn't give the parachutes the opening events the file has (it was edited in
+ * OpenRocket, or this motor configuration deploys differently), the file wins and the configuration is worked out again.
+ * @param {object} model the builder model
+ */
+export function recReconcile(model) {
+  const S = model && model.settings;
+  if (!S || !S.recCfg || S.recCfg === "custom" || S.bakOn) return;
+  const C = recChutes(model),
+    E = recEvents(S, C);
+  if (C.every((c, i) => recSame(c, E[i]))) return;
+  delete S.recCfg;
+  S.crOn = false;
+  S.recSolo = "apogee";
+}
+/**
  * The recovery configuration in a few words, for the Design Tree's Recovery row: "Two altimeters · release" (with a chute release).
  * @param {object} model
  * @returns {string}
