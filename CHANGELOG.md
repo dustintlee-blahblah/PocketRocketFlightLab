@@ -15,6 +15,10 @@ version.
 - The tests check that no underside of a fin is left in the open on a boattail, with and without fillets.
 - `tools/fin-sections.js` (npm run cad:fin) measures a fin as the export makes it, from a design file, a builder model or an example: its thickness seen from the side and its cross-sections at five heights, as a table and a picture. It is how each of these was found.
 
+**Behind the scenes**
+
+- The GitHub Actions the checks, the release and the device test run on are brought up to date.
+
 ## Build 337 (2026-11-21)
 
 **Export CAD**
