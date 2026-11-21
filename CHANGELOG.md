@@ -4,6 +4,15 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 337 (2026-11-21)
+
+**Export CAD**
+
+- **Free-form fins with an airfoil or double-wedge section come out the right shape.** They are built from true cross-sections along the airflow, one at the root and one at the height of each corner of the outline, each scaled to the chord there. The exporter used to shape each outline edge on its own, which left a slab of full thickness with stepped walls under the tip (the odd facets on fins like the Punisher 3's).
+- **Rail buttons drawn as short solid launch lugs** (as older OpenRocket designs draw them) **are round**, with a base, a neck and a flange. They came out as small blocks. A long solid lug is still a block: a rail guide.
+- **STL: hairline cracks closed.** Where slivers of faces meet (a fin's edge flat running into the end of a fillet at the tube's end) the mesh could be left with cracks a few thousandths of a millimetre wide, and the export was refused. Points closer than 0.01 mm are now one point.
+- The tests check the fins' shape as well as that the solid is closed: free-form airfoil and double-wedge fins must keep the share of the flat slab their section says (70% and 55%).
+
 ## Build 336 (2026-11-21)
 
 **On a computer or a tablet on its side**

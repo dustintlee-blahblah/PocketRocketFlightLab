@@ -7,7 +7,7 @@
  * takes the replicad module as an argument, so it runs in the app (where `step-kernel.js` provides it) and in the tests.
  */
 import { finDxfOutline } from "./fin-dxf.js";
-import { BLD_BUTTONS, bldLayout, bldRailLug } from "./model.js";
+import { BLD_BUTTONS, bldLayout, bldLugKind, bldRailLug } from "./model.js";
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { noseR, noseRTip, noseTip } from "../physics/geometry.js";
 /** metres to the STEP file's millimetres */
@@ -230,7 +230,20 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0, arcs = true) {
       smoothEll = null;
     }
   }
+  // a free-form fin with an airfoil or double-wedge section: true chordwise sections up the span
+  let lofted = null;
+  if (k.shape === "freeform" && !grow && ri >= 0 && Math.abs(surf(xa) - surf(xb)) < 1e-6) {
+    const xs = bodies.map((b) => b.x * STEP_MM).filter((x) => x > xa + 1e-6 && x < xb - 1e-6);
+    if (xs.every((x) => Math.abs(surf(x) - surf(xa)) < 1e-6))
+      try {
+        // (the sections are drawn smooth whether or not the caller wants arcs: a loft has no polyline form)
+        lofted = stepFreeformLoft(R, pts, xf, surf(xa) - dive(xa), t, stepEdges(k, t, flat, cMean));
+      } catch (e) {
+        lofted = null;
+      }
+  }
   if (smoothEll) solid = smoothEll;
+  else if (lofted) solid = lofted;
   else if (edges.le || edges.te) {
     if (k.shape === "trapezoid") {
       const n = M.length;
@@ -357,9 +370,36 @@ function stepEllipseFin(R, xa, xb, surf, dive, span, t, edges) {
  * @returns {object|null}
  */
 function stepEllipseLoft(R, xa, xb, y0, span, t, edges) {
-  const h = t / 2,
-    xm = (xa + xb) / 2,
-    a = (xb - xa) / 2;
+  const xm = (xa + xb) / 2,
+    a = (xb - xa) / 2,
+    sect = stepChordSection(R, t, edges),
+    section = (y, cl) => sect(y, xm - cl / 2, cl);
+  // stations: below the root (straight on), then closer together towards the tip, where the chord shrinks fastest
+  const ys = [y0 - 2, y0],
+    n = 24,
+    top = Math.sqrt(1 - Math.pow(Math.max(6 * t, 4) / (2 * a), 2));
+  for (let i = 1; i <= n; i++) ys.push(y0 + span * top * Math.sin(((i / n) * Math.PI) / 2));
+  const sk = [];
+  for (const y of ys) {
+    const u = Math.min(Math.max((y - y0) / span, 0), 1),
+      s = section(y, 2 * a * Math.sqrt(1 - u * u));
+    if (!s) return null;
+    sk.push(s);
+  }
+  return sk[0].loftWith(sk.slice(1), { endPoint: [xm, y0 + span, 0] });
+}
+/**
+ * The drawing of one chordwise section of a fin whose edge sections reach far in: the leading section from the front
+ * and the trailing one from the back, scaled to the chord at that height, smooth everywhere (round noses, the double
+ * wedge's ridge rounded off over a couple of mm).
+ * @param {object} R replicad
+ * @param {number} t fin thickness, mm
+ * @param {{le:number[][]|null, te:number[][]|null}} edges stepEdges
+ * @returns {function(number, number, number):object|null} (height y, leading edge's x, chord) to a sketch on the
+ *   plane at that height, or null for a section it can't draw
+ */
+function stepChordSection(R, t, edges, flatNose = false) {
+  const h = t / 2;
   // one side of a section, from its edge (u = 0) in: the top half's nose and rise to full thickness
   const side = (prof, cl) => {
     if (!prof) return { nose: "square", top: [0, h], rise: [], full: 0 };
@@ -372,6 +412,13 @@ function stepEllipseLoft(R, xa, xb, y0, span, t, edges) {
       rn = m.hf / (Math.sqrt(1 + sl * sl) - sl),
       tx = (rn - sl * m.hf) / (1 + sl * sl),
       ty = m.hf + sl * tx;
+    // a bladed edge's flat left square across, not rounded into a nose
+    if (flatNose) {
+      if (m.kind === "airfoil") return { nose: "square", top: [0, m.hf], rise: [["Q", [b, h], cp]], full: b };
+      if (!m.half) return null;
+      const e2 = Math.min(0.25 * b, 2);
+      return { nose: "square", top: [0, m.hf], rise: [["L", [b - e2, h - sl * e2]]], full: b, ridge: [b, h] };
+    }
     if (m.kind === "airfoil") return { nose: "tip", top: [tx, ty], rise: [["Q", [b, h], cp]], full: b };
     const e = Math.min(0.25 * b, 2);
     if (m.half) return { nose: "tip", top: [tx, ty], rise: [["L", [b - e, h - sl * e]]], full: b, ridge: [b, h] };
@@ -385,13 +432,12 @@ function stepEllipseLoft(R, xa, xb, y0, span, t, edges) {
       full: b + e,
     };
   };
-  const section = (y, cl) => {
+  return (y, x0, cl) => {
     const L = side(edges.le, cl),
       T = side(edges.te, cl);
     if (!L || !T) return null;
     if (!!L.ridge !== !!T.ridge || (!L.ridge && L.full + T.full > cl + 1e-6)) return null;
-    const x0 = xm - cl / 2,
-      // a point in (u from the leading edge, half-thickness) to the plane's (x, z): its y axis is -z
+    const // a point in (u from the leading edge, half-thickness) to the plane's (x, z): its y axis is -z
       PL = (p) => [x0 + p[0], -p[1]],
       PT = (p) => [x0 + cl - p[0], -p[1]],
       flip = (p) => [p[0], -p[1]];
@@ -428,19 +474,99 @@ function stepEllipseLoft(R, xa, xb, y0, span, t, edges) {
     d = nose(d, L, L.top, PL);
     return d.close().sketchOnPlane(new R.Plane([0, y, 0], [1, 0, 0], [0, 1, 0]));
   };
-  // stations: below the root (straight on), then closer together towards the tip, where the chord shrinks fastest
-  const ys = [y0 - 2, y0],
-    n = 24,
-    top = Math.sqrt(1 - Math.pow(Math.max(6 * t, 4) / (2 * a), 2));
-  for (let i = 1; i <= n; i++) ys.push(y0 + span * top * Math.sin(((i / n) * Math.PI) / 2));
-  const sk = [];
-  for (const y of ys) {
-    const u = Math.min(Math.max((y - y0) / span, 0), 1),
-      s = section(y, 2 * a * Math.sqrt(1 - u * u));
+}
+/**
+ * A free-form fin whose edge sections reach in to mid-chord (an airfoil or a double wedge), as a loft through true
+ * chordwise sections: one at the root and one at the height of every corner of the outline, each scaled to the chord
+ * there, joined by straight (ruled) surfaces, which is exact because the outline is straight between its corners.
+ * Cutting a strip square to each outline edge instead (stepCurvedEdges) leaves a slab of full thickness with stepped
+ * walls under the tip, where the strips of the leading and trailing edges don't reach. Null (the caller falls back to
+ * the strips) when the outline isn't one leading edge going up and one trailing edge coming down, the body under the
+ * root isn't straight, or a section can't be drawn.
+ * @param {object} R replicad
+ * @param {number[][]} pts the outline's corners from the root's front, mm (x along the root, y up the span)
+ * @param {number} xf where the outline's x = 0 is, mm from the nose tip
+ * @param {number} y0 height of the root, mm
+ * @param {number} t fin thickness, mm
+ * @param {{le:number[][]|null, te:number[][]|null}} edges stepEdges
+ * @returns {object|null}
+ */
+function stepFreeformLoft(R, pts, xf, y0, t, edges) {
+  if (!(edges.le && edges.le.nose && edges.le.nose.half && edges.te && edges.te.nose && edges.te.nose.half))
+    return null;
+  // the outline from the root's leading corner round to its trailing corner
+  const n = pts.length;
+  let lo = 0;
+  for (let i = 1; i < n; i++) if (pts[i][1] < 1e-9 && pts[i][0] < pts[lo][0]) lo = i;
+  if (pts[lo][1] > 1e-9) return null;
+  let P = [];
+  for (let i = 0; i < n; i++) P.push(pts[(lo + i) % n]);
+  if (P[1][1] < 1e-9 && P[n - 1][1] > 1e-9) P = [P[0], ...P.slice(1).reverse()];
+  const ymax = Math.max(...P.map((q) => q[1]));
+  if (!(ymax > 4 * t)) return null;
+  const up = [],
+    down = [];
+  let i = 0;
+  for (; i < n; i++) {
+    up.push(P[i]);
+    if (P[i][1] > ymax - 1e-9) break;
+  }
+  for (let j = n - 1; j > i; j--) {
+    down.push(P[j]);
+    if (P[j][1] > ymax - 1e-9) break;
+  }
+  if (!down.length) down.push(P[i]);
+  // everything between the two chains has to lie along the tip (a flat top); each chain climbs all the way
+  const used = up.length + down.length - (down[down.length - 1] === P[i] ? 1 : 0);
+  if (used < n) for (let j = i + 1; j < n - down.length; j++) if (P[j][1] < ymax - 1e-9) return null;
+  const climbs = (C) => C.every((q, j) => j === 0 || q[1] > C[j - 1][1] + 1e-9);
+  if (down[0][1] > 1e-9 || !climbs(up) || !climbs(down)) return null;
+  const at = (C, y) => {
+    for (let j = 1; j < C.length; j++)
+      if (y <= C[j][1] + 1e-9) {
+        const f = (y - C[j - 1][1]) / (C[j][1] - C[j - 1][1]);
+        return C[j - 1][0] + f * (C[j][0] - C[j - 1][0]);
+      }
+    return C[C.length - 1][0];
+  };
+  const xle = (y) => at(up, y),
+    xte = (y) => at(down, y),
+    cmin = Math.max(6 * t, 4);
+  if (!(xte(0) - xle(0) > cmin)) return null;
+  // stations at the corners' heights, as far up as the chord is wide enough to draw; a pointed tip closes to a point
+  let hs = [...new Set([...up, ...down].map((q) => +q[1].toFixed(6)))].sort((a, b) => a - b);
+  const sect = stepChordSection(R, t, edges, true),
+    sk = [];
+  let end = null;
+  for (let j = 0; j < hs.length; j++) {
+    let y = hs[j];
+    const c = xte(y) - xle(y);
+    if (c < 0) return null;
+    if (c < cmin) {
+      // between the last full station and this one the chord narrows through cmin: stop there
+      const ya = hs[j - 1],
+        ca = xte(ya) - xle(ya);
+      y = ya + ((ca - cmin) / (ca - c)) * (y - ya);
+      if (y > ya + 1e-6) {
+        const s = sect(y0 + y, xf + xle(y), xte(y) - xle(y));
+        if (!s) return null;
+        sk.push(s);
+      }
+      end = [xf + (xle(ymax) + xte(ymax)) / 2, y0 + ymax, 0];
+      break;
+    }
+    if (j === 0) {
+      // below the root, straight on, so the fin reaches into the body
+      const s0 = sect(y0 - 2, xf + xle(0), c);
+      if (!s0) return null;
+      sk.push(s0);
+    }
+    const s = sect(y0 + y, xf + xle(y), c);
     if (!s) return null;
     sk.push(s);
   }
-  return sk[0].loftWith(sk.slice(1), { endPoint: [xm, y0 + span, 0] });
+  if (sk.length < 2) return null;
+  return sk[0].loftWith(sk.slice(1), end ? { ruled: true, endPoint: end } : { ruled: true });
 }
 /** The flat left on a sharp (bladed) fin edge instead of a knife edge a mesher cannot fill, m: about a sanded fin's. */
 const STEP_EDGE_FLAT = 0.0003;
@@ -822,7 +948,24 @@ function stepOuterParts(R, bodies, warnings, fins = []) {
           const q = span(x0, x0 + len),
             rail = bldRailLug(k);
           if (!(len > 0)) continue;
-          if (rail) {
+          if (rail && len <= 1.6 * rail.w * STEP_MM) {
+            // a solid lug about as long as it is wide is a rail button (older OpenRocket designs draw buttons that
+            // way): round, of the lug's own length across and height, with a button's base, neck and flange in the
+            // proportions of the rail's standard button
+            const B = BLD_BUTTONS[bldLugKind(k).slice(1)] || BLD_BUTTONS["1010"],
+              xc = x0 + len / 2,
+              y = stepRadiusAt(bodies, xc),
+              ro = len / 2,
+              hh = rail.h * STEP_MM,
+              base = (B.bs / B.h) * hh,
+              fl = (B.fl / B.h) * hh,
+              rn = (B.id / B.od) * ro;
+            const stack = post(xc, y - sink, ro, base + sink)
+              .fuse(post(xc, y + base - 0.05, rn, hh - base - fl + 0.1))
+              .fuse(post(xc, y + hh - fl, ro, fl));
+            out.push(turn(stack, stepGuideAngle(fins, +k.dir || 0)));
+          } else if (rail) {
+            // a longer one is a rail guide: a block the width and height of the rail's slot
             out.push(
               turn(
                 box(x0, len, rail.w * STEP_MM, q.lo - sink, q.hi + rail.h * STEP_MM),
@@ -1174,6 +1317,8 @@ const STL_MESH = {
   fine: { tolerance: 0.02, angle: 5 },
   coarse: { tolerance: 0.2, angle: 20 },
 };
+/** Points of an STL mesh closer together than this are one point, mm. */
+const STL_WELD = 0.01;
 /**
  * The solid buildStep made, as a binary STL file: the same full-size shape in millimetres, as triangles. The mesh must
  * be closed (every edge walked as often one way as the other) and enclose the solid's volume, or it throws.
@@ -1197,6 +1342,46 @@ export function buildStl(shape, quality, volume) {
     let id = ids.get(k);
     if (id === undefined) ids.set(k, (id = ids.size));
     vid[i] = id;
+  }
+  // Where slivers of faces meet (a fin's edge flat running into a fillet's end at the tube's end), the mesher can put
+  // the two faces' points a few thousandths of a millimetre apart along their shared edge, which leaves hairline
+  // cracks. Points closer than STL_WELD (well under the mesh's own tolerance, and far under the 0.3 mm edge flat, the
+  // smallest thing in the solid) are one point: each takes the first of its group's coordinates, in the file too.
+  const P = new Float64Array(3 * ids.size);
+  {
+    const first = new Int32Array(ids.size).fill(-1);
+    for (let i = 0; i < vid.length; i++) if (first[vid[i]] < 0) first[vid[i]] = i;
+    const cell = (v) => Math.floor(v / STL_WELD),
+      grid = new Map(),
+      rep = new Int32Array(ids.size);
+    for (let j = 0; j < ids.size; j++) {
+      const x = V[3 * first[j]],
+        y = V[3 * first[j] + 1],
+        z = V[3 * first[j] + 2],
+        cx = cell(x),
+        cy = cell(y),
+        cz = cell(z);
+      let r = -1;
+      for (let a = -1; a <= 1 && r < 0; a++)
+        for (let b = -1; b <= 1 && r < 0; b++)
+          for (let c = -1; c <= 1 && r < 0; c++)
+            for (const q of grid.get(`${cx + a},${cy + b},${cz + c}`) || [])
+              if (Math.hypot(P[3 * q] - x, P[3 * q + 1] - y, P[3 * q + 2] - z) < STL_WELD) {
+                r = q;
+                break;
+              }
+      if (r < 0) {
+        r = j;
+        P[3 * j] = x;
+        P[3 * j + 1] = y;
+        P[3 * j + 2] = z;
+        const k = `${cx},${cy},${cz}`;
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push(j);
+      }
+      rep[j] = r;
+    }
+    for (let i = 0; i < vid.length; i++) vid[i] = rep[vid[i]];
   }
   let keep = [];
   for (let t = 0; t < T.length; t += 3) {
@@ -1252,7 +1437,7 @@ export function buildStl(shape, quality, volume) {
   let o = 84,
     vol = 0;
   for (const t of keep) {
-    const p = [0, 1, 2].map((e) => [V[3 * T[t + e]], V[3 * T[t + e] + 1], V[3 * T[t + e] + 2]]),
+    const p = [0, 1, 2].map((e) => [P[3 * vid[T[t + e]]], P[3 * vid[T[t + e]] + 1], P[3 * vid[T[t + e]] + 2]]),
       u = [p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]],
       w = [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]],
       n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]],

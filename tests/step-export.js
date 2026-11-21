@@ -221,6 +221,43 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
     ff.info.warnings.length === 0 && ffSq.info.volume - ff.info.volume > 10000,
     "free-form bevels take material off the fins",
   );
+  // a free-form fin with an airfoil or double-wedge section is built from true chordwise sections (not a strip cut
+  // square to each edge, which left a slab of full thickness under the tip): what it removes from the slab is the
+  // section's own share, whatever the outline. An airfoil with a 0.3 mm edge flat on a 3 mm fin keeps 70% of the slab
+  // (two parabolas from the flat to full thickness at mid-chord), a double wedge 55%
+  for (const [name, outline] of [
+    ["pointed", pts],
+    ["flat-topped", "0,0\n0.158,0.08\n0.195,0.08\n0.224,0.068\n0.252,0\n"],
+  ]) {
+    const P = outline
+      .trim()
+      .split("\n")
+      .map((l) => l.split(",").map(Number));
+    let A = 0;
+    for (let i = 0; i < P.length; i++) {
+      const q = P[(i + 1) % P.length];
+      A += (P[i][0] * q[1] - q[0] * P[i][1]) / 2;
+    }
+    const slabs = 3 * 0.003 * Math.abs(A) * 1e9;
+    const sqr = await run(
+      `${name} free-form fins`,
+      make(0, (f) => Object.assign(f, { shape: "freeform", pts: outline, t: 0.003, edge: "square", n: 3 })),
+    );
+    for (const [e, keep] of [
+      ["airfoil", 0.7],
+      ["doublewedge", 0.55],
+    ]) {
+      const r = await run(
+        `${name} free-form ${e} fins`,
+        make(0, (f) => Object.assign(f, { shape: "freeform", pts: outline, t: 0.003, edge: e, n: 3 })),
+      );
+      const took = (sqr.info.volume - r.info.volume) / slabs;
+      ok(
+        r.info.warnings.length === 0 && Math.abs(took - (1 - keep)) < 0.04,
+        `${name} free-form ${e} fins keep ${((1 - took) * 100).toFixed(1)}% of the slab (${keep * 100}%: true chordwise sections)`,
+      );
+    }
+  }
   // parts that stand out from the body are in the file, each joined to it as one solid
   const tubeOf = (m) => m.stages[0].parts[1];
   const bare = (m) => (tubeOf(m).kids = tubeOf(m).kids.filter((k) => k.type !== "buttons"));
@@ -264,6 +301,22 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
     );
   };
   await add("launch lug", () => bldNew("lug", 0.0125));
+  // a short solid lug is a rail button drawn the old OpenRocket way: it comes out round (a base, a neck and a flange),
+  // so it holds well under what a block of its length, width and height would; a long solid lug is still a block
+  {
+    const solidLug = (len) => Object.assign(bldNew("lug", 0.0125), { od: 0.0095, id_: 0, len, kind: "" });
+    const vol = async (label, len) =>
+      (
+        await run(
+          label,
+          make(0, (f, m) => (bare(m), tubeOf(m).kids.push(solidLug(len)))),
+        )
+      ).info.volume - none.info.volume;
+    const short = await vol("rail button drawn as a short solid lug", 0.0095),
+      long = await vol("rail guide (a long solid lug)", 0.05);
+    ok(short > 150 && short < 0.6 * 9.5 * 9.5 * 9.5, `a short solid lug is a round button (${short.toFixed(0)} mm3)`);
+    ok(long > 0.8 * 50 * 9.5 * 9.5, `a long solid lug is a block (${long.toFixed(0)} mm3)`);
+  }
   await add("rail lug", () => Object.assign(bldNew("lug", 0.0125), { kind: "r1515", dir: 90 }));
   for (const sh of ["bluff", "ramp", "round", "faired", "flyaway"])
     await add(`${sh} protuberance`, () => Object.assign(bldNew("bump", 0.0125), { shape: sh, ang: 45 }));
