@@ -219,8 +219,8 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
     make(0, (f) => Object.assign(f, { shape: "freeform", pts, t: 0.003, edge: "beveled" })),
   );
   ok(
-    ff.info.warnings.length === 0 && ffSq.info.volume - ff.info.volume > 10000,
-    "free-form bevels take material off the fins",
+    ff.info.warnings.length === 0 && ffSq.info.volume - ff.info.volume > 3000,
+    `free-form bevels take material off the fins (${(ffSq.info.volume - ff.info.volume).toFixed(0)} mm3; how much is checked below)`,
   );
   // a trapezoid or free-form fin with an airfoil or double-wedge section is built from true chordwise sections (not
   // a strip cut square to each edge, which left a slab of full thickness under a free-form fin's tip, nor a section of
@@ -265,6 +265,66 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
         `${name} ${e} fins keep ${((1 - took) * 100).toFixed(1)}% of the slab (${Math.round(keep * 100)}%: true chordwise sections)`,
       );
     }
+  }
+  // bevelled edges, on the same four outlines: the bevel (a fifth of the mean chord long, measured along the airflow,
+  // from a 0.3 mm edge flat) runs up the whole of each edge, round its corners, and where the fin is narrower than two
+  // bevels they meet in a ridge. The fins hold what those sections add up to, height by height. (A strip cut square to
+  // each piece of a free-form fin's edge left a slab of full thickness under the tip instead.)
+  for (const [name, set, outline] of [
+    ["pointed free-form", { shape: "freeform", pts }, pts],
+    ["flat-topped free-form", { shape: "freeform", pts: flatTop }, flatTop],
+    [
+      "strongly tapered",
+      { shape: "trapezoid", root: 0.2, tip: 0.03, span: 0.1, sweep: 0.15 },
+      "0,0\n0.15,0.1\n0.18,0.1\n0.2,0\n",
+    ],
+    [
+      "pointed (zero tip chord)",
+      { shape: "trapezoid", root: 0.2, tip: 0, span: 0.1, sweep: 0.15 },
+      "0,0\n0.15,0.1\n0.2,0\n",
+    ],
+  ]) {
+    const P = outline
+        .trim()
+        .split("\n")
+        .map((l) => l.split(",").map((v) => +v * 1000)),
+      A = area(outline) * 1e6,
+      span = Math.max(...P.map((q) => q[1])),
+      // the chord at a height: between the outline's two crossings of it
+      chord = (y) => {
+        const xs = [];
+        for (let i = 0; i < P.length; i++) {
+          const a = P[i],
+            b = P[(i + 1) % P.length];
+          if (a[1] <= y === b[1] <= y) continue;
+          xs.push(a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]));
+        }
+        return xs.length < 2 ? 0 : Math.max(...xs) - Math.min(...xs);
+      },
+      h = 1.5,
+      hf = 0.15,
+      mean = set.shape === "trapezoid" ? ((set.root + set.tip) / 2) * 1000 : A / span,
+      bev = 0.2 * mean,
+      sl = (h - hf) / bev;
+    let want = 0;
+    const N = 4000;
+    for (let i = 0; i < N; i++) {
+      const c = chord(((i + 0.5) / N) * span);
+      want += (c >= 2 * bev ? 2 * (h * c - (h - hf) * bev) : 2 * (hf * c + (sl * c * c) / 4)) * (span / N);
+    }
+    const sqr = await run(
+        `${name} fins, square (for the bevels)`,
+        make(0, (f) => Object.assign(f, set, { t: 0.003, edge: "square", n: 3 })),
+      ),
+      r = await run(
+        `${name} bevelled fins`,
+        make(0, (f) => Object.assign(f, set, { t: 0.003, edge: "beveled", n: 3 })),
+      ),
+      got = (r.info.volume - (sqr.info.volume - 3 * 3 * A)) / 3;
+    ok(
+      r.info.warnings.length === 0 && Math.abs(got / want - 1) < 0.02,
+      `${name} bevelled fins hold ${got.toFixed(0)} mm3 each (${want.toFixed(0)} by their sections, ${((got / want - 1) * 100).toFixed(1)}% off)`,
+    );
   }
   // the fillet that follows a fin's section ends where it meets the fin's side: nothing stands off the fin above it
   // (it used to run on past there and come back out through the skin, a ridge a few hundredths of a millimetre high

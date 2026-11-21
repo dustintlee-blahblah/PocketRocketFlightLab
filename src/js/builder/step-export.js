@@ -250,12 +250,34 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0, arcs = true) {
       if (edges.le) solid = solid.intersect(stepEdgeBody(R, edges.le, M[0], M[1], 1, t));
       if (edges.te) solid = solid.intersect(stepEdgeBody(R, edges.te, M[n - 1], M[n - 2], -1, t));
     } else {
-      try {
-        const r = stepCurvedEdges(R, solid, M, ri, edges, t, k.shape === "elliptical" ? 0 : 0.25);
-        solid = r.solid;
-      } catch (e) {
-        edgesSkipped = true;
-      }
+      // a free-form fin's bevelled (or tapered) edges: the section carried up the whole edge, round its corners,
+      // measured along the airflow; a rounded edge, and any outline that isn't one edge up and one down, by strips
+      const rest = { le: edges.le, te: edges.te },
+        ch = k.shape === "freeform" && ri >= 0 && Math.abs(surf(xa) - surf(xb)) < 1e-6 ? stepFinChains(pts) : null;
+      if (ch)
+        for (const [key, C, side] of [
+          ["le", ch.up, 1],
+          ["te", ch.down, -1],
+        ]) {
+          const prof = rest[key];
+          if (!prof || prof.arc || C.length < 2) continue;
+          try {
+            const cut = solid.intersect(stepChainEdgeBody(R, prof, C, xf, surf(xa), side, t));
+            if (Math.abs(R.measureVolume(cut)) > 0) {
+              solid = cut;
+              rest[key] = null;
+            }
+          } catch (e) {
+            // left to the strips below
+          }
+        }
+      if (rest.le || rest.te)
+        try {
+          const r = stepCurvedEdges(R, solid, M, ri, rest, t, k.shape === "elliptical" ? 0 : 0.25);
+          solid = r.solid;
+        } catch (e) {
+          edgesSkipped = true;
+        }
     }
   }
   // the block under the root, down to 40% of the body's radius, along the part of the root over the body
@@ -503,6 +525,83 @@ function stepChordSection(R, t, edges, flatNose = false) {
   };
 }
 /**
+ * A fin outline as its two edges: the leading edge climbing from the root's front corner to the tip and the trailing
+ * edge climbing from the root's back corner to the tip (anything between their tops lies along a flat tip). Null when
+ * the outline isn't like that (an edge that turns back down, a notch).
+ * @param {number[][]} pts the outline's corners, mm (x along the root, y up the span)
+ * @returns {{up:number[][], down:number[][], ymax:number}|null} both edges from the root up
+ */
+function stepFinChains(pts) {
+  // the outline from the root's leading corner round to its trailing corner
+  const n = pts.length;
+  let lo = 0;
+  for (let i = 1; i < n; i++) if (pts[i][1] < 1e-9 && pts[i][0] < pts[lo][0]) lo = i;
+  if (pts[lo][1] > 1e-9) return null;
+  let P = [];
+  for (let i = 0; i < n; i++) P.push(pts[(lo + i) % n]);
+  if (P[1][1] < 1e-9 && P[n - 1][1] > 1e-9) P = [P[0], ...P.slice(1).reverse()];
+  const ymax = Math.max(...P.map((q) => q[1]));
+  const up = [],
+    down = [];
+  let i = 0;
+  for (; i < n; i++) {
+    up.push(P[i]);
+    if (P[i][1] > ymax - 1e-9) break;
+  }
+  for (let j = n - 1; j > i; j--) {
+    down.push(P[j]);
+    if (P[j][1] > ymax - 1e-9) break;
+  }
+  // everything between the two chains has to lie along the tip (a flat top); each chain climbs all the way
+  for (let j = i + 1; j < n - down.length; j++) if (P[j][1] < ymax - 1e-9) return null;
+  // a tip that is one corner belongs to both edges
+  if (!down.length || down[down.length - 1][1] < ymax - 1e-9) down.push(P[i]);
+  const climbs = (C) => C.every((q, j) => j === 0 || q[1] > C[j - 1][1] + 1e-9);
+  if (down[0][1] > 1e-9 || !climbs(up) || !climbs(down)) return null;
+  return { up, down, ymax };
+}
+/**
+ * The solid that keeps one edge's section all the way up a fin whose edge has corners (a free-form fin): the
+ * section's outline (half-thickness against distance in from the edge, measured along the airflow) at the height of
+ * each corner of that edge, joined by straight surfaces, running on below the root and above the tip. A fin is cut to
+ * it with an intersection, like a trapezoid fin's to stepEdgeBody: the section has the same length at every height
+ * and turns the corners with the edge, so nothing is left unshaped under the tip (a strip cut square to each piece of
+ * the edge stops at the piece's ends).
+ * @param {object} R replicad
+ * @param {number[][]} prof stepEdgeProfile (drawn as straight pieces, the edge flat left square)
+ * @param {number[][]} C the edge's corners from the root up, mm (stepFinChains)
+ * @param {number} xf where the outline's x = 0 is, mm from the nose tip
+ * @param {number} y0 height of the root, mm
+ * @param {number} side 1 for a leading edge (the fin lies at larger x), -1 for a trailing edge
+ * @param {number} t fin thickness, mm
+ * @returns {object} replicad solid
+ */
+function stepChainEdgeBody(R, prof, C, xf, y0, side, t) {
+  const h2 = t / 2 + 1,
+    last = prof[prof.length - 1],
+    prev = prof[prof.length - 2] || [last[0] - 1, last[1]],
+    m = last[0] > prev[0] ? (last[1] - prev[1]) / (last[0] - prev[0]) : 0,
+    top = [];
+  if (prof[0][1] > 1e-9) top.push([-0.5, prof[0][1]]);
+  top.push(...prof);
+  // past the full thickness the solid stays clear of the fin's faces, by the section's own slope or a step
+  top.push(m > 1e-6 ? [last[0] + 1 / m, h2] : [last[0], h2]);
+  top.push([top[top.length - 1][0] + 1000, h2]);
+  const P = [...top, ...[...top].reverse().map(([q, z]) => [q, -z])].filter(
+    (q, i, a) => i === 0 || Math.abs(q[0] - a[i - 1][0]) > 1e-9 || Math.abs(q[1] - a[i - 1][1]) > 1e-9,
+  );
+  // stations: 5 mm below the root and above the tip (straight on along the edge's first and last pieces), and each corner
+  const n = C.length,
+    on = (a, b, y) => a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]),
+    st = [[on(C[0], C[1], C[0][1] - 5), C[0][1] - 5], ...C, [on(C[n - 2], C[n - 1], C[n - 1][1] + 5), C[n - 1][1] + 5]];
+  const sk = st.map(([x, y]) => {
+    let d = R.draw([xf + x + side * P[0][0], -P[0][1]]);
+    for (let i = 1; i < P.length; i++) d = d.lineTo([xf + x + side * P[i][0], -P[i][1]]);
+    return d.close().sketchOnPlane(new R.Plane([0, y0 + y, 0], [1, 0, 0], [0, 1, 0]));
+  });
+  return stepRuledLoft(R, sk);
+}
+/**
  * A trapezoid or free-form fin whose edge sections reach in to mid-chord (an airfoil or a double wedge), as a loft
  * through true chordwise sections: one at the root and one at the height of every corner of the outline, each scaled
  * to the chord there, joined by straight (ruled) surfaces, which is exact because the outline is straight between its
@@ -523,33 +622,9 @@ function stepChordSection(R, t, edges, flatNose = false) {
 function stepFreeformLoft(R, pts, xf, y0, t, edges) {
   if (!(edges.le && edges.le.nose && edges.le.nose.half && edges.te && edges.te.nose && edges.te.nose.half))
     return null;
-  // the outline from the root's leading corner round to its trailing corner
-  const n = pts.length;
-  let lo = 0;
-  for (let i = 1; i < n; i++) if (pts[i][1] < 1e-9 && pts[i][0] < pts[lo][0]) lo = i;
-  if (pts[lo][1] > 1e-9) return null;
-  let P = [];
-  for (let i = 0; i < n; i++) P.push(pts[(lo + i) % n]);
-  if (P[1][1] < 1e-9 && P[n - 1][1] > 1e-9) P = [P[0], ...P.slice(1).reverse()];
-  const ymax = Math.max(...P.map((q) => q[1]));
-  if (!(ymax > 4 * t)) return null;
-  const up = [],
-    down = [];
-  let i = 0;
-  for (; i < n; i++) {
-    up.push(P[i]);
-    if (P[i][1] > ymax - 1e-9) break;
-  }
-  for (let j = n - 1; j > i; j--) {
-    down.push(P[j]);
-    if (P[j][1] > ymax - 1e-9) break;
-  }
-  // everything between the two chains has to lie along the tip (a flat top); each chain climbs all the way
-  for (let j = i + 1; j < n - down.length; j++) if (P[j][1] < ymax - 1e-9) return null;
-  // a tip that is one corner belongs to both edges
-  if (!down.length || down[down.length - 1][1] < ymax - 1e-9) down.push(P[i]);
-  const climbs = (C) => C.every((q, j) => j === 0 || q[1] > C[j - 1][1] + 1e-9);
-  if (down[0][1] > 1e-9 || !climbs(up) || !climbs(down)) return null;
+  const ch = stepFinChains(pts);
+  if (!ch || !(ch.ymax > 4 * t)) return null;
+  const { up, down, ymax } = ch;
   const at = (C, y) => {
     for (let j = 1; j < C.length; j++)
       if (y <= C[j][1] + 1e-9) {

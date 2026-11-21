@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 338 (2026-11-21)
+
+**Export CAD**
+
+- **Bevelled edges on free-form fins come out the right shape.** The bevel is carried up the whole of each edge and round its corners, measured along the airflow, and where the fin is narrower than two bevels they meet in a ridge. Each piece of the outline used to be bevelled on its own, which left a slab of full thickness with stepped walls under the tip (as airfoil fins had before build 337). A tapered trailing edge on a free-form fin is made the same way. The tip is left square, as before.
+- The tests check bevelled fins' shape on pointed, flat-topped, tapered and zero-tip outlines: each fin must hold what its sections add up to, height by height.
+
 ## Build 337 (2026-11-21)
 
 **Export CAD**
