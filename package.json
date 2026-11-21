@@ -18,6 +18,7 @@
     "test:coast": "node build.js && node tests/coast.js",
     "test:altimeters": "node build.js && node tests/altimeter-logs.js",
     "test:walkthrough": "node build.js && node tests/walkthrough.js",
+    "cad:fin": "node build.js && node tools/fin-sections.js",
     "test:walkthrough:wide": "node build.js && node tests/walkthrough.js --width 1600 --out test-results/walkthrough-wide",
     "test:inputs": "node build.js && node tests/inputs.js",
     "test:exports": "node build.js && node tests/exports.js",

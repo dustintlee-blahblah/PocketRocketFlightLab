@@ -9,7 +9,11 @@ version.
 **Export CAD**
 
 - **Bevelled edges on free-form fins come out the right shape.** The bevel is carried up the whole of each edge and round its corners, measured along the airflow, and where the fin is narrower than two bevels they meet in a ridge. Each piece of the outline used to be bevelled on its own, which left a slab of full thickness with stepped walls under the tip (as airfoil fins had before build 337). A tapered trailing edge on a free-form fin is made the same way. The tip is left square, as before.
+- **Fins on a boattail get their fillets.** The fillet follows the body down the taper (up to 30 degrees, where the body's parts meet without a step); it was left out there, with a note. Fins whose root runs from the tube onto a boattail get them too.
+- **Fins on a boattail sit on the body all the way along.** With bevelled, airfoil or double-wedge edges, the back of a fin on a boattail was cut off level a few millimetres under the front of its root, and stood clear of the body behind that.
 - The tests check bevelled fins' shape on pointed, flat-topped, tapered and zero-tip outlines: each fin must hold what its sections add up to, height by height.
+- The tests check that no underside of a fin is left in the open on a boattail, with and without fillets.
+- `tools/fin-sections.js` (npm run cad:fin) measures a fin as the export makes it, from a design file, a builder model or an example: its thickness seen from the side and its cross-sections at five heights, as a table and a picture. It is how each of these was found.
 
 ## Build 337 (2026-11-21)
 

@@ -247,8 +247,9 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0, arcs = true) {
   else if (edges.le || edges.te) {
     if (k.shape === "trapezoid") {
       const n = M.length;
-      if (edges.le) solid = solid.intersect(stepEdgeBody(R, edges.le, M[0], M[1], 1, t));
-      if (edges.te) solid = solid.intersect(stepEdgeBody(R, edges.te, M[n - 1], M[n - 2], -1, t));
+      const low = Math.min(M[0][1], M[n - 1][1]);
+      if (edges.le) solid = solid.intersect(stepEdgeBody(R, edges.le, M[0], M[1], 1, t, low));
+      if (edges.te) solid = solid.intersect(stepEdgeBody(R, edges.te, M[n - 1], M[n - 2], -1, t, low));
     } else {
       // a free-form fin's bevelled (or tapered) edges: the section carried up the whole edge, round its corners,
       // measured along the airflow; a rounded edge, and any outline that isn't one edge up and one down, by strips
@@ -928,15 +929,20 @@ function stepCurvedEdges(R, solid, M, ri, edges, t, thr) {
  * @param {number[]} p1 edge's second point, mm
  * @param {number} side 1 for a leading edge (the chord lies at larger x), -1 for a trailing edge
  * @param {number} t fin thickness, mm
+ * @param {number} [low] the lowest point of the fin's root, mm (below p0 on a boattail)
  * @returns {object} replicad solid
  */
-function stepEdgeBody(R, prof, p0, p1, side, t) {
+function stepEdgeBody(R, prof, p0, p1, side, t, low = p0[1]) {
   const dy = p1[1] - p0[1],
     dx = p1[0] - p0[0],
     L = Math.hypot(dx, dy),
     ext = 5,
     v = [dx / L, dy / L, 0],
-    o = [p0[0] - v[0] * ext, p0[1] - v[1] * ext, 0],
+    // The solid starts on a level plane below the edge's root end. On a boattail the other end of the fin's root is
+    // lower than this one: the solid runs on down past it, or it would cut the fin off level there and leave the back
+    // of the fin standing clear of the body
+    ext0 = Math.max(ext, (p0[1] - low + 3) / Math.max(v[1], 0.05)),
+    o = [p0[0] - v[0] * ext0, p0[1] - v[1] * ext0, 0],
     top = [],
     h2 = t / 2 + 1;
   const last = prof[prof.length - 1],
@@ -958,14 +964,14 @@ function stepEdgeBody(R, prof, p0, p1, side, t) {
     return stepDrawSection(R.draw(S([smooth.far, -h2])), smooth.ops, S)
       .close()
       .sketchOnPlane(pl)
-      .extrude(L + 2 * ext, { extrusionDirection: v });
+      .extrude(L + ext0 + ext, { extrusionDirection: v });
   }
   let d = R.draw([side * pts[0][0], pts[0][1]]);
   for (let i = 1; i < pts.length; i++) d = d.lineTo([side * pts[i][0], pts[i][1]]);
   return d
     .close()
     .sketchOnPlane(pl)
-    .extrude(L + 2 * ext, { extrusionDirection: v });
+    .extrude(L + ext0 + ext, { extrusionDirection: v });
 }
 /**
  * The glue fillet along one side of a fin, on a body of constant radius, as a solid: the curved wedge between the fin's
@@ -1145,15 +1151,16 @@ function stepOuterParts(R, bodies, warnings, fins = []) {
  * outline and edge section, swept edges included.
  * @param {object} R replicad
  * @param {{solid:object, x0:number, x1:number, t:number}} fin the fin at angle 0 (stepFinSolid), t its thickness, mm
- * @param {number} r tube radius, mm
+ * @param {number|function(number):number} rr tube radius, mm; or the body's radius at x, on a tapered body
  * @param {number} rho fillet radius, mm
  * @param {number} xa start of the tube, mm
  * @param {number} xb end of the tube, mm
  * @returns {{sides:object[], over:number[][]}|null} the two sides' fillets and the x ranges past the tube's ends to cut
  *   off once they are joined on; null if they can't be made
  */
-function stepLoftFillet(R, fin, r, rho, xa, xb) {
-  const hFull = fin.t / 2,
+function stepLoftFillet(R, fin, rr, rho, xa, xb) {
+  const rAt = typeof rr === "function" ? rr : () => rr,
+    hFull = fin.t / 2,
     // (a copy is measured: a mesh made on the fin itself stays on its faces, and the faces that come through the
     // joins untouched would keep it when the finished solid is meshed for an STL, out of step with their neighbours)
     mesh = fin.solid.clone().mesh({ tolerance: 0.02, angularTolerance: 0.3 }),
@@ -1188,7 +1195,9 @@ function stepLoftFillet(R, fin, r, rho, xa, xb) {
   };
   // one station's fillet: where it touches the tube and the fin, and the arc's middle, in (y, z) on the +z side
   const station = (x) => {
-    const h0 = half(x, r + 0.05);
+    // (on a tapered body the tube's radius is the body's at this station: the fillet is drawn in the cross-section)
+    const r = rAt(x),
+      h0 = half(x, r + 0.05);
     if (!(h0 > 0.02)) return null;
     // no taller than the fin is at this station (behind a swept leading edge the fin starts low and the fillet with it)
     let lo = r + 0.05,
@@ -1245,6 +1254,7 @@ function stepLoftFillet(R, fin, r, rho, xa, xb) {
           more = 0,
           at = (q) => [Cx[0] + rad * Math.cos(q), Cx[1] + rad * Math.sin(q)];
         out = {
+          r,
           tb,
           tf,
           pb: at(ab - turn * more),
@@ -1294,7 +1304,8 @@ function stepLoftFillet(R, fin, r, rho, xa, xb) {
     const S = (p) => [p[0], sg * p[1]];
     const sk = run.map((q) => {
       // the arc, then round well inside the fin and the tube (sides close under their skins don't join reliably)
-      const zi = 0.3 * q.pf[1],
+      const r = q.r,
+        zi = 0.3 * q.pf[1],
         k = (r - 0.5) / Math.hypot(q.pb[0], q.pb[1]);
       return R.draw(S(q.pb))
         .threePointsArcTo(S(q.pf), S(q.mid))
@@ -1645,6 +1656,18 @@ async function stepBuild(R, model, opts = {}) {
   // two body parts that meet at the same radius share a whole flat face: OpenCascade can join them on it directly
   const fusePart = (a, b, i) =>
     Math.abs(bodies[i - 1].r2 - bodies[i].r1) < 1e-9 ? a.fuse(b, { optimisation: "commonFace" }) : a.fuse(b);
+  // a body the fins' fillets can follow though it isn't one straight tube: its parts meet without a step and none
+  // tapers by more than 30 degrees (a boattail, a tube running into one)
+  const isSmoothHost = (g) =>
+    g.parts.every((i, n) => {
+      const b = bodies[i];
+      return (
+        b.len > 0 &&
+        Math.abs(b.r2 - b.r1) <= Math.tan(Math.PI / 6) * b.len &&
+        Math.min(b.r1, b.r2) > 0.002 &&
+        (n === 0 || Math.abs(bodies[g.parts[n - 1]].r2 - b.r1) < 1e-9)
+      );
+    });
   const isTubeHost = (g) =>
     g.parts
       .map((i) => bodies[i])
@@ -1676,7 +1699,8 @@ async function stepBuild(R, model, opts = {}) {
     if (fins.length && fr > 0) {
       // the fillets are built directly (stepFilletWedge) where the body has one radius under the fins; on a taper
       // (a boattail) the joint isn't a straight line and they are left out, and the file says so
-      if (isTubeHost(g)) {
+      const tube = isTubeHost(g);
+      if (tube || isSmoothHost(g)) {
         const rHost = bodies[g.parts[0]].r1 * STEP_MM;
         const xa = bodies[g.parts[0]].x * STEP_MM,
           xb = (bodies[g.parts[g.parts.length - 1]].x + bodies[g.parts[g.parts.length - 1]].len) * STEP_MM,
@@ -1688,7 +1712,7 @@ async function stepBuild(R, model, opts = {}) {
           const e = stepEdges(f.k, f.t, flat, 1);
           return [e.le, e.te].some((q) => q && !q.arc);
         });
-        const lofted = async () => {
+        const lofted = async (rArg = rHost) => {
           // each fin gets its two fillets first (a small join), then the finished fins go on the tube
           // (first on the fins with their plain edges, a 0.3 mm flat on a bladed one and a many-sided round one: the
           // smooth sections made for OpenCascade's fillet don't always join to the tube soundly, except on an elliptical
@@ -1698,13 +1722,13 @@ async function stepBuild(R, model, opts = {}) {
           let h = base;
           const v0 = R.measureVolume(host);
           for (const f of fins) {
-            const made = stepLoftFillet(R, f, rHost, fr, xa, xb);
+            const made = stepLoftFillet(R, f, rArg, fr, xa, xb);
             if (!made) return null;
             let ff = f.solid.clone().fuse(made.sides[0]).fuse(made.sides[1]);
             if ((ff.solids || []).length === 1) ff = ff.solids[0];
             for (const a of f.ang) h = h.fuse(a ? ff.clone().rotate(a, [0, 0, 0], [1, 0, 0]) : ff.clone());
             for (const [p, q] of made.over) {
-              const w = 2 * (rHost + fr);
+              const w = 2 * (Math.max(...g.parts.map((i) => Math.max(bodies[i].r1, bodies[i].r2))) * STEP_MM + fr);
               h = h.cut(R.makeBox([p, -w, -w], [q, w, w]));
             }
           }
@@ -1714,11 +1738,20 @@ async function stepBuild(R, model, opts = {}) {
         };
         let oc = null,
           how = "OpenCascade";
-        for (const way of opts.plainFillets ? [] : bladed || opts.noOcFillet ? ["lofted"] : ["OpenCascade", "lofted"]) {
+        // on a tapered body only the section-following fillets are made, drawn against the body's radius at each
+        // station along the root
+        const rTaper = (x) => stepRadiusAt(bodies, Math.min(Math.max(x, xa), xb));
+        for (const way of !tube
+          ? ["lofted"]
+          : opts.plainFillets
+            ? []
+            : bladed || opts.noOcFillet
+              ? ["lofted"]
+              : ["OpenCascade", "lofted"]) {
           try {
             oc =
               way === "lofted"
-                ? await lofted()
+                ? await lofted(tube ? rHost : rTaper)
                 : await stepOcFillet(R, bodies, fins, host, rHost, fr, xa, xb, seam, flat, expect);
           } catch (e) {
             oc = null;
@@ -1729,6 +1762,10 @@ async function stepBuild(R, model, opts = {}) {
         if (oc) {
           host = oc;
           filletMethod = how;
+        } else if (!tube) {
+          // (the plain fillets below are for one radius of tube)
+          taperedSkipped = true;
+          host = finned(false);
         } else {
           filletMethod = filletMethod || "trimmed";
           host = finned(false);
@@ -1757,7 +1794,7 @@ async function stepBuild(R, model, opts = {}) {
     );
   if (taperedSkipped)
     warnings.push(
-      "Fins on a tapered section (a boattail) are in the file without fillets: they are only made on straight body tubes.",
+      "Fins on this tapered section are in the file without fillets: the fillets could not be made there (they follow a boattail of up to 30 degrees whose parts meet without a step).",
     );
   let all = pieces[0];
   for (let i = 1; i < pieces.length; i++) all = all.fuse(pieces[i]);

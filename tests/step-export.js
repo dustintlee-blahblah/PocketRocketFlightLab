@@ -343,6 +343,62 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
       `the fillet leaves no ridge on the fin above it (${proud.toFixed(3)} mm proud, ${r.info.filletMethod})`,
     );
   }
+  // fins on a boattail, and fins whose root runs from the tube onto a boattail: they sit on the body all the way
+  // along the root (an edge section's solid used to stop on a level plane 4 mm under the front of the root, which on a
+  // boattail cut the back of the fin off above the body), and their fillets follow the body down the taper
+  for (const [where, edges] of [
+    ["on a boattail", ["square", "beveled", "airfoil"]],
+    ["running from the tube onto a boattail", ["rounded", "beveled", "airfoil"]],
+  ])
+    for (const e of edges) {
+      const mk = (fillet) => {
+        const m = make(fillet, (f) => Object.assign(f, { t: 0.003, edge: e, n: 3 })),
+          tube = m.stages[0].parts[1],
+          fin = tube.kids.find((k) => k.type === "fins"),
+          bt = Object.assign(bldNew("transition", tube.od / 2), { dia1: tube.od, dia2: tube.od * 0.7, len: 0.1 });
+        m.stages[0].parts.push(bt);
+        if (where === "on a boattail") {
+          tube.kids = tube.kids.filter((k) => k !== fin);
+          bt.kids.push(
+            Object.assign(fin, { root: 0.08, tip: 0.04, span: 0.05, sweep: 0.03, ref: "bottom", pos: 0.005 }),
+          );
+        } else fin.pos = -0.06;
+        return { m, r0: (tube.od * 1000) / 2 };
+      };
+      const plain = await run(`${e} fins ${where}`, mk(0).m),
+        { m, r0 } = mk(0.004),
+        r = await run(`${e} fins ${where} with a 4 mm fillet`, m);
+      ok(
+        r.info.warnings.length === 0 && r.info.filletMethod === "lofted" && r.info.volume - plain.info.volume > 300,
+        `${e} fins ${where}: the fillets are made (${(r.info.volume - plain.info.volume).toFixed(0)} mm3, ${r.info.filletMethod || "none"})`,
+      );
+      // no underside of a fin in the open: a facet of the fin at angle 0 facing down, above the body's surface
+      for (const [label, q] of [
+        ["", plain],
+        [" with the fillet", r],
+      ]) {
+        const xb = q.info.length - 100,
+          body = (x) => (x <= xb ? r0 : r0 * (1 - (0.3 * (x - xb)) / 100)),
+          mesh = q.shape.mesh({ tolerance: 0.05, angularTolerance: 0.3 }),
+          V = mesh.vertices,
+          T = mesh.triangles;
+        let bare = 0;
+        for (let i = 0; i < T.length; i += 3) {
+          const P = [0, 1, 2].map((c) => [V[3 * T[i + c]], V[3 * T[i + c] + 1], V[3 * T[i + c] + 2]]),
+            u = [P[1][0] - P[0][0], P[1][1] - P[0][1], P[1][2] - P[0][2]],
+            w = [P[2][0] - P[0][0], P[2][1] - P[0][1], P[2][2] - P[0][2]],
+            n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]],
+            len = Math.hypot(n[0], n[1], n[2]);
+          if (!(len > 1e-9) || n[1] / len > -0.9) continue;
+          if (P.every((v) => Math.abs(v[2]) < 1.6 && v[1] > body(v[0]) + 0.5 && v[1] < body(v[0]) + 30))
+            bare += len / 2;
+        }
+        ok(
+          bare < 0.5,
+          `${e} fins ${where}${label}: the fins sit on the body all along the root (${bare.toFixed(1)} mm2 of underside in the open)`,
+        );
+      }
+    }
   // parts that stand out from the body are in the file, each joined to it as one solid
   const tubeOf = (m) => m.stages[0].parts[1];
   const bare = (m) => (tubeOf(m).kids = tubeOf(m).kids.filter((k) => k.type !== "buttons"));
