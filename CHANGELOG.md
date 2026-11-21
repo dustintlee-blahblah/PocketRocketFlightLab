@@ -8,10 +8,11 @@ version.
 
 **Export CAD**
 
-- **Free-form fins with an airfoil or double-wedge section come out the right shape.** They are built from true cross-sections along the airflow, one at the root and one at the height of each corner of the outline, each scaled to the chord there. The exporter used to shape each outline edge on its own, which left a slab of full thickness with stepped walls under the tip (the odd facets on fins like the Punisher 3's).
+- **Fins with an airfoil or double-wedge section come out the right shape**, on trapezoid and free-form fins alike. They are built from true cross-sections along the airflow, one at the root and one at the height of each corner of the outline, each scaled to the chord there, so the fin is full thickness at mid-chord at every height (as a fin shaped from flat stock is, and as the app weighs it). Before, a free-form fin was left with a slab of full thickness and stepped walls under its tip (the odd facets on fins like the Punisher 3's), and a tapered trapezoid fin had a flat plateau across its root and a thinned tip. A fin that comes to a point closes to a point.
+- **The fillet that follows a fin's section no longer leaves a ridge.** Its arc ran on past where it meets the fin and came back out through the skin, a ridge about 0.06 mm high along the fillet's whole top edge, in every such fillet since build 332. It ends where it meets the fin now. Files with these fillets have about a quarter of the faces and build in about half the time.
 - **Rail buttons drawn as short solid launch lugs** (as older OpenRocket designs draw them) **are round**, with a base, a neck and a flange. They came out as small blocks. A long solid lug is still a block: a rail guide.
-- **STL: hairline cracks closed.** Where slivers of faces meet (a fin's edge flat running into the end of a fillet at the tube's end) the mesh could be left with cracks a few thousandths of a millimetre wide, and the export was refused. Points closer than 0.01 mm are now one point.
-- The tests check the fins' shape as well as that the solid is closed: free-form airfoil and double-wedge fins must keep the share of the flat slab their section says (70% and 55%).
+- **STL: hairline cracks closed.** Where slivers of faces meet, the mesh could be left with cracks a few thousandths of a millimetre wide, and the export was refused. Points closer than 0.01 mm are now one point.
+- The tests check the fins' shape as well as that the solid is closed: airfoil and double-wedge fins must keep the share of the flat slab their section says (70% and 55%) on pointed, flat-topped, tapered and zero-tip outlines, and nothing may stand off the fin above a fillet.
 
 ## Build 336 (2026-11-21)
 

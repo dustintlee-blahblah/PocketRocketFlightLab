@@ -230,9 +230,9 @@ function stepFinSolid(R, k, xf, bodies, flat, grow = 0, arcs = true) {
       smoothEll = null;
     }
   }
-  // a free-form fin with an airfoil or double-wedge section: true chordwise sections up the span
+  // a trapezoid or free-form fin with an airfoil or double-wedge section: true chordwise sections up the span
   let lofted = null;
-  if (k.shape === "freeform" && !grow && ri >= 0 && Math.abs(surf(xa) - surf(xb)) < 1e-6) {
+  if (k.shape !== "elliptical" && !grow && ri >= 0 && Math.abs(surf(xa) - surf(xb)) < 1e-6) {
     const xs = bodies.map((b) => b.x * STEP_MM).filter((x) => x > xa + 1e-6 && x < xb - 1e-6);
     if (xs.every((x) => Math.abs(surf(x) - surf(xa)) < 1e-6))
       try {
@@ -389,6 +389,33 @@ function stepEllipseLoft(R, xa, xb, y0, span, t, edges) {
   return sk[0].loftWith(sk.slice(1), { endPoint: [xm, y0 + span, 0] });
 }
 /**
+ * A solid through cross-sections that are all drawn the same way (the same pieces in the same order, from the same
+ * starting corner), joined piece to piece by straight (ruled) surfaces. OpenCascade's loft otherwise makes sections
+ * "compatible" first, matching them by distance round the outline: on sections that differ in size (a fin's root and
+ * tip) it then joins a corner of one to a point part-way along a piece of the next, which skews the surfaces a little
+ * and leaves slivers of faces (across an edge flat, between a fillet's stations) that an STL mesh cracks along.
+ * @param {object} R replicad
+ * @param {object[]} sketches the sections, in order
+ * @param {number[]} [endPoint] a point the solid closes to after the last section
+ * @returns {object} replicad solid
+ */
+function stepRuledLoft(R, sketches, endPoint) {
+  const oc = R.getOC(),
+    b = new oc.BRepOffsetAPI_ThruSections(true, true, 1e-6);
+  try {
+    b.CheckCompatibility(false);
+    for (const s of sketches) b.AddWire(s.wire.wrapped);
+    if (endPoint) b.AddVertex(R.makeVertex(endPoint).wrapped);
+    b.Build();
+    const shape = R.cast(b.Shape());
+    if (!R.isShape3D(shape)) throw new Error("Could not loft to a 3d shape");
+    return shape;
+  } finally {
+    b.delete();
+    for (const s of sketches) s.delete();
+  }
+}
+/**
  * The drawing of one chordwise section of a fin whose edge sections reach far in: the leading section from the front
  * and the trailing one from the back, scaled to the chord at that height, smooth everywhere (round noses, the double
  * wedge's ridge rounded off over a couple of mm).
@@ -476,12 +503,14 @@ function stepChordSection(R, t, edges, flatNose = false) {
   };
 }
 /**
- * A free-form fin whose edge sections reach in to mid-chord (an airfoil or a double wedge), as a loft through true
- * chordwise sections: one at the root and one at the height of every corner of the outline, each scaled to the chord
- * there, joined by straight (ruled) surfaces, which is exact because the outline is straight between its corners.
- * Cutting a strip square to each outline edge instead (stepCurvedEdges) leaves a slab of full thickness with stepped
- * walls under the tip, where the strips of the leading and trailing edges don't reach. Null (the caller falls back to
- * the strips) when the outline isn't one leading edge going up and one trailing edge coming down, the body under the
+ * A trapezoid or free-form fin whose edge sections reach in to mid-chord (an airfoil or a double wedge), as a loft
+ * through true chordwise sections: one at the root and one at the height of every corner of the outline, each scaled
+ * to the chord there, joined by straight (ruled) surfaces, which is exact because the outline is straight between its
+ * corners. So the fin is full thickness at mid-chord at every height, as a fin shaped from flat stock is and as the
+ * weight model takes it (finSectionShare). The other ways don't give that: a section of one fixed depth from each edge
+ * (stepEdgeBody) leaves a flat plateau near the root of a tapered fin and thins its tip; a strip cut square to each
+ * outline edge (stepCurvedEdges) leaves a slab of full thickness with stepped walls under a free-form fin's tip.
+ * Null (the caller falls back to those) when the outline isn't one leading edge going up and one trailing edge coming down, the body under the
  * root isn't straight, or a section can't be drawn.
  * @param {object} R replicad
  * @param {number[][]} pts the outline's corners from the root's front, mm (x along the root, y up the span)
@@ -515,10 +544,10 @@ function stepFreeformLoft(R, pts, xf, y0, t, edges) {
     down.push(P[j]);
     if (P[j][1] > ymax - 1e-9) break;
   }
-  if (!down.length) down.push(P[i]);
   // everything between the two chains has to lie along the tip (a flat top); each chain climbs all the way
-  const used = up.length + down.length - (down[down.length - 1] === P[i] ? 1 : 0);
-  if (used < n) for (let j = i + 1; j < n - down.length; j++) if (P[j][1] < ymax - 1e-9) return null;
+  for (let j = i + 1; j < n - down.length; j++) if (P[j][1] < ymax - 1e-9) return null;
+  // a tip that is one corner belongs to both edges
+  if (!down.length || down[down.length - 1][1] < ymax - 1e-9) down.push(P[i]);
   const climbs = (C) => C.every((q, j) => j === 0 || q[1] > C[j - 1][1] + 1e-9);
   if (down[0][1] > 1e-9 || !climbs(up) || !climbs(down)) return null;
   const at = (C, y) => {
@@ -566,7 +595,7 @@ function stepFreeformLoft(R, pts, xf, y0, t, edges) {
     sk.push(s);
   }
   if (sk.length < 2) return null;
-  return sk[0].loftWith(sk.slice(1), end ? { ruled: true, endPoint: end } : { ruled: true });
+  return stepRuledLoft(R, sk, end);
 }
 /** The flat left on a sharp (bladed) fin edge instead of a knife edge a mesher cannot fill, m: about a sanded fin's. */
 const STEP_EDGE_FLAT = 0.0003;
@@ -1050,7 +1079,9 @@ function stepOuterParts(R, bodies, warnings, fins = []) {
  */
 function stepLoftFillet(R, fin, r, rho, xa, xb) {
   const hFull = fin.t / 2,
-    mesh = fin.solid.mesh({ tolerance: 0.02, angularTolerance: 0.3 }),
+    // (a copy is measured: a mesh made on the fin itself stays on its faces, and the faces that come through the
+    // joins untouched would keep it when the finished solid is meshed for an STL, out of step with their neighbours)
+    mesh = fin.solid.clone().mesh({ tolerance: 0.02, angularTolerance: 0.3 }),
     V = mesh.vertices,
     T = mesh.triangles;
   // the fin's half-thickness at (x, y): the highest of its skin's triangles over that point; in strips along x
@@ -1125,14 +1156,18 @@ function stepLoftFillet(R, fin, r, rho, xa, xb) {
           m = [tb[0] + tf[0] - 2 * C[0], tb[1] + tf[1] - 2 * C[1]],
           ml = Math.hypot(m[0], m[1]);
         // The arc is not left exactly tangent to the tube and the fin (OpenCascade can't join surfaces that only
-        // touch): its centre is moved a hair towards the corner, so it crosses both at about 3 degrees, and it runs on
-        // a little way inside each.
-        const eps = 0.0015 * rad,
+        // touch): its centre is moved a hair towards the corner, so it crosses both at about 3 degrees and ends just
+        // under each skin, where it would have touched. (Run on past there, the arc comes back out through the skin
+        // about 3 degrees further round and leaves a ridge a few hundredths of a millimetre high along the fillet's
+        // edge: it was, until build 337.)
+        // (never less than a hundredth of a millimetre under: a small fillet's arc ending a micron under the skin
+        // leaves faces OpenCascade can join but not mesh)
+        const eps = Math.max(0.0015 * rad, 0.01),
           Cx = [C[0] + (eps * m[0]) / ml, C[1] + (eps * m[1]) / ml],
           ab = Math.atan2(tb[1] - C[1], tb[0] - C[0]),
           af = Math.atan2(tf[1] - C[1], tf[0] - C[0]),
           turn = Math.sin(af - ab) > 0 ? 1 : -1,
-          more = Math.sqrt(2 * 0.0015) + 0.08,
+          more = 0,
           at = (q) => [Cx[0] + rad * Math.cos(q), Cx[1] + rad * Math.sin(q)];
         out = {
           tb,
@@ -1194,7 +1229,7 @@ function stepLoftFillet(R, fin, r, rho, xa, xb) {
         .close()
         .sketchOnPlane("YZ", q.x);
     });
-    return sk[0].loftWith(sk.slice(1), { ruled: true });
+    return stepRuledLoft(R, sk);
   };
   const a = sideSolid(1),
     b = sideSolid(-1);
@@ -1329,7 +1364,9 @@ const STL_WELD = 0.01;
  */
 export function buildStl(shape, quality, volume) {
   const q = STL_MESH[quality] || STL_MESH.coarse,
-    m = shape.mesh({ tolerance: q.tolerance, angularTolerance: (q.angle * Math.PI) / 180 }),
+    tolerance = q.tolerance,
+    angle = q.angle,
+    m = shape.mesh({ tolerance, angularTolerance: (angle * Math.PI) / 180 }),
     V = m.vertices,
     T = m.triangles;
   // faces are meshed one by one, so a point on the seam between two faces is there once for each: the same point is

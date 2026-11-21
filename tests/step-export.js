@@ -189,8 +189,9 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
   };
   await cut("rounded", 300, 600);
   await cut("beveled", 11000, 14500);
-  await cut("airfoil", 18000, 25000);
-  await cut("doublewedge", 25000, 38000);
+  // (an airfoil keeps 70% of the slab and a double wedge 55%, at every height: 30% and 45% of 72,300 mm3)
+  await cut("airfoil", 20500, 23000);
+  await cut("doublewedge", 31000, 34500);
   const bev = make(0, (f) => ((f.t = 0.003), (f.edge = "beveled")));
   const thin = await buildStep(R, bev, { edgeFlat: 0.0005 }),
     thick = await buildStep(R, bev, { edgeFlat: 0.002 });
@@ -221,14 +222,12 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
     ff.info.warnings.length === 0 && ffSq.info.volume - ff.info.volume > 10000,
     "free-form bevels take material off the fins",
   );
-  // a free-form fin with an airfoil or double-wedge section is built from true chordwise sections (not a strip cut
-  // square to each edge, which left a slab of full thickness under the tip): what it removes from the slab is the
-  // section's own share, whatever the outline. An airfoil with a 0.3 mm edge flat on a 3 mm fin keeps 70% of the slab
-  // (two parabolas from the flat to full thickness at mid-chord), a double wedge 55%
-  for (const [name, outline] of [
-    ["pointed", pts],
-    ["flat-topped", "0,0\n0.158,0.08\n0.195,0.08\n0.224,0.068\n0.252,0\n"],
-  ]) {
+  // a trapezoid or free-form fin with an airfoil or double-wedge section is built from true chordwise sections (not
+  // a strip cut square to each edge, which left a slab of full thickness under a free-form fin's tip, nor a section of
+  // one fixed depth from each edge, which left a plateau at a tapered fin's root and thinned its tip): what it removes
+  // from the slab is the section's own share, whatever the outline. An airfoil with a 0.3 mm edge flat on a 3 mm fin
+  // keeps 70% of the slab (two parabolas from the flat to full thickness at mid-chord), a double wedge 55%
+  const area = (outline) => {
     const P = outline
       .trim()
       .split("\n")
@@ -238,25 +237,51 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
       const q = P[(i + 1) % P.length];
       A += (P[i][0] * q[1] - q[0] * P[i][1]) / 2;
     }
-    const slabs = 3 * 0.003 * Math.abs(A) * 1e9;
+    return Math.abs(A);
+  };
+  const flatTop = "0,0\n0.158,0.08\n0.195,0.08\n0.224,0.068\n0.252,0\n";
+  for (const [name, set, A] of [
+    ["pointed free-form", { shape: "freeform", pts }, area(pts)],
+    ["flat-topped free-form", { shape: "freeform", pts: flatTop }, area(flatTop)],
+    ["strongly tapered", { shape: "trapezoid", root: 0.2, tip: 0.03, span: 0.1, sweep: 0.15 }, 0.0115],
+    ["pointed (zero tip chord)", { shape: "trapezoid", root: 0.2, tip: 0, span: 0.1, sweep: 0.15 }, 0.01],
+  ]) {
+    const slabs = 3 * 0.003 * A * 1e9;
     const sqr = await run(
-      `${name} free-form fins`,
-      make(0, (f) => Object.assign(f, { shape: "freeform", pts: outline, t: 0.003, edge: "square", n: 3 })),
+      `${name} fins`,
+      make(0, (f) => Object.assign(f, set, { t: 0.003, edge: "square", n: 3 })),
     );
     for (const [e, keep] of [
       ["airfoil", 0.7],
       ["doublewedge", 0.55],
     ]) {
       const r = await run(
-        `${name} free-form ${e} fins`,
-        make(0, (f) => Object.assign(f, { shape: "freeform", pts: outline, t: 0.003, edge: e, n: 3 })),
+        `${name} ${e} fins`,
+        make(0, (f) => Object.assign(f, set, { t: 0.003, edge: e, n: 3 })),
       );
       const took = (sqr.info.volume - r.info.volume) / slabs;
       ok(
         r.info.warnings.length === 0 && Math.abs(took - (1 - keep)) < 0.04,
-        `${name} free-form ${e} fins keep ${((1 - took) * 100).toFixed(1)}% of the slab (${keep * 100}%: true chordwise sections)`,
+        `${name} ${e} fins keep ${((1 - took) * 100).toFixed(1)}% of the slab (${Math.round(keep * 100)}%: true chordwise sections)`,
       );
     }
+  }
+  // the fillet that follows a fin's section ends where it meets the fin's side: nothing stands off the fin above it
+  // (it used to run on past there and come back out through the skin, a ridge a few hundredths of a millimetre high
+  // along the fillet's top edge). Checked on the fin at angle 0, which lies in the plane z = 0
+  {
+    const rho = 6,
+      m = make(rho / 1000, (f) => Object.assign(f, { t: 0.003, edge: "beveled", n: 3, rot: 0 })),
+      rb = (m.stages[0].parts[1].od * 1000) / 2,
+      r = await run("bevelled fins with a 6 mm fillet", m),
+      V = r.shape.mesh({ tolerance: 0.02, angularTolerance: 0.1 }).vertices;
+    let proud = 0;
+    for (let i = 0; i < V.length; i += 3)
+      if (V[i + 1] > rb + 1.03 * rho && Math.abs(V[i + 2]) < 4) proud = Math.max(proud, Math.abs(V[i + 2]) - 1.5);
+    ok(
+      r.info.filletMethod === "lofted" && proud < 0.01,
+      `the fillet leaves no ridge on the fin above it (${proud.toFixed(3)} mm proud, ${r.info.filletMethod})`,
+    );
   }
   // parts that stand out from the body are in the file, each joined to it as one solid
   const tubeOf = (m) => m.stages[0].parts[1];
