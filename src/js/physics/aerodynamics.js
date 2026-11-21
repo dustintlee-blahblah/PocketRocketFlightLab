@@ -19,9 +19,10 @@ import { noseR, noseSpec, noseTip } from "./geometry.js";
    Forebody pressure drag below the critical Mach number: Hoerner's shoulder-angle rule, 0.8·sin²(shoulder angle).
    Transonic and supersonic nose drag: free-flight and wind-tunnel measurements in NASA TR R-100 (Stoney, 1961), figs. 11–12.
    Supersonic drag of body flares and shoulders: Bonney's cone correlation, as presented by Fleeman (Tactical Missile Design, AIAA).
-   Base drag (coasting and powered): Fleeman's base-pressure correlation below Mach 1; above it NACA TN 3819 (Love,
-     1957): body base pressure, boattails, fins near the base, and blunt fin trailing edges, from measurements.
-   Boattail separation: attached below about 8° half-angle, fully separated above about 20° (Hoerner, ch. 3).
+   Base drag (coasting and powered): the body's base pressure from NASA TR R-100 (Stoney, 1961, fig. 3) up to Mach 2
+     and NACA TN 3819 (Love, 1957) above; from TN 3819 above Mach 1, fins near the base and blunt fin trailing edges.
+   Boattail separation: attached up to a 15° half-angle, fully separated past 25° (boattailSeparated: TR R-100,
+     NASA TN D-4013). A boattail on a pod keeps Hoerner's 8° to 20° (ch. 3).
    Fin edges: stagnation pressure on blunt leading edges (isentropic below Mach 1, Rayleigh pitot above), sweep by the
      independence principle; Newtonian rounded edges; Ackeret thin-airfoil wave drag for sharp sections. Blunt trailing
      edges (square and rounded) below Mach 1: Hoerner's two-dimensional base drag, 0.135/∛C_f (ch. 3).
@@ -100,12 +101,12 @@ function finTransonic(xi, as) {
 }
 /**
  * Base drag coefficient on the base area at Mach M (Fleeman's correlation). Kept for protuberances in crossflow
- * (rail buttons); the rocket's own bases use the TN 3819 curves below.
+ * (rail buttons); the rocket's own base uses the TR R-100 and TN 3819 curves below.
  * @param {number} M Mach number
  * @returns {number}
  */
 const fleemanBase = (M) => (M < 1 ? 0.12 + 0.13 * M * M : 0.25 / M);
-/* ---------- base pressure: NACA TN 3819 (Love, 1957) above Mach 1, Fleeman below ----------
+/* ---------- base pressure: NACA TN 3819 (Love, 1957); the body below Mach 2 from TR R-100 (R100_BODY, further down) ----------
    Body base (no fins, no boattail): the "basic curve of present analysis" of fig. 18, digitized, as −Cp,base.
    Blunt fin trailing edges (two-dimensional bases): fig. 5, the estimate from Pr + 0.06 that matches the experimental
    compilations. Below Mach 1 the report has no data, so Fleeman's subsonic 0.12 + 0.13M² is kept, blended into the
@@ -282,6 +283,15 @@ function tn3819FinTerm(f, L, dBody) {
  * Smoothstep: 0 below 0, 1 above 1, an S-curve between. Used to blend models across a range.
  */
 export const smooth01 = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+/**
+ * The share of the flow that has left a boattail on the rocket's own body: none up to a 15° half-angle, all of it
+ * past 25°, blended between. TR R-100 checked its afterbody equation against flight data for slopes up to 15°, and
+ * the Arcas model's 15° boattail (NASA TN D-4013) keeps its base at or above free-stream pressure below Mach 0.95,
+ * which a separated tail cone could not. The drag model and the Wind Tunnel's flow picture both use this one rule.
+ * @param {number} deg the boattail's half-angle, degrees
+ * @returns {number} 0 (attached) to 1 (separated)
+ */
+export const boattailSeparated = (deg) => smooth01((deg - 15) / 10);
 /**
  * Transonic blend weight: 0 below Mach 0.8, rising smoothly to 1 at Mach 1.
  */
@@ -1149,7 +1159,7 @@ export function aero(D) {
     } else {
       const deg = (Math.atan(dr / sg.len) * 180) / Math.PI;
       // the flow stays on boattails up to 15° and has left by 25° (see baseB.attT): k is the separated share
-      aft.push({ seg: i, k: smooth01((deg - 15) / 10), area });
+      aft.push({ seg: i, k: boattailSeparated(deg), area });
     }
   });
   const last = segs[segs.length - 1],
@@ -1297,7 +1307,7 @@ export function aero(D) {
         /* The attached share: full up to 15°, none past 25°. TR R-100 checked its afterbody
            equation against flight data for slopes up to 15°, and the Arcas model's 15° boattail (NASA TN D-4013)
            keeps its base at or above free-stream pressure below Mach 0.95, which a separated tail cone could not. */
-        attT: bt > 0 ? 1 - smooth01((bt * (180 / Math.PI) - 15) / 10) : 0,
+        attT: bt > 0 ? 1 - boattailSeparated(bt * (180 / Math.PI)) : 0,
         fins: fins
           .filter((f) => f.pod == null)
           .map((f) => tn3819FinTerm(f, L, 2 * radiusAtSegs(segs, f.xLead + f.a, R))),

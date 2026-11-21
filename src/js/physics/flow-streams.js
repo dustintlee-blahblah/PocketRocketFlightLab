@@ -15,13 +15,13 @@
  * Along the body, from the same rules the drag model uses:
  * - Laminar boundary layer from the tip to Re_x = 5×10⁵ (natural transition on a smooth surface), turbulent behind;
  *   thicknesses from Blasius (5x/√Re_x) and the 1/7-power turbulent layer (0.37x/Re_x^0.2).
- * - Separation behind a rearward step (reattaching about six step heights downstream), on a boattail steeper than 8°
- *   (all of it by 20°, Hoerner's rule, as in the base drag), behind the base (the wake), on the lee side of the body
+ * - Separation behind a rearward step (reattaching about six step heights downstream), on a boattail steeper than 15°
+ *   (all of it by 25°: boattailSeparated, the drag model's own rule), behind the base (the wake), on the lee side of the body
  *   from where the crossflow has carried each section about 1.5 radii sideways (the impulsive-flow analogy behind the
  *   body lift at larger angles), and on the fins as they stall, from 18° to 35° (the fin stall in the normal-force
  *   model).
  */
-import { smooth01 } from "./aerodynamics.js";
+import { boattailSeparated, smooth01 } from "./aerodynamics.js";
 
 /**
  * Radius of the outline at x (linear between points; 0 outside the body).
@@ -204,7 +204,7 @@ export function flowScene(P, A, o) {
       last = i === segs.length - 1;
     if (sg.kind === "trans" && r2 < r1 && sg.len > 0) {
       const deg = (Math.atan((r1 - r2) / sg.len) * 180) / Math.PI,
-        k = smooth01((deg - 8) / 12);
+        k = boattailSeparated(deg);
       if (k > 0.03) {
         const xs = sg.x + sg.len * (1 - k),
           x1 = last ? L : sg.x + sg.len + 4 * (r1 - r2) * k;

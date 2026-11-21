@@ -4029,3 +4029,155 @@ table.cmpt {
   color: var(--warn);
   background: color-mix(in srgb, var(--warn) 10%, transparent);
 }
+
+/* ---- Wide screens (a computer, a tablet on its side) ----
+   The phone layout above is the app; nothing above this line changes for it. On a window at least 1100 px wide (and
+   tall enough not to be a phone on its side) the page widens and each tab sets its panels side by side. .sidecol and
+   .maincol group a tab's panels into a column here; on a phone they are not boxes at all (display: contents). */
+.sidecol,
+.maincol {
+  display: contents;
+}
+@media (min-width: 1100px) and (min-height: 600px) {
+  .wrap,
+  .runbar .in {
+    max-width: 1760px;
+  }
+  .wrap {
+    padding-left: max(28px, env(safe-area-inset-left, 0px));
+    padding-right: max(28px, env(safe-area-inset-right, 0px));
+  }
+  nav.tabs {
+    grid-template-columns: repeat(4, minmax(0, 180px));
+    justify-content: start;
+  }
+  .sidecol,
+  .maincol {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+  section.view {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 14px 18px;
+    align-items: start;
+  }
+  section.view > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  /* Rocket: the file beside the drawing; the tree and editor under them; the tools flow down two columns under those */
+  #v-rocket > #rhead {
+    grid-column: 1 / 5;
+    align-self: stretch;
+  }
+  #v-rocket > .bldview {
+    grid-column: 5 / -1;
+    align-self: stretch;
+  }
+  #v-rocket > .bldbody {
+    margin-top: 0;
+  }
+  #v-rocket > .sidecol {
+    display: block;
+    columns: 2;
+    column-gap: 18px;
+  }
+  #v-rocket > .sidecol > .panel {
+    break-inside: avoid;
+    margin-bottom: 14px;
+  }
+  /* Results: the numbers on the left, the checks and charts on the right */
+  #v-results > .panel {
+    grid-column: 1 / 7;
+  }
+  #v-results > .sidecol {
+    grid-column: 7 / -1;
+  }
+  /* Motor: the chosen motor and the filters on the left, the list in columns on the right */
+  #v-motor > .sidecol {
+    grid-column: 1 / 5;
+  }
+  #v-motor > .maincol {
+    grid-column: 5 / -1;
+  }
+  #v-motor .motors {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-content: start;
+  }
+  /* Range: its panels flow down two columns, each keeping its own height */
+  #v-flight {
+    display: block;
+    columns: 2;
+    column-gap: 18px;
+  }
+  #v-flight > .panel {
+    break-inside: avoid;
+    margin-bottom: 14px;
+  }
+}
+@media (min-width: 1100px) and (min-height: 600px) {
+  /* The flight animation fills the window (it is 960 by 800 at most on smaller screens) */
+  .animmodal {
+    padding: 2.5vh 2.5vw;
+  }
+  .animbox {
+    max-width: 1800px;
+    max-height: none;
+  }
+  /* Flight vs prediction: a wider window and a taller chart */
+  .modal .mbox.flbox.cmpbox {
+    max-width: 1120px;
+  }
+  #cmpcv {
+    height: min(46vh, 460px);
+  }
+  /* Learn: a wider, steady window; the chapter list in two columns; chapter text at a comfortable line length with
+     larger drawings */
+  .learn .box {
+    max-width: 1120px;
+    height: min(100%, 940px);
+  }
+  .learn .body {
+    flex: 1;
+    font-size: 1rem;
+    padding: 16px max(28px, calc((100% - 800px) / 2));
+  }
+  .learn .body:has(> .lvnote) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 18px;
+    align-content: start;
+    padding-inline: 28px;
+  }
+  .learn .body:has(> .lvnote) > :not(.ch) {
+    grid-column: 1 / -1;
+  }
+  .learn figure svg {
+    max-height: 300px;
+  }
+}
+@media (min-width: 1500px) and (min-height: 600px) {
+  /* Rocket: tree, editor and tools in three columns */
+  #v-rocket > .bldbody {
+    grid-column: 1 / 8;
+  }
+  #v-rocket > .sidecol {
+    grid-column: 8 / -1;
+    display: flex;
+    columns: auto;
+  }
+  #v-rocket > .sidecol > .panel {
+    margin-bottom: 0;
+  }
+  #v-motor .motors {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #v-flight {
+    columns: 3;
+  }
+}

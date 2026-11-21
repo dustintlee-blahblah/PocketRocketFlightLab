@@ -251,8 +251,8 @@ Survey, National Geospatial Program.
 == CAD export: STEP and STL (3D model kernel) ==
 The CAD export is built with Open CASCADE Technology (OCCT), compiled to WebAssembly by replicad-opencascadejs, and
 the replicad library. This code makes use of, and is based on, facilities provided by the Open CASCADE Technology
-software (https://dev.opencascade.org). They ship as one separate file, step-kernel.js, loaded only when the STEP
-button is used; it is not part of the app page.
+software (https://dev.opencascade.org). They ship as one separate file, step-kernel.js, loaded only when Export CAD
+is used; it is not part of the app page.
 - Open CASCADE Technology: Copyright 1999-2025 Open CASCADE SAS and others, GNU Lesser General Public License
   version 2.1 with the Open CASCADE Exception 1.0 (https://dev.opencascade.org/resources/licensing). Its source is at
   https://git.dev.opencascade.org/gitweb/?p=occt.git and the WebAssembly build's at
@@ -261,6 +261,8 @@ button is used; it is not part of the app page.
   step-kernel.js (beside the web page, or by rebuilding the Android app from this repository) is permitted and
   supported.
 - replicad: Copyright 2023 QuaroTech Sàrl, MIT License (https://github.com/sgenoud/replicad).
+- Emscripten (the JavaScript runtime inside the WebAssembly build): Copyright the Emscripten authors, MIT License
+  (https://github.com/emscripten-core/emscripten).
 
 == Design file compatibility ==
 The app opens and saves OpenRocket (.ork) and RockSim (.rkt) design files and opens RASAero II (.CDX1) design files, for compatibility. OpenRocket, RockSim and RASAero II are separate programs and are not affiliated with this app.

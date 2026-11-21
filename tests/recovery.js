@@ -644,6 +644,113 @@ const ok = (what, cond, got) => {
     o,
   );
 
+  // ---- a streamer beside a chute release, and a booster's own parachute ----
+  await p.evaluate((i) => openExample(i), dualI);
+  await p.waitForTimeout(700);
+  const st = await p.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const all = (si) => {
+      const out = [];
+      const w = (l) => {
+        for (const q of l || []) {
+          if (q.type === "chute" || q.type === "streamer") out.push(q);
+          w(q.kids);
+        }
+      };
+      w(BLD.stages[si].parts);
+      return out;
+    };
+    const see = (c) => ({ type: c.type, role: c.role, deploy: c.deploy, alt: c.alt, rel: !!c.release });
+    const ids = () => [...document.querySelectorAll("#bldedit [id^=bf-]")].map((e) => e.id.slice(3));
+    Object.assign(BLD.settings, { recCfg: "one", crOn: true, crAlt: 91.44, a1Main: 152.4, a1Apo: 0 });
+    const tube = BLD.stages[0].parts.find((q) => q.type === "tube");
+    const sr = bldNew("streamer", 0.04);
+    tube.kids.push(sr);
+    bldChanged(true);
+    await wait(300);
+    const added = all(0).map(see);
+    // the streamer as the main: a chute release can't hold a streamer, so it opens at the main charge
+    showTab("rocket");
+    document.querySelector(`.bldrow[data-id="${sr.id}"]`).click();
+    await wait(300);
+    const role = document.getElementById("bf-role");
+    role.value = "main";
+    role.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(300);
+    const asMain = all(0).map(see);
+    const srFields = ids();
+    runNow();
+    await wait(900);
+    const flies = lastSim.st.tApo > 0 && lastSim.st.tMain > lastSim.st.tApo;
+    // a second stage with its own parachute: the Recovery row leaves it alone
+    tube.kids.splice(tube.kids.indexOf(sr), 1);
+    bldChanged(true);
+    await wait(200);
+    bldRender();
+    if (!document.querySelector('[data-stage="add"]')) document.querySelector(".bldaddtoggle").click();
+    document.querySelector('[data-stage="add"]').click();
+    await wait(400);
+    const top = BLD.stages.findIndex((s) => s.parts.some((q) => q.type === "nose")),
+      bi = BLD.stages.length - 1,
+      bt = BLD.stages[bi].parts.find((q) => q.type === "tube");
+    const bc = { ...bldNew("chute", 0.04), deploy: "ejection", delay: 2 };
+    bt.kids.push(bc);
+    bldChanged(true);
+    await wait(300);
+    const before = see(bc);
+    for (const cfg of ["motor", "two", "one"]) {
+      BLD.settings.recCfg = cfg;
+      bldChanged(true);
+      await wait(150);
+    }
+    const after = see(bc),
+      delay = bc.delay;
+    document.querySelector(`.bldrow[data-id="${bc.id}"]`).click();
+    await wait(300);
+    const bcFields = ids();
+    return { added, asMain, srFields, flies, top, bi, before, after, delay, bcFields, topChutes: all(0).map(see) };
+  });
+  const sAdded = st.added.find((c) => c.type === "streamer"),
+    sMain = st.asMain.find((c) => c.type === "streamer");
+  ok(
+    "streamer with a chute release: it is the drogue at the apogee charge, and the release holds the main",
+    sAdded.role === "drogue" &&
+      sAdded.deploy === "apogee" &&
+      !sAdded.rel &&
+      st.added.some((c) => c.type === "chute" && c.role === "main" && c.rel && Math.abs(c.alt - 91.44) < 0.01),
+    st.added,
+  );
+  ok(
+    "streamer as the main: it opens at the main charge (a chute release can't hold it), and the old main is a drogue",
+    sMain.role === "main" &&
+      sMain.deploy === "altitude" &&
+      !sMain.rel &&
+      Math.abs(sMain.alt - 152.4) < 0.01 &&
+      st.asMain.filter((c) => c.role === "main").length === 1,
+    st.asMain,
+  );
+  ok(
+    "streamer: its editor has a role and no setting of its own, and the design flies",
+    st.srFields.includes("role") && !st.srFields.includes("deploy") && !st.srFields.includes("release") && st.flies,
+    st.srFields,
+  );
+  ok("two stages: the nose's stage is still the first", st.top === 0 && st.bi > 0, [st.top, st.bi]);
+  ok(
+    "two stages: the booster's parachute keeps its own setting whatever the Recovery row says",
+    st.after.deploy === "ejection" && st.delay === 2 && st.after.role === undefined && !st.after.rel,
+    [st.before, st.after],
+  );
+  ok(
+    "two stages: the booster's parachute shows its own opening setting, not a role",
+    st.bcFields.includes("deploy") && !st.bcFields.includes("role"),
+    st.bcFields,
+  );
+  ok(
+    "two stages: the top stage's parachutes still follow the Recovery row",
+    st.topChutes.length === 2 && st.topChutes.every((c) => c.role === "main" || c.role === "drogue"),
+    st.topChutes,
+  );
+
   ok("no page errors", errs.length === 0, errs);
   console.log(`${checks} checks, ${fails} failed`);
   await browser.close();

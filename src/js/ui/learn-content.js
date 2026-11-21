@@ -374,7 +374,7 @@ export function learnChapters() {
         `<li><b>The thrust curve</b> is the motor's push second by second. Some motors kick hard at the start and taper off; others push evenly. The app flies the real measured curve, not just the average.</li>` +
         `<li><b>The delay</b> is the number at the end (the 6 in F50-6). It is the seconds from burnout until the ejection charge fires. Ideally that is close to the time from burnout to apogee. Too short, and the chute comes out while the rocket is still climbing fast. Too long, and it comes out on the way down, fast.</li></ul>` +
         `<p>Motors also add weight. A loaded motor can be a large share of a small rocket's weight, and it burns off as the flight goes, so the rocket gets lighter as it climbs.</p>` +
-        `<p>Letters through G are model rockets. H and above are high power and need certification: Level 1 for H and I, Level 2 for J to L, Level 3 for M and up.</p>` +
+        `<p>Letters through G are model rockets. H and above are high power and need certification: Level 1 for H and I, Level 2 for J to L, Level 3 for M and up. A few F and G motors need Level 1 too: any with more than 80 N of average thrust.</p>` +
         tryIt(
           "on the Motor tab, open Compare motors to fly the same rocket on several motors side by side. After a run, Motor Delay shows the best delay for that flight next to the delays the motor comes with.",
         ),

@@ -1,5 +1,5 @@
 # Checks every push and every pull request: formatting, lint, the regression, smoke and save-and-reopen tests, the drag benchmarks,
-# the phone-size walkthrough (its light and dark screenshots kept for 7 days as the walkthrough-screenshots artifact when
+# the phone-size and computer-size walkthroughs (their light and dark screenshots kept for 7 days as the walkthrough-screenshots artifact when
 # a test fails),
 # and that the Android app builds.
 
@@ -69,6 +69,9 @@ jobs:
       - name: Walkthrough at phone size (every screen in light and dark; no errors, nothing too wide, no blank chart)
         run: node tests/walkthrough.js
 
+      - name: Walkthrough at computer size (the wide layout; the same checks)
+        run: node tests/walkthrough.js --width 1600 --out test-results/walkthrough-wide
+
       - name: Keep the walkthrough's screenshots
         # only when something failed: that's when they're worth looking at, and they'd only take up storage otherwise
         if: failure()
@@ -77,6 +80,7 @@ jobs:
           name: walkthrough-screenshots
           path: |
             test-results/walkthrough
+            test-results/walkthrough-wide
             test-results/exports
           if-no-files-found: ignore
           retention-days: 7

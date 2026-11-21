@@ -4,6 +4,28 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 336 (2026-11-21)
+
+**On a computer or a tablet on its side**
+
+- **A wide layout.** On a window at least 1,100 pixels wide the app uses the room: the Rocket tab puts the design file beside the drawing, with the Design Tree, the part editor and the tools side by side (three columns on a large screen); Results has the numbers on the left and the checklist, animation and charts on the right; the Motor tab lists motors two or three across beside the chosen motor and the filters; the Range tab's panels flow down two or three columns. On a phone nothing changes.
+- **The flight animation, Learn and Flight vs prediction open larger there too.** The animation fills the window; Learn is wider, lists its chapters in two columns and shows larger drawings; Flight vs prediction is wider with a taller chart.
+
+**Wind Tunnel**
+
+- **The flow picture agrees with the drag model about boattails.** It showed the flow leaving a boattail from 8°, where the drag has it attached up to 15° and gone by 25°; both now use the same rule.
+- **A note above the picture** says it follows the app's drag model and is not a CFD simulation, and the angle of attack starts at 0°.
+
+**Wording and credits**
+
+- The Wind Tunnel's help and the About list name the right source for the body's base drag (NASA TR R-100 up to Mach 2, NACA TN 3819 above).
+- Learn's Motors chapter says that a few F and G motors (over 80 N of average thrust) need Level 1 too.
+- The third-party notices credit the Emscripten runtime inside the CAD kernel.
+
+**Tests**
+
+- The walkthrough of every screen also runs at computer size on each push, and the recovery test covers a streamer beside a chute release and a booster's own parachute.
+
 ## Build 335 (2026-11-20)
 
 **Builder: recovery fields**
