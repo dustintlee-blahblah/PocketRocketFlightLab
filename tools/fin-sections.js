@@ -17,7 +17,7 @@
  * Design files stay outside the repository: give a path to one.
  */
 "use strict";
-/* global window, document, localStorage, sessionStorage, openExample, openDesignAsk, unzipOrk, BLD */
+/* global window, document, openExample, openDesignAsk, unzipOrk, BLD */
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
@@ -289,7 +289,7 @@ const colour = (u) => {
   // (cells of one colour in a row are drawn as one bar)
   const lvl = (v) => (v > 0 ? Math.round(Math.min(v / (1.05 * t), 1) * 48) : -1);
   for (let j = 0; j < NY; j++)
-    for (let i = 0; i < NX; ) {
+    for (let i = 0; i < NX;) {
       const q = lvl(G[j][i]);
       let e = i + 1;
       while (e < NX && lvl(G[j][e]) === q) e++;
