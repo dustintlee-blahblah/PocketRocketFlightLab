@@ -17,6 +17,7 @@ version.
 
 - The tools that check and format the code are brought up to date (Prettier 3.10, ESLint 10, Babel 8, globals 17). Nothing in the app changes: the built page differs from build 338's only by a line break in one style rule.
 - Building and checking now need Node.js 22.18 or later (Babel 8 asks for it), and the workflows on GitHub run on Node 22. The page Node 22 builds is the same, byte for byte, as the one Node 20 built for build 338.
+- The Android app is built with Android Gradle plugin 9.5 and Gradle 9.9 (from 8.7 and 8.9). The app is the same: the signed APK holds the same 34 files, 31 of them identical byte for byte to build 338's (the manifest among them), the other three being the page itself, the compiled Java (48 bytes longer from the newer compiler) and a line naming the plugin's version. Plugin 9 turns Kotlin on for every project, which would have added 0.6 MB of unused code to this Java-only app; that is turned off. Check now lists what is in the signed APK, so the next change to the build tools can be compared the same way.
 
 ## Build 338 (2026-11-21)
 
