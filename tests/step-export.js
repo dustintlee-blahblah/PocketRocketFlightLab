@@ -326,6 +326,66 @@ export { bldDefault, bldNew } from ${JSON.stringify(path.join(root, "src/js/buil
       `${name} bevelled fins hold ${got.toFixed(0)} mm3 each (${want.toFixed(0)} by their sections, ${((got / want - 1) * 100).toFixed(1)}% off)`,
     );
   }
+  // rounded edges on a free-form fin: a half-round of half the fin's thickness, measured along the airflow like the
+  // bevel, on every piece of each edge. They are cut as strips (a half-round is only half the thickness deep, so no
+  // piece's strip stops short of the next), which leaves edges OpenCascade's own fillet can follow. The fins hold what
+  // their sections add up to, and take a fillet.
+  for (const [name, outline] of [
+    ["pointed free-form", pts],
+    ["flat-topped free-form", flatTop],
+  ]) {
+    const P = outline
+        .trim()
+        .split("\n")
+        .map((l) => l.split(",").map((v) => +v * 1000)),
+      A = area(outline) * 1e6,
+      span = Math.max(...P.map((q) => q[1])),
+      chord = (y) => {
+        const xs = [];
+        for (let i = 0; i < P.length; i++) {
+          const a = P[i],
+            b = P[(i + 1) % P.length];
+          if (a[1] <= y === b[1] <= y) continue;
+          xs.push(a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]));
+        }
+        return xs.length < 2 ? 0 : Math.max(...xs) - Math.min(...xs);
+      },
+      h = 1.5;
+    let want = 0;
+    const N = 4000;
+    for (let i = 0; i < N; i++) {
+      const c = chord(((i + 0.5) / N) * span),
+        d = 2 * h - c;
+      // a slab with a half-round off each end; where the fin is narrower than its thickness, what two half-rounds share
+      want +=
+        (c >= 2 * h
+          ? 2 * h * c - h * h * (4 - Math.PI)
+          : 2 * h * h * Math.acos(d / (2 * h)) - (d / 2) * Math.sqrt(4 * h * h - d * d)) *
+        (span / N);
+    }
+    const set = { shape: "freeform", pts: outline, t: 0.003, n: 3 },
+      sqr = await run(
+        `${name} fins, square (for the rounded edges)`,
+        make(0, (f) => Object.assign(f, set, { edge: "square" })),
+      ),
+      r = await run(
+        `${name} rounded fins`,
+        make(0, (f) => Object.assign(f, set, { edge: "rounded" })),
+      ),
+      got = (r.info.volume - (sqr.info.volume - 3 * 3 * A)) / 3;
+    ok(
+      r.info.warnings.length === 0 && Math.abs(got / want - 1) < 0.005,
+      `${name} rounded fins hold ${got.toFixed(0)} mm3 each (${want.toFixed(0)} by their sections, ${((got / want - 1) * 100).toFixed(2)}% off)`,
+    );
+    const rf = await run(
+      `${name} rounded fins with a 4 mm fillet`,
+      make(0.004, (f) => Object.assign(f, set, { edge: "rounded" })),
+    );
+    ok(
+      rf.info.warnings.length === 0 && rf.info.filletMethod === "OpenCascade" && rf.info.volume > r.info.volume + 300,
+      `${name} rounded fins take OpenCascade's own fillet (${rf.info.filletMethod}, ${(rf.info.volume - r.info.volume).toFixed(0)} mm3 of fillet)`,
+    );
+  }
   // the fillet that follows a fin's section ends where it meets the fin's side: nothing stands off the fin above it
   // (it used to run on past there and come back out through the skin, a ridge a few hundredths of a millimetre high
   // along the fillet's top edge). Checked on the fin at angle 0, which lies in the plane z = 0

@@ -1514,7 +1514,7 @@ function rk4Step(f, t, s, dt) {
  * @param {function} windVec the wind at a height and time, from the main flight
  * @param {object} out the main flight's time series, to which its path is added under key+"t", key+"alt", key+"xp"
  * @param {string} [key="b"] "b" for the booster, "b1" for the first stage
- * @returns {object} its apogee, landing time and place, descent rate, deployment time, mass, stability and any live
+ * @returns {object} its apogee, landing time and place, descent rate, deployment time and altitude, mass, stability and any live
  *   charge that fired while its chute was packed (ejLive)
  */
 function flyBooster(D, L, mb, start, windVec, out, key = "b") {
@@ -1532,19 +1532,31 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
     ph = "coast",
     apo = s[1],
     tApo = null,
-    tDep = null;
+    tDep = null,
+    altDep = null;
   // the stage's chute opens on its own event: apogee plus a delay, an altitude on the way down, the motor's ejection charge, or a timer
   const ev = D.bChuteEv || "apogee",
     dd = Math.max(0, D.bChuteDelay || 0),
     dAlt = D.bChuteAlt || 0;
-  const due = () =>
+  // the moment a timed event falls due (null for an altitude, or while it isn't known yet); the steps are cut to end on
+  // it, and on the opening altitude, so the chute opens then and there and not up to a step later
+  const dueAt = () =>
     ev === "altitude"
-      ? tApo != null && s[1] <= dAlt
+      ? null
       : ev === "launch"
-        ? t >= dd
+        ? dd
         : ev === "ejection"
-          ? start.ej != null && t >= start.ej + dd
-          : tApo != null && t >= tApo + dd;
+          ? start.ej != null
+            ? start.ej + dd
+            : null
+          : tApo != null
+            ? tApo + dd
+            : null;
+  const due = () => {
+    if (ev === "altitude") return tApo != null && s[1] <= dAlt;
+    const at = dueAt();
+    return at != null && t >= at - 1e-9;
+  };
   // the earth's rotation (Coriolis), as for the main flight
   const OM = 7.2921159e-5,
     latR = ((L.lat ?? 40) * Math.PI) / 180,
@@ -1594,6 +1606,14 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
         v = Math.hypot(s[2], s[3], s[5]);
       dt = Math.min(dt, Math.max((0.5 * mBo) / (atm.rho * chute * Math.max(v, 1)), 0.002));
     }
+    if (ph !== "chute" && chute) {
+      const at = dueAt();
+      if (at != null && t < at - 1e-9 && t + dt > at) dt = at - t;
+      if (ev === "altitude" && tApo != null && s[3] < 0 && s[1] > dAlt) dt = Math.min(dt, (s[1] - dAlt) / -s[3] + 1e-4);
+    }
+    // its own delay charge, for the warning when the chute is still packed then
+    if (!ejB && start.ej != null && t < start.ej - 1e-9 && t + dt > start.ej) dt = start.ej - t;
+    const prev = s;
     const k1 = f(s, ph, t),
       k2 = f(
         s.map((v, i) => v + (k1[i] * dt) / 2),
@@ -1617,22 +1637,27 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
       tApo = t;
     }
     // the booster's own delay charge firing while its chute, set to open some other way, is still packed
-    if (!ejB && start.ej != null && t >= start.ej) {
+    if (!ejB && start.ej != null && t >= start.ej - 1e-9) {
       ejB = true;
       if (chute && ph !== "chute" && ev !== "ejection") liveB = { t, alt: s[1], v: Math.hypot(s[2], s[3], s[5]) };
     }
     if (ph !== "chute" && chute && due()) {
       ph = "chute";
       tDep = t;
+      altDep = s[1];
     }
     apo = Math.max(apo, s[1]);
-    if (t - last >= 0.1) {
+    if (t - last >= 0.1 && s[1] > 0) {
       OT.push(t);
-      OA.push(Math.max(s[1], 0));
+      OA.push(s[1]);
       OX.push(s[0]);
       last = t;
     }
     if (s[1] <= 0) {
+      // the touchdown itself, between the step's two ends (the step ends below the ground)
+      const k = prev[1] > s[1] ? Math.min(Math.max(prev[1] / (prev[1] - s[1]), 0), 1) : 1;
+      t = t - dt + k * dt;
+      s = s.map((v, i) => prev[i] + k * (v - prev[i]));
       OT.push(t);
       OA.push(0);
       OX.push(s[0]);
@@ -1655,6 +1680,7 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
     rate: Math.sqrt((2 * mBo * g) / (atm0.rho * (chute || GB.tumbleCdA))),
     chute: chute > 0,
     tDeploy: tDep,
+    altDeploy: altDep,
     mass: mBo,
     stable,
     margin: (cpB - cgB) / (2 * GB.R),

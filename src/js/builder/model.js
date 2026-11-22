@@ -291,6 +291,7 @@ export function bldNew(type, R = 0.0333) {
         w: 0.03,
         h: 0.025,
         len: 0.05,
+        end: 0,
         mass: 0.03,
         ref: "top",
         pos: 0.1,

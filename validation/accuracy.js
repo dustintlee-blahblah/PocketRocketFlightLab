@@ -34,6 +34,7 @@ const KIND = {
   cdJet: { label: "drag the exhaust removes", unit: " Cd", err: (a, m) => a - m },
   cdFinsPressure: { label: "fin pressure drag", unit: " Cd", err: (a, m) => a - m },
   cdAftPressure: { label: "boattail pressure drag", unit: " Cd", err: (a, m) => a - m },
+  cdAft: { label: "boattail and base drag", unit: " Cd", err: (a, m) => a - m },
   cp: { label: "CP", unit: "% of length", err: (a, m) => 100 * (a - m) },
   cna: { label: "CNα", unit: "%", err: (a, m) => (100 * (a - m)) / m },
 };
@@ -96,6 +97,11 @@ const KIND = {
             const pr = (x) => cdParts(x.A, M * air.a, air).pressure;
             return pr(m) - pr(b);
           }
+          // a boattail's pressure drag and the drag of the base it leaves
+          if (c.quantity === "cdAft") {
+            const x = cdParts(m.A, M * air.a, air);
+            return x.pressure - cdParts(b.A, M * air.a, air).pressure + x.base;
+          }
           return balance(m.A, M)[c.quantity];
         });
         return { id: c.id, app };
@@ -124,15 +130,15 @@ const KIND = {
   const mean = (a) => a.reduce((s, x) => s + Math.abs(x), 0) / a.length,
     bias = (a) => a.reduce((s, x) => s + x, 0) / a.length;
   const fmt = (q, a) => {
-    if (!a.length) return "".padEnd(19);
+    if (!a.length) return "".padEnd(21);
     const d = /^cd(Fins|Jet|Aft|Bump)/.test(q) ? 3 : 1;
-    return `${mean(a).toFixed(d)} (${bias(a) >= 0 ? "+" : ""}${bias(a).toFixed(d)}) n=${a.length}`.padEnd(19);
+    return `${mean(a).toFixed(d)} (${bias(a) >= 0 ? "+" : ""}${bias(a).toFixed(d)}) n=${a.length}`.padEnd(21);
   };
   console.log("\nMean absolute error (mean signed error in brackets), by speed band:\n");
   console.log(
     "cases".padEnd(8) +
-      "quantity".padEnd(22) +
-      BANDS.map(([n, lo, hi]) => `${n} ${lo}–${Math.min(hi, 5)}`.padEnd(19)).join(""),
+      "quantity".padEnd(34) +
+      BANDS.map(([n, lo, hi]) => `${n} ${lo}–${Math.min(hi, 5)}`.padEnd(21)).join(""),
   );
   for (const role of ["check", "tuned"])
     for (const q of Object.keys(KIND)) {
@@ -140,7 +146,7 @@ const KIND = {
       if (!sel.length) continue;
       console.log(
         role.padEnd(8) +
-          `${KIND[q].label} (${KIND[q].unit.trim()})`.padEnd(22) +
+          `${KIND[q].label} (${KIND[q].unit.trim()})`.padEnd(34) +
           BANDS.map(([, lo, hi]) =>
             fmt(
               q,
@@ -157,7 +163,7 @@ const KIND = {
     const sel = rows.filter((r) => r.c.role === "check" && /^cd(Fore)?$/.test(r.c.quantity) && r.c.grade === g);
     if (!sel.length) continue;
     console.log(
-      `grade ${g}`.padEnd(30) +
+      `grade ${g}`.padEnd(42) +
         BANDS.map(([, lo, hi]) =>
           fmt(
             "cd",

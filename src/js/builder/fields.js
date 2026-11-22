@@ -337,6 +337,8 @@ export function bldFields(p) {
         ...(p.shape === "flyaway" ? [] : [["w", "Width", "num", "small"]]),
         ["h", p.shape === "flyaway" ? "Thickness around the body" : "Height above the body", "num", "small"],
         ["len", "Length", "num", "small"],
+        // a streamlined shape's tapered ends, where they are shorter than half of it (0: half each)
+        ...(p.shape === "faired" ? [["end", "Length of each tapered end (0 = half)", "num", "small"]] : []),
         ["mass", "Weight", "num", "smass"],
         ...(p.shape === "flyaway" ? [] : [["ang", "Angle around the body", "num", "deg"]]),
         ...posF,

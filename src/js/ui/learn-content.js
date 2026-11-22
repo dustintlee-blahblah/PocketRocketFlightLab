@@ -636,10 +636,15 @@ export function learnChapters() {
             "Altimeters, GPS, accelerometers and tracking",
             "6.3% (RASAero II: 5.2%)",
           ],
-          ["Drag, Arcas sounding rocket, Mach 1.5 to 4.6 (check)", "NASA TN D-4014, wind tunnel", "4.1%"],
+          ["Drag, Arcas sounding rocket, Mach 1.5 to 4.6 (check)", "NASA TN D-4014, wind tunnel", "5.3%"],
           ["Drag, fin-stabilized cone-cylinder, Mach 2.5 to 3.9 (check)", "NACA RM L55G28a, free flight", "1.2%"],
           ["Drag, Aerobee 150A, Mach 0.1 to 5 (check)", "Aerojet wind-tunnel data", "5.9% under thrust, 4.8% coasting"],
-          ["Drag, boattailed bodies in flight, Mach 0.8 to 2 (check)", "NASA TR R-100", "6.2% and 12.6%"],
+          ["Drag, boattailed bodies in flight, Mach 0.8 to 2 (check)", "NASA TR R-100", "14.6% and 17.9%, high"],
+          [
+            "A boattail's own pressure drag, Mach 0.9 to 1.4 (check)",
+            "NACA RM L56K22, RM A57I09 and NASA TM X-1960, wind tunnel",
+            "within 0.01 in drag coefficient at 15°; 0.01 to 0.02 too little at 3° to 10°",
+          ],
           ["Center of pressure, Mach 0.6 to 4.6", "NASA TN D-4013 and D-4014, Arcas", "3.1% of body length"],
         ]
           .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`)

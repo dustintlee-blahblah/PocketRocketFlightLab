@@ -7,6 +7,7 @@
  *     are nudged by one unit in the last place on a share of their calls, which is how one browser's maths library
  *     differs from another's. Before build 339 a tie in the step size under a filling canopy turned that into up to
  *     1.5% in landing speed and 0.5% in landing time.
+ *   - a dropped booster's chute opens at its altitude or its delay, and its path ends at the touchdown.
  *
  *   node build.js && node tests/descent.js [--html other-build.html]
  */
@@ -145,6 +146,57 @@ const NUDGE = () => {
         }
       }
     }
+
+  // a dropped booster on its own chute: it opens at its altitude, or its delay after the booster's apogee, and lands at
+  // the touchdown (before build 341 each fell at the end of whichever 0.05 s step came next)
+  const booster = (set) =>
+    p.evaluate((set) => {
+      setL(defaultLaunch());
+      bldNewDesign();
+      setMotorId("a-5f4294d20002e900000007dd");
+      L.wind = 3;
+      L.turb = 0;
+      bldRender();
+      if (!document.querySelector('[data-stage="add"]')) document.querySelector(".bldaddtoggle").click();
+      document.querySelector('[data-stage="add"]').click();
+      setBoostId("a-5f4294d20002e9000000000d");
+      bldChanged(true);
+      bldApply();
+      renderMotors();
+      Object.assign(D, { bRecovery: "chute", bChuteDia: 0.45, bChuteCd: 0.8 }, set);
+      runAll();
+      const b = lastSim.st.booster,
+        o = lastSim.out;
+      return (
+        b && {
+          tApo: b.tApo,
+          apogee: b.apogee,
+          tDeploy: b.tDeploy,
+          altDeploy: b.altDeploy,
+          tLand: b.tLand,
+          last: [o.bt[o.bt.length - 1], o.balt[o.balt.length - 1]],
+          rising: o.bt.every((x, i) => !i || x > o.bt[i - 1]),
+        }
+      );
+    }, set);
+  const bAlt = await booster({ bChuteEv: "altitude", bChuteAlt: 40 });
+  ok("booster: flies and comes down", !!bAlt && bAlt.tLand > bAlt.tApo && bAlt.apogee > 60, bAlt);
+  if (bAlt) {
+    ok("booster: a chute set for 40 m opens at 40 m", Math.abs(bAlt.altDeploy - 40) < 0.05, bAlt.altDeploy);
+    ok(
+      "booster: its path ends at the touchdown",
+      Math.abs(bAlt.last[0] - bAlt.tLand) < 1e-9 && bAlt.last[1] === 0 && bAlt.rising,
+      bAlt.last,
+    );
+  }
+  const bDel = await booster({ bChuteEv: "apogee", bChuteDelay: 1.23 });
+  if (bDel)
+    ok(
+      "booster: a chute set for 1.23 s after its apogee opens then",
+      Math.abs(bDel.tDeploy - bDel.tApo - 1.23) < 1e-6,
+      [bDel.tApo, bDel.tDeploy],
+    );
+  else ok("booster: flies with a delay", false);
 
   ok("no page errors", errs.length === 0, errs.slice(0, 3));
   await browser.close();

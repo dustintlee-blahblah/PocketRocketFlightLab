@@ -4,6 +4,35 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 341 (2026-11-22)
+
+**The flight**
+
+- **A dropped booster's parachute opens when it is set to, and its flight ends at the touchdown.** The booster's descent took its events at the end of whichever time step came next (0.05 s): a chute set for an altitude opened up to a few metres below it, one set for a delay opened up to 0.05 s late, and the landing was put at the end of the step that passed ground level. The step is now cut to end at each event, and the landing is worked back to the moment of touchdown, as the sustainer's already were. A booster's landing time, drift and plotted path change slightly (a few hundredths of a second, under a metre); nothing about the rest of the flight does. `tests/descent.js` checks it.
+
+**Drag: boattails above Mach 1**
+
+- **A boattail's wave drag was two to four times too small from Mach 0.9 to 2; corrected.** The app takes it from an equation in NASA TR R-100 (Stoney, 1961), printed there as (0.0010·θ + 0.00071·θ²)/M. The 0.0010 is a misprint for 0.010. The report's own figure 13(a) plots the equation, and its curves are only reproduced with 0.010; the report says the equation approximates the theory of NACA TN 2972 (Jack), which is true with 0.010 and two to four times too small as printed; and four sets of measurements of boattails alone, and finned flight models differing only in afterbody, agree with 0.010 (below).
+- **What changes.** A rocket with an attached boattail (a slope up to 15°, fading out by 25°) that passes about Mach 0.9 has more drag there, so a lower apogee. For a boattail of 8° to 0.7 of the diameter it is 0.04 to 0.05 more in drag coefficient at Mach 1.1 to 1.3 (about 0.08 instead of 0.035). Rockets that stay below Mach 0.88, rockets without a boattail, and tail cones steeper than 25° (counted as separated) are not affected: none of the 23 measured flights changes, and the apogee ± on the Results tab is the same. Above Mach 2.5, where the app uses wind-tunnel data, nothing changes.
+- **What it did to the accuracy figures.** Boattails measured alone, 3° to 15°: from 0.02 to 0.11 too little drag in drag coefficient to within 0.01 at 15° and 0.006 to 0.024 too little at 3° to 10°. The Arcas wind-tunnel model through Mach 1: 14.3% to 9.2% (it had 14–27% too little drag from Mach 0.9 to 1.05 and is within 3% from Mach 1 to 1.1). Whole flight models above Mach 1 went the other way and now show too much drag: TR R-100's two boattailed models (6.2% and 12.5% to 14.6% and 17.9%). The excess is not the boattail's: NACA RM L53I01's flight models with no boattail at all show the same 7% to 15% too much, and what its boattails change agrees with the corrected value. The old, too-small boattail drag had been cancelling it. What has been found of it so far (base drag behind 7° to 9° boattails, thin fins near Mach 1.2, very slender noses) is in AERODYNAMICS.md, gap 15; none of it is changed in this build. The Arcas model without fins at Mach 1.5 and 1.8 also shows too much (11% and 5% to 32% and 23%); its report puts an unusually low base force there down to the reflexed lip on its base, which the app has no part for. Across all check cases, drag error from Mach 0.8 to 1.2 goes from 12.6% to 10.4% and from Mach 1.2 to 3 from 5.9% to 9.4%.
+- **One shared flight moved.** A flyer's rocket with a 16° tail cone that reached Mach 1.5 went from 0.3% above its measured apogee to 4.3% below (VALIDATION.md, "shared by flyers").
+- The Learn page's accuracy table has the new figures and a row for boattails measured alone.
+
+**Protuberances**
+
+- **A streamlined protuberance can have a straight middle.** New field, shown for the Streamlined shape: "Length of each tapered end". Above Mach 1 a streamlined item's drag depends on how steeply its front climbs, and the app took that climb to spread over half the item's length whatever its shape, which gave a long fairing with short pointed ends far too little drag. With the end's length entered, the antenna fairings NASA measured on a Cajun sounding rocket (TM X-1771, Mach 2.3 to 4.63) come out 0.019 off in drag coefficient on average (0.06 to 0.12 measured); before, as a streamlined shape, they got six to ten times too little. Left at 0 the shape is as before, and below Mach 1 the field changes nothing. It is kept in the app's design files; OpenRocket ignores it.
+- The Protuberance shape help no longer says to enter such a fairing as a sloped-front box (build 340's advice).
+
+**Accuracy figures**
+
+- **New check: fins above Mach 2.** NASA TM X-1684 tested a quarter-scale Tomahawk sounding rocket at Mach 2.3 to 4.63 with no fins and with two fin sets (a wedge leading edge with a rounded nose, a blunt trailing edge). What the fins add, 0.19 to 0.32 in drag coefficient, the app gives within 0.02 at every Mach number (0.009 and 0.011 on average). The body alone comes out high: 7% at Mach 2.3 and 15 to 18% from Mach 3 up. That is recorded as an open gap (AERODYNAMICS.md, gap 14), with nothing changed on one model.
+- **New checks: boattails measured alone.** Four sources that measure a boattail's own drag, where every earlier check was a whole rocket: NACA RM A57I09 (a body ten diameters long with and without a boattail, Mach 0.6 to 1.4), NACA RM L56K22 (cones of 3°, 5.6°, 8° and 16° cut off at three lengths, Mach 0.6 to 1.3), NASA TM X-1960 (13 short boattails of 3° to 15°, Mach 1.22 and 1.32) and the free-flight afterbodies in NASA TR R-100's figure 13(a). They are what found the misprint above. With it corrected the app is within 0.01 at 15°, 0.006 to 0.024 too low on slopes of 3° to 10°, and within 0.012 of the flight points. Still off: short gentle boattails that leave most of the base, and boattail drag below Mach 0.9, which the app does not have (AERODYNAMICS.md, gap 16).
+- The validation builder can give a fin a trailing edge of its own, and a streamlined protuberance its end length; `validation/accuracy.js` scores a boattail's pressure drag with the base drag behind it.
+
+**3D export**
+
+- `tests/step-export.js` now checks rounded edges on free-form fins: the fins hold what their cross-sections add up to (within 0.02%) and take a fillet. Nothing in the export changed; a trial that cut the rounded edges another way gave the same shape with a slower, heavier fillet and was dropped.
+
 ## Build 340 (2026-11-22)
 
 **Accuracy figures**

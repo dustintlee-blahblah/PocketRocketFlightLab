@@ -20,6 +20,9 @@
  *    drag of the face of a step facing the flow, on the step's area, at heights of 0.1 and 1 boundary-layer
  *    thicknesses: a 3.9 in body stepping up 75 in back from the nose, the pressure drag with the step less without.
  *    These are the curves the app's step drag is built from, so this guards the wiring, not the physics.
+ *  - NASA TR R-100 (Stoney, 1961), figure 13(a): four conical afterbodies in free flight at Mach 1.2, their pressure
+ *    drag plus the base drag behind them. Guards the boattail equation's first coefficient: 0.010, not the 0.0010 the
+ *    report prints (with 0.0010 the mean error here is 0.039).
  */
 "use strict";
 const path = require("path");
@@ -39,7 +42,16 @@ const sets = [];
 args.forEach((a, i) => {
   if (a === "--set") sets.push(args[i + 1].split("="));
 });
-const { finnedOrk: ork, flightOrk, A53, A53_PTS, RM10, RM10_PTS } = require("../validation/cases.js");
+const {
+  finnedOrk: ork,
+  flightOrk,
+  A53,
+  A53_PTS,
+  RM10,
+  RM10_PTS,
+  R100_F13,
+  boattailOrk,
+} = require("../validation/cases.js");
 // the step case: [Mach, step height over the boundary layer's thickness, the source's drag coefficient]
 const STEP_X = 75 * 0.0254,
   STEP_RE = 3e7,
@@ -106,10 +118,18 @@ const stepOrk = (hd) =>
           pa = (m) => cd(m, M, cases.stepRe, cases.stepX).pressure * m.A.Aref;
         return [M, meas, (pa(st) - pa(flush)) / (st.A.Aref - flush.A.Aref)];
       });
+      const plain = model(cases.btPlain),
+        at = (m) => cdParts(m.A, 1.2 * L0.a, L0, 0);
+      out.bt = cases.bt.map(([xml, meas]) => {
+        const x = at(model(xml));
+        return [1.2, meas, x.pressure - at(plain).pressure + x.base];
+      });
       return out;
     },
     {
       cases: {
+        bt: R100_F13.map(([ld, h, v]) => [boattailOrk(4 * ld, h), v]),
+        btPlain: boattailOrk(0, 1),
         a53: ork(A53),
         a53Pts: A53_PTS,
         rm10f: ork(RM10(true)),
@@ -152,5 +172,6 @@ const stepOrk = (hd) =>
     0.02,
     false,
   );
+  report("NASA TR R-100 figure 13(a): conical afterbodies at Mach 1.2, pressure and base drag", res.bt, 0.02, false);
   process.exitCode = fail ? 1 : 0;
 })();

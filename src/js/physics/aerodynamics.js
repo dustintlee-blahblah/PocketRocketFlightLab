@@ -735,12 +735,15 @@ const BUMP_CD = { bluff: 1.2, long: 0.74, round: 0.78, faired: 0.07, ramp: 0.39,
  * Above Mach 1 a blunt shape follows the rail button's rise (cylinderCd, by stagnation pressure and modified Newtonian:
  * about 1.3 at Mach 1.5 for the blunt box), which Hoerner's free-flight values at Mach 1 to 2 bracket (ch. XX, p.
  * 20-14: 0.75 for a forward-facing step plus 0.45 for a rear-facing one, 0.8 for blunt rings, 2.0 for round rivet
- * heads, which he calls high). There is no such data for a faired one: it takes the larger of that and the Newtonian
- * pressure on a front face that climbs to its height over half its length, 2·sin²θ. A sloped-front box stays a share of
+ * heads, which he calls high). A faired one takes the larger of that and the Newtonian pressure on a front face that
+ * climbs to its height over its tapered end, 2·sin²θ: half its length, or the length of each end where that is given
+ * (a long fairing with short pointed ends). NASA TM X-1771's antenna fairings on a Cajun rocket check the second: ends
+ * 0.82 in long on fairings 0.51 in high and 15.6 long add 0.12 to the axial-force coefficient at Mach 2.3 and 0.06 to
+ * 0.07 above Mach 4, where this gives 0.083 (and would give 0.011 over half the length). A sloped-front box stays a share of
  * the long blunt box at every speed: 0.39/0.74 below Mach 1, and above it the share Hoerner's free-flight steps give, a
  * rear-facing step (0.45) plus modified Newtonian pressure on a 30° front (Cp,max·sin²30°) against a forward-facing
  * step (0.75) plus the same rear one (0.70 of the long box at Mach 1.5), blended over Mach 1 to 1.3.
- * @param {{shape:string, h:number, len:number}} b protuberance
+ * @param {{shape:string, h:number, len:number, end?:number}} b protuberance (end: a faired one's tapered end, 0 = half)
  * @param {number} M Mach number
  * @returns {number}
  */
@@ -753,7 +756,7 @@ function bumpCd(b, M) {
     return ((BUMP_CD.long * cylinderCd(M)) / 1.2) * ((1 - t) * sub + t * sup);
   }
   if (b.shape !== "faired" || M <= 1) return c;
-  const s = Math.sin(Math.atan2(b.h, Math.max(b.len / 2, 1e-6)));
+  const s = Math.sin(Math.atan2(b.h, Math.max(b.end > 0 ? Math.min(b.end, b.len / 2) : b.len / 2, 1e-6)));
   return Math.max(c, smooth01((M - 1) / 0.3) * 2 * s * s);
 }
 /**
@@ -1235,6 +1238,8 @@ export function aero(D) {
       x: b.x,
       h: b.h,
       len: b.len || 0,
+      // a streamlined shape's tapered ends, if they are shorter than half of it (0: half each)
+      end: b.end > 0 ? b.end : 0,
       // a fly-away rail guide is a cage around the body: its front is the ring between the body and its outside
       front:
         b.shape === "flyaway"
@@ -1301,7 +1306,7 @@ export function aero(D) {
         bt = ls && ls.kind === "trans" && ls.r2 < ls.r1 && ls.len > 0 ? Math.atan((ls.r1 - ls.r2) / ls.len) : 0;
       return {
         // for the boattail's drag (TR R-100, equation 1): the base over the body's maximum radius, the boattail's
-        // whole angle in degrees, and the share of the flow that stays attached to it
+        // slope in degrees (its half-angle), and the share of the flow that stays attached to it
         hD: ls ? ls.r2 / R : 1,
         btDeg: bt * (180 / Math.PI),
         /* The attached share: full up to 15°, none past 25°. TR R-100 checked its afterbody
@@ -1706,28 +1711,37 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
   const lastOvr = A.segs.length > 0 && A.segs[A.segs.length - 1].cdo > 0;
   if (A.baseArea > 0 && !lastOvr) base += (cbBase * Math.max(A.baseArea - Math.min(nozzleArea, A.baseArea), 0)) / S;
   /* The pressure (wave) drag of a boattail ending at the base, above Mach 1. TR R-100's
-     equation 1 for conical afterbodies: (0.0010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)^n] on the
-     maximum cross-section, θ the afterbody's slope in degrees, n = 4 below Mach 3.5 and 3 above. Its first part
-     approximates the second-order theory of NACA TN 2972 (Jack) and was checked against flight data for slopes under
-     15°; the report warns against using it below Mach 1, so it fades in through the transonic drag rise, from Mach
-     0.88 to 1 (the Arcas model's 15° boattail, NASA TN D-4013 with its fins off, gains about 0.15 of pressure drag
-     over that range and holds it to Mach 1.2; this gives 0.14 at Mach 1 and 0.12 at 1.2). Only the attached share
-     of a steeper cone counts (the rest is already base area, above).
+     equation 1 for conical afterbodies: (0.010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)^n] on the
+     maximum cross-section, θ the afterbody's slope in degrees, n = 4 below Mach 3.5 and 3 above.
+     The report prints the first coefficient as 0.0010, a misprint: its own figure 13(a) plots the equation at Mach
+     1.2 for afterbodies 1.78, 3.5 and 5 diameters long, and those curves are only reproduced with 0.010 (a cone 1.78
+     diameters long to a point reads 0.29; the equation gives 0.288 with 0.010 and 0.159 with 0.0010). The report
+     says the term "approximates the second-order theoretical values calculated by Jack" (NACA TN 2972), and with
+     0.010 it does: at Mach 1.5 and an area ratio of 0.6 Jack's 3°, 7° and 11° boattails have 0.018, 0.057 and 0.094,
+     the equation 0.016, 0.045 and 0.084 (0.004, 0.018 and 0.041 as printed). Until build 341 the app used the
+     printed 0.0010. Measured pressure drag agrees with the corrected value: 3° to 8° cones at Mach 1.05 to 1.3 (NACA
+     RM L56K22: the equation is 0.01 to 0.02 low, 0.02 to 0.06 as printed), a 6° boattail at Mach 1 to 1.4 (NACA RM
+     A57I09), 15° cones at Mach 1.22 and 1.32 (NASA TM X-1960: within 0.01; half the measured drag as printed) and
+     the free-flight afterbodies of figure 13(a) itself (within 0.012; up to 0.07 low as printed). On short
+     boattails of 3° to 10° that leave most of the base (TM X-1960) it is still 0.01 to 0.02 low.
+     The report checked the equation against flight data for slopes under 15° and warns against using it below Mach
+     1, so it fades in through the transonic drag rise, from Mach 0.88 to 1 (RM L56K22's boattail drag rises from
+     Mach 0.9 to 1.05). Only the attached share of a steeper cone counts (the rest is already base area, above).
+     Nothing measures a boattail alone between Mach 1.4 and 2.5 (AERODYNAMICS.md, gap 15).
      The report's flight data stop near Mach 2. From Mach 2.5 the drag is taken from wind-tunnel measurements of
      conical boattails behind a cylinder at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, US Army Missile Command
      RD-TR-70-5, as MIL-HDBK-762 figure 5-144 gives them: slopes of 4.3° to 9.5°, bases 0.73 and 0.82 of the
-     diameter), which run two to five times equation 1 there. They follow linear theory's 2·tan θ/β acting on the
-     area the boattail takes away, 1 − (base radius / maximum radius)², less a share that grows with the slope:
-     × (1.15 − 0.058·θ), 0.90 at 4.3° and 0.60 at 9.5°, within 0.004 of all eight measurements (the handbook's own
-     theory chart, figure 5-122, is this without the reduction, up to 1.5 times the measurements; TR R-100 also
-     found theory overestimating as slopes near 15°). The two are blended from Mach 2 to 2.5, so each is used where
-     it was measured. */
+     diameter). They follow linear theory's 2·tan θ/β acting on the area the boattail takes away,
+     1 − (base radius / maximum radius)², less a share that grows with the slope: × (1.15 − 0.058·θ), 0.90 at 4.3°
+     and 0.60 at 9.5°, within 0.004 of all eight measurements (equation 1 is within 0.008 of them at Mach 2.5; the
+     handbook's own theory chart, figure 5-122, is linear theory without the reduction, up to 1.5 times the
+     measurements). The two are blended from Mach 2 to 2.5, so each is used where it was measured. */
   if (M > 0.88 && A.baseB && A.baseB.attT > 0 && !lastOvr) {
     const B = A.baseB,
       th = Math.min(B.btDeg, 15),
       h = Math.min(Math.max(B.hD, 0), 1),
       eq1 =
-        ((smooth01((M - 0.88) / 0.12) * (0.001 * th + 0.00071 * th * th)) / Math.max(M, 1)) *
+        ((smooth01((M - 0.88) / 0.12) * (0.01 * th + 0.00071 * th * th)) / Math.max(M, 1)) *
         (1 - Math.pow(h, M < 3.5 ? 4 : 3)),
       wHi = smooth01((M - 2) / 0.5),
       lin =

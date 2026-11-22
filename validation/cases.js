@@ -45,7 +45,8 @@ function finnedOrk(o) {
 /**
  * An OpenRocket design built from a list of body parts (sizes in inches): a nose, then tubes ("tube": len, d) and
  * conical transitions ("tail": len, d0, d1), any of which can carry a set of trapezoidal fins
- * ({n, cr, ct, s, sw, t, edge, le?, te?, aft}: aft is the root trailing edge's distance ahead of the part's aft end).
+ * ({n, cr, ct, s, sw, t, edge, le?, te?, ler?, teEdge?, aft}: aft is the root trailing edge's distance ahead of the part's
+ * aft end; teEdge a trailing edge set apart from the section, as the app's own files carry it).
  * A tube can carry protuberances instead (bumps). No masses: for drag and CP only.
  * @param {object} o {name, finish, nose: {len, shape, param?}, parts}
  * @returns {string} XML
@@ -57,17 +58,18 @@ function partsOrk(o) {
       "<aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped>",
     fins = (F) =>
       F
-        ? `<trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.aft || 0) * IN}</axialoffset>${fin}<fincount>${F.n || 4}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection><cant>0</cant>${F.le > 0 || F.te > 0 ? `<prflbevelle>${(F.le || 0) * IN}</prflbevelle><prflbevelte>${(F.te || 0) * IN}</prflbevelte>` : ""}${F.ler > 0 ? `<prflleradius>${F.ler * IN}</prflleradius>` : ""}<rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset>`
+        ? `<trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.aft || 0) * IN}</axialoffset>${fin}<fincount>${F.n || 4}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection>${F.teEdge ? `<prfltrailingedge>${F.teEdge}</prfltrailingedge>` : ""}<cant>0</cant>${F.le > 0 || F.te > 0 ? `<prflbevelle>${(F.le || 0) * IN}</prflbevelle><prflbevelte>${(F.te || 0) * IN}</prflbevelte>` : ""}${F.ler > 0 ? `<prflleradius>${F.ler * IN}</prflleradius>` : ""}<rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset>`
         : "",
     // protuberances on a tube, as the app's own files carry them (a mass with the app's shape tags): {shape, w, h, len,
-    // at (its front, from the tube's front), n (how many, spaced round the body)}
+    // end (a streamlined one's tapered end, if shorter than half of it), at (its front, from the tube's front), n (how
+    // many, spaced round the body)}
     bumps = (B) =>
       B && B.length
         ? `${B.map((k) =>
             Array.from(
               { length: k.n || 1 },
               (_, j) =>
-                `<masscomponent><name>${k.shape}</name><axialoffset method="top">${k.at * IN}</axialoffset><packedlength>${k.len * IN}</packedlength><packedradius>${(k.w / 2) * IN}</packedradius><radialposition>0</radialposition><radialdirection>${(360 * j) / (k.n || 1)}</radialdirection><mass>0</mass><masscomponenttype>masscomponent</masscomponenttype><prflbump>${k.shape}</prflbump><prflbumpw>${k.w * IN}</prflbumpw><prflbumph>${k.h * IN}</prflbumph></masscomponent>`,
+                `<masscomponent><name>${k.shape}</name><axialoffset method="top">${k.at * IN}</axialoffset><packedlength>${k.len * IN}</packedlength><packedradius>${(k.w / 2) * IN}</packedradius><radialposition>0</radialposition><radialdirection>${(360 * j) / (k.n || 1)}</radialdirection><mass>0</mass><masscomponenttype>masscomponent</masscomponenttype><prflbump>${k.shape}</prflbump><prflbumpw>${k.w * IN}</prflbumpw><prflbumph>${k.h * IN}</prflbumph>${k.end ? `<prflbumpend>${k.end * IN}</prflbumpend>` : ""}</masscomponent>`,
             ).join(""),
           ).join("")}`
         : "",
@@ -113,7 +115,7 @@ function arcasOrk(tubeLen, finOffset, fins = true) {
    attack on the body's cross-section, read off figure 8 (to about ±0.01): the clean rocket, and with each antenna set.
    Dovap antennas (figure 1(c)): four fairings 15.60 in long starting 18.98 in behind the nose, a half-round of 0.31 in
    radius on a 0.20 in riser (0.51 in high, 0.62 wide, 0.275 sq in of frontal area), with pointed ends 0.82 in long.
-   Entered as the app's sloped-front box of that height and frontal area (0.539 in wide).
+   Entered as the app's streamlined shape with ends 0.82 in long, of that height and frontal area (0.539 in wide).
    Quadraloop antennas (figure 1(d)): two boxes 0.41 in wide, 0.26 high and 2.72 long with the front raked back 45°,
    1.41 in behind the nose; their curve lies on the clean one within the reading, taken as +0.01.
    The turnstile antennas (four rods swept 45°) have no shape in the app and aren't entered. */
@@ -140,6 +142,281 @@ const CAJUN_RE_PER_M = 2.0e6 / 0.3048,
           fins: { n: 4, cr: 8.61, ct: 4.92, s: 3.69, sw: 3.69, t: 0.202, edge: "beveled", aft: 0.48 },
         },
       ],
+    });
+
+/* NASA TM X-1684 (Jernell, 1968): a 0.25-scale Tomahawk sounding rocket in the Langley Unitary Plan wind tunnel, Mach
+   2.30 to 4.63, Reynolds number 2.5 million per foot, transition fixed 1.2 in behind the nose tip and 0.4 in behind
+   the fins' leading edges. The model (figure 1, configuration N1E2B1): a 6.75 in tangent-ogive nose (fineness 3) on a
+   2.25 in body, 60.02 in long. Basic fins F1: root 5.475 in, tip 2.025, span 3.45, leading edge swept 45°, trailing
+   edge unswept and left blunt, 0.274 in ahead of the base; a slab tapering from 0.125 in thick at the root to 0.0625 at
+   the tip (entered at its mean, 0.094), its leading edge a wedge of 3.5° running back 0.94 in at the root and 0.22 at
+   the tip (0.58 at the mean) with a 0.023 in nose radius. Large fins F5: the same root and edges, tip 2.91 in, span
+   4.03 (31% more area), trailing edge swept forward. The small cones that fair each fin's pivot at its root (0.45 in
+   across, 0.6 high) are left out.
+   The axial-force coefficient is adjusted to free-stream pressure on the base, so it is the drag without the base;
+   read off figure 3 at zero angle of attack (to about ±0.015; the chart's 0.4 gridline, not its label, which sits up
+   to 0.03 above it): the body alone, with the basic fins, with the large fins. */
+const TOMA_RE_PER_M = 2.5e6 / 0.3048,
+  TOMA_L = 60.021,
+  TOMA_CA = [
+    [2.3, 0.3, 0.57, 0.615],
+    [2.96, 0.25, 0.47, 0.515],
+    [3.95, 0.21, 0.43, 0.445],
+    [4.63, 0.19, 0.38, 0.42],
+  ],
+  TOMA_FIN = { n: 4, t: 0.094, edge: "beveled", teEdge: "square", le: 0.58, ler: 0.023, aft: 0.274 },
+  tomahawkOrk = (fins) =>
+    partsOrk({
+      name: "Tomahawk, TM X-1684",
+      finish: "polished",
+      nose: { len: 6.75, shape: "ogive" },
+      parts: [{ t: "tube", len: TOMA_L - 6.75, d: 2.25, fins: { ...TOMA_FIN, ...fins } }],
+    }),
+  TOMA = {
+    // a design needs a fin set: the body alone carries one shrunk to nothing
+    body: tomahawkOrk({ cr: 0.02, ct: 0.02, s: 0.002, sw: 0, t: 0.0001, le: 0, ler: 0 }),
+    f1: tomahawkOrk({ cr: 5.475, ct: 2.025, s: 3.45, sw: 3.45 }),
+    f5: tomahawkOrk({ cr: 5.475, ct: 2.91, s: 4.031, sw: 4.031 }),
+  };
+
+/* Conical boattails behind a long cylinder: the drag from pressures measured along the boattail, and the base drag
+   behind it, each on the cylinder's cross-section. The body ahead is entered as a fineness-3 ogive and 10 diameters
+   of cylinder (the pressure terms compared don't depend on it), the boattail as each source gives it.
+
+   NACA RM L56K22 (Silhan & Cubbage, 1956): 1 in afterbodies on a sting running upstream through the nozzle of a
+   4.5 in slotted tunnel, Mach 0.6 to 1.3, a thick turbulent boundary layer ahead of the boattail. Cones of 3°, 5.6°,
+   8° and 16° cut off at 0.85, 0.70 and 0.55 of the diameter; boattail drag and total (boattail plus base) read off
+   figure 8's plotted points (to about ±0.005). The report puts some doubt on the points near Mach 1 (wall effects)
+   and at Mach 1.1 on the 8° and 16° models (three orifices). Rows: [Mach, boattail, boattail + base].
+
+   NASA TM X-1960 (Compton & Runckel, 1970): truncated conical boattails of 3° to 15°, 0.6, 0.8 and 1.0 diameters
+   long, on a strut-mounted nacelle 15.24 cm in diameter in the Langley 16-foot transonic tunnel, Reynolds number 8
+   to 16 million; the jet-off axial force from the pressures along the top of the boattail (the row clear of the
+   strut). Read off figure 10 at Mach 1.22 and 1.32, where the report plots its Mach 1.20 and 1.30 data (the flow
+   reaching the boattail was 0.02 faster than the tunnel's); the method of characteristics agrees with them except
+   at 15°, where it is up to 0.02 higher. The report drops its data between Mach 0.95 and 1.2 (shocks from the
+   strut). Rows: [degrees, length in diameters, at Mach 1.22, at Mach 1.32].
+
+   NASA TR R-100 (Stoney, 1961), figure 13(a): free-flight models with conical afterbodies at Mach 1.2, afterbody
+   pressure drag plus base drag. The figure's curves are the report's equation 1, and they are only reproduced with
+   the equation's first coefficient as 0.010, not the 0.0010 printed (see cdParts). */
+const SILHAN = {
+  "3,0.70": [
+    [0.8, 0.023, 0.083],
+    [0.9, 0.019, 0.07],
+    [0.99, 0.028, 0.077],
+    [1.08, 0.044, 0.078],
+    [1.17, 0.041, 0.106],
+    [1.26, 0.032, 0.113],
+  ],
+  "3,0.85": [
+    [1.0, 0.026, 0.098],
+    [1.08, 0.031, 0.14],
+    [1.18, 0.028, 0.163],
+    [1.265, 0.025, 0.133],
+  ],
+  "5.6,0.55": [
+    [0.9, 0.025, 0.033],
+    [1.0, 0.065, 0.082],
+    [1.08, 0.093, 0.098],
+    [1.165, 0.085, 0.14],
+    [1.26, 0.076, 0.115],
+  ],
+  "5.6,0.70": [
+    [0.9, 0.025, 0.035],
+    [1.0, 0.067, 0.075],
+    [1.1, 0.067, 0.11],
+    [1.17, 0.07, 0.145],
+    [1.28, 0.056, 0.108],
+  ],
+  "5.6,0.85": [
+    [0.9, 0.025, 0.058],
+    [1.0, 0.063, 0.11],
+    [1.09, 0.047, 0.14],
+    [1.13, 0.047, 0.165],
+    [1.27, 0.039, 0.158],
+  ],
+  "8,0.55": [
+    [0.9, 0.03, 0.027],
+    [1.0, 0.113, 0.1],
+    [1.09, 0.125, 0.138],
+    [1.17, 0.113, 0.142],
+    [1.27, 0.098, 0.113],
+  ],
+  "8,0.70": [
+    [0.9, 0.05, 0.052],
+    [1.09, 0.115, 0.172],
+    [1.175, 0.094, 0.147],
+    [1.26, 0.088, 0.134],
+  ],
+  "8,0.85": [
+    [0.9, 0.04, 0.065],
+    [1.0, 0.085, 0.14],
+    [1.09, 0.074, 0.185],
+    [1.18, 0.057, 0.17],
+    [1.28, 0.056, 0.158],
+  ],
+  "16,0.55": [
+    [0.8, 0.078, 0.05],
+    [0.9, 0.113, 0.105],
+    [1.0, 0.226, 0.235],
+    [1.085, 0.256, 0.257],
+    [1.12, 0.255, 0.255],
+  ],
+  "16,0.70": [
+    [0.8, 0.083, 0.073],
+    [0.995, 0.181, 0.232],
+    [1.08, 0.225, 0.263],
+    [1.125, 0.214, 0.256],
+  ],
+  "16,0.85": [
+    [0.8, 0.052, 0.088],
+    [1.0, 0.077, 0.193],
+    [1.08, 0.125, 0.252],
+    [1.175, 0.108, 0.232],
+    [1.275, 0.088, 0.208],
+  ],
+};
+const X1960 = [
+  [15, 1, 0.243, 0.226],
+  [10, 1, 0.142, 0.125],
+  [5, 1, 0.047, 0.043],
+  [3, 1, 0.02, 0.019],
+  [15, 0.8, 0.222, 0.2],
+  [10, 0.8, 0.128, 0.112],
+  [5, 0.8, 0.042, 0.037],
+  [3.3, 0.8, 0.019, 0.017],
+  [15, 0.6, 0.21, 0.18],
+  [10, 0.6, 0.11, 0.098],
+  [7.5, 0.6, 0.068, 0.06],
+  [5, 0.6, 0.035, 0.03],
+  [3, 0.6, 0.014, 0.012],
+];
+// [length in diameters, base over maximum diameter, afterbody pressure + base drag at Mach 1.2]
+const R100_F13 = [
+  [1.78, 0.44, 0.14],
+  [1.78, 0.7, 0.115],
+  [5, 0.44, 0.06],
+  [5, 0.7, 0.085],
+];
+const boattailOrk = (len, h) =>
+  partsOrk({
+    name: "boattail",
+    finish: "polished",
+    nose: { len: 12, shape: "ogive" },
+    // a design needs a fin set: one shrunk to nothing
+    parts: [
+      { t: "tube", len: 40, d: 4, fins: { n: 4, cr: 0.02, ct: 0.02, s: 0.002, sw: 0, t: 0.0001, edge: "square" } },
+    ].concat(len > 0 ? [{ t: "tail", len, d0: 4, d1: 4 * h }] : []),
+  });
+const BOATTAIL_CASES = [];
+for (const [k, rows] of Object.entries(SILHAN)) {
+  const [deg, h] = k.split(",").map(Number),
+    xml = boattailOrk((2 * (1 - h)) / Math.tan((deg * Math.PI) / 180), h),
+    c = {
+      grade: 1,
+      tier: "wind tunnel",
+      role: "check",
+      xml,
+      xmlBody: boattailOrk(0, 1),
+    };
+  BOATTAIL_CASES.push(
+    {
+      ...c,
+      id: `l56k22-${deg}-${h * 100}-pressure`,
+      title: `NACA RM L56K22, ${deg}° conical boattail to ${h.toFixed(2)} of the diameter, Mach ${rows[0][0]}–${rows[rows.length - 1][0]}: its pressure drag`,
+      quantity: "cdAftPressure",
+      pts: rows.map(([M, v]) => [M, v]),
+    },
+    {
+      ...c,
+      id: `l56k22-${deg}-${h * 100}-total`,
+      title: `NACA RM L56K22, ${deg}° conical boattail to ${h.toFixed(2)} of the diameter: pressure and base drag`,
+      quantity: "cdAft",
+      pts: rows.map(([M, , v]) => [M, v]),
+    },
+  );
+}
+for (const [deg, ld, a, b] of X1960) {
+  const h = 1 - 2 * ld * Math.tan((deg * Math.PI) / 180);
+  BOATTAIL_CASES.push({
+    id: `x1960-${deg}-${ld * 10}`,
+    grade: 1,
+    title: `NASA TM X-1960, ${deg}° conical boattail ${ld.toFixed(1)} diameters long (to ${h.toFixed(2)} of the diameter), Mach 1.22 and 1.32: its pressure drag`,
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdAftPressure",
+    xml: boattailOrk(4 * ld, h),
+    xmlBody: boattailOrk(0, 1),
+    pts: [
+      [1.22, a],
+      [1.32, b],
+    ],
+  });
+}
+for (const [ld, h, v] of R100_F13)
+  BOATTAIL_CASES.push({
+    id: `r100-f13-${ld}-${h * 100}`,
+    grade: 1,
+    title: `NASA TR R-100 figure 13(a), conical afterbody ${ld} diameters long to ${h.toFixed(2)} of the diameter, Mach 1.2: pressure and base drag`,
+    tier: "free flight",
+    role: "check",
+    quantity: "cdAft",
+    xml: boattailOrk(4 * ld, h),
+    xmlBody: boattailOrk(0, 1),
+    pts: [[1.2, v]],
+  });
+
+/* NACA RM A57I09 (Lee & Summers, 1957): two bodies of fineness ratio 10 in the Ames 2- by 2-foot transonic wind
+   tunnel, Mach 0.6 to 1.4, Reynolds number 8 million on the 20 in length, transition fixed by a ring at 20% of the
+   length. Both have a Kármán nose over the front half of a 2 in body; one ends square, the other in a boattail over
+   its last 4 in, down to 0.575 of the diameter (an S-shaped curve with no slope at either end, steepest at 7.4°;
+   entered as the cone of the same length and base, 6.1°). Foredrag is the balance's drag less the base's, on the
+   body's cross-section; the report puts it within ±0.005. It includes the drag of the transition ring, a brass
+   wire 0.032 in square round the nose where it is 1.22 in across (a face 0.039 of the cross-section), which the app
+   has no part for: grade 2.
+   The cylindrical body (figures 9 and 17, which its sting doesn't change): Mach 0.6 and 1.4. At Mach 1.00 the two
+   figures disagree (0.115 and 0.163), so it is left out.
+   The boattailed body (figure 13, on the thinnest sting, 0.43 of the base; the two thicker ones read up to 0.01
+   lower near Mach 1): 13 Mach numbers. The report warns of shocks reflected off the tunnel walls from Mach 1.06 to
+   1.15.
+   The boattail's own pressure drag, from pressures along it with the body held from the side and no sting
+   (figure 15, plotted negative: its sign is fixed by the two bodies' foredrag, which differ by this much). */
+const A57_RE = 8e6,
+  A57_CYL = [
+    [0.6, 0.127],
+    [1.4, 0.152],
+  ],
+  // Mach, foredrag of the boattailed body, the boattail's pressure drag
+  A57_BT = [
+    [0.6, 0.131, 0.013],
+    [0.8, 0.139, 0.011],
+    [0.9, 0.15, 0.003],
+    [0.925, 0.158, 0.024],
+    [0.95, 0.171, 0.037],
+    [0.975, 0.21, 0.064],
+    [1.0, 0.239, 0.106],
+    [1.025, 0.25, 0.14],
+    [1.05, 0.241, 0.133],
+    [1.075, 0.265, 0.108],
+    [1.1, 0.257, 0.103],
+    [1.2, 0.237, 0.099],
+    [1.4, 0.22, 0.074],
+  ],
+  a57Ork = (boattail) =>
+    partsOrk({
+      name: "RM A57I09",
+      finish: "polished",
+      nose: { len: 10, shape: "haack", param: 0 },
+      // a design needs a fin set: one shrunk to nothing
+      parts: [
+        {
+          t: "tube",
+          len: boattail ? 6 : 10,
+          d: 2,
+          fins: { n: 4, cr: 0.02, ct: 0.02, s: 0.002, sw: 0, t: 0.0001, edge: "square" },
+        },
+      ].concat(boattail ? [{ t: "tail", len: 4, d0: 2, d1: 1.15 }] : []),
     });
 
 /* NACA RM A53D02 (James & Carros, 1953): free-flight total drag of a fin-stabilized body of fineness ratio 10 (tangent
@@ -765,13 +1042,81 @@ const CASES = [
     pts: ARCAS_CA_SUP.map(([M, on, off]) => [M, on - off]),
   },
   {
+    id: "tomahawk-body",
+    grade: 1,
+    title: "NASA TM X-1684, Tomahawk without fins, Mach 2.3–4.63: drag without the base",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFore",
+    xml: TOMA.body,
+    pts: TOMA_CA.map(([M, body]) => [M, body, TOMA_RE_PER_M * TOMA_L * IN]),
+  },
+  {
+    id: "tomahawk-fins",
+    grade: 1,
+    title: "NASA TM X-1684, Tomahawk, Mach 2.3–4.63: drag its four basic fins add",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFins",
+    xml: TOMA.f1,
+    xmlBody: TOMA.body,
+    rePerM: TOMA_RE_PER_M,
+    pts: TOMA_CA.map(([M, body, f1]) => [M, +(f1 - body).toFixed(3)]),
+  },
+  {
+    id: "tomahawk-large-fins",
+    grade: 1,
+    title: "NASA TM X-1684, Tomahawk, Mach 2.3–4.63: drag its four large fins add",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFins",
+    xml: TOMA.f5,
+    xmlBody: TOMA.body,
+    rePerM: TOMA_RE_PER_M,
+    pts: TOMA_CA.map(([M, body, , f5]) => [M, +(f5 - body).toFixed(3)]),
+  },
+  {
+    id: "a57i09-cylinder",
+    grade: 2,
+    unknown: "the drag of the ring that fixes transition is in the measurement",
+    title: "NACA RM A57I09, fineness-10 body with a Kármán nose: drag without the base",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFore",
+    xml: a57Ork(false),
+    pts: A57_CYL.map(([M, v]) => [M, v, A57_RE]),
+  },
+  {
+    id: "a57i09-boattail",
+    grade: 2,
+    unknown: "the drag of the ring that fixes transition is in the measurement",
+    title: "NACA RM A57I09, the same body boattailed to 0.575 of its diameter, Mach 0.6–1.4: drag without the base",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdFore",
+    xml: a57Ork(true),
+    pts: A57_BT.map(([M, v]) => [M, v, A57_RE]),
+  },
+  {
+    id: "a57i09-boattail-pressure",
+    grade: 1,
+    title: "NACA RM A57I09, boattail to 0.575 of the diameter, Mach 0.6–1.4: its pressure drag",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdAftPressure",
+    xml: a57Ork(true),
+    xmlBody: a57Ork(false),
+    pts: A57_BT.map(([M, , v]) => [M, v]),
+  },
+  ...BOATTAIL_CASES,
+  {
     id: "cajun-dovap",
     grade: 1,
     title: "NASA TM X-1771, Cajun, Mach 2.3–4.63: drag its four Dovap antenna fairings add",
     tier: "wind tunnel",
     role: "check",
     quantity: "cdBump",
-    xml: cajunOrk([{ shape: "ramp", w: 0.539, h: 0.51, len: 15.6, at: 18.98, n: 4 }]),
+    xml: cajunOrk([{ shape: "faired", w: 0.539, h: 0.51, len: 15.6, end: 0.82, at: 18.98, n: 4 }]),
     xmlBody: cajunOrk(),
     rePerM: CAJUN_RE_PER_M,
     pts: CAJUN_CLEAN.map(([M, clean], i) => [M, +(CAJUN_DOVAP[i] - clean).toFixed(3)]),
@@ -2575,6 +2920,8 @@ module.exports = {
   A53_PTS,
   RM10,
   RM10_PTS,
+  R100_F13,
+  boattailOrk,
   ARCAS_CA,
   ARCAS_CA_SUP,
   ARCAS,

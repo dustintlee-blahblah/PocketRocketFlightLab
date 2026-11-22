@@ -800,6 +800,7 @@ function readMass(rd, c, x) {
       len: elNum(c, "packedlength"),
       w: elNum(c, "prflbumpw"),
       h: elNum(c, "prflbumph"),
+      end: elNum(c, "prflbumpend", 0),
       shape: elTxt(c, "prflbump").trim(),
       // its weight and where around the body it sits, for the sideways pull of an item on one side.
       // A fly-away rail guide is on the rocket only while it is on the rail: its weight is kept apart (m is 0 in the file)

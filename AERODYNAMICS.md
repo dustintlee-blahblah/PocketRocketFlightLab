@@ -88,8 +88,8 @@ The code is in `src/js/physics/drag-model.js`.
 | Term | Mach | Source |
 |---|---|---|
 | Whether the flow follows it | all | Attached up to a 15° half-angle, fully separated past 25°, blended between. The separated share of the step counts as base area. TR R-100 checked its afterbody equation against flight data for slopes up to 15°, and the Arcas model's 15° boattail (NASA TN D-4013) keeps its base at or above free-stream pressure below Mach 0.95, which a separated tail cone could not. |
-| Wave drag of a boattail ending at the base | 0.88 – 2 | NASA TR R-100's equation 1 for conical afterbodies: (0.0010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)ⁿ] on the maximum cross-section, θ in degrees (at most 15), n = 4 below Mach 3.5 and 3 above. It approximates the second-order theory of NACA TN 2972 (Jack). The report warns against using it below Mach 1, so it fades in from Mach 0.88 to 1: with its fins off the Arcas model gains about 0.15 of pressure drag over that range, and this gives 0.14 at Mach 1. Only the attached share counts. |
-| The same | above 2.5 | Linear theory's 2·tan θ/β on the area the boattail takes away, 1 − (base radius / maximum radius)², times (1.15 − 0.058·θ°): 0.90 at 4.3°, 0.60 at 9.5°. Fitted to wind-tunnel pressure measurements on four conical boattails at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, in MIL-HDBK-762 figure 5-144), within 0.004 of all eight points; they run two to five times equation 1 there. Blended with equation 1 from Mach 2 to 2.5. |
+| Wave drag of a boattail ending at the base | 0.88 – 2 | NASA TR R-100's equation 1 for conical afterbodies: (0.010·θ + 0.00071·θ²)/M · [1 − (base radius / maximum radius)ⁿ] on the maximum cross-section, θ the slope in degrees (at most 15), n = 4 below Mach 3.5 and 3 above. The report prints the first coefficient as 0.0010, a misprint the app carried until build 341 (see Boattails under "What the comparisons show"). It approximates the second-order theory of NACA TN 2972 (Jack). The report warns against using it below Mach 1, so it fades in from Mach 0.88 to 1 (measured boattail drag rises from Mach 0.9 to 1.05: NACA RM L56K22). Only the attached share counts. |
+| The same | above 2.5 | Linear theory's 2·tan θ/β on the area the boattail takes away, 1 − (base radius / maximum radius)², times (1.15 − 0.058·θ°): 0.90 at 4.3°, 0.60 at 9.5°. Fitted to wind-tunnel pressure measurements on four conical boattails at Mach 2.5 and 3.5 (Rubin, Brazzel and Henderson, in MIL-HDBK-762 figure 5-144), within 0.004 of all eight points (equation 1 is within 0.008 of them at Mach 2.5). Blended with equation 1 from Mach 2 to 2.5. |
 | Below Mach 0.88 | | An attached boattail has no pressure drag of its own; it lowers the base drag (below). |
 
 A boattail that ends before the base (more body behind it) has only the separation rule. Pods keep an older rule
@@ -126,7 +126,7 @@ A boattail that ends before the base (more body behind it) has only the separati
 | Term | Source |
 |---|---|
 | Rail buttons | Hoerner's cylinder in crossflow (1.2 × stagnation pressure) subsonic, modified Newtonian plus base above Mach 1.3, reduced by how deep they sit in a 1/7-power turbulent boundary layer. |
-| Protuberances (a camera, a switch box, an antenna, a shroud: the Protuberance part) | Hoerner, chapter V, figure 13: on the frontal area, 1.20 for a blunt box about as long as tall, 0.74 for one over twice as long, 0.78 for an upright cylinder or bolt, 0.07 for a streamlined blister; 0.39 for a long box with a sloped front and a square back (built from the 0.74 box and his steps on a wall, figure 10: a square forward-facing step 0.40, the same beveled at about 30° to the surface 0.11, a square rear-facing step 0.22, so the sloped front keeps 0.11/0.40 of the front's share); reduced by the boundary layer as the buttons are (Hoerner's 0.75·∛(h/δ) is the same within a few percent). Above Mach 1 there is no data: blunt shapes rise as the rail button does, a streamlined one takes the Newtonian pressure on its front slope if larger; the sloped-front box stays a share of the long blunt box, 0.53 below Mach 1 and above it the share his free-flight steps give (rear-facing 0.45 plus modified Newtonian on a 30° front, against forward-facing 0.75 plus the same rear: 0.70 at Mach 1.5). A bare 1 in cube on a 4 in rocket adds 0.09 to Cd; the same size streamlined, 0.005 below Mach 1 and 0.03 above. An item sits on one side of the body, so it also turns the rocket: taken as a uniform block centered at body radius + half its height, its weight puts the CG off the centerline by Σm·r/M, giving the moment e·(thrust − drag) of two centerline forces passing beside the CG, and its own drag acts at that radius, giving q·CdA·r. Both turn with the rocket's roll; items set evenly around the body (the Angle around the body field) cancel. A fly-away rail guide (the Protuberance part's last shape) is a blunt box, 1.20, and is on the rocket only while it is on the rail: its drag and its weight count up to the rail's end and not after. |
+| Protuberances (a camera, a switch box, an antenna, a shroud: the Protuberance part) | Hoerner, chapter V, figure 13: on the frontal area, 1.20 for a blunt box about as long as tall, 0.74 for one over twice as long, 0.78 for an upright cylinder or bolt, 0.07 for a streamlined blister; 0.39 for a long box with a sloped front and a square back (built from the 0.74 box and his steps on a wall, figure 10: a square forward-facing step 0.40, the same beveled at about 30° to the surface 0.11, a square rear-facing step 0.22, so the sloped front keeps 0.11/0.40 of the front's share); reduced by the boundary layer as the buttons are (Hoerner's 0.75·∛(h/δ) is the same within a few percent). Above Mach 1 there is no data: blunt shapes rise as the rail button does, a streamlined one takes the Newtonian pressure on its front slope if larger (the slope is its height over half its length, or over the length of one tapered end where the item has a straight middle and that length is given); the sloped-front box stays a share of the long blunt box, 0.53 below Mach 1 and above it the share his free-flight steps give (rear-facing 0.45 plus modified Newtonian on a 30° front, against forward-facing 0.75 plus the same rear: 0.70 at Mach 1.5). A bare 1 in cube on a 4 in rocket adds 0.09 to Cd; the same size streamlined, 0.005 below Mach 1 and 0.03 above. An item sits on one side of the body, so it also turns the rocket: taken as a uniform block centered at body radius + half its height, its weight puts the CG off the centerline by Σm·r/M, giving the moment e·(thrust − drag) of two centerline forces passing beside the CG, and its own drag acts at that radius, giving q·CdA·r. Both turn with the rocket's roll; items set evenly around the body (the Angle around the body field) cancel. A fly-away rail guide (the Protuberance part's last shape) is a blunt box, 1.20, and is on the rocket only while it is on the rail: its drag and its weight count up to the rail's end and not after. |
 | Launch lugs | Stagnation pressure on the front face, base on the back, pipe friction through the bore. |
 | Pods | Each pod's own body, once per copy: friction as above; its nose from the TR R-100 curves, blended into modified Newtonian theory from Mach 4 to 6 (no shock-expansion); a boattail on it separates between 8° and 20° (Hoerner) and has no wave drag term; its base takes the body curve. |
 | Tube fins | Ribner's ring airfoil for lift (J. Aeronautical Sciences, 1947); friction outside, Darcy–Weisbach pipe flow inside (Swamee–Jain friction factor), stagnation and base pressure on the front face and the gap at the body (worked out by plane geometry; the same breakdown as OpenRocket's). |
@@ -166,10 +166,15 @@ have no flight history, so they are scored with the skin fully heated (right for
 | Fin drag, Mach 1.5–2.0 (tuned) | NACA RM E50D28, RM-10 fins, wind tunnel | 0.011 in Cd, high. |
 | Boattail pressure drag, Mach 2.5 and 3.5 (tuned) | MIL-HDBK-762 figure 5-144, four conical boattails, wind tunnel | Within 0.002 in Cd. |
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (check) | NACA RM L55G28a, free flight | Drag 1.2%, with its fins' square trailing edges entered (5.2% low with the fins sharp at both ends, as they were entered before the trailing edge could be set). With a cold skin, 16.7% high. |
-| Boattailed body with fins, Mach 0.6–1.2 (check; one term was sized on it) | NASA TN D-4013, Arcas short model, 15° boattail, wind tunnel | Drag 14.3%: 15% high at Mach 0.6–0.7, 14–27% low from Mach 0.9 to 1.05, 7–12% low to Mach 1.2 (gap 12). |
-| The same model, Mach 1.5–4.63 (check) | NASA TN D-4014, wind tunnel | Drag 4.1% with fins, 4.9% without. What the four fins add: 0.019 in Cd, low (0.065 low at Mach 1.5, 0.03 at 1.8). |
-| Drag antennas add, Mach 2.3–4.63 (check) | NASA TM X-1771, 0.410-scale Cajun, wind tunnel | Four long fairings (0.06–0.12 measured): 0.020 in Cd. Two raked boxes (about 0.01 measured): 0.006 in Cd, high. |
-| Boattailed bodies in flight, Mach 0.8–2 (check) | NASA TR R-100, configurations 11 (8° boattail) and 36 (4°), free flight | Drag 6.2% on configuration 11; 12.6% high on configuration 36. |
+| Boattailed body with fins, Mach 0.6–1.2 (check; one term was sized on it) | NASA TN D-4013, Arcas short model, 15° boattail, wind tunnel | Drag 9.2%: 15% high at Mach 0.6–0.7, 15–20% low at Mach 0.9–0.95, within 3% from Mach 1 to 1.1, 8% high at Mach 1.2 (14.3% before build 341's boattail correction: 14–27% low from Mach 0.9 to 1.05). |
+| The same model, Mach 1.5–4.63 (check) | NASA TN D-4014, wind tunnel | Drag 5.3% with fins (9% high at Mach 1.5 and 1.8), 11.8% without (32% high at Mach 1.5, 23% at 1.8, where its report says the reflexed lip on its base lowers the base force: gap 15; within 4% from Mach 2.3 to 4). What the four fins add: 0.019 in Cd, low (0.065 low at Mach 1.5, 0.03 at 1.8). |
+| Drag antennas add, Mach 2.3–4.63 (check) | NASA TM X-1771, 0.410-scale Cajun, wind tunnel | Four long fairings with short pointed ends (0.06–0.12 measured): 0.019 in Cd. Two raked boxes (about 0.01 measured): 0.006 in Cd, high. |
+| Slender body and its fins, Mach 2.3–4.63 (check) | NASA TM X-1684, 0.25-scale Tomahawk, wind tunnel | What four fins add (0.19–0.32 measured, two fin sets): 0.009 and 0.011 in Cd. The body alone, without its base: 7% high at Mach 2.3, 15–18% high from Mach 3 (gap 14). |
+| Body with and without a boattail, Mach 0.6–1.4 (check) | NACA RM A57I09, fineness-10 body with a Kármán nose, wind tunnel | The boattail's pressure drag (0.07–0.14 measured from Mach 1 to 1.4): 0.024 in Cd, low (0.052 before build 341). Drag without the base: 13–17% low on the plain body, whose measurement includes a transition ring. |
+| Conical boattails alone, Mach 0.8–1.3 (check) | NACA RM L56K22, cones of 3°, 5.6°, 8° and 16° to 0.55, 0.70 and 0.85 of the diameter, wind tunnel | Pressure drag: 0.012–0.024 in Cd low on the 3° to 8° cones (0.024–0.061 before build 341). Pressure and base drag together: within 0.025 on those, from 0.011 low to 0.016 high. The 16° cones: 0.03–0.05 off either way. |
+| Conical afterbodies in flight, Mach 1.2 (check) | NASA TR R-100 figure 13(a), four afterbodies | Pressure and base drag within 0.012 in Cd (0.015–0.071 low before build 341). |
+| Short conical boattails, Mach 1.22 and 1.32 (check) | NASA TM X-1960, 13 boattails of 3° to 15°, 0.6 to 1.0 diameters long, wind tunnel, jet off | Pressure drag: 15° within 0.01 in Cd; 3° to 10°, 0.006–0.022 too little. All 13: 0.013 on average (0.052 before build 341). |
+| Boattailed bodies in flight, Mach 0.8–2 (check) | NASA TR R-100, configurations 11 (8° boattail) and 36 (4°), free flight | Drag 14.6% high on configuration 11 (5% at Mach 1.1 rising to 20% from Mach 1.6); 17.9% high on configuration 36 (6.2% and 12.5% before build 341's boattail correction: gap 15). |
 | Pressure drag of 45° fins 2.8% thick (check) | NASA TR R-100 figure 5, free flight | 0.012 in Cd on the fin area. |
 | Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.7% of length; CNα 10% on average: 11–19% low below Mach 1, within 4% at Mach 1.2–1.45, 7–16% high at Mach 1.6–3, within 4% at Mach 4–5. |
 | Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (check) | NACA RM L56G24, free flight | Drag 7.4% low (the model's instrument fairings, not in the app's design, are part of that); CP within 1% of length (6% forward before the supersonic body terms). |
@@ -186,9 +191,10 @@ All check cases together, by speed band (mean absolute error, mean signed error 
 
 | Quantity | Below Mach 0.8 | 0.8–1.2 | 1.2–3 | 3–5 |
 |---|---|---|---|---|
-| Drag | 10.1% (+7.6) | 12.6% (−3.9) | 5.9% (+1.5) | 3.8% (+3.3) |
-| CP, share of length | 2.4% (−2.4) | 3.5% (−3.4) | 3.8% (−3.8) | 1.0% (−0.3) |
-| CNα | 13.0% (−13.0) | 13.3% (−13.3) | 16.7% (−16.7) | 18.3% (−18.3) |
+| Drag | 10.1% (+7.6) | 10.4% (+1.9) | 9.4% (+6.7) | 3.8% (+3.3) |
+| A boattail's pressure drag, in Cd | | 0.025 (−0.017) | 0.015 (−0.011) | |
+| CP, share of length | 2.4% (−2.4) | 2.7% (−2.6) | 1.4% (−0.8) | 1.6% (−1.6) |
+| CNα | 17.7% (−17.7) | 18.7% (−18.5) | 11.6% (+3.6) | 9.6% (−5.1) |
 
 ## Notes on the evidence
 
@@ -246,10 +252,49 @@ fins, and its nose (a curved tip faired into a cone, entered as a power-series s
 roughly what the app can describe. The Arcas case was used to size the 15° attachment limit and the Mach 0.88 start
 of the wave drag, so its score is not fully independent.
 
+*The misprint (build 341).* Those three are whole rockets. Build 341 added the first measurements of a boattail by
+itself, and they came out three to five times what the app gave: pressures along a 6° boattail (NACA RM A57I09:
+0.07 to 0.14 from Mach 1 to 1.4, the app 0.02 to 0.03) and along cones of 3° to 16° (NACA RM L56K22). The cause is
+in the source. TR R-100 prints its equation 1 as (0.0010·θ + 0.00071·θ²)/M, and the app used it as printed. The
+report's own figure 13(a) draws the equation at Mach 1.2 for afterbodies 1.78, 3.5 and 5 diameters long, and the
+drawn curves are (0.010·θ + 0.00071·θ²)/M: a cone 1.78 diameters long to a point reads 0.29 on the figure, where
+the equation gives 0.288 with 0.010 and 0.159 with 0.0010; the other two curves fit the same way. The report says
+the term "approximates the second-order theoretical values calculated by Jack" (NACA TN 2972), which is true with
+0.010 and not as printed:
+
+| Jack's theory, Mach 1.5, base area 0.6 of the maximum | 3° | 5° | 7° | 9° | 11° |
+|---|---|---|---|---|---|
+| NACA TN 2972, figure 3 | 0.018 | 0.037 | 0.057 | 0.075 | 0.094 |
+| Equation 1 with 0.010 | 0.016 | 0.029 | 0.045 | 0.063 | 0.084 |
+| Equation 1 as printed (0.0010) | 0.004 | 0.010 | 0.018 | 0.028 | 0.041 |
+
+So the coefficient is 0.010 from build 341. Against the measurements, in drag coefficient on the body's
+cross-section (mean error; `validation/accuracy.js`):
+
+| Measured | With 0.010 | As printed |
+|---|---|---|
+| RM L56K22, pressure drag of 3°, 5.6° and 8° cones, Mach 0.9–1.3 | 0.012–0.024 low | 0.024–0.061 low |
+| The same, pressure and base drag together | 0.011 low to 0.016 high | 0.001–0.044 low |
+| RM A57I09, pressure drag of a 6° boattail, Mach 0.6–1.4 | 0.022 low | 0.052 low |
+| TM X-1960, pressure drag of 15° cones 0.6 to 1.0 diameters long, Mach 1.22 and 1.32 | within 0.01 | 0.08–0.11 low |
+| The same, 3° to 10° | 0.006–0.022 low | 0.012–0.087 low |
+| TR R-100 figure 13(a), four conical afterbodies in flight, Mach 1.2, pressure and base drag | 0.005–0.012 low | 0.015–0.071 low |
+| Arcas short model with fins, Mach 0.6–1.2, total drag | 9.2% | 14.3% |
+
+In flight with fins on, too: NACA RM L53I01 flew finned models differing only in afterbody. What each of its four
+conical boattails changes (its model's drag less the square-based model's, Mach 1.15) is −0.085, −0.064, −0.100 and
+−0.143 measured; −0.090, −0.063, −0.127 and −0.165 with 0.010; −0.119, −0.131, −0.137 and −0.190 as printed.
+
+Whole rockets above Mach 1 went the other way, and now show too much drag (TR R-100's configurations 11 and 36):
+the too-small boattail drag had been cancelling an excess that models without a boattail show as well. Gap 15
+lists what has been found of it.
+
 **Fins.** RM L55G28a's fins have wedge leading edges and square trailing edges, as its report says. Entered that
 way the app's drag is within 1.2% of the flight from Mach 2.5 to 3.9; entered as sharp at both ends, the only
-choice before the trailing edge could be set apart, it was 5.2% low. That is the one independent check of a blunt
-trailing edge behind a sharp front, and it is supersonic only. On the 45° fins of TR R-100 figure 5 the linear term gives 0.0046 against 0.0037 measured up to Mach 1.4
+choice before the trailing edge could be set apart, it was 5.2% low. That was the one independent check of a blunt
+trailing edge behind a sharp front; the Tomahawk model's fins (NASA TM X-1684: a 3.5° wedge with a rounded nose at
+the front, a slab left blunt at the back, two planforms) are a second, within 0.02 of the 0.19 to 0.32 they add
+from Mach 2.3 to 4.63. Both are supersonic only. On the 45° fins of TR R-100 figure 5 the linear term gives 0.0046 against 0.0037 measured up to Mach 1.4
 and falls below the measurement past Mach 2 (the report draws one level line to Mach 3 and says it did not try for
 accuracy); the peak near Mach 1 gives 0.0057 against 0.0055. The RM-10's fins (RM E50D28) are 5% thick along the
 flow: the report's 0.10 is measured normal to the 60° leading edge (NACA Report 1160). Left open: the Arcas fins add
@@ -270,10 +315,11 @@ box there (about 1.3). One wind-tunnel test checks the rest: NASA TM X-1771 (Jer
 sounding rocket with and without its antennas at Mach 2.3 to 4.63, turbulent, each antenna about as tall as the
 boundary layer. Two boxes with fronts raked back 45° add about 0.01 to the axial-force coefficient and the app's
 sloped-front box gives 0.016. Four fairings 15.6 in long with a half-round top and pointed ends 0.82 in long add
-0.12 at Mach 2.3 falling to 0.06–0.07 above Mach 4; entered as sloped-front boxes the app gives 0.083 to 0.087 (0.020
-off on average, flat where the measurement falls). Entered as streamlined shapes they would get 0.011, six to ten
-times too little: the app takes a streamlined shape to rise over half its length, and these rise over a twentieth
-of it, so the builder's help says to enter such a fairing as a sloped-front box. The same report's four rod
+0.12 at Mach 2.3 falling to 0.06–0.07 above Mach 4. A streamlined shape's drag above Mach 1 is the Newtonian
+pressure on its front slope, and until build 341 that slope was always taken over half the item's length, which
+gave these fairings 0.011, six to ten times too little. The streamlined shape now has a field for the length of
+each tapered end; with 0.82 in the app gives 0.083 (0.019 off on average, flat where the measurement falls). Left
+at 0 the slope is over half the length as before, and below Mach 1 the field changes nothing. The same report's four rod
 antennas, swept 45°, add 0.11 to 0.165, less than a swept cylinder's Newtonian estimate (0.20); the app has no such
 shape. RASAero II's rail guide, at about five times the app's, has no support here (see below). A streamlined shroud
 shaped along its whole length is still an estimate above Mach 1, and a round stub is checked only against a laminar
@@ -341,8 +387,8 @@ Windows, and its drag table exported (Aero Plots, Export to CSV). Mean error aga
 | RM A53D02 | 7.7% | 7.0% | all turbulent flow, as the app assumes (16.6% low with its default transition) |
 | RM L55G28a | 1.2% | 9.4% to 15.1%, low | Rough Camouflage Paint to Camouflage Paint, which bracket the app's 20 µm (20.1% with zero roughness) |
 | Arcas short model, Mach 0.6–1.2 | 7.8% | 19.1% | zero roughness; low by 21–41% from Mach 0.9 to 1.1 |
-| TR R-100 configuration 11 | 6.2% | 6.5% | zero roughness |
-| TR R-100 configuration 36 | 12.6% | 11.7% | zero roughness, tangent ogive nose |
+| TR R-100 configuration 11 | 14.6% (6.2% before build 341) | 6.5% | zero roughness |
+| TR R-100 configuration 36 | 17.9% (12.5% before build 341) | 11.7% | zero roughness, tangent ogive nose |
 | Aerobee coasting | 4.8% | 4.2% to 7.4% | Rough Camouflage Paint to Camouflage Paint |
 | Aerobee thrusting | 5.9% | 6.3% to 6.4% | the same, with the nozzle exit entered |
 | Aerobee, what the exhaust removes | 0.002 Cd | 0.003 Cd | |
@@ -398,13 +444,62 @@ ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag
 12. **Transonic drag: two models pull opposite ways.** On TM-2005-213541's configuration 3 (stubby 7%-thick fins on
     a straight body) the app's drag without base is 20% high at Mach 0.9 and 30% at Mach 1.19; before build 307, with
     the fins' transonic drag sized from the Arcas model, it was twice the measured value at Mach 0.9. On the Arcas
-    short model (fins on a 15° boattail) the app is now 14–27% low from Mach 0.9 to 1.05, where it was 4–9% low. Ten of
-    the sixteen transonic check points are that one model, which is why the band's figure rose from 8.6% to 12.6%.
-    What the Arcas fins add beyond the chart is most likely their interference with the boattail, which nothing
-    here models.
+    short model (fins on a 15° boattail) the app was then 14–27% low from Mach 0.9 to 1.05, where it had been 4–9%
+    low; ten of the sixteen transonic check points are that one model, and the band's figure rose from 8.6% to
+    12.6%. Build 341's boattail correction (a misprinted coefficient: see Boattails above) accounts for most of
+    that: the Arcas is now within 3% from Mach 1 to 1.1 and 15–20% low only at Mach 0.9 and 0.95, where its drag
+    rise starts earlier than the app's, and the band is at 10.4%.
 13. **Above Mach 5** nothing checks the drag. Above Mach 1 protuberances have one check (NASA TM X-1771: box-like
     antennas and long fairings, Mach 2.3 to 4.63); nothing checks them from Mach 1 to 2.3, a fully streamlined one, or
     a round stub in a turbulent boundary layer.
+14. **A long body's drag above Mach 3.** On the Tomahawk model without fins (NASA TM X-1684: fineness ratio 27,
+    transition fixed) the app's drag without the base is 0.02 high at Mach 2.3 and 0.035 high at Mach 3 to 4.6 (7%
+    and 15–18%). Nearly all of that drag is friction. The same report's fins come out within 0.02 at every Mach
+    number, and the Arcas body alone (TN D-4014, fineness 16) is within 4% from Mach 2.3 to 4, so this is one model
+    so far and nothing was changed. The tunnel's grit strips are not the reason: by NACA TN 4363's method they
+    tripped the boundary layer with room to spare up to Mach 3 and adequately near Mach 4 on both models; only
+    Mach 4.63 is borderline.
+15. **Whole flight models from Mach 1 to 2: too much drag, and not from the boattail.** Build 341 corrected the
+    boattail's pressure drag (a coefficient misprinted in TR R-100: see Boattails above). With it the app has too
+    much drag on whole flight models in this range: TR R-100's configuration 11 (8° boattail, delta fins: 5% too
+    much at Mach 1.1 rising to 20% from Mach 1.6; it was 9% too little to 9% too much), configuration 36 (4°:
+    13–20% too much above Mach 1, 7–14% before), and, worked through but not yet entered as cases, the six models
+    of NACA RM L53I01 (5–15% too much) and the model of NACA RM L55F09a (8–19% too much). The excess is not the
+    boattail's: RM L53I01's two models with a square base and no boattail have the same 7–15% too much, and what
+    its boattails change (a boattailed model's drag less the square-based model's) comes out within 0.001 to 0.027
+    with the corrected coefficient against 0.034 to 0.067 as printed. The old, too-small boattail drag had been
+    cancelling it. What has been found of it:
+    - *Base drag behind a boattail of 7° to 9°:* up to 0.02 too much above Mach 1.1, and near 0.035 too much from
+      Mach 0.9 to 1 on RM L55F09a's model, whose measured base pressure is above free-stream there (24 points:
+      RM L53C02, RM L55F09a, RM L56K22, with RM L51F29 in support). Measured base pressure rises with the
+      boattail's angle; the rule used (the plain body's base pressure times base over body diameter: TR R-100,
+      also Hoerner's and Missile DATCOM's) has no angle in it. Love's method in RM L53C02 has, but needs the Mach
+      number and pressure on the boattail just ahead of the base, and covers supersonic speeds only. Not done.
+    - *Thin fins near Mach 1.2:* RM L53I01 gives its three fins (2.8% thick, wedge edges) 0.055 from a measurement
+      on a cylindrical rocket; the app gives 0.069. TR R-100's configurations 19, 34 and 36 carry the same section
+      on fins with 4.5 times the area, so most of configuration 36's excess may be this. The app takes a fin's
+      boundary layer as turbulent from its leading edge; TR R-100 suspects laminar flow on these. Not tested.
+    - *Slender noses:* for RM L53I01's parabolic nose 7.13 diameters long the app has 0.030 at Mach 1.2 and the
+      report's method-of-characteristics value is 0.015. The app scales every nose shape's drag with slenderness
+      by one curve (TR R-100 figure 11). One model.
+    - *Configuration 11:* about 0.05 too much from Mach 1.5 to 2, friction excluded (the report's own friction
+      curve agrees with the app's within 0.01). Not found.
+    The Arcas model without fins at Mach 1.5 and 1.8 (32% and 23% too much drag; 11% and 5% before) is a separate
+    matter: its boattail ends in a reflexed lip the app has no part for, and its report (TN D-4014) says the base
+    force is unusually low at exactly those two Mach numbers, "particularly for the fin-off condition", because of
+    the lip. None of the 23 measured flights has an attached boattail above Mach 0.88, so the apogee figures did
+    not move; one flight shared by a flyer has (16° to 0.72 of the diameter, Mach 1.5), and went from 0.3% above
+    its measured apogee to 4.3% below.
+16. **Boattails: what is still off.** (a) Short boattails of 3° to 10° that leave most of the base (0.65 to 0.94
+    of the diameter): 0.01 to 0.02 too little pressure drag at Mach 1.2 to 1.3 (NASA TM X-1960, 10 boattails; the
+    15° ones are within 0.01). The equation's factor for the base's size, 1 − (base radius / maximum radius)⁴,
+    falls off faster than these show as the base nears full size. (b) Below Mach 0.9 the app gives a boattail no
+    pressure drag. RM L56K22's cones have 0.02 to 0.04, with about that much less base drag than the app gives,
+    so the two together agree within 0.03 up to 8°; TM X-1960's 15° boattails have 0.06 at Mach 0.5 rising to
+    0.15 at Mach 0.9, which the app does not have. (c) Nothing measures a boattail alone between Mach 1.4 and
+    2.5, where the app goes from the equation to the Mach 2.5 wind-tunnel fit; NACA TN 2972's theory covers it
+    (the equation is within 0.02 of it at Mach 1.5). David Taylor Model Basin Aero Report 857 (Patterson, 1954:
+    conical afterbodies, Mach 0.40 to 2.47) would.
 
 ## Further reading for the open gaps
 

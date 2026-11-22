@@ -23,7 +23,10 @@ In short:
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.011 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8–5.9%, CP 0.7% of length, CNα 10% |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 1.2% |
-| Drag that antennas add above Mach 1 | NASA TM X-1771, Cajun sounding rocket model, wind tunnel, Mach 2.3–4.63 | 0.020 in drag coefficient on four long fairings (0.06–0.12 measured), 0.006 on two raked boxes (about 0.01 measured) |
+| Drag that antennas add above Mach 1 | NASA TM X-1771, Cajun sounding rocket model, wind tunnel, Mach 2.3–4.63 | 0.019 in drag coefficient on four long fairings (0.06–0.12 measured), 0.006 on two raked boxes (about 0.01 measured) |
+| Drag that fins add above Mach 2 | NASA TM X-1684, Tomahawk sounding rocket model, wind tunnel, Mach 2.3–4.63 | 0.009 and 0.011 in drag coefficient on two fin sets (0.19–0.32 measured); the body alone 7–18% high |
+| A boattail's pressure drag through Mach 1 | NACA RM A57I09 (a 6° boattail), RM L56K22 (cones of 3° to 16°) and NASA TM X-1960 (3° to 15°), wind tunnel, Mach 0.6–1.4; NASA TR R-100 figure 13(a), free flight, Mach 1.2 | 0.006–0.024 in drag coefficient, low, on boattails of 3° to 10°; within 0.01 at 15° (0.07–0.14 measured on the 6° one, 0.18–0.24 on the 15° ones). Before build 341 the app gave a third to a fifth of the measured drag: a misprinted coefficient in its source (AERODYNAMICS.md, Boattails) |
+| Whole rockets with boattails, Mach 1.1–2 | NASA TR R-100 configurations 11 and 36, free flight; Arcas model, NASA TN D-4014 | The app has 14.6% and 17.9% too much drag; on the Arcas with fins 9% too much at Mach 1.5–1.8. Before the boattail correction: 6.2%, 12.5% and 4–5% too little. The excess is not the boattail's (flight models with no boattail show it too): AERODYNAMICS.md, gap 15 |
 | Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.3%, bias +3.0% (RASAero II: 5.2%, −3.4%) |
 | Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high; the rocket bled tracking smoke into its base, which lowers its drag |
 | Drag from Mach 2.1 down measured in a flight | Proto's flight recorder, coasting and falling, shape from a photograph | app within 8%, a little high |
@@ -52,13 +55,17 @@ brackets, number of points):
 
 | Grade | Below Mach 0.8 | Mach 0.8–1.2 | Mach 1.2–3 | Mach 3–5 |
 |---|---|---|---|---|
-| 1 | 13.6% (+13.6), 3 | 16.4% (−5.7), 10 | 4.6% (+1.4), 27 | 4.8% (+4.2), 9 |
-| 2 | | 15.1% (+15.1), 4 | 8.8% (+0.4), 14 | |
+| 1 | 13.6% (+13.6), 3 | 10.9% (+1.6), 10 | 9.8% (+9.0), 29 | 7.2% (+6.7), 11 |
+| 2 | 20.1% (−20.1), 2 | 22.6% (−11.0), 14 | 11.5% (−0.1), 17 | |
 | 3 | 7.6% (+3.9), 4 | 6.6% (−4.2), 4 | 5.9% (+5.9), 8 | 4.3% (+4.0), 10 |
 
 Grade 1 is the NACA and NASA models with their conditions stated (RM L55G28a, TN D-4013 and D-4014, TR R-100
-configuration 11, TM-2005-213541). Grade 2 is TR R-100 configuration 36 (its report suspects laminar flow on the
-model) and RM L56G24 (fairings not dimensioned). Grade 3 is the Aerobee 150A (a manufacturer's curve with neither
+configuration 11, TM-2005-213541, and from build 341 the Tomahawk body of TM X-1684). Grade 2 is TR R-100
+configuration 36 (its report suspects laminar flow on the model), RM L56G24 (fairings not dimensioned) and, from
+build 341, the two bodies of RM A57I09 (their drag includes a transition ring's; the boattailed one also carries the
+rest of the boattail shortfall near Mach 1). Build 341's boattail correction moved the grade 1 figures: Mach
+0.8–1.2 from 16.4% to 10.9% (the Arcas), Mach 1.2–3 from 5.1% to 9.8% (TR R-100's configuration 11 and the Arcas at
+Mach 1.5 and 1.8 now read high: AERODYNAMICS.md, gap 15). Grade 3 is the Aerobee 150A (a manufacturer's curve with neither
 finish nor Reynolds number).
 
 **Apogee against measured flights** (the 23 RASAero II files):
@@ -250,9 +257,9 @@ been changed to fit these cases.
 
 `node validation/accuracy.js --verbose` runs every case and prints these tables, keeping the tuned cases apart from the
 check cases. The cases themselves, with their sources and geometry, are in `validation/cases.js`; a new measured
-rocket is added there. Across the check cases the drag error by speed band is 6.2% subsonic, 9.0% transonic, 9.8%
-supersonic and 5.2% from Mach 3 to 5 (total drag), the CP error 2.4%, 3.5%, 3.8% and 1.0% of the length, and the
-normal-force slope 13–18% low throughout.
+rocket is added there. Across the check cases the drag error by speed band is 10.1% subsonic, 10.4% transonic, 9.4%
+supersonic and 3.8% from Mach 3 to 5 (total drag), the CP error 2.4%, 2.7%, 1.4% and 1.6% of the length, and the
+normal-force slope 18% low below Mach 1.2 and within about 10% above.
 
 ## Apogee against measured flights
 
@@ -310,13 +317,17 @@ acceleration and top speed read low.
 
 | Flight | Mach | Measured | App | |
 |---|---|---|---|---|
-| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.6 | GPS apogee about 17,400 ft | 17,452 ft | +0.3% |
+| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.5 | GPS apogee about 17,400 ft | 16,648 ft | −4.3% |
 | Estes Partizon, AeroTech I205W | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft) | 4,116 ft | −3.5% |
 | Estes Ascender, AeroTech H135W | 0.79 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 876 ft/s, 22.0 g | see below |
 
 - **Concept 98**: as the flyer set it up, with its pair of rail buttons, its tail cone painted rather than smooth, the field's
   3,898 ft elevation and its saved weather. Before the rail buttons and paint were added the app gave 18,075 ft (+3.9%);
-  OpenRocket 24.12 gives 16,875 ft (−3.0%) on that earlier file.
+  OpenRocket 24.12 gives 16,875 ft (−3.0%) on that earlier file. Until build 341 the app gave 17,452 ft (+0.3%): this
+  rocket's tail cone is a 16° boattail to 0.72 of the diameter, the flow counted as attached to it, and build 341's
+  boattail correction (AERODYNAMICS.md, Boattails) roughly doubles its drag above Mach 0.9. Direct measurements of
+  15° boattails at Mach 1.2 to 1.3 (NASA TM X-1960) agree with the corrected value within 0.01, so the earlier
+  match rested on too little boattail drag; what offsets it on this rocket is not known (gap 15).
 - **Partizon**: flown at the launch conditions saved with the file, on a 10 s delay, which puts the charge 0.6 s before
   apogee as on the flight; the app's coast from burnout to apogee, 10.6 s, matches the altimeter's 10.8 s. The
   altimeter's peak of 23.0 g is its limit (the app gives 47 g), so its 905 ft/s top speed reads low (the app
@@ -569,7 +580,7 @@ but the predicted apogee itself isn't moved. The flights were weighed and not ca
 (root-sum-square) by judgment: an estimated weight widens the range 10% down and 3.6% up (at 90%), and a drag
 calibrated to one of your own flights replaces the band's figures with 3%. The dispersion run's spread is added the same
 way. Mach 0.8–1.2 is wide on both sides because of one flight (Raven, 22% under its prediction); the shared flights
-(Partizon −3.5%, Concept 98 +0.3%) aren't in it, because their design files aren't in this repository.
+(Partizon −3.5%, Concept 98 −4.3%) aren't in it, because their design files aren't in this repository.
 
 ## Running the checks
 
