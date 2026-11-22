@@ -4,7 +4,7 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
-## Build 340 (2026-11-21)
+## Build 340 (2026-11-22)
 
 **Accuracy figures**
 
