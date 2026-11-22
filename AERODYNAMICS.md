@@ -173,7 +173,7 @@ have no flight history, so they are scored with the skin fully heated (right for
 | Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.7% of length; CNα 10% on average: 11–19% low below Mach 1, within 4% at Mach 1.2–1.45, 7–16% high at Mach 1.6–3, within 4% at Mach 4–5. |
 | Fineness-16.9 missile with 60° delta fins, Mach 1.7–2.8 (check) | NACA RM L56G24, free flight | Drag 7.4% low (the model's instrument fairings, not in the app's design, are part of that); CP within 1% of length (6% forward before the supersonic body terms). |
 | Slender missile with small tail fins, Mach 0.6–3.95 (check) | NASA TM-2005-213541, configuration 3, wind tunnel (the report's digital data) | Drag less base 6–17% high outside Mach 0.9–1.2; 20% high at Mach 0.9 and 30% at 1.19 (gap 12); CP 4–9% of length forward; CNα within 4% to Mach 1.19, 17% high at Mach 1.7, within 10% above. |
-| Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 6.4% (bias +3.1%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.4%). Below Mach 0.8, 3.8%; Mach 0.8–1.2, 6.1%; above 1.2, 9.0%. As true heights: 9.4% and 5.4%. |
+| Apogee, 23 measured flights, Mach 0.55–3.5 (check) | Altimeters, GPS, accelerometers and optical tracking; RASAero II example files | 6.3% (bias +3.0%), barometric readings compared as the altimeter reads them; RASAero II 5.2% (−3.4%). Below Mach 0.8, 3.7%; Mach 0.8–1.2, 6.1%; above 1.2, 8.8%. As true heights: 9.2% and 5.4%. |
 | Drag coasting at Mach 2.0–2.8, 27,000–54,000 ft (check) | Qu8k's flight recorder: its accelerometer in the coast, with the rocket weighed after the flight | App 23% high with the air aloft as the app takes it from the pad's temperature, 12% with standard air all the way up (the day's upper air isn't known). Not a clean check: the motor bled tracking smoke into the base through the coast, which lowers base drag. Nothing was changed on it. |
 | Drag coasting from Mach 2.1 to 0.5 and falling at Mach 0.6–0.95 (check) | Proto's flight recorder (98 mm minimum diameter, N4036): its accelerometer, the burnout mass worked out from the burn, the shape measured from a photograph | App 1–8% high above Mach 1.2 and 4–7% high below, depending on the finish and the upper air: inside what the mass and the shape allow. |
 | How the drag coefficient changes with height in a coast, Mach 3.3–1.6, 28,000–70,000 ft (check) | Four two-stage flights tracked by Multitronix's Kate system: the sustainers' accelerometers, read from the flight summaries' plots; weights and shapes unknown, so only the change along each coast is compared, against a stand-in sustainer | The app's rise over the coasts is 4% more than the flights' with the air aloft as the app takes it, the same with standard air: no sign of a laminar boundary layer up to 60,000–70,000 ft. |
@@ -200,8 +200,8 @@ the simulated apogee, for both the app's and RASAero II's predictions; `--geomet
 The cases differ in how much their sources record, and so in how much weight they can bear: VALIDATION.md, "How
 much weight each check can bear", grades each one and gives these figures by grade.
 
-As the altimeter reads, the app is 6.4% off with a +3.1% bias and RASAero II 5.2% with −3.4%; as true heights the
-app would be 9.4% (+8.7%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
+As the altimeter reads, the app is 6.3% off with a +3.0% bias and RASAero II 5.2% with −3.4%; as true heights the
+app would be 9.2% (+8.5%). Limits: it assumes no altimeter's reading was corrected for temperature afterwards, and
 that the air is as much warmer than standard as the air at the pad all through the troposphere and standard above
 it (the U.S. Standard Atmosphere Supplements, 1966: a season's offset lasts to the tropopause and not beyond),
 which is still only a guess at the day for Don't Debate This (56,000 ft; 12.8% low on this reading). A well-mixed layer to 3 km above the pad with the standard tropopause, in
@@ -275,19 +275,19 @@ source does not give.
 
 **Where the remaining apogee error sits.** Scaling each flight's whole drag until its apogee matches gives the
 factor that rocket needs (`validation/drag-factors.js`, as the altimeter reads). The fourteen rockets with beveled or
-square fins need 1.00 on average (0.83 to 1.20), and the seven of them above Mach 1.2 need 1.02: there is no
+square fins need 1.01 on average (0.86 to 1.20), and the seven of them above Mach 1.2 need 1.05: there is no
 general shortfall of drag, at any speed. The nine whose fins are entered as rounded (five sport rockets measured at
-LDRS-26, Blister, Rabia twice and Torrent) need 1.09 on average, from 0.87 to 1.40. The largest single factors:
+LDRS-26, Blister, Rabia twice and Torrent) need 1.10 on average, from 0.87 to 1.40. The largest single factors:
 
 | Flight | Factor | Note |
 |---|---|---|
 | Raven, LDRS-26 (Mach 1.15) | 1.40 | rounded fins |
+| Torrent (Mach 1.29) | 1.28 | rounded fins |
 | LOC/Precision EZI-65, LDRS-26 | 1.22 | rounded fins |
 | Proteus 6 (Mach 2.95) | 1.20 | boattail; measured by integrated accelerometers |
-| Rabia, Thunder and Lightning, Torrent | 1.14–1.16 | rounded fins |
-| Qu8k (Mach 3.5) | 1.10 | boattail; measured by integrated accelerometer |
-| Cancer Descending, Blister, Ion Drive | 0.86–0.87 | the first two have rounded fins |
-| Don't Debate This (Mach 3.0) | 0.83 | 56,000 ft; the altimeter correction is doubtful that high |
+| Qu8k (Mach 3.6) | 1.16 | boattail; measured by integrated accelerometer |
+| Thunder and Lightning, Rabia (Mach 1.21) | 1.15, 1.12 | rounded fins |
+| Cancer Descending, Blister, Ion Drive, Don't Debate This (Mach 3.0) | 0.86–0.87 | the first two have rounded fins; Don't Debate This reached 56,000 ft, where the altimeter correction is doubtful |
 
 What was tried:
 
@@ -297,7 +297,21 @@ What was tried:
   can't say by how much, and RASAero II is also 6–12% high on four of the LDRS-26 rockets.
 - A 3 mm aluminium wall in place of the placeholder (a skin that stays cooler, so more friction) moves the factors
   by 0.01 on average and 0.02 to 0.04 on the fastest flights. The wall is not what Proteus 6 and Qu8k are missing.
-- Rail buttons are worth 2.5% of apogee and are already counted.
+- Rail buttons are worth 2.5% of apogee and are already counted. RASAero II gives a rail guide about five times
+  the app's drag, and a launch shoe more (its drag tables, exported with and without them on Raven, Torrent and
+  Rabia: 0.07 to 0.5 of drag coefficient against the app's 0.015 to 0.08); its author describes that as a rule of
+  thumb ("typically a rail guide will have 5 times the drag of a typical rocket body"). The flights don't support
+  it: with the app's guide drag times five, the twelve flights below Mach 0.95 that carry guides go from a bias of
+  −0.3% (mean error 3.6%) to −8.2% (8.3%), and RASAero II itself is −6.1% on them. Above Mach 1 there is no room
+  for more either: NASA TN D-7369 measured cylinders as tall as they are wide on a plate at Mach 2.3 to 4.6
+  (laminar boundary layer) at a drag coefficient of 0.45 to 0.5 when as tall as the boundary layer and 0.77 at
+  nearly twice that, where the app's button has about 0.9 and 1.1.
+- RASAero II's blunt fin edges cost three to five times the app's (square in place of rounded edges adds 0.21 to
+  0.31 on Raven against the app's 0.045 to 0.07). On the six rounded-fin flights below Mach 0.95 the app is +1.2%
+  and RASAero II −5.8%: its fit to Raven, Rabia and Torrent comes with too much drag on the slower flights. With
+  the guides taken off in both programs they agree within 10% below Mach 0.9, and from Mach 1 to 1.2 the app has
+  0.66 to 0.84 of RASAero II's drag on those three rockets: that band, on blunt flat fins, is where the app is
+  short, and no measurement of it has been found.
 - A rougher finish closes the sport rockets' gap only by giving the good flights far too much drag.
 - A fin–body interference term of the size Box, Bishop and Hunt take from Mandell (the fin's friction on the root
   chord times half the body diameter) would add 0.03–0.06 to every rocket: about what the good flights and the

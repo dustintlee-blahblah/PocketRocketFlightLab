@@ -929,8 +929,9 @@ const CASES = [
 /* ---------- measured flights (apogee) ----------
    Rockets whose apogee was measured (barometric altimeters, GPS, integrated accelerometers or optical tracking), as
    RASAero II's author published them in the example design files that come with RASAero II (rasaero.com). Each entry
-   is copied from one file: geometry, launch weight and CG, launch site, rail, wind, motor, RASAero II's prediction, and
-   the measured apogee from the file's notes (where two instruments are given, the file's own average or final value).
+   is copied from one file: geometry, launch weight and CG, launch site, rail guides (rail) or launch shoes (shoe: the
+   frontal area of each, in²), wind, motor, RASAero II's prediction, and the measured apogee from the file's notes
+   (where two instruments are given, the file's own average or final value).
    The files themselves aren't in this repository. Sizes in inches, weights in lb, temperatures in °F, wind in mph, site
    altitude and apogees in ft, as in the files.
    Parts after the nose, front to back: "tube" (a body tube, with its fins if it has them; RASAero's fin location is
@@ -1584,6 +1585,7 @@ const FLIGHTS = [
       },
     ],
     rail: null,
+    shoe: 0.075,
     finish: "polished",
     noz: 0.0,
     motor: "I284W",
@@ -1974,6 +1976,7 @@ const FLIGHTS = [
       },
     ],
     rail: null,
+    shoe: 0.15,
     finish: "polished",
     noz: 1.188,
     motor: "L1080BB",
@@ -2304,11 +2307,18 @@ function flightOrk(f, motor) {
         f.rail && p === railOn
           ? `<railbutton><name>buttons</name><axialoffset method="bottom">-0.05</axialoffset><outerdiameter>${f.rail.d * IN}</outerdiameter><innerdiameter>${0.6 * f.rail.d * IN}</innerdiameter><height>${f.rail.h * IN}</height><instancecount>2</instancecount><instanceseparation>${0.5 * p.len * IN}</instanceseparation></railbutton>`
           : "",
+      // RASAero's launch shoes (a frontal area each, in²), as the app's reader of its files takes them: two blunt boxes
+      // of that frontal area, a quarter and three quarters of the way along the tube
+      shoeAt = (at) => {
+        const a = Math.sqrt(f.shoe) * IN;
+        return `<masscomponent><name>Launch shoe</name><axialoffset method="top">${at * p.len * IN}</axialoffset><packedlength>${a}</packedlength><packedradius>${a / 2}</packedradius><radialposition>0</radialposition><radialdirection>0</radialdirection><mass>0</mass><masscomponenttype>masscomponent</masscomponenttype><prflbump>long</prflbump><prflbumpw>${a}</prflbumpw><prflbumph>${a}</prflbumph></masscomponent>`;
+      },
+      shoes = f.shoe > 0 && p === railOn ? shoeAt(0.25) + shoeAt(0.75) : "",
       mount =
         p === lastTube
           ? `<motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0</ignitiondelay><overhang>${tailAfter * IN}</overhang></motormount>`
           : "";
-    return `<bodytube><name>b${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><radius>${(p.d / 2) * IN}</radius>${mount}<subcomponents>${fins}${rail}</subcomponents></bodytube>`;
+    return `<bodytube><name>b${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><radius>${(p.d / 2) * IN}</radius>${mount}<subcomponents>${fins}${rail}${shoes}</subcomponents></bodytube>`;
   };
   return `<?xml version='1.0' encoding='utf-8'?>
 <openrocket version="1.9" creator="validation"><rocket><name>${f.title}</name>

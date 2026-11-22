@@ -634,7 +634,7 @@ export function learnChapters() {
           [
             "Apogee, 23 flights, Mach 0.55 to 3.5 (check)",
             "Altimeters, GPS, accelerometers and tracking",
-            "6.4% (RASAero II: 5.2%)",
+            "6.3% (RASAero II: 5.2%)",
           ],
           ["Drag, Arcas sounding rocket, Mach 1.5 to 4.6 (check)", "NASA TN D-4014, wind tunnel", "4.1%"],
           ["Drag, fin-stabilized cone-cylinder, Mach 2.5 to 3.9 (check)", "NACA RM L55G28a, free flight", "1.2%"],

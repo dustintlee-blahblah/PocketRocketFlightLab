@@ -23,7 +23,7 @@ In short:
 | Fin drag | NACA wind-tunnel data (RM-10), Mach 1.5–2.0 | mean error 0.011 in drag coefficient |
 | Drag, CP and CNα of a rocket never used for tuning | Aerobee 150A, manufacturer's data from wind-tunnel tests, Mach 0.1–5 | drag 4.8–5.9%, CP 0.7% of length, CNα 10% |
 | Drag of a rocket never used for tuning | NACA RM L55G28a, fin-stabilized cone-cylinder, free flight, Mach 2.5–3.9 | 1.2% |
-| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.4%, bias +3.1% (RASAero II: 5.2%, −3.4%) |
+| Apogee of measured flights | 23 rockets from RASAero II's example files, Mach 0.55–3.6, up to 121,000 ft | mean error 6.3%, bias +3.0% (RASAero II: 5.2%, −3.4%) |
 | Drag above Mach 2 measured in a flight | Qu8k's flight recorder, Mach 2.0–2.8 coasting, 27,000–54,000 ft | app 12–22% high; the rocket bled tracking smoke into its base, which lowers its drag |
 | Drag from Mach 2.1 down measured in a flight | Proto's flight recorder, coasting and falling, shape from a photograph | app within 8%, a little high |
 | How drag changes with height in a supersonic coast | Four tracked two-stage flights, Mach 3.3–1.6, 28,000–70,000 ft | the app's rise is 0–4% more than the flights' |
@@ -258,7 +258,7 @@ normal-force slope 13–18% low throughout.
 Twenty-three rockets whose apogee was measured, from the example design files that come with RASAero II
 ([rasaero.com](https://www.rasaero.com)): student rockets (USAF Test Pilot School 2004, Cal Poly Pomona 2005), LDRS-26
 and Black Rock flights from J to Q motors, and the high-altitude Qu8k (121,478 ft), Proteus 6 and Kinsel A-601.
-`validation/flights.js` flies each in the app with the file's launch weight, CG, launch site, rail and wind, on RASAero's
+`validation/flights.js` flies each in the app with the file's launch weight, CG, launch site, rail, rail guides or launch shoes and wind, on RASAero's
 own thrust curve for the motor (`validation/flight-motors.eng`, from OpenRocket's motor database). The geometry and
 numbers are copied into `validation/cases.js` (`FLIGHTS`); the files themselves aren't in this repository.
 
@@ -270,7 +270,7 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 | Flight | Max Mach | Measured (ft) | How | RASAero II | App |
 |---|---|---|---|---|---|
 | Thunder and Lightning, LDRS-26 | 0.55 | 3,577 | barometric altimeter | +1.3% | +6.1% |
-| Gibb, LDRS-26 | 0.56 | 3,913 | barometric altimeter | −2.4% | +1.5% |
+| Gibb, LDRS-26 | 0.56 | 3,913 | barometric altimeter | −2.3% | +0.7% |
 | Cancer Descending, LDRS-26 | 0.57 | 6,188 | average of two barometric altimeters | −7.1% | −3.6% |
 | LOC/Precision EZI-65, LDRS-26 | 0.60 | 3,965 | barometric altimeter | −3.4% | +9.2% |
 | USAF TPS 2004, Team 3 | 0.64 | 3,964 | barometric altimeter | −7.0% | −5.2% |
@@ -283,7 +283,7 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 | Cal Poly Pomona 2005, Team Columbia | 0.88 | 5,085 | barometric altimeter | −7.1% | −1.5% |
 | Rabia, short fin can | 0.90 | 10,584 | barometric altimeter | −10.2% | −0.6% |
 | Raven, LDRS-26 | 1.15 | 8,815 | barometric altimeter | −3.8% | +22.0% |
-| Rabia | 1.22 | 12,745 | barometric altimeter | −9.6% | +7.9% |
+| Rabia | 1.21 | 12,745 | barometric altimeter | −9.6% | +6.0% |
 | Torrent | 1.29 | 12,807 | barometric altimeter | +1.1% | +14.5% |
 | Kline-Rogers L500 rocket, USXRL-89 | 1.95 | 24,771 | optical tracking | +7.0% | −2.3% |
 | Kinsel A-601 (P4935) | 2.11 | 42,771 | GPS | −3.9% | +5.5% |
@@ -295,12 +295,12 @@ the evidence" in [AERODYNAMICS.md](AERODYNAMICS.md)).
 
 | Mean absolute error (bias) | Flights | RASAero II | App |
 |---|---|---|---|
-| All | 23 | 5.2% (−3.4%) | 6.4% (+3.1%) |
-| Below Mach 0.8 | 8 | 5.0% (−4.7%) | 3.8% (+1.6%) |
+| All | 23 | 5.2% (−3.4%) | 6.3% (+3.0%) |
+| Below Mach 0.8 | 8 | 5.0% (−4.7%) | 3.7% (+1.5%) |
 | Mach 0.8–1.2 | 6 | 6.9% (−6.9%) | 6.1% (+1.3%) |
-| Above Mach 1.2 | 9 | 4.3% (0.0%) | 9.0% (+5.7%) |
+| Above Mach 1.2 | 9 | 4.3% (0.0%) | 8.8% (+5.5%) |
 
-Compared as true heights the app is 9.4% off (+8.7%) and RASAero II 5.4% (+1.8%).
+Compared as true heights the app is 9.2% off (+8.5%) and RASAero II 5.4% (+1.8%).
 
 Three more flights, shared by flyers with their permission (their design files stay out of this repository). The two
 Estes flights were logged by an altimeter that reports peak and average acceleration, coast-to-apogee and
@@ -335,7 +335,7 @@ II's author chose to publish, and its own model is partly calibrated on flights 
 is real too: the three Test Pilot School rockets are the same airframe on the same motor within 0.16 lb, and their
 measured apogees spread over 7%.
 
-**What is left is mostly scatter.** Above Mach 1.2 three flights are within 3%, Kinsel A-601 and Rabia are 6–8%
+**What is left is mostly scatter.** Above Mach 1.2 three flights are within 3%, Kinsel A-601 and Rabia are 5–6%
 high, and the rest are Qu8k (+16.5%), Proteus 6 (+16.8%), Torrent (+14.5%) and Don't Debate This (−12.8%); just
 under Mach 1.2, Raven is +22%. Each of those has a reason of its own:
 
@@ -362,9 +362,9 @@ were really finished isn't recorded:
 
 | Finish given to the "zero roughness" rockets | Mean error | Bias | Above Mach 1.2 |
 |---|---|---|---|
-| Polished, 2 µm (as the files say; the headline numbers) | 6.4% | +3.1% | 9.0% |
-| Smooth paint, 20 µm | 6.2% | +1.6% | 8.1% |
-| Regular paint, 60 µm | 8.7% | −5.5% | 10.4% (8 flights: one falls below Mach 1.2) |
+| Polished, 2 µm (as the files say; the headline numbers) | 6.3% | +3.0% | 8.8% |
+| Smooth paint, 20 µm | 6.1% | +1.5% | 7.9% |
+| Regular paint, 60 µm | 8.8% | −5.6% | 10.4% (8 flights: one falls below Mach 1.2) |
 
 Regular paint on all of them overshoots (the student rockets then come out 7–13% low, the L500 21% low), so the real
 finishes were probably mixed, and smoother on these rockets than on the weighed hobby rockets further down, which

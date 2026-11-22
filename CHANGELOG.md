@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 340 (2026-11-21)
+
+**Accuracy figures**
+
+- **Two of the 23 measured flights now fly with the launch shoes their files list.** Rabia and Gibb each carry two launch shoes in RASAero II's files, and the validation set had left them off (it had no way to enter one). With them, as the app reads such a file (two blunt boxes of the shoe's frontal area), Rabia goes from +7.9% to +6.0% and Gibb from +1.5% to +0.7%; the mean error over all 23 flights from 6.4% to 6.3%, and above Mach 1.2 from 9.0% to 8.8%. The range beside the predicted apogee on the Results tab, which comes from these flights, moves by a hair with it. Nothing in the drag model changed.
+- AERODYNAMICS.md records what a comparison with RASAero II's own drag tables showed (run for Raven, Torrent and Rabia with one thing changed at a time): it charges rail guides and blunt fin edges several times what the app does, the slower flights say that is too much, a NASA measurement leaves no room for more guide drag above Mach 1, and the app's shortfall on those three rockets sits between Mach 1 and 1.2 on blunt flat fins. The table of the drag each flight would need is rerun.
+
 ## Build 339 (2026-11-21)
 
 **The descent**

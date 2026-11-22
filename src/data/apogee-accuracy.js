@@ -12,7 +12,7 @@ export const APO_ACCURACY = {
       lo: 0,
       hi: 0.8,
       n: 8,
-      mean: -0.0136,
+      mean: -0.0126,
       sd: 0.046,
       k68: 1.142,
       k90: 2.0095
@@ -30,8 +30,8 @@ export const APO_ACCURACY = {
       lo: 1.2,
       hi: 99,
       n: 9,
-      mean: -0.0462,
-      sd: 0.0928,
+      mean: -0.0443,
+      sd: 0.0924,
       k68: 1.1242,
       k90: 1.9601
     }
