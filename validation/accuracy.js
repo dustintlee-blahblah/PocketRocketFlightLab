@@ -30,6 +30,7 @@ const KIND = {
   cd: { label: "drag", unit: "%", err: (a, m) => (100 * (a - m)) / m },
   cdFore: { label: "drag less base", unit: "%", err: (a, m) => (100 * (a - m)) / m },
   cdFins: { label: "fin drag", unit: " Cd", err: (a, m) => a - m },
+  cdBump: { label: "protuberance drag", unit: " Cd", err: (a, m) => a - m },
   cdJet: { label: "drag the exhaust removes", unit: " Cd", err: (a, m) => a - m },
   cdFinsPressure: { label: "fin pressure drag", unit: " Cd", err: (a, m) => a - m },
   cdAftPressure: { label: "boattail pressure drag", unit: " Cd", err: (a, m) => a - m },
@@ -88,7 +89,7 @@ const KIND = {
         const app = c.pts.map(([M, , Re]) => {
           if (c.quantity === "cd") return cd(m, M, Re, m.D.length, c.nozzleDia);
           if (c.quantity === "cdFore") return cd(m, M, Re, m.D.length, 0, true);
-          if (c.quantity === "cdFins") return cd(m, M, c.rePerM, 1) - cd(b, M, c.rePerM, 1);
+          if (c.quantity === "cdFins" || c.quantity === "cdBump") return cd(m, M, c.rePerM, 1) - cd(b, M, c.rePerM, 1);
           // what the motor's exhaust takes off the drag: coasting less thrusting
           if (c.quantity === "cdJet") return cd(m, M, Re, m.D.length, 0) - cd(m, M, Re, m.D.length, c.nozzleDia);
           if (c.quantity === "cdFinsPressure" || c.quantity === "cdAftPressure") {
@@ -115,7 +116,7 @@ const KIND = {
       if (verbose) {
         const f = (v) => (c.quantity === "cp" ? (v * 100).toFixed(1) : v.toFixed(3));
         console.log(
-          `  ${M.toFixed(2).padStart(5)}  ${f(meas).padStart(8)}  ${f(app[i]).padStart(6)}  ${(e >= 0 ? "+" : "") + e.toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)}`,
+          `  ${M.toFixed(2).padStart(5)}  ${f(meas).padStart(8)}  ${f(app[i]).padStart(6)}  ${(e >= 0 ? "+" : "") + e.toFixed(/^cd(Fins|Jet|Aft|Bump)/.test(c.quantity) ? 3 : 1)}`,
         );
       }
     });
@@ -124,7 +125,7 @@ const KIND = {
     bias = (a) => a.reduce((s, x) => s + x, 0) / a.length;
   const fmt = (q, a) => {
     if (!a.length) return "".padEnd(19);
-    const d = /^cd(Fins|Jet|Aft)/.test(q) ? 3 : 1;
+    const d = /^cd(Fins|Jet|Aft|Bump)/.test(q) ? 3 : 1;
     return `${mean(a).toFixed(d)} (${bias(a) >= 0 ? "+" : ""}${bias(a).toFixed(d)}) n=${a.length}`.padEnd(19);
   };
   console.log("\nMean absolute error (mean signed error in brackets), by speed band:\n");
@@ -169,7 +170,7 @@ const KIND = {
   for (const c of CASES) {
     const e = rows.filter((r) => r.c === c).map((r) => r.e);
     console.log(
-      `  ${c.role.padEnd(6)} ${c.title} [${c.tier}; grade ${c.grade}]: ${mean(e).toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)}${KIND[c.quantity].unit} mean, ${bias(e) >= 0 ? "+" : ""}${bias(e).toFixed(/^cd(Fins|Jet|Aft)/.test(c.quantity) ? 3 : 1)} bias`,
+      `  ${c.role.padEnd(6)} ${c.title} [${c.tier}; grade ${c.grade}]: ${mean(e).toFixed(/^cd(Fins|Jet|Aft|Bump)/.test(c.quantity) ? 3 : 1)}${KIND[c.quantity].unit} mean, ${bias(e) >= 0 ? "+" : ""}${bias(e).toFixed(/^cd(Fins|Jet|Aft|Bump)/.test(c.quantity) ? 3 : 1)} bias`,
     );
   }
 })();

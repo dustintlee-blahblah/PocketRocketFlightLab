@@ -6,7 +6,8 @@
  *   construction. role "check": never used to set anything; the honest test.
  * tier: how the reference numbers were obtained (wind tunnel, free flight, or a manufacturer's data sheet built from
  *   its own wind-tunnel tests).
- * Quantities: "cd" zero-lift drag coefficient on the reference area; "cdFins" the drag a fin set adds; "cp" center of
+ * Quantities: "cd" zero-lift drag coefficient on the reference area; "cdFins" the drag a fin set adds; "cdBump" the
+ *   drag a set of protuberances adds; "cp" center of
  *   pressure as a share of body length from the nose tip; "cna" normal-force slope per radian on the reference area.
  * Points are [Mach, value] or, for drag measured at a known Reynolds number, [Mach, value, Reynolds number on the body
  *   length]. Without one the drag is worked out in standard sea-level air.
@@ -45,7 +46,7 @@ function finnedOrk(o) {
  * An OpenRocket design built from a list of body parts (sizes in inches): a nose, then tubes ("tube": len, d) and
  * conical transitions ("tail": len, d0, d1), any of which can carry a set of trapezoidal fins
  * ({n, cr, ct, s, sw, t, edge, le?, te?, aft}: aft is the root trailing edge's distance ahead of the part's aft end).
- * No masses: for drag and CP only.
+ * A tube can carry protuberances instead (bumps). No masses: for drag and CP only.
  * @param {object} o {name, finish, nose: {len, shape, param?}, parts}
  * @returns {string} XML
  */
@@ -56,12 +57,25 @@ function partsOrk(o) {
       "<aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped>",
     fins = (F) =>
       F
-        ? `<subcomponents><trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.aft || 0) * IN}</axialoffset>${fin}<fincount>${F.n || 4}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection><cant>0</cant>${F.le > 0 || F.te > 0 ? `<prflbevelle>${(F.le || 0) * IN}</prflbevelle><prflbevelte>${(F.te || 0) * IN}</prflbevelte>` : ""}${F.ler > 0 ? `<prflleradius>${F.ler * IN}</prflleradius>` : ""}<rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset></subcomponents>`
+        ? `<trapezoidfinset><name>fins</name><axialoffset method="bottom">${-(F.aft || 0) * IN}</axialoffset>${fin}<fincount>${F.n || 4}</fincount><rotation>0</rotation><thickness>${F.t * IN}</thickness><crosssection>${F.edge}</crosssection><cant>0</cant>${F.le > 0 || F.te > 0 ? `<prflbevelle>${(F.le || 0) * IN}</prflbevelle><prflbevelte>${(F.te || 0) * IN}</prflbevelte>` : ""}${F.ler > 0 ? `<prflleradius>${F.ler * IN}</prflleradius>` : ""}<rootchord>${F.cr * IN}</rootchord><tipchord>${F.ct * IN}</tipchord><sweeplength>${F.sw * IN}</sweeplength><height>${F.s * IN}</height></trapezoidfinset>`
         : "",
+    // protuberances on a tube, as the app's own files carry them (a mass with the app's shape tags): {shape, w, h, len,
+    // at (its front, from the tube's front), n (how many, spaced round the body)}
+    bumps = (B) =>
+      B && B.length
+        ? `${B.map((k) =>
+            Array.from(
+              { length: k.n || 1 },
+              (_, j) =>
+                `<masscomponent><name>${k.shape}</name><axialoffset method="top">${k.at * IN}</axialoffset><packedlength>${k.len * IN}</packedlength><packedradius>${(k.w / 2) * IN}</packedradius><radialposition>0</radialposition><radialdirection>${(360 * j) / (k.n || 1)}</radialdirection><mass>0</mass><masscomponenttype>masscomponent</masscomponenttype><prflbump>${k.shape}</prflbump><prflbumpw>${k.w * IN}</prflbumpw><prflbumph>${k.h * IN}</prflbumph></masscomponent>`,
+            ).join(""),
+          ).join("")}`
+        : "",
+    subs = (x) => (x ? `<subcomponents>${x}</subcomponents>` : ""),
     part = (p, i) =>
       p.t === "tail"
-        ? `<transition><name>t${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><shape>conical</shape><shapeclipped>false</shapeclipped><shapeparameter>0</shapeparameter><foreradius>${(p.d0 / 2) * IN}</foreradius><aftradius>${(p.d1 / 2) * IN}</aftradius><foreshoulderradius>0</foreshoulderradius><foreshoulderlength>0</foreshoulderlength><foreshoulderthickness>0</foreshoulderthickness><foreshouldercapped>false</foreshouldercapped>${sh0}${fins(p.fins)}</transition>`
-        : `<bodytube><name>b${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><radius>${(p.d / 2) * IN}</radius>${fins(p.fins)}</bodytube>`;
+        ? `<transition><name>t${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><shape>conical</shape><shapeclipped>false</shapeclipped><shapeparameter>0</shapeparameter><foreradius>${(p.d0 / 2) * IN}</foreradius><aftradius>${(p.d1 / 2) * IN}</aftradius><foreshoulderradius>0</foreshoulderradius><foreshoulderlength>0</foreshoulderlength><foreshoulderthickness>0</foreshoulderthickness><foreshouldercapped>false</foreshouldercapped>${sh0}${subs(fins(p.fins))}</transition>`
+        : `<bodytube><name>b${i}</name>${fin}<length>${p.len * IN}</length><thickness>0.002</thickness><radius>${(p.d / 2) * IN}</radius>${subs(fins(p.fins) + bumps(p.bumps))}</bodytube>`;
   const d0 = o.parts[0].d ?? o.parts[0].d0;
   return `<?xml version='1.0' encoding='utf-8'?>
 <openrocket version="1.9" creator="validation"><rocket><name>${o.name}</name>
@@ -90,6 +104,43 @@ function arcasOrk(tubeLen, finOffset, fins = true) {
 <transition><name>Boattail</name><finish>smooth</finish><material type="bulk" density="2700">Aluminum</material><length>${1.46 * IN}</length><thickness>0.002</thickness><shape>conical</shape><shapeclipped>false</shapeclipped><shapeparameter>0</shapeparameter><foreradius>${1.125 * IN}</foreradius><aftradius>${0.735 * IN}</aftradius><foreshoulderradius>0</foreshoulderradius><foreshoulderlength>0</foreshoulderlength><foreshoulderthickness>0</foreshoulderthickness><foreshouldercapped>false</foreshouldercapped><aftshoulderradius>0</aftshoulderradius><aftshoulderlength>0</aftshoulderlength><aftshoulderthickness>0</aftshoulderthickness><aftshouldercapped>false</aftshouldercapped></transition>
 </subcomponents></stage></subcomponents></rocket></openrocket>`;
 }
+
+/* NASA TM X-1771 (Jernell, 1969): antennas on a 0.410-scale model of the Cajun sounding rocket in the Langley Unitary
+   Plan wind tunnel, Mach 2.30 to 4.63, Reynolds number 2.0 million per foot, transition fixed near the nose. The model:
+   a 14.40 in conical nose on a 2.668 in body, 67.65 in long, with its four fins (figure 1(b): root 8.61 in, tip 4.92,
+   span 3.69, leading edge swept 45°, 0.202 in thick) straight on the body; their flared shroud and roll tabs are left
+   out, being the same with and without antennas, and the case is the difference. Axial-force coefficient at zero angle of
+   attack on the body's cross-section, read off figure 8 (to about ±0.01): the clean rocket, and with each antenna set.
+   Dovap antennas (figure 1(c)): four fairings 15.60 in long starting 18.98 in behind the nose, a half-round of 0.31 in
+   radius on a 0.20 in riser (0.51 in high, 0.62 wide, 0.275 sq in of frontal area), with pointed ends 0.82 in long.
+   Entered as the app's sloped-front box of that height and frontal area (0.539 in wide).
+   Quadraloop antennas (figure 1(d)): two boxes 0.41 in wide, 0.26 high and 2.72 long with the front raked back 45°,
+   1.41 in behind the nose; their curve lies on the clean one within the reading, taken as +0.01.
+   The turnstile antennas (four rods swept 45°) have no shape in the app and aren't entered. */
+const CAJUN_RE_PER_M = 2.0e6 / 0.3048,
+  CAJUN_CLEAN = [
+    [2.3, 0.65],
+    [2.96, 0.555],
+    [3.95, 0.47],
+    [4.63, 0.42],
+  ],
+  CAJUN_DOVAP = [0.77, 0.64, 0.53, 0.49],
+  CAJUN_QUAD = 0.01,
+  cajunOrk = (bumps) =>
+    partsOrk({
+      name: "Cajun, TM X-1771",
+      finish: "polished",
+      nose: { len: 14.4, shape: "conical", param: 0 },
+      parts: [
+        {
+          t: "tube",
+          len: 53.25,
+          d: 2.668,
+          bumps,
+          fins: { n: 4, cr: 8.61, ct: 4.92, s: 3.69, sw: 3.69, t: 0.202, edge: "beveled", aft: 0.48 },
+        },
+      ],
+    });
 
 /* NACA RM A53D02 (James & Carros, 1953): free-flight total drag of a fin-stabilized body of fineness ratio 10 (tangent
    ogive nose, four trapezoidal fins swept 72° with 4% sections), figure 11 and table I. Coefficients on the body's
@@ -712,6 +763,30 @@ const CASES = [
     xmlBody: arcasOrk(30.115, 27.925, false),
     rePerM: 3e6 / 0.3048,
     pts: ARCAS_CA_SUP.map(([M, on, off]) => [M, on - off]),
+  },
+  {
+    id: "cajun-dovap",
+    grade: 1,
+    title: "NASA TM X-1771, Cajun, Mach 2.3–4.63: drag its four Dovap antenna fairings add",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdBump",
+    xml: cajunOrk([{ shape: "ramp", w: 0.539, h: 0.51, len: 15.6, at: 18.98, n: 4 }]),
+    xmlBody: cajunOrk(),
+    rePerM: CAJUN_RE_PER_M,
+    pts: CAJUN_CLEAN.map(([M, clean], i) => [M, +(CAJUN_DOVAP[i] - clean).toFixed(3)]),
+  },
+  {
+    id: "cajun-quadraloop",
+    grade: 1,
+    title: "NASA TM X-1771, Cajun, Mach 2.3–4.63: drag its two quadraloop antennas add",
+    tier: "wind tunnel",
+    role: "check",
+    quantity: "cdBump",
+    xml: cajunOrk([{ shape: "ramp", w: 0.41, h: 0.26, len: 2.72, at: 1.41, n: 2 }]),
+    xmlBody: cajunOrk(),
+    rePerM: CAJUN_RE_PER_M,
+    pts: CAJUN_CLEAN.map(([M]) => [M, CAJUN_QUAD]),
   },
   {
     id: "r100-11-cd",

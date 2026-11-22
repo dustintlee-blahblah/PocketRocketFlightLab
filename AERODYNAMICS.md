@@ -168,6 +168,7 @@ have no flight history, so they are scored with the skin fully heated (right for
 | Fin-stabilized cone-cylinder, Mach 2.5–3.9 (check) | NACA RM L55G28a, free flight | Drag 1.2%, with its fins' square trailing edges entered (5.2% low with the fins sharp at both ends, as they were entered before the trailing edge could be set). With a cold skin, 16.7% high. |
 | Boattailed body with fins, Mach 0.6–1.2 (check; one term was sized on it) | NASA TN D-4013, Arcas short model, 15° boattail, wind tunnel | Drag 14.3%: 15% high at Mach 0.6–0.7, 14–27% low from Mach 0.9 to 1.05, 7–12% low to Mach 1.2 (gap 12). |
 | The same model, Mach 1.5–4.63 (check) | NASA TN D-4014, wind tunnel | Drag 4.1% with fins, 4.9% without. What the four fins add: 0.019 in Cd, low (0.065 low at Mach 1.5, 0.03 at 1.8). |
+| Drag antennas add, Mach 2.3–4.63 (check) | NASA TM X-1771, 0.410-scale Cajun, wind tunnel | Four long fairings (0.06–0.12 measured): 0.020 in Cd. Two raked boxes (about 0.01 measured): 0.006 in Cd, high. |
 | Boattailed bodies in flight, Mach 0.8–2 (check) | NASA TR R-100, configurations 11 (8° boattail) and 36 (4°), free flight | Drag 6.2% on configuration 11; 12.6% high on configuration 36. |
 | Pressure drag of 45° fins 2.8% thick (check) | NASA TR R-100 figure 5, free flight | 0.012 in Cd on the fin area. |
 | Aerobee 150A, Mach 0.1–5 (check) | Manufacturer's data from Aerojet wind-tunnel tests | Drag 5.9% while thrusting, 4.8% coasting (both high); what the exhaust removes, Mach 2–5, within 0.002 in Cd; CP 0.7% of length; CNα 10% on average: 11–19% low below Mach 1, within 4% at Mach 1.2–1.45, 7–16% high at Mach 1.6–3, within 4% at Mach 4–5. |
@@ -265,7 +266,18 @@ value, which would add drag; the Aerobee curves show no such thing. Below Mach 2
 
 **Protuberances above Mach 1.** Hoerner's free-flight values at Mach 1 to 2 (p. 20-14: 0.75 for a forward-facing
 step, 0.45 for a rear-facing one, 0.8 for blunt rings, 2.0 for round rivet heads) bracket what the app gives a blunt
-box there (about 1.3). A streamlined shroud above Mach 1 is still an estimate.
+box there (about 1.3). One wind-tunnel test checks the rest: NASA TM X-1771 (Jernell, 1969), a 0.410-scale Cajun
+sounding rocket with and without its antennas at Mach 2.3 to 4.63, turbulent, each antenna about as tall as the
+boundary layer. Two boxes with fronts raked back 45° add about 0.01 to the axial-force coefficient and the app's
+sloped-front box gives 0.016. Four fairings 15.6 in long with a half-round top and pointed ends 0.82 in long add
+0.12 at Mach 2.3 falling to 0.06–0.07 above Mach 4; entered as sloped-front boxes the app gives 0.083 to 0.087 (0.020
+off on average, flat where the measurement falls). Entered as streamlined shapes they would get 0.011, six to ten
+times too little: the app takes a streamlined shape to rise over half its length, and these rise over a twentieth
+of it, so the builder's help says to enter such a fairing as a sloped-front box. The same report's four rod
+antennas, swept 45°, add 0.11 to 0.165, less than a swept cylinder's Newtonian estimate (0.20); the app has no such
+shape. RASAero II's rail guide, at about five times the app's, has no support here (see below). A streamlined shroud
+shaped along its whole length is still an estimate above Mach 1, and a round stub is checked only against a laminar
+boundary layer (NASA TN D-7369).
 
 **Finish labels.** Missile DATCOM's roughness table puts carefully applied smooth paint at 6 µm, average paint at
 10 µm and production spray paint at 30 µm. OpenRocket's names for 20 and 60 µm ("smooth paint", "regular paint")
@@ -390,7 +402,9 @@ ran at sea-level Reynolds numbers (1.8 times the flight's: a few percent of drag
     the sixteen transonic check points are that one model, which is why the band's figure rose from 8.6% to 12.6%.
     What the Arcas fins add beyond the chart is most likely their interference with the boattail, which nothing
     here models.
-13. **Above Mach 5** nothing checks the drag, and above Mach 1 nothing checks protuberances.
+13. **Above Mach 5** nothing checks the drag. Above Mach 1 protuberances have one check (NASA TM X-1771: box-like
+    antennas and long fairings, Mach 2.3 to 4.63); nothing checks them from Mach 1 to 2.3, a fully streamlined one, or
+    a round stub in a turbulent boundary layer.
 
 ## Further reading for the open gaps
 
