@@ -929,7 +929,10 @@ export function simulate(D, L, m, mb, opts = {}) {
       const CdA = (phase === "main" ? CdAmain + CdAdrogue : phase === "drogue" ? CdAdrogue : Gs.tumbleCdA) + XCtot,
         ms = D.dryMass + m.totalMass - m.propMass;
       for (const o of [openD, openM, ...XC.map((c) => c.open)])
-        if (o && t < o.t + 2 * o.tf) dt = Math.min(dt, Math.max(o.tf / 10, 0.001)); // small steps while a canopy fills
+        // small steps while a canopy fills. Twenty of them end exactly on the limit, so the limit is drawn a hair
+        // inside: without that, the last binary place of t decided whether a twenty-first followed, and every later
+        // step under the chute (so the landing's timing) differed between one browser's arithmetic and another's
+        if (o && t < o.t + 2 * o.tf - 1e-9) dt = Math.min(dt, Math.max(o.tf / 10, 0.001));
       const W = windVec(s[1], t),
         lam =
           (atmosphere(L, Math.max(s[1], 0)).rho * CdA * Math.hypot(s[2] - W[0], s[3], s[5] - W[1])) /
@@ -1337,6 +1340,26 @@ export function simulate(D, L, m, mb, opts = {}) {
    * Touchdown: the moment, place and speed it hit the ground (stepping back inside the last step).
    * @returns {boolean} true if the flight is over
    */
+  /**
+   * The highest altitude below the rocket at which a chute is waiting to open on the way down: the main at its set
+   * altitude, or another chute set to open at an altitude. The step is cut to end there (a hair below, at the speed it
+   * is falling), so the chute opens at its altitude and not up to a step's fall beneath it.
+   * @returns {?number} m above the ground, or null when nothing is waiting or it isn't falling
+   */
+  function nextOpeningAlt() {
+    if (st.tApo == null || !(vz < 0)) return null;
+    let a = null;
+    if (
+      !noChute &&
+      (phase === "drogue" || phase === "free" || (phase === "flight" && plugSkip && dual)) &&
+      isFinite(mainAlt) &&
+      z > mainAlt
+    )
+      a = mainAlt;
+    for (const c of XC) if (!c.open && c.ev === "altitude" && z > c.alt && (a == null || c.alt > a)) a = c.alt;
+    return a;
+  }
+  let prevV = [0, 0, 0]; // the velocity (vx, vz, vy) at the start of the step just taken
   function landing() {
     if (phase !== "rail" && z <= 0 && t > 0.5) {
       const back = vz < -1e-6 ? Math.min(z / vz, dt) : 0; // step back to the moment it touched the ground
@@ -1345,8 +1368,14 @@ export function simulate(D, L, m, mb, opts = {}) {
       st.driftY = y - vy * back;
       // speed hitting the ground (over the ground, wind drift included, as OpenRocket's ground hit velocity), and its
       // vertical part
-      st.vLand = Math.hypot(vx, vy, vz);
-      st.vLandZ = Math.max(0, -vz);
+      // the velocity at that moment too, between the step's two ends: the end of the step is up to a step's length
+      // past the touchdown, below the ground, where the wind the model gives is not the wind it landed in
+      const f = dt > 0 ? back / dt : 0,
+        ux = vx + (prevV[0] - vx) * f,
+        uz = vz + (prevV[1] - vz) * f,
+        uy = vy + (prevV[2] - vy) * f;
+      st.vLand = Math.hypot(ux, uy, uz);
+      st.vLandZ = Math.max(0, -uz);
       st.landed = true;
       if (st.tDeploy == null) st.noDeploy = true;
       return true;
@@ -1359,6 +1388,9 @@ export function simulate(D, L, m, mb, opts = {}) {
     for (const bp of breaks) {
       if (t < bp - 1e-9 && t + dt > bp) dt = bp - t;
     }
+    const zOpen = nextOpeningAlt();
+    if (zOpen != null) dt = Math.min(dt, (z - zOpen) / -vz + 1e-4);
+    prevV = [s[2], s[3], s[5]];
     const step = rk4Step((tt, ss) => deriv(tt, ss, phase), t, s, dt);
     s = step.s;
     acc = step.k1[step.k1.length - 1];

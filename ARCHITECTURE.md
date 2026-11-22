@@ -246,7 +246,7 @@ the geometry at each moment `Gat(t)`, parachutes), then:
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `inertia(t)`, `rollI(t)`        | mass properties at a time: CG, pitch and roll inertia                                                                                                          |
 | `deriv(t, s, ph)`               | the equations of motion: the rate of change of the state `s` in phase `ph` (`"rail"`, `"flight"`, `"drogue"`, `"main"`, `"free"`). Everything physical is here |
-| `stepSize()`                    | the next time step                                                                                                                                             |
+| `stepSize()`                    | the next time step (cut short to end at a motor event or at an altitude a chute is waiting to open at)                                                         |
 | `afterStep()`, `recordSample()` | bookkeeping after a step; adds a sample to `out`                                                                                                               |
 | `trackAscent()`                 | maximum speed, Mach, burnout, apogee                                                                                                                           |
 | `stagingEvents()`               | separation and upper-stage ignition                                                                                                                            |
@@ -333,6 +333,10 @@ with the fonts and PDF library switched to bundled copies.
   Motor tab's search; and the builder's parachute, fin, body and nose sizes on a new design. The direction is tested,
   not the amount (golden.js watches amounts). Then every Range-tab number gets 0, a negative, a huge number, nothing
   and letters, and Results must show no NaN, undefined or Infinity.
+- `tests/descent.js` flies each example in still air and in wind and checks that a main set for an altitude opens
+  at it, and that the results hold (apogee and top speed to 1 part in a billion, landing time, speed and drift to 1 in
+  a million) when the page's maths functions are nudged by one unit in the last place on a share of their calls, which
+  is how one browser's maths library differs from another's.
 - `tests/recovery.js` sets each recovery configuration (motor ejection, one and two altimeters, a chute release with
   each) on a dual-deploy example and a single-parachute one: the parachutes get the events that go with it, the flight
   follows an altimeter's delay and main height (the first of two to fire), the Recovery Plan lists the charges and

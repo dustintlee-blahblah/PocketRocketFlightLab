@@ -27,6 +27,7 @@
     "test:exports": "node build.js && node tests/exports.js",
     "test:step": "node tests/step-export.js",
     "test:recovery": "node build.js && node tests/recovery.js",
+    "test:descent": "node build.js && node tests/descent.js",
     "validate:arcas": "node build.js && node validation/arcas.js",
     "validate:openrocket": "node build.js && node validation/openrocket.js",
     "validate:accuracy": "node build.js && node validation/accuracy.js",
@@ -44,7 +45,7 @@
     "esbuild": "0.28.2",
     "eslint": "10.15.0",
     "globals": "17.14.0",
-    "playwright": "1.56.0",
+    "playwright": "1.65.1",
     "prettier": "3.10.1",
     "replicad": "1.2.1",
     "replicad-opencascadejs": "1.2.1"

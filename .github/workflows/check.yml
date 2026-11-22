@@ -40,7 +40,23 @@ jobs:
         run: npm run lint
 
       - name: Regression test (built-in examples against tests/golden-snapshot.json)
+        id: golden
         run: npm test
+
+      # when the regression test fails, keep the snapshot this runner's own browser records: after a change that is
+      # meant to move the numbers (or a new browser version), that file is the new tests/golden-snapshot.json
+      - name: Record this runner's snapshot (only when the regression test fails)
+        if: failure() && steps.golden.conclusion == 'failure'
+        run: node tests/golden.js record test-results/golden-snapshot.json --no-fixtures
+
+      - name: Keep that snapshot
+        if: failure() && steps.golden.conclusion == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-snapshot-recorded
+          path: test-results/golden-snapshot.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: UI smoke test (tabs, controls, builder; fails on any page error)
         run: node tests/smoke.js
@@ -56,6 +72,9 @@ jobs:
 
       - name: Recovery configurations (motor ejection, one and two altimeters, chute release; the Recovery Plan)
         run: node tests/recovery.js
+
+      - name: Descent events (the main opens at its altitude; results hold when the maths functions are nudged)
+        run: node tests/descent.js
 
       - name: Drag benchmarks (NACA wind-tunnel and free-flight data)
         run: npm run test:drag

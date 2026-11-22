@@ -6,6 +6,13 @@ version.
 
 ## Build 339 (2026-11-21)
 
+**The descent**
+
+- **The same flight gives the same landing on every browser and phone.** Browsers differ in the last decimal place of their maths functions (sine, cosine, powers and the rest), and newer versions of Chrome differ from older ones. One comparison in the descent sat exactly on a tie, so that last place decided whether the simulation took one more short time step after a parachute opened, and every later step under the parachute fell about a tenth of a second earlier or later. Landing speed could come out up to 1.5% different between two devices, landing time 0.5% and drift 0.15%. The tie is gone. Apogee and top speed were never affected.
+- **Landing speed is the speed at touchdown.** It was read at the end of the time step that passed ground level, up to 0.2 s later and a metre or two lower, in the wind the model gives there. It is now worked back to the moment of touchdown, as landing time and drift already were. Reported landing speeds change by up to 4% in wind (more often a fraction of a percent); the vertical part by under 0.5%.
+- **A main set to open at an altitude opens at that altitude.** It opened at the end of the first time step below it, up to about 4 m low on a fast drogue descent. The step is now cut to end at the altitude. Landing time changes by up to about 1% on those flights, and drift with it. A parachute set to open at an altitude in the design file gets the same.
+- `tests/descent.js` checks both: where the main opens, and that results hold when the maths functions are nudged the way another browser's would be.
+
 **Behind the scenes**
 
 - The tools that check and format the code are brought up to date (Prettier 3.10, ESLint 10, Babel 8, globals 17). Nothing in the app changes: the built page differs from build 338's only by a line break in one style rule.
