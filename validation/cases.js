@@ -453,31 +453,58 @@ const A53_PTS = [
   [4.57, 0.2, 7.5e6],
 ];
 
-/* NACA RM E50D28 (1950): the RM-10 missile in the Lewis 8- by 6-foot tunnel, Mach 1.49 to 1.98. The drag its four
-   60°-swept fins (circular-arc sections 10% thick normal to the leading edge, as NACA Report 1160 gives them, so 5%
-   along the flow; taper ratio 1, root chord 8.75 in at the base) add to the body (figure 8(d)
-   minus figure 6), less the fins' measured base-pressure increase (figure 9), on the body's maximum cross-section. The
-   body is modeled as a 6 in ogive and cylinder of the same length: only the fins' increment is compared. Reynolds
-   number 4.5 million per foot. */
-const RM10 = (fins) => ({
-  name: "RM-10",
-  finish: "smooth",
-  nose: 45,
-  body: 28.25,
-  r: 3,
-  cr: fins ? 8.75 : 0.01,
-  ct: fins ? 8.75 : 0.01,
-  sw: fins ? 9.07 : 0,
-  s: fins ? 9.07 / Math.tan((60 * Math.PI) / 180) : 0.001,
-  t: fins ? 0.4375 : 0.0001,
-  edge: "airfoil",
-});
-// [Mach, fin increment: body + 4 fins minus body alone, less the fins' base-pressure increase]
+/* NACA RM E50D28 (1950): the half-scale RM-10 missile in the Lewis 8- by 6-foot tunnel, Mach 1.49 to 1.98. The drag
+   its four 60°-swept fins (circular-arc sections 10% thick normal to the leading edge, as NACA Report 1160 gives
+   them, so 5% along the flow; taper ratio 1) add to the body (figure 8(d) minus figure 6), less the fins' measured
+   base-pressure increase (figure 9), on the body's maximum cross-section. Reynolds number 4.5 million per foot.
+   The body is the RM-10's own with its tapering afterbody as one cone (until build 341 a 6 in ogive and cylinder:
+   its base was 2.7 times too large, and so was what the app had the fins do to it, 0.017 for the 0.006 it has on
+   the real base, where the tunnel measured 0.004 to 0.007).
+   The fins, from figure 2: chord 9.07 in along the flow (the flight vehicle's 18.14 in, NACA RM L55H02, at half
+   scale), tips 8.95 in from the axis, roots on the tapering afterbody from station 64.5 (radius 2.44 in) to the base
+   (1.82 in), so about 6.82 in of exposed span. Until build 341 this case had the 9.07 in as the leading edge's sweep
+   length and so 5.24 in of span: fins a quarter too small, which hid about 0.03 of excess drag (the sweep rule of
+   the fins' transonic peak was fitted with them, units-and-fin-edges.js; it leaves the peak next to nothing at 60°
+   either way). */
+/** The RM-10 as an OpenRocket design: scale 1 is the flight vehicle (12 in across), 0.5 the tunnel model. */
+const RM10 = (fins, scale = 0.5, finish = "smooth") =>
+  partsOrk({
+    name: "RM-10",
+    finish,
+    // a parabolic arc with its greatest diameter 90 in back, cut off at a base 7.272 in across (NACA RM L55H02,
+    // figure 1); the app has no curved afterbody, so the last 56.5 in is one cone to the same base
+    nose: { len: 90 * scale, shape: "parabolic", param: 1 },
+    parts: [
+      { t: "tube", len: 0.05 * scale, d: 12 * scale },
+      {
+        t: "tail",
+        len: 56.45 * scale,
+        d0: 12 * scale,
+        d1: 7.272 * scale,
+        fins: fins
+          ? {
+              n: 4,
+              cr: 18.14 * scale,
+              ct: 18.14 * scale,
+              s: 13.6 * scale,
+              sw: 13.6 * scale * Math.tan(Math.PI / 3),
+              t: 0.907 * scale,
+              edge: "airfoil",
+              aft: -0.64 * scale,
+            }
+          : // a design needs a fin set: the body alone carries one shrunk to nothing
+            { n: 4, cr: 0.02, ct: 0.02, s: 0.002, sw: 0, t: 0.0001, edge: "airfoil", aft: 0 },
+      },
+    ],
+  });
+// [Mach, what the four fins add: body with fins (figure 8(d)) less the body alone (figure 6)]. That includes what the
+// fins do to the base pressure, as the app's own difference does; the report measures that part at 0.004 to 0.007
+// (figure 9), where the app has about 0.02 (AERODYNAMICS.md, gap 1). Until build 341 it was taken off the measurement only.
 const RM10_PTS = [
-  [1.49, 0.255 - 0.157 - 0.007],
-  [1.59, 0.255 - 0.155 - 0.005],
-  [1.78, 0.255 - 0.151 - 0.006],
-  [1.98, 0.255 - 0.149 - 0.004],
+  [1.49, 0.255 - 0.157],
+  [1.59, 0.255 - 0.155],
+  [1.78, 0.255 - 0.151],
+  [1.98, 0.255 - 0.149],
 ];
 
 /* Arcas short model: slope of the normal force with angle of attack near zero, per degree, on the body's
@@ -926,6 +953,418 @@ const ALLEN_PTS = [
 ];
 
 /** Every case, for validation/accuracy.js. */
+/* Noses 3 diameters long, alone, in a wind tunnel at Mach 1.24 to 3.67 (Perkins, Jorgensen and Sommer, Investigation
+   of the Drag of Various Axially Symmetric Nose Shapes of Fineness Ratio 3 for Mach Numbers from 1.24 to 7.4, NACA
+   Report 1386, 1958): the foredrag (total less base) on the base area, read off figures 11, 12, 15 and 16, about
+   ±0.003. The models were 1.75 in across and polished, and the schlieren pictures showed laminar flow, so the
+   report takes the friction as Blasius' flat-plate value on the wetted area at the tunnel's Reynolds number on the
+   model's length (its table: 2.42, 3.14, 4.14, 4.00 and 3.45 million at the five Mach numbers); that friction, 0.004
+   to 0.008, is taken off here to leave the nose's pressure (wave) drag, which is what the app is compared with.
+   The report found the flow partly turbulent at Mach 3 and above on the ogive and the ¾ power nose, where the laminar
+   friction is then too small a correction, so those two stop at Mach 1.96. The report's footnote 6 says its ogive
+   came out about 10% below the ogive of its reference 7 (NACA Report 1306) with no explanation found, so the ogive
+   is grade 2. Rows are [shape, shape parameter,
+   length/diameter, title, [[Mach, foredrag], ...]]. */
+const R1386_RE = { 1.24: 2.42e6, 1.44: 3.14e6, 1.96: 4.14e6, 3.06: 4.0e6, 3.67: 3.45e6 };
+const R1386 = [
+  [
+    "conical",
+    0,
+    3,
+    "cone",
+    [
+      [1.24, 0.134],
+      [1.44, 0.124],
+      [1.96, 0.099],
+      [3.06, 0.085],
+    ],
+  ],
+  [
+    "ogive",
+    1,
+    2.93,
+    "tangent ogive",
+    [
+      [1.24, 0.111],
+      [1.44, 0.116],
+      [1.96, 0.11],
+    ],
+  ],
+  [
+    "haack",
+    0,
+    3,
+    "Von Kármán (L-D Haack)",
+    [
+      [1.24, 0.083],
+      [1.44, 0.095],
+      [1.96, 0.085],
+      [3.06, 0.076],
+      [3.67, 0.076],
+    ],
+  ],
+  [
+    "power",
+    0.75,
+    3,
+    "¾ power",
+    [
+      [1.24, 0.1],
+      [1.44, 0.096],
+      [1.96, 0.082],
+    ],
+  ],
+  [
+    "power",
+    0.5,
+    3,
+    "½ power (paraboloid)",
+    [
+      [1.24, 0.073],
+      [1.44, 0.093],
+      [1.96, 0.093],
+      [3.06, 0.092],
+      [3.67, 0.088],
+    ],
+  ],
+  [
+    "power",
+    0.25,
+    3,
+    "¼ power",
+    [
+      [1.24, 0.144],
+      [1.44, 0.173],
+      [1.96, 0.213],
+      [3.06, 0.246],
+      [3.67, 0.251],
+    ],
+  ],
+  [
+    "ellipsoid",
+    0,
+    3,
+    "ellipsoid",
+    [
+      [1.24, 0.121],
+      [1.44, 0.145],
+      [1.96, 0.155],
+      [3.06, 0.155],
+      [3.67, 0.155],
+    ],
+  ],
+];
+/** A nose's wetted area over its base area (radius 1, length 2·f), by summing its profile. */
+const r1386Wet = (shape, param, f) => {
+  const L = 2 * f,
+    rho = (L * L + 1) / 2, // tangent ogive's arc radius
+    r = (x) => {
+      const t = x / L;
+      if (shape === "conical") return t;
+      if (shape === "power") return Math.pow(t, param);
+      if (shape === "ellipsoid") return Math.sqrt(1 - (1 - t) * (1 - t));
+      if (shape === "ogive") return Math.sqrt(rho * rho - (L - x) * (L - x)) - (rho - 1);
+      const th = Math.acos(1 - 2 * t); // Haack with C = 0
+      return Math.sqrt((th - Math.sin(2 * th) / 2) / Math.PI);
+    };
+  let s = 0;
+  const n = 4000;
+  for (let i = 0; i < n; i++) {
+    const a = r((i * L) / n),
+      b = r(((i + 1) * L) / n);
+    s += (a + b) * Math.hypot(L / n, b - a);
+  }
+  return s;
+};
+const R1386_CASES = R1386.map(([shape, param, f, name, pts]) => ({
+  id: `r1386-${shape}-${param * 100}`,
+  grade: shape === "ogive" ? 2 : 1,
+  ...(shape === "ogive" ? { unknown: "the report's ogive is 10% below another report's, unexplained" } : {}),
+  title: `NACA Report 1386, ${name} nose ${f} diameters long, Mach 1.24–${pts[pts.length - 1][0]}: its pressure drag`,
+  tier: "wind tunnel",
+  role: "check",
+  quantity: "cdNose",
+  xml: partsOrk({
+    name: `Report 1386 ${name}`,
+    finish: "polished",
+    nose: { len: f * 1.75, shape, param },
+    // the file reader wants a fin set; the nose's pressure drag is taken with the fins and the base left out
+    parts: [{ t: "tube", len: 10.5, d: 1.75, fins: { n: 3, cr: 1, ct: 1, s: 1, sw: 0, t: 0.03 } }],
+  }),
+  pts: pts.map(([M, v]) => [M, v - (1.328 / Math.sqrt(R1386_RE[M])) * r1386Wet(shape, param, f)]),
+}));
+/* Six small flight models, three 45° fins on a parabolic nose and a short afterbody, Mach 0.9 to 1.25 (Stoney,
+   Some Experimental Effects of Afterbody Shape on the Zero-Lift Drag of Bodies for Mach Numbers Between 0.8 and 1.3,
+   NACA RM L53I01, 1953; the same family as TR R-100's figure 13): total drag off figures 3 and 4, about ±0.005.
+   Body 1.5 in across, nose 10.695 in, afterbody 1.78 or 5 diameters long, square-ended or tapered to 0.7 or 0.438 of
+   the diameter; fins 1.8 in chord, 0.05 in thick with 0.6 in wedges, trailing edges at 87% of the length. Reynolds
+   number about 10 million on the length, so about 1 to 1.4 million on the fins' chord.
+   Scored with the app's natural-transition setting, not its default (turbulent from every leading edge): these were
+   polished models, and TR R-100 (its friction section and data sheets) shows the measured drag of its small-finned
+   models on its "turbulent body, laminar fins" line. Eight of its bodies with no base, where the drag below Mach 1 is
+   nearly all friction, have 3% to 42% too much drag with turbulent fins and 14% too little to 21% too much with
+   natural transition. With the default these six cases have 8% too much drag (mean); the setting is the one
+   assumption, hence grade 2. Keys are "afterbody length in diameters, base radius over body radius". */
+const L53I01 = {
+  "1.78,1": [
+    [0.9, 0.25],
+    [1.05, 0.36],
+    [1.15, 0.345],
+    [1.25, 0.335],
+  ],
+  "1.78,0.7": [
+    [0.9, 0.153],
+    [1.05, 0.262],
+    [1.15, 0.26],
+    [1.25, 0.258],
+  ],
+  "1.78,0.438": [
+    [0.9, 0.135],
+    [1.05, 0.283],
+    [1.15, 0.281],
+    [1.25, 0.279],
+  ],
+  "5,1": [
+    [0.9, 0.278],
+    [1.05, 0.378],
+    [1.15, 0.37],
+    [1.25, 0.35],
+  ],
+  "5,0.7": [
+    [0.9, 0.205],
+    [1.05, 0.272],
+    [1.15, 0.27],
+    [1.25, 0.268],
+  ],
+  "5,0.438": [
+    [0.9, 0.155],
+    [1.05, 0.228],
+    [1.15, 0.227],
+    [1.25, 0.225],
+  ],
+};
+const l53i01Ork = (ld, h) => {
+  const D = 1.5,
+    NOSE = 10.695,
+    la = ld * D,
+    L = NOSE + la,
+    te = 0.87 * L,
+    T = 0.02; // a sliver of tube ahead of a tail cone, to carry the fins
+  const fins = { n: 3, cr: 1.8, ct: 1.8, s: 1.75, sw: 1.75, t: 0.05, edge: "beveled", le: 0.6, te: 0.6 };
+  return partsOrk({
+    name: `RM L53I01 afterbody ${ld} to ${h}`,
+    finish: "polished",
+    nose: { len: NOSE, shape: "parabolic", param: 1 },
+    parts:
+      h >= 1
+        ? [{ t: "tube", len: la, d: D, fins: { ...fins, aft: L - te } }]
+        : [
+            { t: "tube", len: T, d: D, fins: { ...fins, aft: NOSE + T - te } },
+            { t: "tail", len: la - T, d0: D, d1: D * h },
+          ],
+  });
+};
+const L53I01_CASES = Object.keys(L53I01).map((k) => {
+  const [ld, h] = k.split(",").map(Number);
+  return {
+    id: `l53i01-${ld}-${h * 1000}`,
+    grade: 2,
+    unknown: "where the boundary layer turned turbulent (scored with natural transition)",
+    title: `NACA RM L53I01, afterbody ${ld} diameters long ${h >= 1 ? "with a square end" : `tapered to ${h} of the diameter`}, Mach 0.9–1.25: total drag`,
+    tier: "free flight",
+    role: "check",
+    quantity: "cd",
+    design: { blMode: "natural" },
+    xml: l53i01Ork(ld, h),
+    pts: L53I01[k].map(([M, v]) => [M, v, 1e7]),
+  };
+});
+/* Six swept wings on a body, measured in flight, Mach 1.1 to 1.7 (Pittel, Flight Tests at Supersonic Speeds to
+   Determine the Effect of Taper on the Zero-Lift Drag of Sweptback Low-Aspect-Ratio Wings, NACA TN 3697, 1956): the
+   drag the two wing panels add (winged model less the wingless body, six of which were flown), friction and
+   interference included, read off figure 8's experimental curves, about ±0.001 on the wing area; the report puts its
+   own accuracy at ±0.002. Sections 6% thick double wedges in the flight direction, the mid-chord line swept 50°,
+   200 in² of exposed wing; aspect ratio (of the two exposed panels) 2 and 4, taper ratio 0, 1/3 and 2/3. The body: 5 in
+   across, 55.06 in long, a nose 17.5 in long of nearly circular-arc profile, four tail fins (136.5 in² exposed,
+   rounded leading edges swept 45°, square trailing edges, 0.091 in thick; sizes scaled off figure 1). Reynolds number
+   5 to 13 million on the wing's mean chord (figure 3), here 28 million a metre throughout.
+   The report compares these with linear theory (NACA TN 1448 and TN 1672) and finds it good above Mach 1.2 except on
+   the two tapered wings of aspect ratio 4. They are what the app's fin wave drag (the area rule, drag-model.js) was
+   checked against when it was written, not fitted to: it has no constant to fit.
+   Rows: [name, root chord, tip chord, panel span, leading-edge sweep length, root leading edge's station,
+   [wing drag on 200 in² at Mach 1.1, 1.2 ... 1.7]]. */
+const TN3697_M = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7];
+const TN3697 = [
+  ["aspect ratio 2, pointed tip", 20, 0, 10, 21.92, 23.85, [0.015, 0.0163, 0.0158, 0.016, 0.0162, 0.0168, 0.0173]],
+  ["aspect ratio 2, taper 1/3", 15, 5, 10, 16.92, 24.7, [0.0133, 0.0133, 0.0155, 0.0175, 0.0192, 0.0195, 0.0187]],
+  ["aspect ratio 2, taper 2/3", 12, 8, 10, 13.92, 25.45, [0.0078, 0.0103, 0.0139, 0.0158, 0.0173, 0.0192, 0.02]],
+  [
+    "aspect ratio 4, pointed tip",
+    14.142,
+    0,
+    14.142,
+    23.925,
+    24.18,
+    [0.0133, 0.0167, 0.0175, 0.0182, 0.0203, 0.0225, 0.0233],
+  ],
+  [
+    "aspect ratio 4, taper 1/3",
+    10.607,
+    3.536,
+    14.142,
+    20.39,
+    24.0,
+    [0.0083, 0.0133, 0.0175, 0.0213, 0.0238, 0.0255, 0.0247],
+  ],
+  [
+    "aspect ratio 4, taper 2/3",
+    8.485,
+    5.657,
+    14.142,
+    18.27,
+    24.15,
+    [0.0069, 0.012, 0.0163, 0.0217, 0.0256, 0.0259, 0.0247],
+  ],
+];
+const tn3697Ork = (w) => {
+  const wing = w && {
+    n: 2,
+    cr: w[1],
+    ct: Math.max(w[2], 0.01),
+    s: w[3],
+    sw: w[4],
+    // 6% of the mean aerodynamic chord: the app keeps a double wedge's thickness ratio along the span
+    t: (0.06 * (2 / 3) * (w[1] * w[1] + w[1] * w[2] + w[2] * w[2])) / (w[1] + w[2]),
+    edge: "doublewedge",
+    aft: 46.44 - (w[5] + w[1]),
+  };
+  return partsOrk({
+    name: `TN 3697 ${w ? w[0] : "body"}`,
+    finish: "polished",
+    nose: { len: 17.5, shape: "ogive", param: 1 },
+    parts: [
+      { t: "tube", len: 46.44 - 17.5, d: 5, ...(wing ? { fins: wing } : {}) },
+      {
+        t: "tube",
+        len: 55.06 - 46.44,
+        d: 5,
+        fins: { n: 4, cr: 8.38, ct: 3.2, s: 5.9, sw: 5.2, t: 0.091, edge: "rounded", teEdge: "square", aft: 0.24 },
+      },
+    ],
+  });
+};
+const TN3697_CASES = TN3697.map((w, i) => ({
+  id: `tn3697-${i + 1}`,
+  grade: 1,
+  title: `NACA TN 3697, 6% double-wedge wing swept 50°, ${w[0]}, Mach 1.1–1.7: drag the wing adds`,
+  tier: "free flight",
+  role: "check",
+  quantity: "cdFins",
+  xml: tn3697Ork(w),
+  xmlBody: tn3697Ork(null),
+  rePerM: 28e6,
+  // on the body's cross-section, as the app's coefficients are
+  pts: TN3697_M.map((M, j) => [M, +((w[6][j] * 200) / (Math.PI * 2.5 * 2.5)).toFixed(4)]),
+}));
+/* The full-scale RM-10 in flight, Mach 1.2 to 3, Reynolds number 60 to 220 million on its length (Hoffman,
+   Free-Flight Tests To Determine the Power-On and Power-Off Pressure Distribution and Drag of the NACA RM-10
+   Research Vehicle at Large Reynolds Numbers Between Mach Numbers 0.8 and 3.0, NACA RM L55H02, 1955). Two
+   rocket-propelled models carrying pressure orifices along the body, on a fin and in the base. Read off the report's
+   figures, about ±0.003: the total drag coasting (figure 15: the two models agree; the report's accuracy ±0.005), the
+   base drag coasting (figure 15) and thrusting (figure 17(a); with the jet on only the ring around the nozzle counts)
+   and the body's pressure drag from the measured pressures (figure 16, jet off; the report notes it is about 10%
+   above four wind tunnels' and theory's, perhaps from the nose's static-pressure tube).
+   The body (figure 1): 12 in across and 146.5 in long, a parabolic arc with its greatest diameter 90 in back,
+   r = (x/7.5)·(1 − 0.8133·x/L), cut off at a base 7.272 in across. The app has no curved afterbody, so the last
+   56.5 in is entered as one cone to the same base (2.4° a side; the real one steepens to 4.8° at the base): the
+   one assumption, hence grade 2. Four 60° fins of constant chord, 18.14 in along the flow, circular-arc sections 5%
+   thick along the flow, tips 17.94 in from the axis, the root's leading edge 129 in back: about 13.6 in of
+   exposed span. The motor's nozzle exit was 6.25 in across.
+   Rows: [Mach, total, base coasting, base thrusting, body pressure]. */
+const L55H02 = [
+  [1.2, 0.268, 0.0275, -0.024, 0.059],
+  [1.4, 0.261, 0.033, -0.02, 0.0575],
+  [1.6, 0.254, 0.039, -0.014, 0.055],
+  [1.8, 0.237, 0.036, -0.008, 0.053],
+  [2.0, 0.225, 0.036, -0.004, 0.051],
+  [2.2, 0.214, 0.036, -0.002, 0.049],
+  [2.4, 0.211, 0.034, 0, 0.047],
+  [2.6, 0.199, 0.033, 0.002, 0.0455],
+  [2.8, 0.193, 0.03, 0.002, 0.044],
+];
+const L55H02_XML = RM10(true, 1, "polished");
+const l55h02Case = (id, quantity, title, col, extra) => ({
+  id: `l55h02-${id}`,
+  grade: 2,
+  unknown: "the parabolic afterbody is entered as a cone",
+  title: `NACA RM L55H02, full-scale RM-10 in flight, Mach 1.2–2.8: ${title}`,
+  tier: "free flight",
+  role: "check",
+  quantity,
+  xml: L55H02_XML,
+  // Reynolds number on the length, from figure 4: about 73 million times the Mach number
+  pts: L55H02.map((r) => [r[0], col(r), 73e6 * r[0]]),
+  ...extra,
+});
+const L55H02_CASES = [
+  l55h02Case("cd", "cd", "total drag coasting", (r) => r[1]),
+  l55h02Case("base", "cdBase", "base drag coasting", (r) => r[2]),
+  l55h02Case("body-pressure", "cdBodyPressure", "the body's pressure drag", (r) => r[4]),
+  l55h02Case("jet", "cdJet", "base drag the exhaust removes", (r) => +(r[2] - r[3]).toFixed(4), {
+    nozzleDia: 6.25 * IN,
+  }),
+];
+/* The RM-10 at Mach 6.9, and its lift and center of pressure from Mach 1.49 up (McCauley and Feller, An
+   Investigation of the Characteristics of the NACA RM-10 (With and Without Fins) in the Langley 11-Inch Hypersonic
+   Tunnel at a Mach Number of 6.9, NACA RM L54I03, 1954). A 1/12-scale polished model at a Reynolds number of 2 to
+   4.5 million, the boundary layer laminar; the report gathers the lower Mach numbers from the Lewis 8- by 6-foot
+   tunnel (RM E50D28) on its figures 10 and 11. Used here: the body's pressure drag from the measured pressures
+   (the report's table: 0.02179 at Mach 6.9; and the Langley 9-inch tunnel's point at Mach 2.41 on figure 9), and,
+   with the fins on, the lift-curve slope near zero angle (figure 10, per degree on the body's cross-section) and
+   the center of pressure (figure 11, body lengths from the nose, angles up to 6°), each read to about ±0.005.
+   These are the only measurements here above Mach 5. Not used: the total drag and the base drag at Mach 6.9, which
+   are a laminar boundary layer's (friction a third of a turbulent one's, and a base at nearly free-stream pressure). */
+const L54I03 = {
+  bodyPressure: [
+    [2.41, 0.041, 3.1e6],
+    [6.9, 0.0218, 4e6],
+  ],
+  cnaDeg: [
+    [1.49, 0.188],
+    [1.59, 0.172],
+    [1.78, 0.165],
+    [1.98, 0.158],
+    [6.9, 0.078],
+  ],
+  cp: [
+    [1.49, 0.855],
+    [1.59, 0.85],
+    [1.78, 0.85],
+    [1.98, 0.84],
+    [6.9, 0.68],
+  ],
+};
+const l54i03Case = (id, quantity, title, pts) => ({
+  id: `l54i03-${id}`,
+  grade: 2,
+  unknown: "the parabolic afterbody is entered as a cone",
+  title: `NACA RM L54I03, RM-10 in wind tunnels, Mach 1.49–6.9: ${title}`,
+  tier: "wind tunnel",
+  role: "check",
+  quantity,
+  xml: L55H02_XML,
+  pts,
+});
+const L54I03_CASES = [
+  l54i03Case("body-pressure", "cdBodyPressure", "the body's pressure drag (Mach 2.41 and 6.9)", L54I03.bodyPressure),
+  l54i03Case(
+    "cna",
+    "cna",
+    "normal-force slope with fins",
+    L54I03.cnaDeg.map(([M, v]) => [M, (v * 180) / Math.PI]),
+  ),
+  l54i03Case("cp", "cp", "CP with fins", L54I03.cp),
+];
 const CASES = [
   {
     id: "a53d02-cd",
@@ -944,8 +1383,8 @@ const CASES = [
     tier: "wind tunnel",
     role: "tuned",
     quantity: "cdFins",
-    xml: finnedOrk(RM10(true)),
-    xmlBody: finnedOrk(RM10(false)),
+    xml: RM10(true),
+    xmlBody: RM10(false),
     rePerM: 4.5e6 / 0.3048,
     pts: RM10_PTS,
   },
@@ -1344,6 +1783,11 @@ const CASES = [
     xml: partsOrk(ALLEN),
     pts: ALLEN_PTS.map(([M, , , c]) => [M, c]),
   },
+  ...TN3697_CASES,
+  ...L55H02_CASES,
+  ...L54I03_CASES,
+  ...R1386_CASES,
+  ...L53I01_CASES,
 ];
 
 /* ---------- measured flights (apogee) ----------

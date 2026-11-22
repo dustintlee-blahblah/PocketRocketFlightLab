@@ -71,7 +71,7 @@ export const LEARN_BANDS = {
     title: "Supersonic: Mach 1.2 to 4",
     html:
       `<p>The shocks settle into place ahead of the nose and on the fins' leading edges. Drag comes mostly from <b>wave drag</b>, the energy the shocks take, and for thin fins and slender noses <b>linear supersonic theory</b> works well.</p>` +
-      `<ul><li><b>Fins:</b> thin-airfoil wave drag, K × (t/c)² ÷ √(M² − 1): K = 4 for a double wedge, 16/3 for an airfoil, 10 for a beveled fin with 20% bevels. A rounded leading edge acts like a cylinder across the flow (modified Newtonian theory). Fin lift is Ackeret's theory with tip loss.</li>` +
+      `<ul><li><b>Fins:</b> wave drag from linear theory for the fin's own outline and section (the supersonic area rule). For a wide unswept fin that is thin-airfoil theory, K × (t/c)² ÷ √(M² − 1): K = 4 for a double wedge, 16/3 for an airfoil, 10 for a beveled fin with 20% bevels. A swept fin has less while its edges are behind the Mach line, and a peak as the Mach line passes each edge. A rounded leading edge acts like a cylinder across the flow (modified Newtonian theory). Fin lift is Ackeret's theory with tip loss.</li>` +
       `<li><b>Nose:</b> NASA TR R-100's measured curves to Mach 2. Past that, a nose that comes to a point uses the second-order shock-expansion method (NACA Report 1328), as Missile DATCOM does; a blunt nose keeps the measured curves to their last point, about Mach 3.6.</li>` +
       `<li><b>Boattails:</b> TR R-100's equation for conical afterbodies to Mach 2, linear theory past 2.5.</li>` +
       `<li><b>Base:</b> NACA TN 3819 above Mach 2, with the extra suction from fins near the base and blunt fin trailing edges.</li>` +
@@ -616,7 +616,7 @@ export function learnChapters() {
         `<h3>Fins</h3><p>Fins add friction on both faces, pressure drag on their edges, and wave drag above the speed of sound. Their edge shape matters a lot.</p>` +
         `<ul><li><b>Square leading edge:</b> the air stops against the flat front. Below the drag rise it costs 0.4 of the stagnation pressure on the edge's face, rising to 0.8 through Mach 1 (Hoerner).</li>` +
         `<li><b>Rounded leading edge:</b> no penalty below the drag rise, because the air flows round it. Above, it acts like a cylinder across the flow, ⅔ of the stagnation pressure by modified Newtonian theory.</li>` +
-        `<li><b>Sharp edges</b> (airfoil, beveled, double wedge): above the drag rise, thin-airfoil wave drag. Beveled fins take K from their bevel lengths, so short, steep bevels cost more.</li>` +
+        `<li><b>Sharp edges</b> (airfoil, beveled, double wedge): above the drag rise, wave drag from linear theory for the fin's own outline and section. Short, steep bevels cost more, and sweeping an edge behind the Mach line costs less.</li>` +
         `<li><b>A small round on a sharp edge</b> (the leading-edge radius): what the round adds over the sharp wedge it replaces, by modified Newtonian theory.</li>` +
         `<li><b>Through Mach 1:</b> a measured correlation of 22 wings (NACA Report 1253). A short, stubby fin's drag rises later and peaks lower than a long one's.</li>` +
         `<li><b>Square and rounded trailing edges</b> leave a small base behind them and take base drag on that area.</li>` +
@@ -636,10 +636,15 @@ export function learnChapters() {
             "Altimeters, GPS, accelerometers and tracking",
             "6.3% (RASAero II: 5.2%)",
           ],
-          ["Drag, Arcas sounding rocket, Mach 1.5 to 4.6 (check)", "NASA TN D-4014, wind tunnel", "5.3%"],
+          ["Drag, Arcas sounding rocket, Mach 1.5 to 4.6 (check)", "NASA TN D-4014, wind tunnel", "5.5%"],
           ["Drag, fin-stabilized cone-cylinder, Mach 2.5 to 3.9 (check)", "NACA RM L55G28a, free flight", "1.2%"],
-          ["Drag, Aerobee 150A, Mach 0.1 to 5 (check)", "Aerojet wind-tunnel data", "5.9% under thrust, 4.8% coasting"],
-          ["Drag, boattailed bodies in flight, Mach 0.8 to 2 (check)", "NASA TR R-100", "14.6% and 17.9%, high"],
+          ["Drag, Aerobee 150A, Mach 0.1 to 5 (check)", "Aerojet wind-tunnel data", "7.2% under thrust, 5.3% coasting"],
+          ["Drag, boattailed bodies in flight, Mach 0.8 to 2 (check)", "NASA TR R-100", "20.3% and 16.8%, high"],
+          [
+            "Drag that swept wings add, Mach 1.1 to 1.7 (check)",
+            "NACA TN 3697, six wings in free flight",
+            "0.001 to 0.003 on the wing area for five; up to 0.007 too little on one",
+          ],
           [
             "A boattail's own pressure drag, Mach 0.9 to 1.4 (check)",
             "NACA RM L56K22, RM A57I09 and NASA TM X-1960, wind tunnel",
@@ -668,7 +673,7 @@ export function learnChapters() {
         `<p class="eq">x<sub>CP</sub> = Σ C<sub>Nα,i</sub> x<sub>i</sub> / Σ C<sub>Nα,i</sub>&nbsp;&nbsp;&nbsp; static margin = (x<sub>CP</sub> − x<sub>CG</sub>) / d</p>` +
         `<ul><li><b>Nose, shoulders and boattails:</b> Barrowman's slender-body theory (1966–67): C<sub>Nα</sub> = 2(A<sub>2</sub> − A<sub>1</sub>)/A<sub>ref</sub> at each section's centroid. A nose gives 2; a boattail gives a negative slope, pulling the CP forward. Above Mach 1 the nose and the body behind it follow measured charts for ogive- and cone-cylinders (MIL-HDBK-762).</li>` +
         `<li><b>Fins below Mach 0.9:</b> Diederich's lift-slope formula with the Prandtl–Glauert correction, as Barrowman uses it, worked strip by strip so any outline works; the CP at a quarter of the mean chord.</li>` +
-        `<li><b>Fins above Mach 1.5:</b> linear supersonic theory (Ackeret), K/β with a tip loss, β = √(M² − 1); blended between 0.9 and 1.5. The fin lift falls as 1/β, which is why the CP moves forward at high Mach.</li>` +
+        `<li><b>Fins above Mach 1.5:</b> linear supersonic theory for the fin's taper and sweep (charts), β = √(M² − 1); blended between 0.9 and 1.5. A fin swept behind the Mach line makes less lift than thin-airfoil theory's 4/β; an unswept fin, or any fin at high Mach, has 4/β with a tip loss. The fin lift falls as 1/β, which is why the CP moves forward at high Mach.</li>` +
         `<li><b>Fins and body together:</b> the body between the fins raises their lift by Barrowman's 1 + r/(s + r). Above Mach 0.9, the fins' lift carried onto the body comes from Pitts, Nielsen and Kaattari (NACA Report 1307).</li>` +
         `<li><b>Body lift across the flow:</b> at larger angles the body's side area adds lift, K·(side area/A<sub>ref</sub>)·sin²α with K = 1.1, acting mid-body. It moves the CP back as α grows, so the static CP is quoted at a typical 2°.</li>` +
         `<li><b>Five or more fins</b> shield each other (MIL-HDBK-762's factors); fins stall from about 18° to 35°.</li></ul>` +

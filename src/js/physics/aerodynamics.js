@@ -8,7 +8,7 @@
  * Sources for each term are given where it is computed.
  */
 import { FIN_SWEEP_N, finSweepRatio, finWaveK } from "../core/units-and-fin-edges.js";
-import { heatCoef, vanDriestRatio, VD_R, wallThermal } from "./drag-model.js";
+import { finWave3D, heatCoef, vanDriestRatio, VD_R, wallThermal } from "./drag-model.js";
 import { bodyPressures } from "./flow-picture.js";
 import { noseR, noseSpec, noseTip } from "./geometry.js";
 /* ---------- aerodynamics: component drag buildup from the published aerospace literature (zero angle of attack) ----------
@@ -1192,8 +1192,34 @@ export function aero(D) {
         mac = G.mac,
         tc = mac > 0 ? f.t / mac : 0,
         cosL = Math.sqrt(Math.max(G.edgeH, 0) / G.span);
+      // the fin's shape for its wave drag (finWave3D): its outline and its section. A beveled plate's bevels are the
+      // lengths set, or a fifth of the chord each where none is, and never more than half of it.
+      const ol = finOutline(f),
+        e1 = Math.min(0.5, f.bevLE > 0 && mac > 0 ? f.bevLE / mac : 0.2),
+        e3 = Math.min(0.5, f.bevTE > 0 && mac > 0 ? f.bevTE / mac : 0.2),
+        sec =
+          f.edge === "beveled"
+            ? { kind: "hex", t: f.t, le: e1 * mac, te: e3 * mac }
+            : { kind: f.edge === "doublewedge" ? "dw" : "bi", tc },
+        wave =
+          mac > 0 && tc > 0
+            ? {
+                ol,
+                sec,
+                k2d: f.edge === "beveled" ? 1 / e1 + 1 / e3 : finWaveK(f.edge),
+                key: JSON.stringify([
+                  ol.map((q) => [+q[0].toFixed(5), +q[1].toFixed(5)]),
+                  sec.kind,
+                  +tc.toFixed(5),
+                  +(sec.le || 0).toFixed(5),
+                  +(sec.te || 0).toFixed(5),
+                  +f.t.toFixed(6),
+                ]),
+              }
+            : null;
       return {
         ...f,
+        wave,
         s: G.span,
         area,
         mac,
@@ -1783,16 +1809,18 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
     if (te === "square") base += finTeCp(M, cb2, finCf.get(f), f) * edge;
     else if (te === "rounded") base += FIN_ROUND_TE * finTeCp(M, cb2, finCf.get(f), f) * edge;
     if (!leBlunt || te === "sharp") {
-      /* Wave drag of sharp-edged fins by thin-airfoil theory on the free stream, K·(t/c)²/β on
-         the fin's area (K from the section: finK). While the leading edge is swept behind the Mach line (β < tan Λ)
-         the drag stays at the value it has when the Mach line reaches the edge, K·(t/c)²·cot Λ, and β is never taken
-         under 0.4, where linear theory overshoots. It rises from the section's
-         drag-divergence Mach number to Mach 1.05, where Missile DATCOM's fin method also puts the full value. There
-         is no separate transonic bump. Checked against the measured pressure drag of 45° untapered fins 2.8% thick
-         (NASA TR R-100 figure 5: 0.0037 on the fin area from Mach 1.05 to 3; this gives 0.0046 falling to 0.0016)
-         and the RM-10's 60° fins (NACA RM E50D28). */
-      const tanL = Math.sqrt(Math.max(1 - c2, 0)) / Math.max(f.cosL, 1e-6),
-        bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), tanL, 0.4),
+      /* Wave drag of sharp-edged fins: linear (thin-wing) theory for the fin's own outline and section, by the
+         supersonic area rule (finWave3D in drag-model.js, where its sources and checks are). It gives a swept fin
+         less drag than thin-airfoil theory while its edges are swept behind the Mach line, a peak as the Mach line
+         passes each edge and ridge, and thin-airfoil theory's K·(t/c)²/β at high Mach numbers. Until build 341 the
+         app used thin-airfoil theory held, below the Mach number that puts the Mach line on the leading edge, at
+         its value there: flat where six wings measured in flight rise two to tenfold from Mach 1.1 to 1.7 (NACA
+         TN 3697). β is never taken under 0.4 (Mach 1.08), where linear theory overshoots, and the drag rises to
+         that value from the section's drag-divergence Mach number to Mach 1.05, where Missile DATCOM's fin method
+         also puts the full value.
+         A fin with one blunt end, or bevels too short for the flow to stay on (finK), takes the same share of the
+         whole section's drag that thin-airfoil theory gives it. */
+      const bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), 0.4),
         rise = smooth01((M - Mdd) / (1.05 - Mdd));
       /* Through Mach 1 thin-airfoil theory doesn't hold: the drag there goes as (t/c)^(5/3) and depends on how
          stubby the fin is. It is read from NACA Report 1253's correlation of 22 rectangular wings (finTransonic),
@@ -1809,7 +1837,8 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
          The chart is for airfoil sections; a beveled plate or a double wedge is taken to follow it too. A fin with a
          blunt front and a tapered back has its leading edge's own rise through Mach 1 instead (above). Nothing
          measured says how a blunt back changes the rise of a sharp-nosed fin, so it is left whole. */
-      const lin = (rise * finK(f, Math.max(M, 1.05), bEff, cb2, !leBlunt, te === "sharp") * f.tc * f.tc) / bEff,
+      const k2 = finK(f, Math.max(M, 1.05), bEff, cb2, !leBlunt, te === "sharp"),
+        lin = rise > 0 ? rise * (f.wave ? (finWave3D(f.wave, bEff) * k2) / f.wave.k2d : (k2 * f.tc * f.tc) / bEff) : 0,
         tcT = Math.min(f.tc, 0.12),
         sw = finSweepRatio(f.cosL),
         t23 = Math.pow(tcT, 2 / 3),
@@ -1912,6 +1941,112 @@ const FIN_SUB_M = 0.9,
  * The supersonic fin lift constant for a fin set's edge shape (FIN_SUP_K_SHARP or FIN_SUP_K_BLUNT).
  */
 const finSupK = (f) => (f.edge === "square" ? FIN_SUP_K_BLUNT : FIN_SUP_K_SHARP);
+/* Supersonic lift slope of a fin from linear theory, for any taper and sweep: the generalized charts of
+   MIL-HDBK-762 (Design of Aerodynamically Stabilized Free Rockets, 1990), figure 5-35 (its reference 20; the
+   same charts as USAF DATCOM's for wings), for the wing the two fin panels make joined at the root. One chart for
+   each taper ratio (tip chord over root chord: 0, 0.25, 0.5, 1), a curve for each value of aspect ratio × tan Λ
+   (Λ the leading edge's sweep). While the leading edge is behind the Mach line (β < tan Λ) a chart gives
+   tan Λ·CNα against β/tan Λ, down to the slender-wing value, π·AR/2, as β goes to zero; once the Mach line has
+   passed it, β·CNα against tan Λ/β, up to thin-airfoil theory's 4 at high Mach numbers. Read off the charts at
+   β/tan Λ = 0, 0.25, 0.5, 0.75, 1 and tan Λ/β = 0.75, 0.5, 0.25, 0 (nine values a curve, about ±0.1; the delta's row
+   is the exact 2π/E). The curve marked "unswept T.E." on each chart is the fin whose trailing edge is square to
+   the flow: aspect ratio × tan Λ = 4·(1 − λ)/(1 + λ).
+   Until build 341 every fin had 4/β with a rectangular wing's tip loss, which is right for an unswept fin and
+   for any fin well past its Mach line, and too much for a swept fin just above Mach 1: 42–61% too much normal
+   force on the RM-10 (60° fins of constant chord) from Mach 1.5 to 2, with its center of pressure 5–7% of the
+   length too far aft (NACA RM L54I03). */
+const FIN_SUP_CHART = [
+  [
+    0,
+    [
+      [0.25, [0.39, 0.39, 0.4, 0.42, 0.45, 0.53, 0.82, 1.75, 4]],
+      [0.5, [0.79, 0.79, 0.8, 0.82, 0.88, 1.05, 1.5, 2.6, 4]],
+      [1, [1.57, 1.58, 1.62, 1.7, 1.82, 2.1, 2.85, 3.75, 4]],
+      [2, [3.14, 3.15, 3.18, 3.25, 3.38, 3.5, 3.7, 3.9, 4]],
+      [3, [4.7, 5.05, 4.75, 4.2, 3.68, 3.85, 3.95, 4, 4]],
+      [4, [6.28, 5.84, 5.19, 4.53, 4, 4, 4, 4, 4]],
+      [5, [6.28, 6.25, 5.6, 4.9, 4.25, 4.15, 4.08, 4.02, 4]],
+      [6, [6.28, 6.3, 6.0, 5.2, 4.47, 4.3, 4.15, 4.05, 4]],
+    ],
+  ],
+  [
+    0.25,
+    [
+      [0.25, [0.39, 0.39, 0.39, 0.39, 0.4, 0.5, 0.88, 1.85, 4]],
+      [0.5, [0.79, 0.78, 0.78, 0.8, 0.86, 1.05, 1.65, 3.05, 4]],
+      [1, [1.57, 1.56, 1.62, 1.72, 1.81, 2.4, 3.3, 3.85, 4]],
+      [2, [3.14, 3.55, 3.68, 3.45, 3.17, 3.55, 3.8, 3.95, 4]],
+      [2.4, [3.77, 4.25, 4.15, 3.8, 3.41, 3.7, 3.9, 3.97, 4]],
+      [3, [4.67, 5.0, 4.6, 4.1, 3.65, 3.9, 3.98, 4, 4]],
+      [4, [5.38, 5.45, 5.25, 4.6, 4.02, 4.15, 4.1, 4, 4]],
+      [5, [5.55, 5.6, 5.5, 4.95, 4.35, 4.4, 4.2, 4.02, 4]],
+      [6, [5.7, 5.75, 5.72, 5.3, 4.65, 4.6, 4.3, 4.05, 4]],
+    ],
+  ],
+  [
+    0.5,
+    [
+      [0.25, [0.39, 0.38, 0.37, 0.38, 0.4, 0.5, 0.85, 1.9, 4]],
+      [0.5, [0.79, 0.78, 0.79, 0.82, 0.87, 1.1, 1.75, 3.0, 4]],
+      [1, [1.57, 1.65, 1.78, 1.88, 1.93, 2.45, 3.05, 3.7, 4]],
+      [4 / 3, [2.09, 2.1, 2.4, 2.5, 2.45, 2.95, 3.45, 3.85, 4]],
+      [2, [3.14, 3.5, 3.5, 3.25, 3.0, 3.4, 3.75, 3.95, 4]],
+      [3, [4.45, 4.45, 4.35, 3.9, 3.5, 3.85, 4, 4, 4]],
+      [4, [4.88, 4.85, 4.7, 4.4, 3.97, 4.2, 4.15, 4, 4]],
+      [5, [5.1, 5.1, 5.0, 4.8, 4.33, 4.45, 4.25, 4.02, 4]],
+      [6, [5.2, 5.25, 5.25, 5.2, 4.65, 4.65, 4.35, 4.05, 4]],
+    ],
+  ],
+  [
+    1,
+    [
+      [0.25, [0.39, 0.41, 0.46, 0.53, 0.64, 0.8, 1.05, 1.75, 4]],
+      [0.5, [0.79, 0.83, 0.92, 1.05, 1.22, 1.45, 2.1, 3.0, 4]],
+      [1, [1.57, 1.58, 1.68, 1.83, 2.03, 2.45, 3.0, 3.55, 4]],
+      [2, [3.14, 3.07, 3.03, 3.0, 2.9, 3.3, 3.7, 3.9, 4]],
+      [3, [3.73, 3.8, 3.6, 3.5, 3.44, 3.75, 4, 4, 4]],
+      [4, [4.1, 4.15, 4.0, 3.92, 3.91, 4.15, 4.2, 4.05, 4]],
+      [5, [4.38, 4.4, 4.3, 4.22, 4.26, 4.45, 4.35, 4.05, 4]],
+      [6, [4.48, 4.5, 4.45, 4.45, 4.47, 4.7, 4.45, 4.05, 4]],
+    ],
+  ],
+];
+/**
+ * Linear theory's supersonic lift slope of a fin (the charts above), on the fin's own area.
+ * @param {number} AR aspect ratio of the two panels joined at the root, 2·span²/area
+ * @param {number} tanL tan of the leading edge's sweep
+ * @param {number} lam taper ratio, tip chord over root chord (0 to 1)
+ * @param {number} beta √(M² − 1)
+ * @returns {number} CNα per radian
+ */
+function finSupCna(AR, tanL, lam, beta) {
+  // an unswept fin, or one with almost no span: a rectangular wing's 4/β with its tip loss (exact for β·AR ≥ 1)
+  const rect = (4 / beta) * Math.max(0.5, 1 - 1 / (2 * AR * beta)),
+    p = AR * tanL;
+  if (!(tanL > 1e-6) || !(p > 1e-6)) return rect;
+  const sub = beta < tanL,
+    x = sub ? beta / tanL : tanL / beta, // 0 to 1 on either side of the Mach line reaching the leading edge
+    u = sub ? 4 * x : 4 + 4 * (1 - x), // place along the nine values
+    i = Math.min(Math.floor(u), 7),
+    row = (r) => r[i] + (r[i + 1] - r[i]) * (u - i);
+  // one chart at this aspect ratio × tan Λ; below its first curve the slender-wing proportion to it
+  const chart = (rows) => {
+    const q = Math.min(p, rows[rows.length - 1][0]);
+    if (q <= rows[0][0]) return row(rows[0][1]);
+    let k = 1;
+    while (rows[k][0] < q) k++;
+    const t = (q - rows[k - 1][0]) / (rows[k][0] - rows[k - 1][0]);
+    return row(rows[k - 1][1]) * (1 - t) + row(rows[k][1]) * t;
+  };
+  const C = FIN_SUP_CHART,
+    l = Math.min(Math.max(lam, 0), 1);
+  let k = 1;
+  while (C[k][0] < l) k++;
+  const t = (l - C[k - 1][0]) / (C[k][0] - C[k - 1][0]),
+    v = (chart(C[k - 1][1]) * (1 - t) + chart(C[k][1]) * t) / (sub ? tanL : beta);
+  // under the charts' first curve (aspect ratio × tan Λ of 0.25) the fin is nearly unswept: toward the rectangular wing
+  return p >= 0.25 ? v : rect + (v - rect) * (p / 0.25);
+}
 /**
  * A fin set's normal-force slope at a Mach number relative to its incompressible value, and how far its center
  * of pressure moves aft.
@@ -1928,11 +2063,14 @@ export function finLiftRatio(f, M) {
     const b = Math.sqrt(Math.max(1 - m * m, 0));
     return base / (1 + Math.sqrt(1 + (b * X) ** 2));
   };
-  // supersonic slope per fin area 4/β·(1 − 1/(2ARβ)); the incompressible slope per fin area is 2π·AR/(2 + √(4 + (2X)²))
+  // supersonic slope per fin area from linear theory's charts (finSupCna; a square-edged fin keeps 2.5/4 of it);
+  // the incompressible slope per fin area is 2π·AR/(2 + √(4 + (2X)²))
+  const tanL = Math.sqrt(Math.max(1 - f.cosL * f.cosL, 0)) / Math.max(f.cosL, 1e-6),
+    lam = f.a > 0 && f.s > 0 ? (2 * f.area) / (f.s * f.a) - 1 : 1;
   const sup = (m) => {
     const b = Math.sqrt(m * m - 1),
       inc = (2 * Math.PI * AR) / (2 + Math.sqrt(4 + 4 * X * X));
-    return ((finSupK(f) / b) * Math.max(0.5, 1 - 1 / (2 * AR * b))) / inc;
+    return ((finSupK(f) / 4) * finSupCna(AR, tanL, lam, b)) / inc;
   };
   const cpS = (m) => {
     const ab = AR * Math.sqrt(m * m - 1);

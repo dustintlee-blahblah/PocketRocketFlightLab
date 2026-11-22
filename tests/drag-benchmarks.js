@@ -14,8 +14,9 @@
  *    (tangent-ogive nose, four trapezoidal fins swept 72° with 4% sections), Mach 0.6 to 10. Points from figure 11
  *    and table I; Reynolds number on the model length. Coefficients on the body's cross-section area.
  *  - NACA RM E50D28 (1950): RM-10 missile in the Lewis 8- by 6-foot tunnel, Mach 1.49 to 1.98: the drag the four
- *    60°-swept fins (circular-arc sections, 10% thick normal to the leading edge, taper ratio 1) add to the body (figure 8(d) minus figure 6), less the
- *    fins' measured base-pressure increase (figure 9). On the body's maximum cross-section area.
+ *    60°-swept fins (circular-arc sections, 10% thick normal to the leading edge, taper ratio 1) add to the body (figure 8(d) minus figure 6). On the body's maximum cross-section area. The app has 0.014 to 0.036 too much here
+ *    (the fins' wave drag near the Mach number that puts the Mach line on their leading edge: AERODYNAMICS.md,
+ *    gap 10); the limit guards against it getting worse.
  *  - NASA TN D-8040 (Patel & Czarnecki, 1975), figure 15, and Hoerner, Fluid-Dynamic Drag, chapter V, figure 10: the
  *    drag of the face of a step facing the flow, on the step's area, at heights of 0.1 and 1 boundary-layer
  *    thicknesses: a 3.9 in body stepping up 75 in back from the nose, the pressure drag with the step less without.
@@ -23,6 +24,10 @@
  *  - NASA TR R-100 (Stoney, 1961), figure 13(a): four conical afterbodies in free flight at Mach 1.2, their pressure
  *    drag plus the base drag behind them. Guards the boattail equation's first coefficient: 0.010, not the 0.0010 the
  *    report prints (with 0.0010 the mean error here is 0.039).
+ *  - The fin wave drag calculation (the area rule, finWaveAt in drag-model.js) against theory it must reproduce:
+ *    thin-airfoil theory, 4·(t/c)²/β, for an unswept double-wedge wing of aspect ratio 4 at Mach 1.5, 2 and 3; and
+ *    NACA TN 1449 (Harmon, 1947), figure 6: untapered 45° wings with biconvex sections where the Mach line lies
+ *    along the leading edge, for five aspect ratios (the chart's cusp, which the calculation rounds off by 3–8%).
  */
 "use strict";
 const path = require("path");
@@ -124,16 +129,41 @@ const stepOrk = (hd) =>
         const x = at(model(xml));
         return [1.2, meas, x.pressure - at(plain).pressure + x.base];
       });
+      // the fin wave drag calculation alone: [label, theory, calculated], as shares of the theory's value
+      const tc = 0.05,
+        wing = (s, sw) => [
+          [0, 0],
+          [sw, s],
+          [sw + 1, s],
+          [1, 0],
+        ];
+      out.wave = [1.5, 2, 3].map((M) => {
+        const b = Math.sqrt(M * M - 1);
+        return [M, (4 * tc * tc) / b, finWaveAt(wing(2, 0), { kind: "dw", tc }, b)];
+      });
+      // TN 1449 figure 6 at cot Λ·β = 1: [aspect ratio × tan Λ, CD·tan Λ / (100·(t/c)²)]
+      out.harmon = cases.harmon.map(([A, v]) => [
+        A,
+        v,
+        finWaveAt(wing(A / 2, A / 2), { kind: "bi", tc }, 1) / (100 * tc * tc),
+      ]);
       return out;
     },
     {
       cases: {
+        harmon: [
+          [0.2, 0.0283],
+          [0.4, 0.0413],
+          [1, 0.0535],
+          [2, 0.0671],
+          [4, 0.0787],
+        ],
         bt: R100_F13.map(([ld, h, v]) => [boattailOrk(4 * ld, h), v]),
         btPlain: boattailOrk(0, 1),
         a53: ork(A53),
         a53Pts: A53_PTS,
-        rm10f: ork(RM10(true)),
-        rm10b: ork(RM10(false)),
+        rm10f: RM10(true),
+        rm10b: RM10(false),
         rm10Pts: RM10_PTS,
         steps: { 0: stepOrk(0), 0.1: stepOrk(0.1), 1: stepOrk(1) },
         stepPts: STEP_PTS,
@@ -173,5 +203,12 @@ const stepOrk = (hd) =>
     false,
   );
   report("NASA TR R-100 figure 13(a): conical afterbodies at Mach 1.2, pressure and base drag", res.bt, 0.02, false);
+  report("Fin wave drag by the area rule: an unswept double-wedge wing against 4·(t/c)²/β", res.wave, 0.02, true);
+  report(
+    "Fin wave drag by the area rule: NACA TN 1449 figure 6, Mach line on the leading edge (first column: aspect ratio × tan Λ)",
+    res.harmon,
+    0.08,
+    true,
+  );
   process.exitCode = fail ? 1 : 0;
 })();
