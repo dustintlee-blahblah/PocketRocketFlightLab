@@ -8,6 +8,13 @@ module.exports = [
   { ignores: ["web/**", "android/**", "src/data/**", "node_modules/**"] },
   js.configs.recommended,
   {
+    // Two checks ESLint 10 added to its recommended set, left off. The first objects to a starting value a later line
+    // always replaces (`let p = null; try { p = ... } catch { return; }`), which this code writes on purpose so a name
+    // is never without a value; the second wants every error thrown from a catch block to carry the one caught, where
+    // the app throws a plain message for the person to read. Neither found a fault here (27 places looked at).
+    rules: { "no-useless-assignment": "off", "preserve-caught-error": "off" },
+  },
+  {
     files: ["src/js/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
