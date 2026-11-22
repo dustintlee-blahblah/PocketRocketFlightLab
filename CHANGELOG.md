@@ -4,6 +4,13 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 339 (2026-11-21)
+
+**Behind the scenes**
+
+- The tools that check and format the code are brought up to date (Prettier 3.10, ESLint 10, Babel 8, globals 17). Nothing in the app changes: the built page differs from build 338's only by a line break in one style rule.
+- Building and checking now need Node.js 22.18 or later (Babel 8 asks for it), and the workflows on GitHub run on Node 22. The page Node 22 builds is the same, byte for byte, as the one Node 20 built for build 338.
+
 ## Build 338 (2026-11-21)
 
 **Export CAD**

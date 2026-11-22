@@ -5,6 +5,9 @@
   "description": "A flight simulator for hobby and high-power rockets that runs on a phone.",
   "author": "Dustin Lee",
   "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "scripts": {
     "build": "node build.js",
     "format": "prettier --write \"src/**/*.{js,css}\" build.js tests/*.js tools/*.js validation/*.js",
@@ -35,8 +38,8 @@
     "validate:coast-trend": "node build.js && node validation/coast-trend.js"
   },
   "devDependencies": {
-    "@babel/parser": "7.26.2",
-    "@babel/traverse": "7.25.9",
+    "@babel/parser": "8.1.2",
+    "@babel/traverse": "8.1.2",
     "@eslint/js": "10.0.1",
     "esbuild": "0.28.2",
     "eslint": "10.15.0",
