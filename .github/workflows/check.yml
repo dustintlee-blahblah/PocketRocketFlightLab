@@ -156,3 +156,14 @@ jobs:
         run: |
           if [ -z "$KEYSTORE_B64" ]; then echo "No signing secrets here; skipped."; exit 0; fi
           tools/build-release-apk.sh
+
+      # in the log, so a change to the build tools can be compared with the release before it: the APK's size, every
+      # file in it with its size and checksum, and what its manifest declares
+      - name: What's in the signed APK
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          if [ ! -f "$APK" ]; then echo "No signed APK here; skipped."; exit 0; fi
+          ls -l "$APK"
+          unzip -lv "$APK"
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)
+          "$AAPT" dump badging "$APK"
