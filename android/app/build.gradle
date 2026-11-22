@@ -54,7 +54,9 @@ android {
     }
 
     sourceSets {
-        main.assets.srcDirs += ["$buildDir/generated/webAsset"]
+        // a folder (not a Provider: Android Gradle plugin 9 doesn't take those here); preBuild depends on the tasks
+        // below that fill it
+        main.assets.srcDir(layout.buildDirectory.dir("generated/webAsset").get().asFile)
     }
 }
 
@@ -63,7 +65,7 @@ android {
 tasks.register("generateWebAsset") {
     def page = rootProject.file("../web/pocket-rocket-flight-lab.html")
     def fontCss = file("src/main/fontface.css")
-    def out = file("$buildDir/generated/webAsset/index.html")
+    def out = layout.buildDirectory.file("generated/webAsset/index.html").get().asFile
     inputs.files(page, fontCss)
     outputs.file(out)
     doLast {
@@ -88,6 +90,6 @@ tasks.register("generateWebAsset") {
 // The STEP export's 3D kernel (web/step-kernel.js, from tools/build-step-kernel.js) goes in beside the page.
 tasks.register("copyStepKernel", Copy) {
     from(rootProject.file("../web/step-kernel.js"))
-    into("$buildDir/generated/webAsset")
+    into(layout.buildDirectory.dir("generated/webAsset"))
 }
 tasks.named("preBuild") { dependsOn("generateWebAsset", "copyStepKernel") }
