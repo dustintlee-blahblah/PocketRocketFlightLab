@@ -1185,8 +1185,9 @@ const L53I01_CASES = Object.keys(L53I01).map((k) => {
    interference included, read off figure 8's experimental curves, about ±0.001 on the wing area; the report puts its
    own accuracy at ±0.002. Sections 6% thick double wedges in the flight direction, the mid-chord line swept 50°,
    200 in² of exposed wing; aspect ratio (of the two exposed panels) 2 and 4, taper ratio 0, 1/3 and 2/3. The body: 5 in
-   across, 55.06 in long, a nose 17.5 in long of nearly circular-arc profile, four tail fins (136.5 in² exposed,
-   rounded leading edges swept 45°, square trailing edges, 0.091 in thick; sizes scaled off figure 1). Reynolds number
+   across, 55.06 in long, a nose 17.5 in long of nearly circular-arc profile, four tail fins (figure 1: flat plates
+   0.091 in thick with rounded leading edges swept 45° and square trailing edges, root chord 8.38 in from station
+   46.44, tip chord 1.38 in, the trailing edge unswept; 136.5 in² exposed for the four gives 6.99 in of span). Reynolds number
    5 to 13 million on the wing's mean chord (figure 3), here 28 million a metre throughout.
    The report compares these with linear theory (NACA TN 1448 and TN 1672) and finds it good above Mach 1.2 except on
    the two tapered wings of aspect ratio 4. They are what the app's fin wave drag (the area rule, drag-model.js) was
@@ -1248,7 +1249,7 @@ const tn3697Ork = (w) => {
         t: "tube",
         len: 55.06 - 46.44,
         d: 5,
-        fins: { n: 4, cr: 8.38, ct: 3.2, s: 5.9, sw: 5.2, t: 0.091, edge: "rounded", teEdge: "square", aft: 0.24 },
+        fins: { n: 4, cr: 8.38, ct: 1.38, s: 6.99, sw: 6.99, t: 0.091, edge: "rounded", teEdge: "square", aft: 0.24 },
       },
     ],
   });
@@ -1364,6 +1365,119 @@ const L54I03_CASES = [
     L54I03.cnaDeg.map(([M, v]) => [M, (v * 180) / Math.PI]),
   ),
   l54i03Case("cp", "cp", "CP with fins", L54I03.cp),
+];
+/* The same report's standard body alone: the one flight measurement here of a whole rocket whose fins are flat plates
+   with rounded leading edges and square trailing edges, through Mach 1, the kind of fin most hobby rockets carry.
+   Its four fins are 0.091 in thick (1.9% of the mean chord) and carry 7 times the body's cross-section in exposed
+   area. Mach 1.0 to 2.0: NACA TN 3697 figure 5 (six models without wings, on 200 in²), its faired curve, about ±0.001
+   there (±0.01 here, on the body's cross-section). Mach 0.75 to 0.98: Hart, Flight Investigation at Mach Numbers From
+   0.8 to 1.5 to Determine the Effects of Nose Bluntness on the Total Drag of Two Fin-Stabilized Bodies of Revolution,
+   NACA RM L50I08a, 1950, figure 4(b), its pointed-nose reference curve for this same body (from NACA RM L50F01), on
+   the body's cross-section, about ±0.005; the two agree within 0.03 where they meet. The fuselage was sanded wood with
+   clear lacquer, the fins polished duralumin. Reynolds number on the body's length from RM L50I08a figure 3: about 19
+   million at Mach 0.8, rising by 50 million per unit of Mach number. */
+const TN3697_BODY = [
+  [0.75, 0.332],
+  [0.85, 0.335],
+  [0.9, 0.338],
+  [0.93, 0.35],
+  [0.95, 0.37],
+  [0.97, 0.41],
+  [0.98, 0.43],
+  [1.0, 0.0495 * 10.186],
+  [1.05, 0.0505 * 10.186],
+  [1.1, 0.049 * 10.186],
+  [1.2, 0.0462 * 10.186],
+  [1.3, 0.0437 * 10.186],
+  [1.4, 0.042 * 10.186],
+  [1.5, 0.0408 * 10.186],
+  [1.6, 0.0402 * 10.186],
+  [1.8, 0.0395 * 10.186],
+  [2.0, 0.0405 * 10.186],
+];
+const TN3697_BODY_CASE = {
+  id: "tn3697-body",
+  grade: 1,
+  title: "NACA TN 3697 and RM L50I08a, standard test body with rounded-edge flat fins, Mach 0.75–2.0: total drag",
+  tier: "free flight",
+  role: "check",
+  quantity: "cd",
+  xml: tn3697Ork(null),
+  pts: TN3697_BODY.map(([M, v]) => [M, +v.toFixed(3), 19e6 + 50e6 * (M - 0.8)]),
+};
+/* The same standard test body in another program, with and without wings (Morrow and Katz, Flight Investigation at
+   Mach Numbers From 0.6 to 1.7 To Determine Drag and Base Pressures on a Blunt-Trailing-Edge Airfoil and Drag of
+   Diamond and Circular-Arc Airfoils at Zero Lift, NACA RM L50E19a, 1950; also NACA TN 3548). Figure 4 gives the
+   body (the same ogive and fins as TN 3697's) and the wings: two rectangular panels at zero lift, chord 9.582 in,
+   10.44 in of exposed span each (200 in², aspect ratio 2.7), trailing edge at station 32.104, all 6% thick (0.575
+   in): a diamond, a circular arc, and a "slab", a plate with a wedge over its first 40% of chord (3.833 in) and a
+   square back. Read off figure 7 (four wingless models, total drag on 200 in²) and figure 10 (what each wing adds,
+   the winged model less the wingless curve, interference included, ±0.002 on the wing area as the report gives
+   it), about ±0.001 more for the reading. Reynolds number from figure 5: 2.8 million on the wing chord at Mach 0.62
+   rising to 9.7 million at Mach 1.72, here 5 million at Mach 1 rising 6.7 million per unit of Mach number, times
+   5.75 on the body's length. The slab's base pressure, figure 6, is not a drag case here: see AERODYNAMICS.md, gap
+   19, for how the app's trailing-edge rule compares with it. */
+const MK_M = [0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2, 1.3, 1.4, 1.5];
+const MK_BODY = [0.035, 0.0355, 0.036, 0.0375, 0.041, 0.051, 0.0535, 0.052, 0.048, 0.044, 0.041, 0.0395];
+const MK_WINGS = {
+  slab: ["beveled", [0.033, 0.032, 0.0325, 0.0327, 0.039, 0.044, 0.046, 0.045, 0.042, 0.038, 0.038, 0.036]],
+  diamond: ["doublewedge", [0.009, 0.009, 0.013, 0.019, 0.025, 0.03, 0.028, 0.026, 0.0205, 0.019, 0.0187, 0.0178]],
+  "circular-arc": [
+    "airfoil",
+    [0.0056, 0.0056, 0.0058, 0.0065, 0.0178, 0.025, 0.0256, 0.0256, 0.025, 0.024, 0.023, 0.0224],
+  ],
+};
+const mkRe = (M) => (5e6 + 6.7e6 * (M - 1)) * 5.75;
+const mkOrk = (kind) => {
+  const wing = kind && {
+    n: 2,
+    cr: 9.582,
+    ct: 9.582,
+    s: 10.44,
+    sw: 0,
+    t: 0.575,
+    edge: MK_WINGS[kind][0],
+    ...(kind === "slab" ? { le: 3.833, teEdge: "square" } : {}),
+    aft: 46.44 - 32.104,
+  };
+  return partsOrk({
+    name: `RM L50E19a ${kind || "wingless body"}`,
+    finish: "polished",
+    nose: { len: 17.5, shape: "ogive", param: 1 },
+    parts: [
+      { t: "tube", len: 46.44 - 17.5, d: 5, ...(wing ? { fins: wing } : {}) },
+      {
+        t: "tube",
+        len: 55.06 - 46.44,
+        d: 5,
+        fins: { n: 4, cr: 8.38, ct: 1.38, s: 6.99, sw: 6.99, t: 0.091, edge: "rounded", teEdge: "square", aft: 0.24 },
+      },
+    ],
+  });
+};
+const MK_CASES = [
+  {
+    id: "l50e19a-body",
+    grade: 1,
+    title: "NACA RM L50E19a, the standard test body without wings (rounded-edge flat fins), Mach 0.75–1.5: total drag",
+    tier: "free flight",
+    role: "check",
+    quantity: "cd",
+    xml: mkOrk(null),
+    pts: MK_M.map((M, i) => [M, +((MK_BODY[i] * 200) / (Math.PI * 2.5 * 2.5)).toFixed(3), mkRe(M)]),
+  },
+  ...Object.keys(MK_WINGS).map((k) => ({
+    id: `l50e19a-${k}`,
+    grade: 1,
+    title: `NACA RM L50E19a, 6% ${k === "slab" ? "slab (square back)" : k} wing, aspect ratio 2.7, Mach 0.75–1.5: drag the wing adds`,
+    tier: "free flight",
+    role: "check",
+    quantity: "cdFins",
+    xml: mkOrk(k),
+    xmlBody: mkOrk(null),
+    rePerM: mkRe(1) / (55.06 * IN),
+    pts: MK_M.map((M, i) => [M, +((MK_WINGS[k][1][i] * 200) / (Math.PI * 2.5 * 2.5)).toFixed(4)]),
+  })),
 ];
 const CASES = [
   {
@@ -1784,6 +1898,8 @@ const CASES = [
     pts: ALLEN_PTS.map(([M, , , c]) => [M, c]),
   },
   ...TN3697_CASES,
+  TN3697_BODY_CASE,
+  ...MK_CASES,
   ...L55H02_CASES,
   ...L54I03_CASES,
   ...R1386_CASES,

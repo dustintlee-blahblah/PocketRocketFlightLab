@@ -4,6 +4,30 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 343 (2026-11-22)
+
+No change to how the app flies a rocket. This build carries new check cases, findings and documents.
+
+**Checks and documents**
+
+- **Rounded fin edges near Mach 1** (AERODYNAMICS.md, gap 19). New check cases from NACA's standard test body with
+  rounded-edge flat fins (TN 3697 with RM L50I08a, `tn3697-body`; within 2–4% to Mach 0.93, 7–13% too little drag at
+  Mach 0.95–1.05, 12–21% too much at Mach 1.4–1.8), and from NACA RM L50E19a (Morrow and Katz), the same body with
+  6% slab, diamond and circular-arc wings (`l50e19a-body`, `-slab`, `-diamond`, `-circular-arc`). Findings: the
+  rounded leading edge's drag steps on too late and too hard; a square trailing edge has about half the measured base
+  drag below Mach 1.1; linear theory gives sharp fins thicker than about 3% too much drag just above Mach 1. TN 3697's
+  tail-fin geometry corrected from its figure 1.
+- **Tried and left alone:** a stronger square-trailing-edge base below Mach 1 (fast rounded-fin flights better, slower
+  flights worse; the 23 flights 6.3% to 6.1%), and NACA Report 1253's transonic chart in place of linear theory near
+  Mach 1 (fixes the diamond and circular-arc wings at Mach 1.0–1.05, but worse on the slab wing and the Arcas, and no
+  change to any flight). Neither has a sourced basis that holds across the cases yet.
+- **Validation data audit** (VALIDATION.md). Raven, Torrent and Rabia match their design files part for part. The
+  app's AeroTech J570W thrust curve adds up to 6% more impulse than ThrustCurve.org lists for the motor; at the listed
+  impulse Raven's error would be +15.6% instead of +22.0%. The guessed inputs on most flights (finish, wind, weight)
+  are noted.
+- **References:** RM L50I08a, RM L50E19a, ARC R&M 3465 (Graham), ARC CP 921 (Wilby) added; 31 more public NACA and
+  NASA reports added to the reference library, and REFERENCES.md links the 19 it cites.
+
 ## Build 342 (2026-11-22)
 
 **The flight**
