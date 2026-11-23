@@ -1679,6 +1679,7 @@ function flyBooster(D, L, mb, start, windVec, out, key = "b") {
     driftY: s[4],
     rate: Math.sqrt((2 * mBo * g) / (atm0.rho * (chute || GB.tumbleCdA))),
     chute: chute > 0,
+    chuteEv: ev,
     tDeploy: tDep,
     altDeploy: altDep,
     mass: mBo,

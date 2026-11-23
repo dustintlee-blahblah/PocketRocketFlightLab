@@ -388,6 +388,20 @@ export function rsoChecks(st, S, m, D, LL) {
         "Plugged",
         `${st.single ? "The parachute" : "The drogue"} is set to open at the motor ejection charge, but the motor is plugged, so it never opens and the rocket comes down ballistic${!st.single && st.tMain != null ? " until the main opens" : ""}. Choose a delay under Motor Delay on the Motor tab, or choose an altimeter in the builder (Recovery, in the Design Tree).`,
       );
+    // a dropped stage's chute that never opens: set to open at its motor's charge, and that motor is plugged
+    for (const [b, nm] of [
+      [st.booster, "Booster"],
+      [st.first, "First stage"],
+    ])
+      if (b && b.chute && b.tDeploy == null && b.tLand != null)
+        add(
+          "bad",
+          `${nm} chute`,
+          "Never opens",
+          b.chuteEv === "ejection"
+            ? `The ${nm.toLowerCase()}'s parachute is set to open at its motor's ejection charge, but that motor is plugged, so it never opens and the ${nm.toLowerCase()} comes down ballistic. Give the ${nm.toLowerCase()}'s motor a delay (Motor tab), or set the parachute to open at the ${nm.toLowerCase()}'s apogee, at an altitude or on a timer (the builder: select the parachute).`
+            : `The ${nm.toLowerCase()}'s parachute never opens before it lands. Check its opening setting in the builder (select the parachute).`,
+        );
     for (const [b, nm] of [
       [st.booster, "Booster"],
       [st.first, "First stage"],

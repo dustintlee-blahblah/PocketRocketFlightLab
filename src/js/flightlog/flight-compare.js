@@ -279,12 +279,12 @@ function fcRender() {
   if (M.dur != null)
     row(M.src === "file" ? "Landing" : "Flight duration", S(M.dur), S(E.dur), fcDiff(E.dur, M.dur, "s"));
   else if (M.src === "file") row("Landing", "after the log ends", S(E.dur), "—", "—");
-  h += `<table class="cmpt"><thead><tr><th>Event</th><th>${M.src === "file" ? "Altimeter" : "Flight"}</th><th>Predicted</th><th>Diff</th></tr></thead><tbody>${rows
+  h += `<div class="tblwrap"><table class="cmpt"><thead><tr><th>Event</th><th>${M.src === "file" ? "Altimeter" : "Flight"}</th><th>Predicted</th><th>Diff</th></tr></thead><tbody>${rows
     .map(
       (r) =>
         `<tr${r.ng ? ' class="ng"' : ""}><td>${r.label}</td><td>${r.meas}</td><td>${r.pred}</td><td>${r.diff}</td></tr>`,
     )
-    .join("")}</tbody></table>`;
+    .join("")}</tbody></table></div>`;
   h += `<div class="cmpban info" id="cmpmodel"><b>What this says about the model.</b>${fcReading(M, E, lim, early)}</div>`;
   body.innerHTML = h;
   body.querySelectorAll(".cmpseg [data-v]").forEach(

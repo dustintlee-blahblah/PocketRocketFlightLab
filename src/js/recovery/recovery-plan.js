@@ -350,19 +350,20 @@ export function renderRecovery() {
  * @returns {string}
  */
 function recHtml(P) {
-  const A = (v) => (v != null && isFinite(v) ? `${fmt(v, "alt")} ${uname("alt")}` : "—"),
-    V = (v) => (v != null && isFinite(v) ? `${fmt(v, "speed")} ${uname("speed")}` : "—"),
-    S = (v) => (v != null && isFinite(v) ? `${v.toFixed(1)} s` : "—"),
-    rel = (r) => (r == null ? "" : `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(1)} s`),
+  // a number and its unit stay on one line (\u00a0); the tables wrap between values to fit a narrow phone
+  const A = (v) => (v != null && isFinite(v) ? `${fmt(v, "alt")}\u00a0${uname("alt")}` : "—"),
+    V = (v) => (v != null && isFinite(v) ? `${fmt(v, "speed")}\u00a0${uname("speed")}` : "—"),
+    S = (v) => (v != null && isFinite(v) ? `${v.toFixed(1)}\u00a0s` : "—"),
+    rel = (r) => (r == null ? "" : `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(1)}\u00a0s`),
     tag = { good: "OK", warn: "Check", bad: "Unsafe" };
   let h = "";
   if (P.charges.length) {
-    h += `<div class="subh">The charges, in order</div><table class="cmpt rect"><thead><tr><th>Charge</th><th>After apogee</th><th>Height</th><th>Speed</th></tr></thead><tbody>${P.charges
+    h += `<div class="subh">The charges, in order</div><div class="tblwrap"><table class="cmpt rect"><thead><tr><th>Charge</th><th>After apogee</th><th>Height</th><th>Speed</th></tr></thead><tbody>${P.charges
       .map(
         (c) =>
-          `<tr><td>${esc(c.what[0].toUpperCase() + c.what.slice(1))}<small>${esc(c.who)}${c.model ? `, ${esc(c.model)}` : ""}</small></td><td>${c.rel >= 0 ? "+" : "−"}${Math.abs(c.rel).toFixed(1)} s</td><td>${A(c.alt)}</td><td>${V(c.va)}${c.vz > 0.5 ? "<small>climbing</small>" : ""}</td></tr>`,
+          `<tr><td>${esc(c.what[0].toUpperCase() + c.what.slice(1))}<small>${esc(c.who)}${c.model ? `, ${esc(c.model)}` : ""}</small></td><td>${rel(c.rel)}</td><td>${A(c.alt)}</td><td>${V(c.va)}${c.vz > 0.5 ? "<small>climbing</small>" : ""}</td></tr>`,
       )
-      .join("")}</tbody></table>`;
+      .join("")}</tbody></table></div>`;
     const early = P.charges.find((c) => c.rel < -0.5 && c.who !== "Chute release");
     if (early)
       h += `<p class="note cmpnote">The ${esc(early.who.toLowerCase())}'s ${esc(early.what)} charge fires ${Math.abs(early.rel).toFixed(1)} s before apogee, while the rocket is still climbing.</p>`;
@@ -372,12 +373,12 @@ function recHtml(P) {
       h += n.bad ? `<div class="cmpban warn">${esc(n.t)}</div>` : `<p class="note cmpnote">${esc(n.t)}</p>`;
   }
   if (P.cases.length) {
-    h += `<div class="subh">If a charge fails</div><table class="cmpt rect"><thead><tr><th>Case</th><th>First opens</th><th>Lands at</th><th>Drift</th></tr></thead><tbody>${P.cases
+    h += `<div class="subh">If a charge fails</div><div class="tblwrap"><table class="cmpt rect"><thead><tr><th>Case</th><th>First opens</th><th>Lands at</th><th>Drift</th></tr></thead><tbody>${P.cases
       .map((c) => {
         const g = recGrade(c.o);
         return `<tr><td>${esc(c.name)}<small>${esc(c.note)}</small></td><td>${c.o.open ? `${rel(c.o.tRel)}<br>${A(c.o.alt)}, ${V(c.o.v)}` : "nothing opens"}</td><td>${V(c.o.land)}<br><b class="${g}">${tag[g]}</b></td><td>${A(c.o.drift)}</td></tr>`;
       })
-      .join("")}</tbody></table>`;
+      .join("")}</tbody></table></div>`;
     const worst = P.cases.slice(1).find((c) => recGrade(c.o) === "bad");
     if (worst)
       h += `<p class="note cmpnote">${esc(worst.name)}: ${worst.o.open ? `it lands at ${V(worst.o.land)}, too fast to land undamaged` : "nothing opens and it falls ballistic"}. ${P.cfg !== "one" ? "" : "A second altimeter on its own battery and switch covers this. "}</p>`;
@@ -391,12 +392,12 @@ function recHtml(P) {
     }<div class="stat"><div class="k">Under the ${L.drogue ? "main" : "chute"}</div><div class="v">${S(L.main.t)}<i></i></div><div class="note">${A(L.main.d)} of drift</div></div><div class="stat"><div class="k">Lands from the pad</div><div class="v">${fmt(L.total, "alt")}<i>${uname("alt")}</i></div></div></div>`;
   }
   if (P.mains.length > 1)
-    h += `<table class="cmpt rect"><thead><tr><th>Main opens at</th><th>Time down</th><th>Lands from the pad</th></tr></thead><tbody>${P.mains
+    h += `<div class="tblwrap"><table class="cmpt rect"><thead><tr><th>Main opens at</th><th>Time down</th><th>Lands from the pad</th></tr></thead><tbody>${P.mains
       .map(
         (x) =>
           `<tr${x.set ? ' class="set"' : ""}><td>${A(x.h)}${x.set ? " (set)" : ""}</td><td>${S(x.t)}</td><td>${A(x.drift)}</td></tr>`,
       )
-      .join("")}</tbody></table>`;
+      .join("")}</tbody></table></div>`;
   if (P.load) {
     const r = P.load.rating,
       pct = r > 0 ? P.load.F / r : null,

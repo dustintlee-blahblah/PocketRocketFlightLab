@@ -751,6 +751,86 @@ const ok = (what, cond, got) => {
     st.topChutes,
   );
 
+  // ---- the booster's own parachute flies: it opens, the Staging timeline and the animation show it, and a chute
+  //      waiting on a plugged motor's charge is flagged ----
+  const bo = await p.evaluate(async (dualI) => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    await openExample(dualI);
+    await wait(700);
+    bldRender();
+    if (!document.querySelector('[data-stage="add"]')) document.querySelector(".bldaddtoggle").click();
+    document.querySelector('[data-stage="add"]').click();
+    await wait(400);
+    const bi = BLD.stages.length - 1,
+      bt = BLD.stages[bi].parts.find((q) => q.type === "tube");
+    const mounts = (st) => {
+      const o = [];
+      const w = (l) => {
+        for (const q of l || []) {
+          if (q.type === "mount") o.push(q);
+          w(q.kids);
+        }
+      };
+      w(st.parts);
+      return o;
+    };
+    const sm = mounts(BLD.stages[0])[0],
+      bm = mounts(BLD.stages[bi])[0];
+    bm.motor = { ...sm.motor };
+    bm.od = sm.od;
+    const res = {};
+    for (const dep of ["apogee", "altitude", "ejection"]) {
+      bt.kids = bt.kids.filter((q) => q.type !== "chute");
+      bt.kids.push({ ...bldNew("chute", 0.04), deploy: dep, delay: 1, alt: 60 });
+      bldChanged(true);
+      await wait(300);
+      runNow();
+      await wait(1500);
+      showTab("results");
+      const B = lastSim.st.booster;
+      ANIM.speed = 1;
+      res[dep] = {
+        two: !!lastSim.st.staged,
+        tDeploy: B && B.tDeploy,
+        tApo: B && B.tApo,
+        altDeploy: B && B.altDeploy,
+        timeline: [...document.querySelectorAll("#stagetl li")].map((l) => l.textContent),
+        notice: B && B.tDeploy != null ? animNotices(B.tDeploy + 0.1).map((e) => e[1]) : [],
+        flag: [...document.querySelectorAll(".rso")].some(
+          (x) => /Booster chute/.test(x.textContent) && /Never opens/.test(x.textContent),
+        ),
+      };
+    }
+    return res;
+  }, dualI);
+  ok("two stages with a booster motor: flown as stages", bo.apogee.two, bo.apogee);
+  ok(
+    "booster chute at its apogee: opens 1 s after the booster's apogee",
+    bo.apogee.tDeploy != null && Math.abs(bo.apogee.tDeploy - bo.apogee.tApo - 1) < 0.02,
+    bo.apogee,
+  );
+  ok(
+    "booster chute at an altitude: opens at 60 m on the way down",
+    bo.altitude.tDeploy != null && Math.abs(bo.altitude.altDeploy - 60) < 0.5,
+    bo.altitude,
+  );
+  ok(
+    "booster chute: the Staging timeline lists its opening and its landing",
+    bo.apogee.timeline.some((x) => /Booster chute opens/.test(x)) &&
+      bo.apogee.timeline.some((x) => /Booster lands/.test(x)),
+    bo.apogee.timeline,
+  );
+  ok(
+    "booster chute: the animation's notices show it opening",
+    bo.apogee.notice.includes("Booster chute opens"),
+    bo.apogee.notice,
+  );
+  ok(
+    "booster chute on a plugged booster motor's charge: never opens, flagged in the checklist and the timeline",
+    bo.ejection.tDeploy == null && bo.ejection.flag && bo.ejection.timeline.some((x) => /chute never opened/.test(x)),
+    bo.ejection,
+  );
+
   ok("no page errors", errs.length === 0, errs);
   console.log(`${checks} checks, ${fails} failed`);
   await browser.close();

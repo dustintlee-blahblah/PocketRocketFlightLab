@@ -229,8 +229,8 @@ function stageTimeline(st) {
   /**
    * Adds an event (t in seconds; off: shown offset from another time).
    */
-  const add = (t, txt, who, off) => {
-    if (t != null && isFinite(t)) ev.push({ t, txt, who, off });
+  const add = (t, txt, who, off, alt) => {
+    if (t != null && isFinite(t)) ev.push({ t, txt, who, off, alt });
   };
   add(0, `Liftoff on the ${st.three ? "first-stage" : "booster"} motor`, st.three ? "first" : "booster");
   if (st.offRailT != null) add(st.offRailT, "Leaves the rail", "all");
@@ -269,7 +269,17 @@ function stageTimeline(st) {
   if (st.tDeploy != null && !st.plugSkip) add(st.tDeploy, st.single ? "Chute opens" : "Drogue opens", "all");
   if (st.tMain != null && (st.tMain !== st.tDeploy || st.plugSkip)) add(st.tMain, "Main opens", "all");
   if (st.tLand != null) add(st.tLand, "Sustainer lands", "sustainer");
-  return ev.sort((a, b) => a.t - b.t).map((e) => ({ ...e, alt: altAt(e.t) }));
+  // each dropped stage's own recovery: its chute opening (at its own height) and its landing
+  for (const [R, nm, who] of [
+    [st.first, "First stage", "first"],
+    [st.booster, "Booster", "booster"],
+  ]) {
+    if (!R) continue;
+    if (R.chute && R.tDeploy != null) add(R.tDeploy, `${nm} chute opens`, who, false, R.altDeploy);
+    if (R.chute && R.tDeploy == null) add(R.tLand, `${nm} lands; its chute never opened`, who, true, 0);
+    else add(R.tLand, `${nm} lands`, who, false, 0);
+  }
+  return ev.sort((a, b) => a.t - b.t).map((e) => ({ ...e, alt: e.alt ?? altAt(e.t) }));
 }
 /**
  * Draws the Staging panel: the timeline, then one stage's figures at a time.

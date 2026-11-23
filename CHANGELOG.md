@@ -4,6 +4,31 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 344 (2026-11-23)
+
+**Results**
+
+- **A booster's parachute shows.** A booster (or a three-stage rocket's first stage) given its own parachute already
+  flew under it, but nothing showed it: the flight animation now draws the dropped stage hanging under its canopy, in
+  2D and 3D, with "Booster chute opens" and "Booster lands" notices; the Staging timeline lists the opening (at the
+  booster's own height) and its landing. A booster parachute set to open at its motor's ejection charge, on a plugged
+  motor, never opens: the checklist now says so ("Booster chute: never opens") and how to fix it, and the timeline
+  marks the landing.
+- **Tables and tiles fit a narrow phone.** On a phone narrower than about 380 px, or with large text, the Recovery
+  Plan's tables ran past the panel's edge. Their cells now wrap between values (a number keeps its unit), the column
+  headings wrap, and a table that still can't fit scrolls sideways inside its panel instead. The same for the Flight vs
+  prediction table. The apogee comes down a size on such a phone so the motor beside it fits, the result tiles wrap a
+  long value instead of running out of the tile, and the animation's buttons wrap under its title.
+
+**Checks**
+
+- The walkthrough test also flags anything running past the edge of the panel, dialog or banner it sits in (not only
+  past the screen), and was run at 320 and 360 px as well as 412 and 1,600.
+- `tests/recovery.js`: a booster's parachute opens at its apogee and at an altitude, shows in the timeline and the
+  animation's notices, and one waiting on a plugged motor is flagged.
+- Golden snapshot re-recorded: the page text has non-breaking spaces in the Recovery Plan and the stages' landings in
+  the Staging timeline; no flight result changed.
+
 ## Build 343 (2026-11-22)
 
 No change to how the app flies a rocket. This build carries new check cases, findings and documents.

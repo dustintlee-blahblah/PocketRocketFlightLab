@@ -40,6 +40,7 @@ function logFromSim() {
 
 /** what's wider than the screen: the page itself, and visible elements past either edge (not inside a sideways scroller) */
 function layoutProblems() {
+  const BOXES = ".panel, .mbox, .cmpban, .bldcol, .setmenu, .flrow, .wx, .report, .rsolist, .sitemgr, .bpcard";
   const vw = document.documentElement.clientWidth,
     out = [];
   if (document.documentElement.scrollWidth > vw + 1)
@@ -58,6 +59,25 @@ function layoutProblems() {
     if (!r.width || !r.height) continue;
     const s = getComputedStyle(el);
     if (s.visibility === "hidden" || s.display === "none" || (s.position === "fixed" && r.right <= 0)) continue;
+    // past the edge of the box it sits in (a panel, a dialog, a banner): text running out of its frame
+    const box = el.parentElement && el.parentElement.closest(BOXES);
+    if (box && !scrolls(el) && !(el.matches(BOXES) && el === box)) {
+      const br = box.getBoundingClientRect();
+      const pr = el.parentElement.getBoundingClientRect(),
+        parentOut = el.parentElement !== box && (pr.right > br.right + 1 || pr.left < br.left - 1);
+      if (!parentOut && (r.right > br.right + 1 || r.left < br.left - 1)) {
+        const id = el.id
+          ? "#" + el.id
+          : el.className && typeof el.className === "string"
+            ? "." + el.className.split(" ")[0]
+            : "";
+        const bid = box.id ? "#" + box.id : "." + String(box.className).split(" ")[0];
+        out.push(
+          `${el.tagName.toLowerCase()}${id} spans ${Math.round(r.left)}..${Math.round(r.right)} past its ${bid} (${Math.round(br.left)}..${Math.round(br.right)}): "${(el.textContent || "").trim().slice(0, 40)}"`,
+        );
+        continue;
+      }
+    }
     if ((r.right > vw + 1 || r.left < -1) && !scrolls(el)) {
       const id = el.id
         ? "#" + el.id

@@ -533,7 +533,7 @@ h2 {
 }
 .hero {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
@@ -636,7 +636,8 @@ h2 {
 .stat .v {
   font: 500 1.05rem var(--f-mono);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  /* wraps only when a value and its unit won't fit the tile (a narrow phone, large text) */
+  white-space: normal;
 }
 .stat .v i {
   white-space: normal;
@@ -2622,6 +2623,8 @@ html.typing .runbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .animtop h2 {
   margin: 0;
@@ -4019,6 +4022,35 @@ table.cmpt {
 }
 #recbody .rect {
   margin-bottom: 8px;
+}
+/* on a narrow phone (or with large text) the cells wrap between values instead of running past the panel */
+#recbody .rect td,
+#recbody .rect th,
+#cmpbody .cmpt th {
+  white-space: normal;
+}
+/* a table that still can't fit scrolls sideways inside its panel instead of running past the edge */
+.tblwrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* a narrow phone (or large text): the apogee and table headings come down a size */
+@media (max-width: 380px) {
+  .apogee {
+    --apo: clamp(2.2rem, 12vw, 3.4rem);
+  }
+  .cmpt th {
+    letter-spacing: 0.02em;
+  }
+  #recbody .rect td,
+  #cmpbody .cmpt td {
+    font-size: 0.72rem;
+    padding: 7px 0 7px 6px;
+  }
+  #recbody .rect td:first-child {
+    font-size: 0.8rem;
+  }
 }
 /* dispersion flights that went unstable, under the apogee */
 .apowarn {

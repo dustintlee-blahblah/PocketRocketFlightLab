@@ -686,26 +686,41 @@ export function animDraw(target) {
       c.restore();
     }
   }
-  if (fpos && ANIM.first) {
-    drawShape(
-      ANIM.first,
-      SX(fpos[0]),
-      SY(fpos[1]) - (fpos[1] <= 0 ? size * 0.05 : 0),
-      fpos[1] <= 0 ? 1 : 0.3,
-      fpos[1] <= 0 ? 0 : -1,
-      size * 0.5,
-    );
-  }
-  if (bpos && ANIM.boo) {
-    drawShape(
-      ANIM.boo,
-      SX(bpos[0]),
-      SY(bpos[1]) - (bpos[1] <= 0 ? size * 0.05 : 0),
-      bpos[1] <= 0 ? 1 : 0.3,
-      bpos[1] <= 0 ? 0 : -1,
-      size * 0.5,
-    );
-  }
+  /* a dropped stage: falling nose down, hanging under its own chute once that opens (its canopy drawn like the
+     sustainer's, at the stage's smaller scale), or lying on the ground */
+  const dropped = (shape, pos, R) => {
+    const qx = SX(pos[0]),
+      qy = SY(pos[1]),
+      sz = size * 0.5;
+    if (pos[1] <= 0) {
+      drawShape(shape, qx, qy - size * 0.05, 1, 0, sz);
+      return;
+    }
+    if (R && R.chute && R.tDeploy != null && t >= R.tDeploy) {
+      const can = Math.min(40, size * 0.5),
+        cy = qy - sz * 0.9;
+      c.strokeStyle = ink;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(qx, qy - 3);
+      c.lineTo(qx - can / 2, cy);
+      c.moveTo(qx, qy - 3);
+      c.lineTo(qx + can / 2, cy);
+      c.stroke();
+      c.fillStyle = acc;
+      c.beginPath();
+      c.ellipse(qx, cy, can / 2, can * 0.32, 0, Math.PI, 0);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = ink;
+      c.stroke();
+      drawShape(shape, qx, qy, 1, -0.15, sz);
+      return;
+    }
+    drawShape(shape, qx, qy, 0.3, -1, sz);
+  };
+  if (fpos && ANIM.first) dropped(ANIM.first, fpos, st.first);
+  if (bpos && ANIM.boo) dropped(ANIM.boo, bpos, st.booster);
   // readout
   const vz = landed ? 0 : animAt(out.t, out.vel, t);
   const phase = landed
@@ -838,6 +853,10 @@ export function animNotices(t) {
     [mainOpenAtDep || st.tMain == null ? null : st.tMain, "Main opens"],
     [st.tSep1, "First stage drops"],
     [st.tSep, "Staging"],
+    [st.first && st.first.chute ? st.first.tDeploy : null, "First stage chute opens"],
+    [st.first ? st.first.tLand : null, "First stage lands"],
+    [st.booster && st.booster.chute ? st.booster.tDeploy : null, "Booster chute opens"],
+    [st.booster ? st.booster.tLand : null, "Booster lands"],
     [st.tumble ? st.tumble.t : st.noChute ? tDep : null, "Tumbling"],
     [st.tLand, "Landed"],
   ]

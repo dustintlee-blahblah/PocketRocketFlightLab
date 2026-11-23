@@ -929,9 +929,9 @@ export function anim3dDraw() {
     drawMesh(V3.fixed.rail, place(add(mul(side, body.R + w), [0, 0, 0]), rail, 0, [w, rl, w]));
   }
   // dropped stages, each along its own path
-  for (const [key, m] of [
-    ["b", M.boo],
-    ["b1", M.first],
+  for (const [key, m, R, dia] of [
+    ["b", M.boo, st.booster, RD.bChuteDia],
+    ["b1", M.first, st.first, RD.s1 && RD.s1.bChuteDia],
   ]) {
     const T = out[key + "t"];
     if (!m || !T || !T.length || t < T[0]) continue;
@@ -939,6 +939,22 @@ export function anim3dDraw() {
       alt = Math.max(0, animAt(T, out[key + "alt"], t)),
       p = onLand(add(mul(X0, animAt(T, out[key + "xp"] || T.map(() => 0), t)), [0, alt, 0])),
       a = alt > 0 ? (t - T[0]) * 3.1 : 0;
+    // under its own chute it hangs tail down from its top end, with the canopy above, as the sustainer does
+    if (alt > 0 && R && R.chute && R.tDeploy != null && t >= R.tDeploy) {
+      const hang = norm(add(mul(X0, 0.3), [0, 1, 0])),
+        top = add(p, mul(hang, (m.len || 0.3) * big)),
+        dd = Math.max(dia || 0.3, 0.2) * big,
+        can = add(top, [0, Math.max(dd * 1.3, (m.len || 0.3) * big * 0.8), 0]);
+      drawMesh(m, place(p, hang, 0, big));
+      drawMesh(M.main, place(can, [0, 1, 0], 0, dd));
+      const pts = [];
+      for (let k = 0; k < 8; k++) {
+        const q = (2 * Math.PI * k) / 8;
+        pts.push(can[0] + 0.5 * dd * Math.cos(q), can[1], can[2] + 0.5 * dd * Math.sin(q), ...top);
+      }
+      drawLines(pts, [0.15, 0.15, 0.17, 0.9], gl.LINES);
+      continue;
+    }
     drawMesh(m, place(p, alt > 0 ? [Math.cos(a), Math.sin(a) * 0.9, 0.3] : [1, 0.03, 0], 0, big));
   }
   // the rocket (after its smoke, so it shows through its own trail)
