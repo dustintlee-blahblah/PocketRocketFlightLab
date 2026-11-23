@@ -7,7 +7,16 @@
 import { esc } from "../core/helpers.js";
 import { D, L } from "../design/defaults.js";
 import { flightBoost, flightFirst, flightMotor } from "../motors/clusters.js";
-import { aero, cdParts, cnaPartsM, normalForceAt, radiusAt, segR, stability } from "../physics/aerodynamics.js";
+import {
+  aero,
+  cdParts,
+  cnaPartsM,
+  finOutline,
+  normalForceAt,
+  radiusAt,
+  segR,
+  stability,
+} from "../physics/aerodynamics.js";
 import { atmosphere } from "../physics/atmosphere.js";
 import { bodyPressures, obliqueShock } from "../physics/flow-picture.js";
 import { flowScene } from "../physics/flow-streams.js";
@@ -829,16 +838,21 @@ function wtTunnel(t) {
   // fins above and below, then the body
   c.fillStyle = mut;
   c.globalAlpha = 0.55;
-  for (const f of fins)
+  // each fin's own outline (a free-form fin as drawn in the design, not its equivalent trapezoid)
+  for (const f of fins) {
+    const ol = finOutline(f);
     for (const s of [1, -1]) {
       c.beginPath();
-      c.moveTo(f.xLead * sc, s * f.rr * sc);
-      c.lineTo((f.xLead + (f.sw || 0)) * sc, s * (f.rr + f.s) * sc);
-      c.lineTo((f.xLead + (f.sw || 0) + (f.b || 0)) * sc, s * (f.rr + f.s) * sc);
-      c.lineTo((f.xLead + f.a) * sc, s * f.rr * sc);
+      ol.forEach(([px, py], i) => {
+        const X = (f.xLead + px) * sc,
+          Y = s * (f.rr + py) * sc;
+        if (i) c.lineTo(X, Y);
+        else c.moveTo(X, Y);
+      });
       c.closePath();
       c.fill();
     }
+  }
   c.globalAlpha = 1;
   c.beginPath();
   P.forEach((p, i) => (i ? c.lineTo(p.x * sc, -p.r * sc) : c.moveTo(p.x * sc, -p.r * sc)));

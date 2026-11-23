@@ -4,6 +4,21 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 345 (2026-11-23)
+
+**Rocket**
+
+- **The Wind Tunnel draws free-form fins as they are.** It drew every fin as its equivalent trapezoid, so a free-form
+  fin (the LOC IV X2's, with its notch at the back of the root) showed with a trailing edge swept the wrong way and
+  didn't match the builder. It now draws each fin's own outline. Only the picture changes: drag, CP and stability
+  already used the real outline.
+
+**Checks**
+
+- VALIDATION.md's three shared flights brought up to date, rerun from the files as the flyers last sent them: CT
+  Concept 98 −0.6% (it listed −4.3%, from an older build and file), Partizon +1.1% (−3.5%), Ascender 866 ft/s top speed.
+- `tests/inputs.js` sets the Motor tab's filters back to All before searching for a motor.
+
 ## Build 344 (2026-11-23)
 
 **Results**

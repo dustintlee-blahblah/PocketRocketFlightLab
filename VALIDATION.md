@@ -330,9 +330,9 @@ acceleration and top speed read low.
 
 | Flight                                        | Mach | Measured                                                                 | App              |           |
 | --------------------------------------------- | ---- | ------------------------------------------------------------------------ | ---------------- | --------- |
-| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.5  | GPS apogee about 17,400 ft                                               | 16,648 ft        | −4.3%     |
-| Estes Partizon, AeroTech I205W                | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft)                  | 4,116 ft         | −3.5%     |
-| Estes Ascender, AeroTech H135W                | 0.79 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 876 ft/s, 22.0 g | see below |
+| CT Concept 98, Cesaroni 6251M1400, Black Rock | 1.5  | GPS apogee about 17,400 ft                                               | 17,294 ft        | −0.6%     |
+| Estes Partizon, AeroTech I205W                | 0.97 | apogee 4,263 ft (ejection 0.9 s before it, at 4,213 ft)                  | 4,312 ft         | +1.1%     |
+| Estes Ascender, AeroTech H135W                | 0.77 | top speed 880 ft/s, peak 22.9 g, ejection at 3,943 ft, 2 s before apogee | 866 ft/s, 22.0 g | see below |
 
 - **Concept 98**: as the flyer set it up, with its pair of rail buttons, its tail cone painted rather than smooth, the field's
   3,898 ft elevation and its saved weather. Before the rail buttons and paint were added the app gave 18,075 ft (+3.9%);
@@ -350,6 +350,9 @@ acceleration and top speed read low.
   The app passes 3,943 ft about 5.6 s after burnout, which fits the motor's shortest delay (6 s); with that delay the app
   gives 4,224 ft for the highest point after ejection (+4.8% on the logged 4,030 ft). Without the early charge it would
   have reached 4,869 ft.
+
+Rerun Nov 23 from the files as the flyers last sent them; the earlier figures in this section's notes come from older
+builds and earlier versions of the files.
 
 None of these is in the averages above, which cover the RASAero II files only. `node validation/shared-flights.js
 --dir <folder>` flies them again from a folder holding the three design files (kept outside the repository).
@@ -384,7 +387,10 @@ under Mach 1.2, Raven is +22%. Each of those has a reason of its own:
   the app's J570W curve (the 1998 TMT test file on ThrustCurve.org) integrates to 1,034 N·s, 6% above the 973 N·s
   ThrustCurve.org lists for the motor; at 973 N·s Raven's top speed is RASAero II's (1,251 against 1,243 ft/s) and
   its error +15.6% in place of +22.0%, and Gary Byrum's (the other J570W) would go from +3.2% to a little below zero. The app's
-  other motors here are within 3% of their listed impulse (I284W, K550W, M1297W, K1075GG, L1080BB, M1850GG).
+  other motors' curves here differ from their listed impulse by 2.7% (I284W, below) and 5.3% (K550W, above); the rest
+  are within 1.1%. The curves are flown as published (Dustin, Nov 23: scaling every catalog motor to its listed impulse
+  was tried and taken back: it moved the 23 flights from 6.3% to 6.6%, bias +2.4% to +1.8%, and would have set the
+  app apart from OpenRocket, which flies the same curves).
 - **Torrent** has rounded fins too, and a 1/16 in step at its fin can. Until build 307 that step was charged most
   of stagnation pressure, two to seven times what steps measure (NASA TN D-8040), which hid about 7% of apogee;
   the rockets with rounded fins need more drag than the app gives them (AERODYNAMICS.md, known gaps).
@@ -601,7 +607,7 @@ but the predicted apogee itself isn't moved. The flights were weighed and not ca
 (root-sum-square) by judgment: an estimated weight widens the range 10% down and 3.6% up (at 90%), and a drag
 calibrated to one of your own flights replaces the band's figures with 3%. The dispersion run's spread is added the same
 way. Mach 0.8–1.2 is wide on both sides because of one flight (Raven, 22% under its prediction); the shared flights
-(Partizon −3.5%, Concept 98 −4.3%) aren't in it, because their design files aren't in this repository.
+(Partizon +1.1%, Concept 98 −0.6%) aren't in it, because their design files aren't in this repository.
 
 ## Running the checks
 

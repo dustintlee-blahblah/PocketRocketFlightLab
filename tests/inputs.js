@@ -175,6 +175,14 @@ const ok = (what, cond, got) => {
         showTab("motor");
         const f = document.querySelector('[aria-controls="fltbody"]');
         if (f && f.getAttribute("aria-expanded") !== "true") f.click();
+        // every filter back to All, so only the search decides what the list shows
+        for (const sel of [
+          '#fbrand [data-b="all"]',
+          '#fdia [data-d="all"]',
+          '#fsys [data-y="all"]',
+          '#fspark [data-k="all"]',
+        ])
+          document.querySelector(sel)?.click();
       });
       await p.fill("#fsearch", want);
       await p.waitForTimeout(500);
