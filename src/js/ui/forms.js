@@ -11,7 +11,7 @@ import { bpRender } from "../recovery/ejection-charge.js";
 import { fieldInfo, infoBtn } from "./field-help.js";
 import { siteRender } from "./launch-sites.js";
 import { renderMountNote } from "./motor-tab.js";
-import { mtSummary, renderRSO } from "./rso-checklist.js";
+import { mcFoldSum, mtSummary, renderRSO } from "./rso-checklist.js";
 import { changed, renderInertiaNote, renderRecNote } from "./state.js";
 import { DIMS, fromDisp, toDisp, uname } from "./units.js";
 import { renderAloft } from "../weather/winds-aloft.js";
@@ -314,6 +314,7 @@ export function renderForms() {
   renderSavePanel();
   renderMountNote();
   if (typeof renderAloft === "function") renderAloft();
+  mcFoldSum();
   {
     const sp = document.getElementById("stagelockpanel");
     if (sp) sp.hidden = !D.twoStage;

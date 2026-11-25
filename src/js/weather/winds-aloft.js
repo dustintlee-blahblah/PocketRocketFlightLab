@@ -29,6 +29,7 @@ export function renderAloft() {
     }
   }
   const rows = L.aloft || [];
+  aloftFoldSum();
   wxSiteNote();
   // a long table (a forecast fills 30–40 levels) folds to a one-line summary
   if (rows.length > 8 && !aloftOpen) {
@@ -90,6 +91,22 @@ export function renderAloft() {
 }
 
 /**
+ * What the Winds aloft panel holds, beside its title while it's folded (the panel starts folded, and these winds move
+ * where the rocket lands, so a folded panel still says whether any are in use).
+ */
+function aloftFoldSum() {
+  const e = document.getElementById("aloftfold"),
+    body = document.getElementById("aloftbody");
+  if (!e) return;
+  const rows = L.aloft || [];
+  e.textContent =
+    body && !body.hidden
+      ? ""
+      : rows.length
+        ? `${rows.length} level${rows.length > 1 ? "s" : ""} to ${fmt(Math.max(...rows.map((r) => r.alt)), "alt")} ${uname("alt")}`
+        : "none";
+}
+/**
  * Sets aloftOpen (for other modules: an imported binding can't be assigned).
  * @param {*} v
  */
@@ -100,6 +117,8 @@ export function setAloftOpen(v) {
  * Start-up: what this module does when the app opens (called once, in order, from main.js).
  */
 export function start() {
+  const fb = document.querySelector('[data-fold="aloftbody"]');
+  if (fb) fb.addEventListener("click", () => aloftFoldSum());
   document.getElementById("aloftadd").onclick = () => {
     L.aloft = L.aloft || [];
     const last = L.aloft[L.aloft.length - 1];

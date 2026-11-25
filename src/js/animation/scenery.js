@@ -905,6 +905,7 @@ export function start() {
       animClose();
       return true;
     }
+    if (window.prRecentClose && window.prRecentClose()) return true;
     const ib = document.getElementById("infobox");
     if (ib && !ib.hidden) {
       ib.hidden = true;

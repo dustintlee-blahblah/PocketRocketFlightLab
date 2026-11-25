@@ -310,11 +310,36 @@ export function start() {
     };
     document.getElementById("recentlist").addEventListener("click", click);
     document.getElementById("recentlist2").addEventListener("click", click);
-    document.getElementById("recentbtn").onclick = () => {
-      const d = document.getElementById("recentdrop");
-      d.hidden = !d.hidden;
-      document.getElementById("recentbtn").setAttribute("aria-expanded", String(!d.hidden));
+    const drop = document.getElementById("recentdrop"),
+      rbtn = document.getElementById("recentbtn");
+    rbtn.onclick = () => {
+      drop.hidden = !drop.hidden;
+      rbtn.setAttribute("aria-expanded", String(!drop.hidden));
     };
+    /* the Open Recent list closes the way a menu does (Dustin, Nov 24): once a recent file or an example is picked (the
+       × that takes a file off the list leaves it open), on a tap anywhere outside it and its button (the tap still does
+       what it does), on leaving the Rocket tab, and on Back (Android) or Escape */
+    const closeDrop = () => {
+      if (drop.hidden) return false;
+      drop.hidden = true;
+      rbtn.setAttribute("aria-expanded", "false");
+      return true;
+    };
+    window.prRecentClose = closeDrop;
+    drop.addEventListener("click", (ev) => {
+      if (ev.target.closest("[data-del]")) return;
+      if (ev.target.closest("[data-id], [data-ex]")) closeDrop();
+    });
+    document.addEventListener(
+      "pointerdown",
+      (ev) => {
+        if (!drop.hidden && !drop.contains(ev.target) && !rbtn.contains(ev.target)) closeDrop();
+      },
+      true,
+    );
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && closeDrop()) rbtn.focus();
+    });
   }
   // the Android app reports the place on the phone a new design was saved to
   window.prSavedAs = async (uri) => {

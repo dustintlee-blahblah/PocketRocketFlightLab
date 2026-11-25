@@ -4,6 +4,35 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 346 (2026-11-24)
+
+**Rocket**
+
+- **The Open Recent list closes like a menu.** It stayed open until a file had opened. It now closes as soon as a recent
+  file or an example is picked, on a tap anywhere outside it and its button (the tap still does what it does: Open
+  design file, Save, another tab), on leaving the Rocket tab, and on Escape or the Android Back button. The × that takes
+  a file off the list leaves it open, and a second tap on Open Recent still closes it.
+- **Export CAD says it's working.** Choosing STEP (or another CAD format) now shows an "Exporting STEP file…" box with a
+  spinner straight away: building the solid shape can take a minute or two, longer on an older phone, and the app may
+  not respond until it's done. The box goes away when the file is saved.
+
+**Range**
+
+- **Winds aloft and Landing dispersion settings start folded**, like Imperfections on the Rocket tab: a Show button opens
+  each. Folded, each says what it holds beside its title: how many wind levels and how high they go (or "none"), and
+  how many dispersion flights. Nothing they hold changes, and Get weather still fills the Winds aloft table while it's
+  folded.
+
+**Results**
+
+- The Landing dispersion panel's help sent you to "the L.pad tab" for its settings; it now says the Range tab.
+
+**Checks**
+
+- New `tests/recent-menu.js` (19 checks, in Check): each way the list closes, tapped as on a phone.
+- New `tests/cad-busy.js` (7 checks, in Check, which now builds the STEP library for it): the progress box shows at once,
+  names the format, and is gone when the STEP file is saved.
+
 ## Build 345 (2026-11-23)
 
 **Rocket**

@@ -21,6 +21,7 @@ export function showTab(name) {
     document.getElementById("v-" + n).hidden = n !== name;
     document.getElementById("t-" + n).setAttribute("aria-selected", n === name);
   });
+  if (name !== "rocket" && window.prRecentClose) window.prRecentClose();
   if (name === "motor") renderMotors();
   if (name === "flight") siteRender();
   if (name === "rocket" && BLD) bldRender();

@@ -61,6 +61,15 @@ async function stepExport(format, mesh) {
   }
   btn.disabled = true;
   stepSay(`Building the ${what} file…`);
+  // a box that says it's working, which can take a minute or two (Dustin, Nov 24), shown and painted before the
+  // building starts (it holds the page while it runs) and gone before the save dialog
+  const busy = document.getElementById("cadbusy");
+  if (busy) {
+    document.getElementById("cadbusytitle").textContent = `Exporting ${what} file…`;
+    busy.hidden = false;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30))));
+  }
+  const unbusy = () => busy && (busy.hidden = true);
   try {
     let R;
     try {
@@ -79,6 +88,7 @@ async function stepExport(format, mesh) {
         .replace(/[^\w.-]+/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "") + (stl ? ".stl" : ".step");
+    unbusy();
     const res = await downloadsNS.save({
       filename: name,
       data: stl ? stl.data : new TextEncoder().encode(text).buffer,
@@ -99,6 +109,7 @@ async function stepExport(format, mesh) {
       !(e && e.code === "declined"),
     );
   } finally {
+    unbusy();
     btn.disabled = false;
   }
 }

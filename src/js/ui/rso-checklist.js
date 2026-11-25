@@ -867,6 +867,14 @@ function imperfSum() {
   e.textContent = open || !on.length ? "" : on.join(", ");
 }
 /**
+ * The number of dispersion flights, beside the Landing dispersion settings title while it's folded.
+ */
+export function mcFoldSum() {
+  const e = document.getElementById("mcsetfold"),
+    body = document.getElementById("mcsetbody");
+  if (e) e.textContent = body && !body.hidden ? "" : `${Math.round(+L.mcN || 0)} flights`;
+}
+/**
  * Draws the RSO checklist from the last run.
  */
 export function renderRSO() {
@@ -1320,6 +1328,7 @@ export function start() {
         b.textContent = o ? "Hide" : "Show";
         if (o && b.dataset.fold === "dragbody" && typeof renderDragTable === "function") renderDragTable();
         if (typeof imperfSum === "function") imperfSum();
+        mcFoldSum();
       }),
   );
   document.getElementById("imperfpanel").addEventListener("input", () => setTimeout(imperfSum, 0));

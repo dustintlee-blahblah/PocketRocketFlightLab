@@ -949,6 +949,7 @@ h2 + .subh {
   cursor: pointer;
 }
 .foldsum {
+  display: inline-block; /* wraps as one piece onto the next line rather than splitting after its first word */
   font: 500 0.85rem var(--f-mono);
   color: var(--muted);
   margin-left: 6px;
@@ -4212,5 +4213,32 @@ table.cmpt {
   }
   #v-flight {
     columns: 3;
+  }
+}
+/* Export CAD's in-progress box: the spinner turns on the compositor, so it keeps turning while the page is busy */
+.cadbusy {
+  text-align: center;
+}
+.cadbusy h2 {
+  margin: 10px 0 8px;
+}
+.cadspin {
+  width: 36px;
+  height: 36px;
+  margin: 4px auto 0;
+  border-radius: 50%;
+  border: 4px solid var(--line);
+  border-top-color: var(--accent);
+  animation: cadspin 0.9s linear infinite;
+  will-change: transform;
+}
+@keyframes cadspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cadspin {
+    animation-duration: 3s;
   }
 }

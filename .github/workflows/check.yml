@@ -85,6 +85,14 @@ jobs:
       - name: Exports read back (PDF report, flight data CSV, Flight Log backup and CSV, Save a copy)
         run: node tests/exports.js
 
+      - name: Open Recent list closes like a menu
+        run: node tests/recent-menu.js
+
+      - name: Export CAD shows its progress box (builds the STEP library first)
+        run: |
+          node tools/build-step-kernel.js
+          node tests/cad-busy.js
+
       - name: Walkthrough at phone size (every screen in light and dark; no errors, nothing too wide, no blank chart)
         run: node tests/walkthrough.js
 

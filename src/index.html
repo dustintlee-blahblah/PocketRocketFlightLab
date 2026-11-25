@@ -59,7 +59,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">345</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">346</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -181,7 +181,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
     </div>
 
     <div class="panel" id="mcpanel" hidden>
-      <div class="foldhead"><h2 style="margin:0">Landing dispersion<button class="ib" type="button" data-title="Landing dispersion" data-info="Flies the rocket many times with the inputs varied the way they vary in real life (a Monte Carlo analysis), to show the spread of apogees and where the rocket is likely to land. It runs automatically after each Launch; change how many flights and how much each input varies at the bottom of the L.pad tab." aria-label="About Landing dispersion">i</button></h2><button class="rsomore foldbtn" id="mctog" type="button" aria-expanded="false" aria-controls="mcbody">Show results</button></div>
+      <div class="foldhead"><h2 style="margin:0">Landing dispersion<button class="ib" type="button" data-title="Landing dispersion" data-info="Flies the rocket many times with the inputs varied the way they vary in real life (a Monte Carlo analysis), to show the spread of apogees and where the rocket is likely to land. It runs automatically after each Launch; change how many flights and how much each input varies at the bottom of the Range tab." aria-label="About Landing dispersion">i</button></h2><button class="rsomore foldbtn" id="mctog" type="button" aria-expanded="false" aria-controls="mcbody">Show results</button></div>
       <div class="row mcprog" id="mcprog" hidden><span class="note" id="mcmsg" aria-live="polite" style="margin:0"></span><button class="btn ghost" id="mccancel" type="button">Cancel</button></div>
       <div id="mcbody" hidden><div id="mcout" hidden>
         <div class="stats" id="mcstats" style="margin-top:12px"></div>
@@ -267,15 +267,17 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="grid" id="g-stagelock"></div>
     </div>
     <div class="panel" id="aloftpanel">
-      <h2>Winds aloft<button class="ib" type="button" data-title="Winds aloft" data-info="Wind speed and the direction it blows from, at heights above the pad. Above the lowest level these replace the surface wind’s growth with height; between levels the wind is blended, and above the top level it stays the same. Leave the list empty to use the surface wind alone. Get weather, under Ambient conditions, fills this table from the weather forecast or record for your site and launch time (from March 2021 on; it needs the site’s latitude and longitude and an internet connection), or enter the levels by hand. Winds aloft matter most for high flights: the jet stream at 30,000–40,000 ft is often 50–150 mph." aria-label="About Winds aloft">i</button></h2>
+      <div class="foldhead"><h2 style="margin:0">Winds <span style="white-space:nowrap">aloft<button class="ib" type="button" data-title="Winds aloft" data-info="Wind speed and the direction it blows from, at heights above the pad. Above the lowest level these replace the surface wind’s growth with height; between levels the wind is blended, and above the top level it stays the same. Leave the list empty to use the surface wind alone. Get weather, under Ambient conditions, fills this table from the weather forecast or record for your site and launch time (from March 2021 on; it needs the site’s latitude and longitude and an internet connection), or enter the levels by hand. Winds aloft matter most for high flights: the jet stream at 30,000–40,000 ft is often 50–150 mph." aria-label="About Winds aloft">i</button></span> <span class="foldsum" id="aloftfold"></span></h2><button class="rsomore foldbtn" type="button" data-fold="aloftbody" aria-expanded="false" aria-controls="aloftbody">Show</button></div>
+      <div id="aloftbody" hidden>
       <div id="aloftlist" class="aloft"></div>
       <div class="row"><button class="btn ghost" id="aloftadd" type="button">+ Add a level</button><button class="btn ghost" id="aloftclear" type="button">Clear</button></div>
       <p class="note" id="aloftmsg" aria-live="polite"></p>
-      <p class="note" id="taloftnote" hidden></p>
+      <p class="note" id="taloftnote" hidden></p></div>
     </div>
     <div class="panel" id="mcsetpanel">
-      <h2>Landing dispersion settings<button class="ib" type="button" data-title="Landing dispersion settings" data-info="Flies the rocket many times with the inputs varied the way they vary in real life (a Monte Carlo analysis), to show the spread of apogees and where the rocket is likely to land. It runs automatically each time you tap Launch, and the results and the landing bullseye show on the Results tab. The amounts below are one standard deviation." aria-label="About Landing dispersion settings">i</button></h2>
-      <div class="grid" id="g-mc"></div>
+      <div class="foldhead"><h2 style="margin:0">Landing dispersion <span style="white-space:nowrap">settings<button class="ib" type="button" data-title="Landing dispersion settings" data-info="Flies the rocket many times with the inputs varied the way they vary in real life (a Monte Carlo analysis), to show the spread of apogees and where the rocket is likely to land. It runs automatically each time you tap Launch, and the results and the landing bullseye show on the Results tab. The amounts below are one standard deviation." aria-label="About Landing dispersion settings">i</button></span> <span class="foldsum" id="mcsetfold"></span></h2><button class="rsomore foldbtn" type="button" data-fold="mcsetbody" aria-expanded="false" aria-controls="mcsetbody">Show</button></div>
+      <div id="mcsetbody" hidden>
+      <div class="grid" id="g-mc"></div></div>
     </div>
   </section>
 
@@ -492,6 +494,10 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
     <button class="flchoice" type="button" data-cad="coarse"><b>Coarse mesh</b><span>Triangles within 0.2 mm: facets show on curves, fewer triangles and a smaller file.</span></button>
   </div>
   <div class="row mrow"><button class="btn ghost" id="cadback" type="button" hidden>Back</button><button class="btn ghost" id="cadcancel" type="button">Cancel</button></div></div></div>
+<div class="modal" id="cadbusy" role="alertdialog" aria-modal="true" aria-labelledby="cadbusytitle" aria-describedby="cadbusytxt" hidden><div class="mbox flbox cadbusy">
+  <div class="cadspin" aria-hidden="true"></div>
+  <h2 id="cadbusytitle">Exporting CAD file…</h2>
+  <p class="note" id="cadbusytxt" style="margin:0">Building the rocket's solid shape. This can take a minute or two, longer on an older phone, and the app may not respond until it's done. Keep it open: the file is saved when it's ready.</p></div></div>
 <div class="modal" id="flchoose" role="dialog" aria-modal="true" aria-labelledby="flchtitle" hidden><div class="mbox flbox">
   <h2 id="flchtitle">Compare with a real flight</h2>
   <p class="note" style="margin:0 0 12px">How this design did against a flight you flew. The app flies it again with that day's motor, delay, weight and weather and sets it beside what your altimeter measured. Save the flight to keep it, and calibrate the drag to it.</p>
