@@ -1479,6 +1479,77 @@ const MK_CASES = [
     pts: MK_M.map((M, i) => [M, +((MK_WINGS[k][1][i] * 200) / (Math.PI * 2.5 * 2.5)).toFixed(4)]),
   })),
 ];
+/* An unswept 4.5% wing through Mach 1 on a large rocket-boosted model (Schult, Large-Scale Flight Measurements of
+   Zero-Lift Drag at Mach Numbers From 0.8 to 1.6 of a Wing-Body Combination Having an Unswept 4.5-Percent-Thick Wing
+   With Modified Hexagonal Sections, NACA RM L51A15, 1951). Figure 1 and the text: a fineness-10 parabolic body 130 in
+   long, 13.00 in at its widest (52 in back) and 6.46 in at the base (table I); a wing of aspect ratio 3.04, taper
+   0.394, 81.74 in tip to tip, 15.26 sq ft in all (root chord 38.56 in at the centre line, tip 15.19), its 74.5% chord
+   line unswept (leading edge 23.03°, trailing edge −8.28°), 80% of the area exposed; sections 4.5% thick, "modified
+   hexagonal": 27.5% of the chord tapering in at each end, 45% flat. Polished lacquer. Entered as a beveled plate of
+   constant thickness, 4.5% of the exposed panel's mean chord (26.52 in: 1.193 in thick, bevels 7.29 in), the exposed
+   panel taken from where the body is 5.9 in in radius along the root (root chord 35.19 in, span 34.97 in, leading
+   edge 14.87 in further back at the tip: 880 sq in a panel, the report's 80%), on a 13 in tube between the parabolic
+   nose and a conical afterbody to the base, with its two tail fins (they cancel: the case is the difference). Figure 5(b): the drag the wing
+   adds, interference included (the winged model less the wingless one less two tail fins, both flown), on the total
+   wing area, read off at 300 dpi (±0.0005 in the report, ±0.0005 more for the reading), here on the body's
+   cross-section (× 16.56). The telemetry's "dip" at Mach 0.96–0.97 (figure 6) is left out. Reynolds number 13
+   million on the 2.375 ft mean chord at Mach 1 (figure 4), here per metre at Mach 1.1. */
+const L51A15_M = [
+  0.9, 0.92, 0.94, 0.95, 0.98, 0.99, 1.0, 1.02, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 1.5, 1.55,
+];
+const L51A15_WING = [
+  0.0094, 0.0097, 0.0116, 0.0145, 0.0269, 0.0263, 0.0255, 0.024, 0.0225, 0.0205, 0.0195, 0.0187, 0.018, 0.0175, 0.0168,
+  0.0156, 0.0146, 0.0136, 0.013,
+];
+const l51a15Ork = (wing) =>
+  partsOrk({
+    name: `RM L51A15 ${wing ? "winged" : "body"}`,
+    finish: "polished",
+    nose: { len: 52, shape: "parabolic", param: 1 },
+    parts: [
+      {
+        t: "tube",
+        len: 50,
+        d: 13,
+        ...(wing
+          ? {
+              fins: {
+                n: 2,
+                cr: 35.19,
+                ct: 15.19,
+                s: 34.97,
+                sw: 14.87,
+                t: 1.193,
+                edge: "beveled",
+                le: 7.29,
+                te: 7.29,
+                aft: 0.84,
+              },
+            }
+          : {}),
+      },
+      {
+        t: "tail",
+        len: 28,
+        d0: 13,
+        d1: 6.46,
+        // the two tail fins both models carried (figure 1, roughly; they cancel)
+        fins: { n: 2, cr: 14, ct: 8.83, s: 13, sw: 7.5, t: 0.375, edge: "doublewedge", aft: 0 },
+      },
+    ],
+  });
+const L51A15_CASE = {
+  id: "l51a15-wing",
+  grade: 1,
+  title: "NACA RM L51A15, unswept 4.5% hexagonal wing, aspect ratio 3.04, Mach 0.9–1.55: drag the wing adds",
+  tier: "free flight",
+  role: "check",
+  quantity: "cdFins",
+  xml: l51a15Ork(true),
+  xmlBody: l51a15Ork(false),
+  rePerM: (13e6 + 0.1 * 18.4e6) / (2.375 * 0.3048),
+  pts: L51A15_M.map((M, i) => [M, +(L51A15_WING[i] * 16.556).toFixed(4)]),
+};
 const CASES = [
   {
     id: "a53d02-cd",
@@ -1900,6 +1971,7 @@ const CASES = [
   ...TN3697_CASES,
   TN3697_BODY_CASE,
   ...MK_CASES,
+  L51A15_CASE,
   ...L55H02_CASES,
   ...L54I03_CASES,
   ...R1386_CASES,

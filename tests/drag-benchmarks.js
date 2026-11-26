@@ -27,7 +27,11 @@
  *  - The fin wave drag calculation (the area rule, finWaveAt in drag-model.js) against theory it must reproduce:
  *    thin-airfoil theory, 4·(t/c)²/β, for an unswept double-wedge wing of aspect ratio 4 at Mach 1.5, 2 and 3; and
  *    NACA TN 1449 (Harmon, 1947), figure 6: untapered 45° wings with biconvex sections where the Mach line lies
- *    along the leading edge, for five aspect ratios (the chart's cusp, which the calculation rounds off by 3–8%).
+ *    along the leading edge, for five aspect ratios (the chart's cusp, which the calculation rounds off by 3–8%); and
+ *    exact linear theory, worked out independently by the supersonic source distribution (tools/exact-wing-wave-drag.py):
+ *    NACA RM L51A15's tapered wing as the app enters it (a beveled plate 1.193 in thick with 7.29 in bevels, the
+ *    exposed panel 35.19 in at the root, 15.19 at the tip, 34.97 in long, leading edge 14.87 in back at the tip) at
+ *    five Mach numbers, and a rectangular double-wedge wing of aspect ratio 1 at β = 0.6, where its tip cones cross.
  */
 "use strict";
 const path = require("path");
@@ -147,10 +151,26 @@ const stepOrk = (hd) =>
         v,
         finWaveAt(wing(A / 2, A / 2), { kind: "bi", tc }, 1) / (100 * tc * tc),
       ]);
+      // exact linear theory (tools/exact-wing-wave-drag.py): [β, exact CD, calculated]
+      const l51 = [
+        [0, 0],
+        [14.87, 34.97],
+        [14.87 + 15.19, 34.97],
+        [35.19, 0],
+      ];
+      out.exact = cases.exact.map(([b, v]) => [b, v, finWaveAt(l51, { kind: "hex", t: 1.193, le: 7.29, te: 7.29 }, b)]);
+      out.exact.push([0.6, 0.956 * ((4 * 0.06 * 0.06) / 0.6), finWaveAt(wing(0.5, 0), { kind: "dw", tc: 0.06 }, 0.6)]);
       return out;
     },
     {
       cases: {
+        exact: [
+          [0.6, 0.02914],
+          [0.8, 0.02123],
+          [1.118, 0.01454],
+          [1.5, 0.01061],
+          [2.236, 0.00702],
+        ],
         harmon: [
           [0.2, 0.0283],
           [0.4, 0.0413],
@@ -204,6 +224,12 @@ const stepOrk = (hd) =>
   );
   report("NASA TR R-100 figure 13(a): conical afterbodies at Mach 1.2, pressure and base drag", res.bt, 0.02, false);
   report("Fin wave drag by the area rule: an unswept double-wedge wing against 4·(t/c)²/β", res.wave, 0.02, true);
+  report(
+    "Fin wave drag by the area rule against exact linear theory: RM L51A15's tapered wing, then a rectangle of aspect ratio 1 (first column: β)",
+    res.exact,
+    0.02,
+    true,
+  );
   report(
     "Fin wave drag by the area rule: NACA TN 1449 figure 6, Mach line on the leading edge (first column: aspect ratio × tan Λ)",
     res.harmon,

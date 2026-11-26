@@ -1815,12 +1815,22 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
          passes each edge and ridge, and thin-airfoil theory's K·(t/c)²/β at high Mach numbers. Until build 341 the
          app used thin-airfoil theory held, below the Mach number that puts the Mach line on the leading edge, at
          its value there: flat where six wings measured in flight rise two to tenfold from Mach 1.1 to 1.7 (NACA
-         TN 3697). β is never taken under 0.4 (Mach 1.08), where linear theory overshoots, and the drag rises to
-         that value from the section's drag-divergence Mach number to Mach 1.05, where Missile DATCOM's fin method
-         also puts the full value.
+         TN 3697). Near Mach 1 linear theory runs to infinity, so β is held at the sonic plateau: never under
+         ∛((γ + 1)·M²·t/c), where the transonic similarity parameter (M² − 1)/[(γ + 1)·M²·t/c]^(2/3) is 1, and never
+         under 0.4 (Mach 1.08). Transonic small-disturbance theory for a two-dimensional double wedge
+         (MIL-HDBK-762 figure 5-132) has the drag flat at exactly linear theory's value there from that parameter's
+         0 to about 1.3, then within about 20% of linear theory to 3 and on it from 4 (4/√ of it); in McDevitt's
+         units that plateau is 3.0–3.2, which is what Report 1253 measured on long rectangular wings (3.07–3.3).
+         Until build 347 β was held only at 0.4, which put a fin thicker than about 3% of its chord above that
+         plateau (30% at 6%, 55% at 10%): the drag RM L50E19a's 6% diamond and circular-arc wings add from Mach
+         0.75 to 1.5 was 0.060 and 0.096 too much on average, 0.045 and 0.068 with the plateau (Nov 26, 2026).
+         The drag rises to that value from the section's drag-divergence Mach number to Mach 1.05, where Missile
+         DATCOM's fin method also puts the full value. Figure 5-132's own rise below Mach 1 was tried in its place
+         and not kept: it brings the full value in earlier, and three-dimensional wings don't follow it (the
+         circular-arc wing went to 0.141 too much; McDevitt's measured chart, the larger term below, holds there).
          A fin with one blunt end, or bevels too short for the flow to stay on (finK), takes the same share of the
          whole section's drag that thin-airfoil theory gives it. */
-      const bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), 0.4),
+      const bEff = Math.max(Math.sqrt(Math.max(M * M - 1, 0)), 0.4, Math.cbrt(2.4 * M * M * Math.min(f.tc, 0.12))),
         rise = smooth01((M - Mdd) / (1.05 - Mdd));
       /* Through Mach 1 thin-airfoil theory doesn't hold: the drag there goes as (t/c)^(5/3) and depends on how
          stubby the fin is. It is read from NACA Report 1253's correlation of 22 rectangular wings (finTransonic),

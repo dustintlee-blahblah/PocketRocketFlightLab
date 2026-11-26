@@ -4,6 +4,27 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 347 (not yet released)
+
+**Physics**
+
+- **Sharp-edged fins near Mach 1 no longer get too much wave drag.** On airfoil, double-wedge and beveled fins thicker
+  than about 3% of their chord, linear theory's wave drag was held only at its Mach 1.08 value, which put it above the
+  sonic plateau that transonic theory (MIL-HDBK-762 figure 5-132) and NACA's measured wings (Report 1253) both give.
+  It is now held at that plateau. The 6% diamond and circular-arc wings of NACA RM L50E19a go from 0.150 and 0.298 too
+  much drag at Mach 1.05 to 0.055 and 0.172; the transonic fin-drag check cases from 0.073 to 0.054 in Cd on average.
+  None of the 23 measured flights or the examples' results changes (their sharp fins are thin or swept). Found by a
+  sweep of the drag model in 0.002 Mach steps across 13 rockets and every fin edge type, which also showed no term
+  jumps anywhere from Mach 0.3 to 4.
+
+**Checks**
+
+- New check case from NACA RM L51A15 (Schult, 1951): the drag an unswept 4.5% hexagonal wing adds on a large
+  rocket-boosted model, Mach 0.9–1.55. The app's drag rises later than measured and peaks about 25% higher, and is
+  still 15% too high from Mach 1.3 (partly the case's single fin thickness); written up in AERODYNAMICS.md, gap 19.
+- The fins' linear-theory wave drag (the supersonic area rule) checked against exact linear theory worked out
+  independently: within 1% on rectangular wings and on RM L51A15's tapered wing.
+
 ## Build 346 (2026-11-24)
 
 **Rocket**
