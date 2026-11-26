@@ -70,6 +70,8 @@ export function orkSustainer(rd, S, twoStage, motor) {
     bExtraMotors: [],
     dryInertia: S.inertia,
     inertiaMass: S.mass,
+    massPts: S.massPts,
+    joints: S.joints,
     inertiaSource: S.inertia > 0 ? "file" : null,
     bDryInertia: 0,
     bInertiaMass: 0,

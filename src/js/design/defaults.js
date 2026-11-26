@@ -56,6 +56,8 @@ export function defaultDesign() {
     dryMass: 7 * LB,
     cgEmpty: 30 * IN,
     dryInertia: 0,
+    massPts: null, // the weights along the airframe as its file gave them, for the flight loads
+    joints: null,
     inertiaMass: 0,
     finish: 30e-6,
     railPreset: "1010",

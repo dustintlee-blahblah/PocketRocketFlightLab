@@ -4242,3 +4242,13 @@ table.cmpt {
     animation-duration: 3s;
   }
 }
+
+/* Flight loads (Results tab) and the same figure in the Wind Tunnel */
+.loadsfig svg,
+#wtc-loads svg {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  margin-top: 10px;
+}

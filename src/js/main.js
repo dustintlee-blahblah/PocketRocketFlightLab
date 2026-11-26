@@ -105,6 +105,8 @@ import * as m91 from "./flightlog/flight-compare.js";
 import * as m92 from "./recovery/recovery-plan.js";
 import * as m93 from "./builder/step-export.js";
 import * as m94 from "./builder/step-ui.js";
+import * as m95 from "./physics/loads.js";
+import * as m96 from "./ui/flight-loads.js";
 
 const modules = [
   m0,
@@ -202,6 +204,8 @@ const modules = [
   m92,
   m93,
   m94,
+  m95,
+  m96,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

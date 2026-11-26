@@ -189,6 +189,8 @@ export function orkReading(rocket, cfg, offStages, notes) {
     bodyEls: [],
     // every weight read: {m, x, len, k2, si}, for the inertia
     massPts: [],
+    // tube couplers: {x (middle, from the nose tip), len, si}, marked on the flight-loads diagram
+    joints: [],
     // where the next stage starts, from the nose tip
     cursor: 0,
   };
@@ -593,6 +595,7 @@ function readInnerTube(rd, c, x, parent, { tag, len, rho }) {
   const ri = Math.max(ro - elNum(c, "thickness", 0.001), 0);
   const m = rho * Math.PI * (ro * ro - ri * ri) * len;
   if (tag === "innertube") motorMountIn(rd, c, ri, true, x + len);
+  else if (len > 0) rd.joints.push({ x: x + len / 2, len, si: rd.curStage });
   return { m, ro, ri };
 }
 /**

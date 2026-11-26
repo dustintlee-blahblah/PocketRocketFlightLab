@@ -59,7 +59,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">346</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">347</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -178,6 +178,21 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
       <div class="seg" id="series" role="group" aria-label="Chart series"></div>
       <canvas id="chart" aria-label="Flight profile chart"></canvas>
       <div class="legend" id="chartlegend"></div>
+    </div>
+
+    <div class="panel" id="loadspanel" hidden>
+      <div class="foldhead"><h2 style="margin:0">Flight loads<span style="white-space:nowrap"><button class="ib" type="button" data-title="Flight loads" data-info="How hard the air bends the rocket at one moment of the flight. At an angle of attack the air pushes sideways on the nose, shoulders, body and fins; that push shoves the whole rocket sideways and turns it, and the rocket&rsquo;s own weight resists. The shear force is the sideways force the airframe carries across each point; the bending moment is how hard it is being bent there. Both are zero at the two ends, and the bending usually peaks near the middle of the rocket, often at a coupler. Choose the moment (peak dynamic pressure is usually the worst below Mach 1; top speed for a fast rocket) and the angle of attack: a side gust (the angle is the gust speed against the rocket&rsquo;s speed), an angle you set, or the angle it flew at. A stable rocket in calm air flies at nearly zero, so the gust or set angle is the design case. Axial compression is the squeeze along the tube where the motor pushes on it: the thrust less what it takes to speed up the motor itself, so the weight ahead times the acceleration, plus the drag. These are loads, not strength: whether a tube, coupler or fin joint can carry them depends on its material and how it is built. The rocket is taken as rigid and already at the angle, each part&rsquo;s push acts at one point, and loads near Mach 1 are as uncertain as the lift there." aria-label="About Flight loads">i</button></span> <span class="foldsum" id="loadsfold"></span></h2><button class="rsomore foldbtn" type="button" data-fold="loadsbody" aria-expanded="false" aria-controls="loadsbody">Show</button></div>
+      <div id="loadsbody" hidden>
+        <div class="grid" id="loadsctl" style="margin-top:12px">
+          <div class="fld"><div class="lh"><label for="loadswhen">Moment of the flight</label></div><div class="in"><select id="loadswhen"><option value="q">Peak dynamic pressure</option><option value="burn">Burnout</option><option value="mach">Top speed</option></select></div></div>
+          <div class="fld"><div class="lh"><label for="loadsang">Angle of attack</label></div><div class="in"><select id="loadsang"><option value="g0">Side gust</option><option value="g1">Side gust</option><option value="g2">Side gust</option><option value="set">Set angle</option><option value="flown">As it flew</option></select></div></div>
+          <div class="fld" id="loadsdegfld" hidden><div class="lh"><label for="loadsdeg">Angle</label></div><div class="in"><input id="loadsdeg" type="number" inputmode="decimal" step="any" value="5"><span class="u">°</span></div></div>
+        </div>
+        <p class="note" id="loadscond"></p>
+        <div class="stats" id="loadstiles"></div>
+        <div class="loadsfig" id="loadsfig"></div>
+        <p class="note" id="loadsnote"></p>
+      </div>
     </div>
 
     <div class="panel" id="mcpanel" hidden>
@@ -358,6 +373,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
           <div class="wtchart" id="wtc-cna"></div>
           <div class="wtchart" id="wtc-cp"></div>
           <div class="wtchart" id="wtc-aoa"></div>
+          <div class="wtchart" id="wtc-loads"></div>
         </div>
         <div class="row" style="margin-top:12px"><button class="btn ghost" type="button" id="wtcsvbtn">Download CSV</button></div>
       </div>

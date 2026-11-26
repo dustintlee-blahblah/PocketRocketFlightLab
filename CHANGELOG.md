@@ -4,7 +4,18 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
-## Build 347 (not yet released)
+## Build 347 (2026-11-26)
+
+**Results**
+
+- **Flight loads.** A new panel under Flight Performance (folded to start, with the peak bending beside its title)
+  shows how hard the air bends the rocket: the side forces on the nose, body and fins, the shear force and the bending
+  moment along the rocket, where the bending peaks, and the axial compression where the motor pushes on the airframe.
+  Choose the moment of the flight (peak dynamic pressure, burnout or top speed) and the angle of attack: a side gust
+  of 10, 20 or 30 ft/s (3, 6 or 9 m/s), an angle you set, or the angle it flew at. The motor and any couplers are
+  marked on the figure. The Wind Tunnel shows the same figure for the speed and angle on its sliders. These are loads,
+  not strength; staged rockets, clustered motors and side boosters aren't covered yet. The method is a free-body
+  balance of the app's own normal forces against the parts' weights (`src/js/physics/loads.js`).
 
 **Physics**
 
@@ -19,6 +30,9 @@ version.
 
 **Checks**
 
+- New `tests/flight-loads.js` (34 checks, in Check): the shear and bending method against closed forms (a free rod
+  pushed at its end bends 4·F·L/27 at two thirds of its length), the balance closing on a real design, the side forces
+  adding up to the flight's normal force, and the panel's choices and units.
 - New check case from NACA RM L51A15 (Schult, 1951): the drag an unswept 4.5% hexagonal wing adds on a large
   rocket-boosted model, Mach 0.9–1.55. The app's drag rises later than measured and peaks about 25% higher, and is
   still 15% too high from Mach 1.3 (partly the case's single fin thickness); written up in AERODYNAMICS.md, gap 19.

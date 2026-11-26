@@ -245,6 +245,11 @@ export function orkAirframe(rd, sel, label) {
     extra,
     inertia,
     rollI,
+    // the weights along the airframe {m, x from its own nose tip, len}, and its tube couplers: for the flight loads
+    massPts: rd.massPts
+      .filter(inS)
+      .map((q) => ({ m: +q.m.toFixed(6), x: +(q.x - x0).toFixed(5), len: +q.len.toFixed(5) })),
+    joints: rd.joints.filter(inS).map((j) => ({ x: +(j.x - x0).toFixed(5), len: +j.len.toFixed(5) })),
     fAft: length - (f.x - x0 + f.root),
     /* negative when the fins reach past the aft end (V-2 style fins over a boattail) */ // a side booster's own chutes bring it down after it separates: not the rocket's
     chutes: rd.chutes.filter((c) => inS(c) && c.sb == null),

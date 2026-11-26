@@ -21,10 +21,12 @@ import { atmosphere } from "../physics/atmosphere.js";
 import { bodyPressures, obliqueShock } from "../physics/flow-picture.js";
 import { flowScene } from "../physics/flow-streams.js";
 import { noseRTip, noseTip } from "../physics/geometry.js";
+import { flightLoads } from "../physics/loads.js";
 import { nozzleEstimate } from "../physics/simulate.js";
 import { fullStack, isThree, stackStability } from "../physics/staging.js";
 import { downloadsNS } from "../report/pdf-report.js";
 import { css, setupCanvas } from "./charts.js";
+import { loadsFigure, loadsUnsupported } from "./flight-loads.js";
 import { fmt, fromDisp, toDisp, uname } from "./units.js";
 
 /** The last sweep over Mach number, for the charts, the readout and the CSV. */
@@ -337,7 +339,33 @@ function wtReadout() {
   }
   const ea = document.getElementById("wtc-aoa");
   if (ea && ea._setV) ea._setV(aoa);
+  wtLoads();
   wtTunnel();
+}
+/**
+ * Draws the side loads along the rocket at the chosen speed and angle: the Results tab's Flight loads figure, for
+ * the rocket at liftoff weight with the motor not burning.
+ */
+function wtLoads() {
+  const el = document.getElementById("wtc-loads");
+  if (!el || !WT) return;
+  const { M, aoa } = sel(),
+    head = '<div class="wtct">Side loads along the rocket</div>',
+    why = loadsUnsupported(D);
+  let m = null;
+  try {
+    m = flightMotor();
+  } catch (e) {
+    m = null;
+  }
+  if (why || !(aoa > 0) || !(M > 0)) {
+    el.innerHTML = `${head}<div class="note wtcd">${esc(why || "Tilt the rocket (an angle of attack above 0°) to see the shear force and bending moment along it.")}</div>`;
+    return;
+  }
+  const R = flightLoads(D, WT.A, m, { M, v: M * WT.atm.a, atm: WT.atm, aoa, burnt: 0, thrust: 0 });
+  el.innerHTML = `${head}<div class="note wtcd">${esc(
+    `At Mach ${M.toFixed(2)} and ${aoa.toFixed(1)}°, at liftoff weight: peak bending ${fmt(Math.abs(R.peak.moment), "moment")} ${uname("moment")}, ${fmt(R.peak.x, "len")} ${uname("len")} from the tip. The Results tab’s Flight loads does this for a moment of the flight.`,
+  )}</div>${loadsFigure(R, WT.A, D)}`;
 }
 /**
  * Draws the normal force against angle of attack at the chosen speed.

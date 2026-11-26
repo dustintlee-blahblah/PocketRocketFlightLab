@@ -88,6 +88,9 @@ jobs:
       - name: Open Recent list closes like a menu
         run: node tests/recent-menu.js
 
+      - name: Flight loads (shear and bending against closed forms; the Results panel and the Wind Tunnel figure)
+        run: node tests/flight-loads.js
+
       - name: Export CAD shows its progress box (builds the STEP library first)
         run: |
           node tools/build-step-kernel.js
