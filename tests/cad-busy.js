@@ -2,7 +2,8 @@
 /*
  * Export CAD says it's working (Dustin, Nov 24, 2026): with real taps at phone size, choosing STEP in the Export CAD
  * box shows the "Exporting STEP file…" box (painted before the building starts, which holds the page for a while), the
- * box is gone when the file is saved, and the file is a STEP file. Needs web/step-kernel.js next to the page.
+ * box is gone when the file is saved, and the file is a STEP file; a browser without DecompressionStream (which unpacks
+ * the library) is told it is too old. Needs web/step-kernel.js next to the page.
  *
  *   node build.js && node tests/cad-busy.js [--html other-build.html]
  */
@@ -80,6 +81,40 @@ const ok = (what, cond, got) => {
     await p.evaluate(() => document.getElementById("bldstepmsg").textContent),
   );
   ok("no page errors", errs.length === 0, errs);
+
+  // a browser too old to unpack the library (no DecompressionStream) is told so, and the box goes
+  const old = await browser.newPage({ viewport: { width: 412, height: 860 }, hasTouch: true });
+  await old.route(/^https?:/, (r) => r.abort());
+  await old.addInitScript(() => {
+    window.PR_EXPOSE = true;
+    window.PR_NO_ASK = true;
+    localStorage.setItem("rfs-disclaimer-v2", JSON.stringify({ accepted: true, version: "2026-11-02" }));
+    sessionStorage.setItem("rfs-splash", "1");
+  });
+  await old.goto("file://" + html);
+  await old.waitForFunction(() => typeof window.openExample === "function");
+  await old.evaluate(async () => {
+    const l = document.getElementById("legal");
+    if (l) l.hidden = true;
+    await openExample(0);
+    showTab("rocket");
+    // (after the example is open: opening a design file needs it too)
+    delete window.DecompressionStream;
+  });
+  await old.waitForTimeout(500);
+  await old.locator("#bldstep").click();
+  await old.locator('#cadmodal [data-cad="step"]').click();
+  await old
+    .waitForFunction(() => /too old/.test(document.getElementById("bldstepmsg").textContent), null, { timeout: 60000 })
+    .catch(() => null);
+  ok(
+    "a browser that can't unpack the library is told so",
+    await old.evaluate(() =>
+      /too old to unpack the CAD library/.test(document.getElementById("bldstepmsg").textContent),
+    ),
+    await old.evaluate(() => document.getElementById("bldstepmsg").textContent),
+  );
+  ok("and the progress box is gone", await old.evaluate(() => document.getElementById("cadbusy").hidden));
   await browser.close();
   console.log(`${checks} checks, ${fails} failed`);
   process.exit(fails ? 1 : 0);

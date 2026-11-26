@@ -4,6 +4,20 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 348 (not yet released)
+
+**Export CAD**
+
+- **The CAD library is a third of its size.** `step-kernel.js` goes from 31 MB to 10 MB (the Android app from about
+  11.7 MB to about 9 MB): the library is now stored compressed inside the same file and unpacked on the device the
+  first time Export CAD is used. Nothing is downloaded, the library itself is unchanged, and the STEP and STL files
+  come out the same. It needs a browser that can unpack it (Chrome or Android WebView 80, Safari 16.4, Firefox 113, or
+  later), which opening a design file already needed; an older one is told so.
+
+**Checks**
+
+- `tests/cad-busy.js` (now 9 checks) also covers a browser that can't unpack the library.
+
 ## Build 347 (2026-11-26)
 
 **Results**
