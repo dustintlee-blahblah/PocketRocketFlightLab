@@ -6,10 +6,14 @@
  *     its shape), an OpenRocket simulation export (the ascent, straight flight, burning and coasting apart), plain
  *     tables (headings or none; commas, semicolons with decimal commas, spaces), and files it should refuse;
  *   - the flight: a flat profile flies exactly as the same fixed Cd does; more drag flies lower; a reference diameter
- *     scales it; switched off, the app's own drag flies; a staged rocket doesn't use it;
+ *     scales it; switched off, the app's own drag flies;
+ *   - a staged rocket: a fixed Cd and a profile for each airframe it flies as (the whole stack, the sustainer alone;
+ *     three on a three-stage), each changing only its own part of the flight, saved in the app's own element,
+ *     another program's overrides read as that program means them, and the editor's section for each;
  *   - kept with the design file (the app's own element) and read back, by the flight reader and the builder;
  *   - the block in the builder's Whole Rocket editor (import, the switch, remove, a bad file), the Wind Tunnel
  *     chart's third line, and the Results line;
+ *   - the Whole Rocket Cd field's note for each case (calculated, overridden, a profile flown, both);
  *   - the fin fillet radius field, moved from Whole Rocket to each fin set's editor.
  *
  *   node build.js && node tests/drag-profile.js [--html other-build.html]
@@ -229,7 +233,293 @@ for (let i = 1; i <= 50; i++) ork += `${(20 + i).toFixed(2)},${(2300 - 40 * i).t
     near(ends[0], 0.4, 1e-9) && near(ends[1], 0.6, 1e-9) && near(ends[2], 0.8, 1e-9),
     ends,
   );
-  ok("a staged rocket doesn't use a profile", ends[3] === false, ends);
+  ok("a staged design's own profile is the sustainer's", ends[3] === true, ends);
+
+  // ---- a staged rocket: each airframe it flies as has its own fixed Cd and its own profile (Nov 27, 2026)
+  const H128 = "a-5f4294d20002e9000000000d"; // AeroTech H128W, 29 mm
+  const addStage = () =>
+    p.evaluate((H128) => {
+      bldRender();
+      if (!document.querySelector('[data-stage="add"]')) document.querySelector(".bldaddtoggle").click();
+      document.querySelector('[data-stage="add"]').click();
+      setBoostId(H128);
+    }, H128);
+  // the drag of each airframe at Mach 0.3 and whether a profile gives it, and the flight
+  const stg = (settings) =>
+    p.evaluate(async (settings) => {
+      const off = {};
+      for (const x of ["", "2", "3"]) Object.assign(off, { ["cdCurve" + x]: null, ["cdOverride" + x]: 0 });
+      Object.assign(BLD.settings, off, settings);
+      for (const x of ["", "2", "3"])
+        if (settings["cdOverride" + x]) BLD.settings["cdOverride" + x + "On"] = true;
+        else delete BLD.settings["cdOverride" + x + "On"];
+      bldChanged(true);
+      await runNow();
+      const atm = atmosphere(L, 0),
+        at = (Dx) => {
+          const A = aero(Dx);
+          return { cd: cdParts(A, 0.3 * atm.a, atm).cd, curve: !!A.curve };
+        };
+      return {
+        sus: at(D),
+        stack: at(fullStack(D)),
+        mid: D.threeStage ? at(stackDesign(D)) : null,
+        apogee: lastSim.st.maxAlt,
+        xml: bldToOrk(BLD, L),
+      };
+    }, settings);
+  await addStage();
+  const s0 = await stg({});
+  ok(
+    "two-stage, nothing set: both airframes on this app's model",
+    !s0.sus.curve && !s0.stack.curve && s0.apogee > 0,
+    s0.sus,
+  );
+  ok("the stack has more drag than the sustainer alone", s0.stack.cd > s0.sus.cd, [s0.stack.cd, s0.sus.cd]);
+  ok("nothing of it written to the file", !/prflstackdrag|overridecd|prflcdcurve/.test(s0.xml));
+  const sS = await stg({ cdOverride: 1.5 });
+  ok(
+    "a fixed Cd for the sustainer alone leaves the stack's drag as it was",
+    near(sS.sus.cd, 1.5, 1e-9) && near(sS.stack.cd, s0.stack.cd, 1e-9) && sS.apogee < 0.9 * s0.apogee,
+    [sS.sus.cd, sS.stack.cd, s0.stack.cd, sS.apogee, s0.apogee],
+  );
+  const sK = await stg({ cdOverride2: 1.5 });
+  ok(
+    "a fixed Cd for the whole stack leaves the sustainer's drag as it was",
+    near(sK.stack.cd, 1.5, 1e-9) && near(sK.sus.cd, s0.sus.cd, 1e-9) && sK.apogee < s0.apogee,
+    [sK.stack.cd, sK.sus.cd, s0.sus.cd, sK.apogee, s0.apogee],
+  );
+  ok("the two change the flight differently", !near(sK.apogee, sS.apogee, 1e-3), [sK.apogee, sS.apogee]);
+  ok(
+    "the stack's is written in the app's own element on the booster stage, the sustainer's not",
+    /<prflstackdrag>\{&quot;cd&quot;:1\.5\}<\/prflstackdrag>/.test(sK.xml) && !/<overridecd>/.test(sK.xml),
+    (sK.xml.match(/<prflstackdrag>[^<]*/) || [])[0],
+  );
+  const sP = await stg({ cdCurve2: flat });
+  ok(
+    "a profile for the whole stack: the stack reads its Cd off it, the sustainer does not",
+    sP.stack.curve && near(sP.stack.cd, 0.6, 1e-9) && !sP.sus.curve && near(sP.sus.cd, s0.sus.cd, 1e-9),
+    [sP.stack, sP.sus],
+  );
+  const sPf = await stg({ cdOverride2: 0.6 });
+  ok("a flat stack profile flies as the same fixed stack Cd does", near(sP.apogee, sPf.apogee, 1e-9), [
+    sP.apogee,
+    sPf.apogee,
+  ]);
+  const sQ = await stg({ cdCurve: flat });
+  ok(
+    "a profile for the sustainer alone: only the sustainer reads it",
+    sQ.sus.curve && near(sQ.sus.cd, 0.6, 1e-9) && !sQ.stack.curve && near(sQ.stack.cd, s0.stack.cd, 1e-9),
+    [sQ.sus, sQ.stack],
+  );
+  const sB = await stg({ cdCurve: flat, cdCurve2: { ...flat, off: [0.9, 0.9], name: "stack" }, cdOverride2: 2 });
+  ok(
+    "a profile beats a fixed Cd on the same airframe; both airframes on profiles",
+    near(sB.stack.cd, 0.9, 1e-9) && near(sB.sus.cd, 0.6, 1e-9),
+    [sB.stack.cd, sB.sus.cd],
+  );
+  const back = await p.evaluate((xml) => {
+    const d = parseOrk(xml),
+      b = bldFromOrk(xml).settings,
+      pick = (o) => [
+        o.cdCurve && o.cdCurve.name,
+        o.cdCurve2 && o.cdCurve2.name,
+        o.cdOverride2,
+        o.cdCurve3,
+        o.cdOverride3,
+      ];
+    return {
+      flight: pick(d.design),
+      builder: pick(b),
+      on: bldOvOn(b, "cdOverride2"),
+      notes: (d.notes || []).join(" | "),
+    };
+  }, sB.xml);
+  ok(
+    "saved and read back, by the flight reader and the builder",
+    JSON.stringify(back.flight) === JSON.stringify(["flat", "stack", 2, null, 0]) &&
+      JSON.stringify(back.builder) === JSON.stringify(back.flight) &&
+      back.on,
+    back,
+  );
+  // another program's files
+  const other = await p.evaluate((xml) => {
+    const cd = (x) => {
+      const d = parseOrk(x),
+        b = bldFromOrk(x).settings;
+      return {
+        f: [d.design.cdOverride, d.design.cdOverride2],
+        b: [b.cdOverride, b.cdOverride2],
+        notes: (d.notes || []).join(" | "),
+      };
+    };
+    const stages = xml.split("<stage>");
+    return {
+      n: stages.length - 1,
+      // OpenRocket's override on the rocket itself, on the top stage, and on the booster stage
+      rocket: cd(xml.replace("<subcomponents><stage>", "<overridecd>0.7</overridecd><subcomponents><stage>")),
+      top: cd([stages[0], "<overridecd>0.7</overridecd>" + stages[1], stages[2]].join("<stage>")),
+      low: cd([stages[0], stages[1], "<overridecd>0.7</overridecd>" + stages[2]].join("<stage>")),
+    };
+  }, s0.xml);
+  ok("the saved file has its two stages", other.n === 2, other.n);
+  ok(
+    "OpenRocket's Cd override on the rocket itself is every airframe's",
+    JSON.stringify(other.rocket.f) === "[0.7,0.7]" && JSON.stringify(other.rocket.b) === "[0.7,0.7]",
+    other.rocket,
+  );
+  ok(
+    "on the top stage it is the sustainer's only",
+    JSON.stringify(other.top.f) === "[0.7,0]" && JSON.stringify(other.top.b) === "[0.7,0]",
+    other.top,
+  );
+  ok(
+    "on a lower stage it is passed over, and the notes say so",
+    JSON.stringify(other.low.f) === "[0,0]" &&
+      JSON.stringify(other.low.b) === "[0,0]" &&
+      /lower stage/i.test(other.low.notes),
+    other.low,
+  );
+
+  // the editor: a drag section for each airframe, in the order they fly
+  await stg({});
+  await p.evaluate(() => showTab("rocket"));
+  await p.locator("#bldtree .bldrow.stage", { hasText: "Whole Rocket" }).first().click();
+  await p.waitForTimeout(300);
+  const ed = () =>
+    p.evaluate(() => {
+      const note = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.closest(".fld").querySelector(".fldnote").textContent : null;
+      };
+      const heads = [...document.querySelectorAll("#bldedit .bldh, #bldeditor .bldh, .bldh")]
+        .map((h) => h.textContent)
+        .filter((t) => /^Drag: /.test(t));
+      const a = document.getElementById("bf-cdOverride2"),
+        b = document.getElementById("bf-cdOverride");
+      return {
+        heads,
+        order: !!a && !!b && !!(a.compareDocumentPosition(b) & 4),
+        blocks: ["dragprof", "dragprof2", "dragprof3"].map((id) => !!document.getElementById(id)),
+        n1: note("bf-cdOverride"),
+        n2: note("bf-cdOverride2"),
+        n3: note("bf-cdOverride3"),
+        none2: (document.getElementById("dragnone2") || {}).textContent || "",
+        warn: [...document.querySelectorAll(".bldwarn, .fldwarn, .note.warn")].map((x) => x.textContent).join(" | "),
+      };
+    });
+  const e0 = await ed();
+  ok(
+    "two-stage Whole Rocket: the stack's drag, then the sustainer's, each with a Cd and a profile block",
+    e0.heads.length === 2 &&
+      /whole stack, before separation/.test(e0.heads[0]) &&
+      /sustainer alone/.test(e0.heads[1]) &&
+      e0.order,
+    e0.heads,
+  );
+  ok("no third airframe on a two-stage", e0.blocks[0] && e0.blocks[1] && !e0.blocks[2] && e0.n3 === null, e0.blocks);
+  ok(
+    "each Cd says which airframe this app's model calculated it for",
+    /drag model, for the whole stack\./.test(e0.n2) && /drag model, for the sustainer alone\./.test(e0.n1),
+    [e0.n2, e0.n1],
+  );
+  ok("the stack's import line asks for the stack's file", /for the whole stack/.test(e0.none2), e0.none2);
+  fs.mkdirSync(path.join(os.tmpdir(), "dragprof-st"), { recursive: true });
+  const stFile = path.join(os.tmpdir(), "dragprof-st", "stack.txt");
+  fs.writeFileSync(stFile, "Mach Cd\n0.1 0.9\n3 0.9\n");
+  await p.setInputFiles("#dragfile2", stFile);
+  await p.waitForTimeout(800);
+  const e1 = await ed();
+  const d1 = await p.evaluate(() => ({
+    two: BLD.settings.cdCurve2 && BLD.settings.cdCurve2.name,
+    one: BLD.settings.cdCurve,
+    stack: !!aero(fullStack(D)).curve,
+    sus: !!aero(D).curve,
+  }));
+  ok(
+    "a file imported in the stack's block is the stack's profile only",
+    d1.two === "stack.txt" && d1.one === null && d1.stack && !d1.sus,
+    d1,
+  );
+  ok(
+    "its Cd field says the whole stack flies on the profile; the sustainer's still says calculated",
+    /^The whole stack flies on the imported drag profile below \(Table\)/.test(e1.n2) &&
+      /^Calculated from the design/.test(e1.n1),
+    [e1.n2, e1.n1],
+  );
+  await p.evaluate(async () => {
+    await runNow();
+    showTab("results");
+  });
+  await p.waitForTimeout(300);
+  const r1 = await p.evaluate(() => document.getElementById("dragref").textContent);
+  ok(
+    "the Results tab says which airframe flew on imported drag",
+    /imported drag, not this app’s drag model, for the whole stack \(Table, stack\.txt\)\./.test(r1) &&
+      !/sustainer alone \(/.test(r1),
+    r1,
+  );
+  await p.evaluate(() => showTab("rocket"));
+  await p.locator("#draguse2").uncheck();
+  await p.waitForTimeout(500);
+  ok("unticked, the stack flies on this app's model again", !(await p.evaluate(() => !!aero(fullStack(D)).curve)));
+  await p.locator("#dragdel2").click();
+  await p.waitForTimeout(500);
+  ok("removed", (await p.evaluate(() => BLD.settings.cdCurve2)) === null);
+  fs.rmSync(path.join(os.tmpdir(), "dragprof-st"), { recursive: true, force: true });
+
+  // three stages: three airframes
+  await addStage();
+  await p.evaluate((H128) => setFirstId(H128), H128);
+  const g0 = await stg({});
+  const g3 = await stg({ cdOverride3: 1.5 });
+  const g2 = await stg({ cdOverride2: 1.5 });
+  ok(
+    "three-stage: a fixed Cd for all three stages changes only that airframe",
+    near(g3.stack.cd, 1.5, 1e-9) &&
+      near(g3.mid.cd, g0.mid.cd, 1e-9) &&
+      near(g3.sus.cd, g0.sus.cd, 1e-9) &&
+      g3.apogee < g0.apogee,
+    [g3.stack.cd, g3.mid.cd, g0.mid.cd, g3.sus.cd, g0.sus.cd],
+  );
+  ok(
+    "and one for the upper two stages only theirs",
+    near(g2.mid.cd, 1.5, 1e-9) &&
+      near(g2.stack.cd, g0.stack.cd, 1e-9) &&
+      near(g2.sus.cd, g0.sus.cd, 1e-9) &&
+      g2.apogee < g0.apogee,
+    [g2.mid.cd, g2.stack.cd, g0.stack.cd],
+  );
+  const g5 = await stg({ cdOverride3: 1.1, cdCurve2: flat, cdOverride: 0.8 });
+  const back3 = await p.evaluate((xml) => {
+    const d = parseOrk(xml).design,
+      b = bldFromOrk(xml).settings,
+      pick = (o) => [o.cdOverride, o.cdCurve2 && o.cdCurve2.name, o.cdOverride2, o.cdOverride3];
+    return [pick(d), pick(b)];
+  }, g5.xml);
+  ok(
+    "all three saved and read back",
+    back3.every((x) => JSON.stringify(x) === JSON.stringify([0.8, "flat", 0, 1.1])),
+    back3,
+  );
+  await stg({});
+  await p.evaluate(() => showTab("rocket"));
+  await p.locator("#bldtree .bldrow.stage", { hasText: "Whole Rocket" }).first().click();
+  await p.waitForTimeout(300);
+  const e3 = await ed();
+  ok(
+    "three-stage Whole Rocket: all three stages, the upper two, the sustainer alone",
+    e3.heads.length === 3 &&
+      /all three stages/.test(e3.heads[0]) &&
+      /upper two stages/.test(e3.heads[1]) &&
+      /sustainer alone, after the last separation/.test(e3.heads[2]) &&
+      e3.blocks.every(Boolean),
+    e3.heads,
+  );
+  // back to the single-stage example for the rest
+  await p.evaluate(async () => {
+    await openExample(2);
+  });
 
   // ---- kept with the design file
   const kept = await p.evaluate((flat) => {
@@ -374,6 +664,73 @@ for (let i = 1; i <= 50; i++) ork += `${(20 + i).toFixed(2)},${(2300 - 40 * i).t
     await runNow();
   });
   ok("and the Results line goes", await p.evaluate(() => document.getElementById("dragref").hidden));
+
+  // ---- the Cd field says which drag the flights use (Nov 27, 2026)
+  await p.evaluate(() => showTab("rocket"));
+  await p.locator("#bldtree .bldrow.stage", { hasText: "Whole Rocket" }).first().click();
+  await p.waitForTimeout(300);
+  const cdNote = () =>
+    p.evaluate(() => ({
+      n: document.getElementById("bf-cdOverride").closest(".fld").querySelector(".fldnote").textContent,
+      line: [...document.querySelectorAll(".bldfnote")]
+        .map((e) => e.textContent)
+        .filter((t) => /whole rocket’s drag/.test(t)),
+    }));
+  let cn = await cdNote();
+  ok(
+    "Cd field, nothing set: calculated by the app's drag model, shown at Mach 0.3",
+    /Calculated from the design by this app’s drag model\. Shown at Mach 0\.3/.test(cn.n) && cn.line.length === 0,
+    cn,
+  );
+  await p.locator("#bfo-cdOverride").evaluate((e) => e.click());
+  await p.waitForTimeout(300);
+  await p.fill("#bf-cdOverride", "0.6");
+  await p.locator("#bf-cdOverride").dispatchEvent("change");
+  await p.waitForTimeout(400);
+  cn = await cdNote();
+  ok(
+    "Cd field, overridden: your value at every speed, with the app's own figure",
+    /Your value: flights use this Cd at every speed\. This app’s own drag model gives [\d.]+ at Mach 0\.3/.test(cn.n),
+    cn.n,
+  );
+  ok(
+    "and a line says finish, other drag and boundary layer don't count",
+    cn.line.length === 1 && /^Your fixed Cd/.test(cn.line[0]),
+    cn.line,
+  );
+  await p.setInputFiles("#dragfile", path.join(tmp, "rocket.csv"));
+  await p.waitForTimeout(800);
+  cn = await cdNote();
+  ok(
+    "Cd field, overridden with a profile flown: the override is not used",
+    /^Not used: flights use the imported drag profile below \(RASAero II\)\. Untick Fly with this profile/.test(cn.n) &&
+      /^The imported drag profile/.test(cn.line[0] || ""),
+    cn,
+  );
+  await p.locator("#bfo-cdOverride").evaluate((e) => e.click());
+  await p.waitForTimeout(400);
+  cn = await cdNote();
+  const ownShown = await p.evaluate(() => {
+    const A = aero({ ...D, cdOverride: 0, cdCurve: null }),
+      atm = atmosphere(L, 0);
+    return [document.getElementById("bf-cdOverride").value, cdParts(A, 0.3 * atm.a, atm).cd];
+  });
+  ok(
+    "Cd field, profile flown: says so, and shows the app's own Cd (not the profile's)",
+    /^Flights use the imported drag profile below \(RASAero II\), not this app’s drag model/.test(cn.n) &&
+      Math.abs(+ownShown[0] - ownShown[1]) < 1e-3,
+    [cn.n, ownShown],
+  );
+  await p.locator("#draguse").uncheck();
+  await p.waitForTimeout(400);
+  cn = await cdNote();
+  ok(
+    "Cd field, profile kept but not flown: calculated from the design again",
+    /^Calculated from the design by this app’s drag model/.test(cn.n) && cn.line.length === 0,
+    cn,
+  );
+  await p.locator("#dragdel").click();
+  await p.waitForTimeout(400);
 
   // ---- the fin fillet radius is edited with a fin set, not under Whole Rocket (moved Nov 26, 2026)
   await p.evaluate(() => showTab("rocket"));

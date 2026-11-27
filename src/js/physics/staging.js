@@ -81,8 +81,9 @@ export function stackDesign(D) {
     buttons: custom ? [...(D.buttons || []), ...(D.bButtons || []).map((b) => ({ ...b, x: b.x + Ls }))] : D.buttons,
     lugs: custom ? [...(D.lugs || []), ...(D.bLugs || []).map((l) => ({ ...l, x: l.x + Ls }))] : D.lugs,
     bumps: [...(D.bumps || []), ...(D.bBumps || []).map((b) => ({ ...b, x: b.x + Ls }))],
-    cdOverride: 0,
-    cdCurve: null,
+    // the stack's own fixed Cd and imported drag profile (the sustainer alone keeps D.cdOverride and D.cdCurve)
+    cdOverride: D.cdOverride2 || 0,
+    cdCurve: D.cdCurve2 || null,
   };
 }
 /**
@@ -98,7 +99,12 @@ export const isThree = (D) => !!(D && D.twoStage && D.threeStage && D.s1 && D.s1
  */
 export function stackDesign3(D) {
   const S2 = stackDesign(D);
-  return stackDesign({ ...S2, ...D.s1, railPreset: D.railPreset });
+  return {
+    ...stackDesign({ ...S2, ...D.s1, railPreset: D.railPreset }),
+    // all three stages together have their own
+    cdOverride: D.cdOverride3 || 0,
+    cdCurve: D.cdCurve3 || null,
+  };
 }
 /**
  * The whole stack of a two- or three-stage design, as one airframe.

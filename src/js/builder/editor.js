@@ -44,12 +44,13 @@ import {
   setMotorTarget,
   units,
 } from "../design/defaults.js";
+import { dragPhases } from "../files/drag-profile.js";
 import { FINISH_RS } from "../files/ork-parts.js";
 import { renderTitle } from "../files/unsaved-changes.js";
 import { findMotor } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
 import { drawFinsInto } from "../ui/charts.js";
-import { dragProfileHtml, wireDragProfile } from "../ui/drag-profile-ui.js";
+import { dragProfileFlown, dragProfileHtml, wireDragProfile } from "../ui/drag-profile-ui.js";
 import { showTab } from "../ui/events.js";
 import { bldInfo, infoBtn } from "../ui/field-help.js";
 import { mdStock } from "../ui/motor-delay.js";
@@ -393,7 +394,7 @@ export function bldRenderEdit() {
         }
         // the imported drag profile's block
         if (key === "@") {
-          h += `</div>${dragProfileHtml()}<div class="grid">`;
+          h += `</div>${dragProfileHtml(+label || 1)}<div class="grid">`;
           continue;
         }
         // a line of text among the fields
@@ -631,11 +632,31 @@ function bldFieldHtml(F, val) {
       inp = `<div class="ovrow"><div class="in"><input id="${id}" type="number" inputmode="decimal" step="any" value="${shown}" ${open ? "" : "disabled"} placeholder="${F.on ? "" : F.armed ? "your value" : "calculated"}">${uname(dim) ? `<span class="u">${uname(dim)}</span>` : ""}</div><label class="ovsw"><input id="bfo-${F.key}" type="checkbox" ${open ? "checked" : ""}><span class="ovtrack" aria-hidden="true"></span><span>Override</span></label></div>`;
       const rs = F.p && F.p.knownCalc && F.key === "known",
         calcTxt = hasCalc ? ` This app calculates ${num(F.calc, dim)} ${esc(uname(dim))}.` : "";
-      const note = F.on
-        ? (rs ? "RockSim’s calculated weight, from the design file." : "Your value.") + calcTxt
-        : F.armed
-          ? "Enter your value." + calcTxt
-          : "Calculated from the design.";
+      // a whole-airframe Cd says which drag that airframe flies on: an imported profile, your fixed value, or the
+      // app's own model. A staged rocket has one for each airframe it flies as.
+      const cdKey = /^cdOverride[23]?$/.test(F.key),
+        slot = cdKey ? +F.key.slice(10) || 1 : 0,
+        ph = cdKey ? dragPhases(BLD.stages.length).find((q) => q.slot === slot) : null,
+        prof = cdKey ? dragProfileFlown(slot) : null,
+        who = ph && ph.head ? ph.phase : "", // "" on a single-stage rocket
+        Who = who ? who[0].toUpperCase() + who.slice(1) : "",
+        cdTxt = hasCalc ? ` This app’s own drag model gives ${num(F.calc, dim)} at Mach 0.3.` : "";
+      const note = cdKey
+        ? prof
+          ? (F.on
+              ? `Not used: ${who ? `${who} flies on` : "flights use"} the imported drag profile below (${esc(prof.src)}). Untick Fly with this profile to fly your value.`
+              : `${who ? `${Who} flies on` : "Flights use"} the imported drag profile below (${esc(prof.src)}), not this app’s drag model.`) +
+            cdTxt
+          : F.on
+            ? `Your value: ${who ? `${who} flies on this Cd` : "flights use this Cd"} at every speed.` + cdTxt
+            : F.armed
+              ? `Enter your value: ${who ? `${who} will fly on it` : "flights will use it"} at every speed.` + cdTxt
+              : `Calculated from the design by this app’s drag model${who ? `, for ${who}` : ""}. Shown at Mach 0.3; it changes with speed (see the Wind Tunnel).`
+        : F.on
+          ? (rs ? "RockSim’s calculated weight, from the design file." : "Your value.") + calcTxt
+          : F.armed
+            ? "Enter your value." + calcTxt
+            : "Calculated from the design.";
       inp += `<div class="note fldnote">${note}</div>`;
       break;
     }
@@ -696,7 +717,7 @@ function bldFieldHtml(F, val) {
   const learn =
     F.key === "knownCg"
       ? "stability"
-      : F.key === "cdOverride" || (F.key === "finish" && !F.p)
+      : /^cdOverride[23]?$/.test(F.key) || (F.key === "finish" && !F.p)
         ? "drag"
         : F.key === "dia" && F.p && F.p.type === "chute"
           ? "recovery"

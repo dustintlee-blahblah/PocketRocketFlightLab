@@ -6,6 +6,8 @@ import { BLD, bldFind } from "./builder-ui.js";
 import { BLD_BUMPS, BLD_BUTTONS, BLD_LUG_KINDS, bldOvOn, bldRailLug } from "./model.js";
 import { REC_CONFIGS, REC_DEFAULTS, recAltimeters, recChutes, recManaged, recMotorDelay } from "./recovery-config.js";
 import { FIN_EDGES, FIN_TE_EDGES } from "../core/units-and-fin-edges.js";
+import { dragPhases } from "../files/drag-profile.js";
+import { dragProfileFlown } from "../ui/drag-profile-ui.js";
 /**
  * Nose and transition shapes offered: [shape, label].
  */
@@ -360,7 +362,8 @@ export function bldFields(p) {
 export function bldRootFields(part) {
   if (part === "rec") return bldRecFields();
   const two = BLD.stages.length > 1,
-    s0 = BLD.stages[0];
+    s0 = BLD.stages[0],
+    phases = dragPhases(BLD.stages.length);
   return [
     ["name", "Rocket name", "text"],
     ["finish", "Surface finish", "finish"],
@@ -372,7 +375,8 @@ export function bldRootFields(part) {
           ["knownCg", "CG without motor, from the nose tip", "ovr", "len", s0],
           ["dryInertia", "Turning inertia about the CG", "ovr", "moi", BLD.settings],
         ]),
-    ["cdOverride", "Drag coefficient (Cd)", "ovr", "none", BLD.settings],
+    // a single-stage rocket's whole drag here; a staged rocket's, one block for each airframe it flies as, below
+    ...(two ? [] : [["cdOverride", "Drag coefficient (Cd)", "ovr", "none", BLD.settings]]),
     ["otherCd", "Other drag (ΔCd)", "num", "none", BLD.settings],
     [
       "blMode",
@@ -385,8 +389,30 @@ export function bldRootFields(part) {
         ["natural", "Natural transition (very smooth, no joints near the nose)"],
       ],
     ],
-    // the imported drag profile's own block (ui/drag-profile-ui.js)
-    ...(part === "rec" ? [] : [["@", "dragprofile"]]),
+    // the fields above that a whole-airframe Cd leaves out
+    ...(part !== "rec" && phases.some((ph) => dragProfileFlown(ph.slot) || bldOvOn(BLD.settings, "cdOverride" + ph.sfx))
+      ? [
+          [
+            "!",
+            two
+              ? "A fixed Cd or an imported drag profile is that airframe’s whole drag: Surface finish, Other drag and Boundary layer don’t change that part of the flight."
+              : `${dragProfileFlown() ? "The imported drag profile" : "Your fixed Cd"} is the whole rocket’s drag: Surface finish, Other drag and Boundary layer don’t change the flight while it is used.`,
+          ],
+        ]
+      : []),
+    // the whole-airframe drag: a fixed Cd and an imported profile (ui/drag-profile-ui.js) for each airframe the rocket
+    // flies as, in the order they fly
+    ...(part === "rec"
+      ? []
+      : phases.flatMap((ph) => [
+          ...(two
+            ? [
+                ["#", ph.head],
+                ["cdOverride" + ph.sfx, "Drag coefficient (Cd)", "ovr", "none", BLD.settings],
+              ]
+            : []),
+          ["@", String(ph.slot)],
+        ])),
     ...(part === "main" ? [] : bldRecFields()),
   ];
 }

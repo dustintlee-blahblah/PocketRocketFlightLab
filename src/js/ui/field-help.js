@@ -121,8 +121,8 @@ export function fieldInfo(k) {
  * @returns {string}
  */
 export function bldInfo(F) {
-  // the second altimeter's fields read as the first's
-  const k = F.key.replace(/^a2/, "a1"),
+  // the second altimeter's fields read as the first's, and a stack's Cd as the rocket's
+  const k = F.key.replace(/^a2/, "a1").replace(/^cdOverride[23]$/, "cdOverride"),
     t = F.p ? F.p.type : null,
     two = typeof BLD !== "undefined" && BLD && BLD.stages.length > 1;
   const LU = uname("len");
@@ -152,7 +152,7 @@ export function bldInfo(F) {
     otherCd:
       "Extra drag coefficient for things the parts don’t include, such as camera shrouds, switch bands or screw heads. Usually 0.",
     cdOverride:
-      "The rocket’s drag coefficient. Off, it’s calculated from the shape and finish at every speed (the field shows it at Mach 0.3). Switch Override on to use one fixed Cd at every speed instead, such as RockSim’s fixed Cd or one from a real flight.",
+      "The rocket’s drag coefficient. Off, it’s calculated from the shape and finish at every speed (the field shows it at Mach 0.3). Switch Override on to use one fixed Cd at every speed instead, such as RockSim’s fixed Cd or one from a real flight.\n\nA staged rocket flies as more than one airframe (the whole stack, then the sustainer alone), and each has its own Cd here, used for its own part of the flight.",
     recCfg:
       "How the parachutes are deployed. This is the one place to set it; each parachute then just has a role (drogue or main).\n\nMotor ejection: the motor's own charge puts the parachute out, after the delay set under Motor Delay on the Motor tab.\n\nOne altimeter: an altimeter fires a charge at apogee and, with a separate main (or a main and no drogue), a second charge at a set height on the way down.\n\nTwo altimeters: two separate altimeters, each on its own battery and switch with its own charges, so one failure doesn't lose the recovery. Whichever fires first does the work. Tripoli requires two fully separate systems for Level 3.\n\nA chute release can be used with any of these.\n\nCustom keeps each parachute's own opening setting, for set-ups these don't cover (a timer, or a design file that doesn't fit one of them).\n\nThe Recovery Plan on the Results tab lists every charge in order and flies the flight again as if each one failed.",
     a1Model:

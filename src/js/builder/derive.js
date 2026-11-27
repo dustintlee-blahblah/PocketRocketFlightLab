@@ -14,6 +14,7 @@ import { applyCal } from "../flightlog/drag-calibration.js";
 import { aero, cdParts } from "../physics/aerodynamics.js";
 import { atmosphere } from "../physics/atmosphere.js";
 import { airInertia } from "../physics/simulate.js";
+import { stackDesign, stackDesign3 } from "../physics/staging.js";
 /**
  * The turning inertia worked out from the parts, as the flight uses it, for a stage's inertia setting.
  * @param {string} key the setting: "dryInertia" (sustainer or single stage), "bDryInertia" (booster) or "s1DryInertia"
@@ -48,15 +49,18 @@ function bldCalcDesign(edit) {
 }
 /**
  * The calculated value behind a rocket or stage override field: what the design gives without it.
- * @param {string} key known, knownCg, cdOverride, dryInertia, bDryInertia or s1DryInertia
+ * @param {string} key known, knownCg, cdOverride (or cdOverride2, cdOverride3: a stack's), dryInertia, bDryInertia or s1DryInertia
  * @param {number} si stage index (for known and knownCg)
  * @returns {number|undefined}
  */
 export function bldCalcOv(key, si) {
   try {
     if (/DryInertia$|^dryInertia$/.test(key)) return bldCalcInertia(key);
-    if (key === "cdOverride") {
-      const A = aero({ ...D, cdOverride: 0 }),
+    if (/^cdOverride[23]?$/.test(key)) {
+      // this app's own drag model, without a fixed Cd or an imported profile: the rocket's (a staged rocket's
+      // sustainer alone), or the stack's (2: with its booster; 3: all three stages)
+      const Dx = key === "cdOverride" ? D : key === "cdOverride2" ? stackDesign(D) : stackDesign3(D),
+        A = aero({ ...Dx, cdOverride: 0, cdCurve: null }),
         atm = atmosphere(L, 0);
       return cdParts(A, 0.3 * atm.a, atm).cd;
     }
@@ -126,7 +130,9 @@ export function bldOffList() {
       out.push({ id, k, v: O[k], ...(O.knownAll ? { all: true } : {}), ...(O.knownCalc ? { calc: true } : {}) });
   };
   if (!BLD) return out;
-  ["cdOverride", "dryInertia", "bDryInertia", "s1DryInertia"].forEach((k) => add("settings", BLD.settings, k));
+  ["cdOverride", "cdOverride2", "cdOverride3", "dryInertia", "bDryInertia", "s1DryInertia"].forEach((k) =>
+    add("settings", BLD.settings, k),
+  );
   for (const st of BLD.stages) {
     ["known", "knownCg"].forEach((k) => add(st.id, st, k));
     for (const q of st.parts || [])

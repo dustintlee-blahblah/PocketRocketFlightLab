@@ -7,6 +7,7 @@ import { BLD } from "../builder/builder-ui.js";
 import { bldLayout } from "../builder/model.js";
 import { APP_BUILD } from "../core/start.js";
 import { mstats, NOSE_PRESETS, PROFILE } from "../design/defaults.js";
+import { flownProfiles } from "../files/drag-profile.js";
 import { DESIGN_EXT } from "../files/other-formats.js";
 import { SOURCE } from "../files/save.js";
 import { SYS_LABEL } from "../motors/catalog.js";
@@ -289,11 +290,13 @@ function buildReportPdf() {
     [st.staged ? "CP (sustainer alone)" : "CP", `${fmt(S.cp, "len")} ${uname("len")} from tip`],
     ["Surface finish", finishLabel],
     ["Rail guides", railLabel],
-    ...(RD.cdCurve && RD.cdCurve.use !== false && !RD.twoStage
+    ...(flownProfiles(RD).length
       ? [
           [
             "Drag",
-            `Imported profile: ${RD.cdCurve.src}${RD.cdCurve.name ? `, ${RD.cdCurve.name}` : ""} (not this app's drag model)`,
+            `Imported profile${flownProfiles(RD).length > 1 ? "s" : ""} (not this app's drag model): ${flownProfiles(RD)
+              .map((u) => `${RD.twoStage ? `${u.phase}: ` : ""}${u.c.src}${u.c.name ? `, ${u.c.name}` : ""}`)
+              .join("; ")}`,
           ],
         ]
       : []),

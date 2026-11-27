@@ -67,6 +67,12 @@ export function defaultDesign() {
     otherCd: 0,
     cdOverride: 0,
     cdCurve: null, // an imported drag profile (files/drag-profile.js)
+    // a staged rocket's stack: the sustainer with its booster (2), and all three stages (3); the ones above are then
+    // the sustainer's alone
+    cdOverride2: 0,
+    cdCurve2: null,
+    cdOverride3: 0,
+    cdCurve3: null,
     nozzleDia: 0,
     motorOverhang: 0.5 * IN,
     recovery: "single",

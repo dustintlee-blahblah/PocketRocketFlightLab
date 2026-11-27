@@ -1,9 +1,9 @@
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { D } from "../design/defaults.js";
-import { readCdCurve } from "./drag-profile.js";
+import { fileDrag } from "./drag-profile.js";
 import { orkEdge } from "./ork-airframe.js";
 import { orkFinishRs } from "./ork-parts.js";
-import { elKid, elSubs, elTxt } from "./ork-xml.js";
+import { elTxt } from "./ork-xml.js";
 /*
  * The parts of a design read from an OpenRocket file that depend on how it is flown: the booster's and first stage's
  * fields, the recovery (which chute is the main, which the drogue, and when the first opens), and the extra motors of a
@@ -19,10 +19,17 @@ import { elKid, elSubs, elTxt } from "./ork-xml.js";
  * @returns {object} the design, on the app's defaults
  */
 export function orkSustainer(rd, S, twoStage, motor) {
-  const ocd = [rd.rocket, ...elSubs(rd.rocket).filter((e) => e.tagName === "stage")]
-    .map((e) => elKid(e, "overridecd"))
-    .find(Boolean);
-  if (ocd) rd.notes.push("Used the file’s Cd override for the whole rocket.");
+  const drag = fileDrag(rd.rocket);
+  if (drag.cd[1] > 0 || drag.cd[2] > 0)
+    rd.notes.push(
+      twoStage
+        ? "Used the file’s Cd override (see Whole Rocket for which part of the flight it covers)."
+        : "Used the file’s Cd override for the whole rocket.",
+    );
+  if (drag.passed)
+    rd.notes.push(
+      "Passed over a Cd override on a lower stage: this app has no place for one stage’s share of the drag.",
+    );
   // the rocket's finish: the first body tube's (the app's own finish name or roughness, beside OpenRocket's on the part)
   const finTag =
     (rd.rocket.getElementsByTagName("bodytube")[0] || rd.rocket).getElementsByTagName("finish")[0] ||
@@ -94,8 +101,12 @@ export function orkSustainer(rd, S, twoStage, motor) {
     otherCd: 0,
     nozzleDia: motor?.nozzle || 0,
     twoStage,
-    cdOverride: ocd ? parseFloat(ocd.textContent) || 0 : 0,
-    cdCurve: readCdCurve((rd.rocket.getElementsByTagName("prflcdcurve")[0] || {}).textContent),
+    cdOverride: drag.cd[1],
+    cdCurve: drag.curve[1],
+    cdOverride2: drag.cd[2],
+    cdCurve2: drag.curve[2],
+    cdOverride3: drag.cd[3],
+    cdCurve3: drag.curve[3],
     refSource: "OpenRocket",
     mountSel: "file",
     bMountSel: "file",

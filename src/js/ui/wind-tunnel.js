@@ -91,7 +91,7 @@ function wtSetup() {
   }
   // an imported drag profile: the other curve to chart beside the one flown (this app's model when the profile is
   // flown; the profile when it is switched off)
-  const c = !D.twoStage && D.cdCurve,
+  const c = Dx.cdCurve,
     Aalt = c ? aero({ ...Dx, cdCurve: A.curve ? null : { ...c, use: true } }) : null;
   return { A, cg, atm, alt, An, Aalt: Aalt && (A.curve || Aalt.curve) ? Aalt : null };
 }

@@ -102,16 +102,15 @@ function curveAt(xs, ys, x) {
   return ys[lo] + ((ys[hi] - ys[lo]) * (x - xs[lo])) / (xs[hi] - xs[lo]);
 }
 /**
- * The imported drag profile a design flies with, ready for cdParts(): null when it has none, it is switched off, or
- * the rocket is staged (a profile is one airframe's).
+ * The imported drag profile an airframe flies with, ready for cdParts(): null when it has none or it is switched
+ * off. A staged rocket has one for each airframe it flies as (staging.js puts the stack's in its design).
  * @param {object} D design (cdCurve: {m, off, on, refD, use})
  * @param {number} aref this rocket's reference area, m²
  * @returns {{m:number[], off:number[], on:number[]|null, k:number}|null} k: the profile's reference area over aref
  */
 function dragCurveFor(D, aref) {
   const c = D.cdCurve;
-  if (!c || c.use === false || D.twoStage || !Array.isArray(c.m) || c.m.length < 2 || !Array.isArray(c.off))
-    return null;
+  if (!c || c.use === false || !Array.isArray(c.m) || c.m.length < 2 || !Array.isArray(c.off)) return null;
   return {
     m: c.m,
     off: c.off,
@@ -1084,7 +1083,7 @@ const aeroCache = new Map();
  */
 export function aero(D) {
   const key = JSON.stringify([
-    D.cdCurve && !D.twoStage ? [D.cdCurve.use !== false, D.cdCurve.refD, D.cdCurve.m, D.cdCurve.off, D.cdCurve.on] : 0,
+    D.cdCurve ? [D.cdCurve.use !== false, D.cdCurve.refD, D.cdCurve.m, D.cdCurve.off, D.cdCurve.on] : 0,
     D.blMode,
     D.finCant,
     D.dragScale,

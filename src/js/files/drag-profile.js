@@ -252,3 +252,81 @@ export function readCdCurve(json) {
     return null;
   }
 }
+/**
+ * The whole-airframe drag a design file sets: a fixed Cd and an imported profile for each airframe the rocket flies as
+ * (1: the rocket, or a staged rocket's sustainer alone; 2: the sustainer with its booster; 3: all three stages).
+ *   - OpenRocket's Cd override on the rocket itself is every airframe's (OpenRocket uses it for whatever is flying);
+ *   - on the first (top) stage it is the sustainer's;
+ *   - on a lower stage it is that stage's own share of the drag in OpenRocket, which has no place here: passed over;
+ *   - this app's own elements: prflcdcurve on the top stage, prflstackdrag ({cd, curve}) on each lower stage for the
+ *     stack down to and including it.
+ * @param {Element} rocket the file's rocket element
+ * @returns {{cd:number[], curve:(object|null)[], passed:boolean}} cd and curve indexed 1 to 3 (0 unused); passed:
+ *   a lower stage's Cd override was passed over
+ */
+export function fileDrag(rocket) {
+  const kid = (el, tag) => [...el.children].find((c) => c.tagName === tag) || null,
+    val = (el) => (el ? parseFloat(el.textContent) || 0 : 0),
+    sub = kid(rocket, "subcomponents"),
+    stages = sub ? [...sub.children].filter((c) => c.tagName === "stage") : [],
+    out = { cd: [0, 0, 0, 0], curve: [null, null, null, null], passed: false };
+  stages.slice(0, 3).forEach((s, i) => {
+    const o = kid(s, "overridecd");
+    if (i === 0) {
+      out.cd[1] = val(o);
+      out.curve[1] = readCdCurve((kid(s, "prflcdcurve") || {}).textContent);
+      return;
+    }
+    if (val(o) > 0) out.passed = true;
+    try {
+      const j = JSON.parse((kid(s, "prflstackdrag") || {}).textContent || "null");
+      if (j && typeof j === "object") {
+        if (typeof j.cd === "number" && isFinite(j.cd) && j.cd > 0) out.cd[i + 1] = j.cd;
+        out.curve[i + 1] = j.curve ? readCdCurve(JSON.stringify(j.curve)) : null;
+      }
+    } catch (e) {
+      // a damaged element: passed over
+    }
+  });
+  const r = val(kid(rocket, "overridecd"));
+  if (r > 0) out.cd = [0, r, stages.length > 1 ? r : 0, stages.length > 2 ? r : 0];
+  return out;
+}
+/**
+ * The airframes a rocket flies as, each with its own whole-airframe drag, in the order they fly.
+ * @param {number} stages how many stages the rocket has (1 to 3)
+ * @returns {{slot:number, sfx:string, phase:string, head:string}[]} slot: 1 the rocket (a staged rocket's sustainer
+ *   alone), 2 the sustainer with its booster, 3 all three stages; sfx: what follows cdOverride and cdCurve in the
+ *   design's and settings' names; phase: its name in a sentence; head: its heading ("" for a single-stage rocket)
+ */
+export function dragPhases(stages) {
+  if (stages < 2) return [{ slot: 1, sfx: "", phase: "the rocket", head: "" }];
+  const sust = {
+    slot: 1,
+    sfx: "",
+    phase: "the sustainer alone",
+    head: `Drag: sustainer alone, after ${stages > 2 ? "the last " : ""}separation`,
+  };
+  return stages > 2
+    ? [
+        { slot: 3, sfx: "3", phase: "the whole stack", head: "Drag: all three stages, before the first separation" },
+        {
+          slot: 2,
+          sfx: "2",
+          phase: "the upper two stages",
+          head: "Drag: upper two stages, after the first separation",
+        },
+        sust,
+      ]
+    : [{ slot: 2, sfx: "2", phase: "the whole stack", head: "Drag: whole stack, before separation" }, sust];
+}
+/**
+ * The imported profiles a design's flight uses, by airframe.
+ * @param {object} D design
+ * @returns {{phase:string, slot:number, c:object}[]}
+ */
+export function flownProfiles(D) {
+  return dragPhases(D.twoStage ? (D.threeStage && D.s1 ? 3 : 2) : 1)
+    .map((ph) => ({ ...ph, c: D["cdCurve" + ph.sfx] }))
+    .filter((x) => x.c && x.c.use !== false && Array.isArray(x.c.m) && x.c.m.length > 1);
+}

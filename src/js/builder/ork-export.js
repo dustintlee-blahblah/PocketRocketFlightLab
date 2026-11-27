@@ -259,7 +259,18 @@ export function bldToOrk(model, L, opts = {}) {
           ? `<overridecd>${n(S.cdOverride)}</overridecd><overridesubcomponentscd>true</overridesubcomponentscd>`
           : "";
       // an imported drag profile (this app's own element: OpenRocket passes over it)
-      const curve = si === 0 && S.cdCurve ? `<prflcdcurve>${e(JSON.stringify(S.cdCurve))}</prflcdcurve>` : "";
+      // and, on a lower stage, the fixed Cd and profile of the stack down to and including it
+      const sfx = si === 1 ? "2" : si === 2 ? "3" : "",
+        stackCd = sfx && bldOvOn(S, "cdOverride" + sfx) ? +S["cdOverride" + sfx] : 0,
+        stackCurve = sfx ? S["cdCurve" + sfx] : null,
+        curve =
+          si === 0
+            ? S.cdCurve
+              ? `<prflcdcurve>${e(JSON.stringify(S.cdCurve))}</prflcdcurve>`
+              : ""
+            : stackCd > 0 || stackCurve
+              ? `<prflstackdrag>${e(JSON.stringify({ ...(stackCd > 0 ? { cd: stackCd } : {}), ...(stackCurve ? { curve: stackCurve } : {}) }))}</prflstackdrag>`
+              : "";
       return `<stage><name>${e(st.name)}</name><id>${st.id}</id>${known}${kcg}${cdo}${curve}${si > 0 ? `<separationevent>${e(st.sepEvent || "burnout")}</separationevent><separationdelay>${n(st.sepDelay || 0)}</separationdelay>` : ""}<subcomponents>${lay.bodies
         .filter((b) => b.si === si)
         .map(bodyXml)

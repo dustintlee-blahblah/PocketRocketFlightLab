@@ -15,7 +15,7 @@ import {
   bldSettings,
 } from "./model.js";
 import { finTeEdge } from "../core/units-and-fin-edges.js";
-import { readCdCurve } from "../files/drag-profile.js";
+import { fileDrag } from "../files/drag-profile.js";
 import { unflipNoses } from "../files/openrocket-import.js";
 import { matchMotor } from "../files/rocksim-import.js";
 import { ORK_CFG, ORK_SIM } from "../files/save.js";
@@ -280,7 +280,6 @@ export function bldFromOrk(xml, info) {
     ref: null,
     stages: [],
   };
-  const rcd = kid(rocket, "overridecd");
   // body parts, with "auto" radii resolved from the neighbouring parts
   const stages = subs(rocket).filter((c) => c.tagName === "stage");
   const bodies = stages.flatMap((s) =>
@@ -344,9 +343,6 @@ export function bldFromOrk(xml, info) {
       st.knownCg = num(s, "overridecg");
       if (txt(s, "overridesubcomponentscg") === "true") st.knownAll = true;
     }
-    const scd = kid(s, "overridecd");
-    if (scd && !model.settings.cdOverride) model.settings.cdOverride = parseFloat(scd.textContent) || 0;
-    if (kid(s, "prflcdcurve") && !model.settings.cdCurve) model.settings.cdCurve = readCdCurve(txt(s, "prflcdcurve"));
     for (const c of subs(s)) {
       const t = c.tagName;
       if (!["nosecone", "bodytube", "transition"].includes(t)) {
@@ -693,7 +689,18 @@ export function bldFromOrk(xml, info) {
       if (m) st.ignDelay = m.ignDelay || 0;
     }
   });
-  if (rcd) model.settings.cdOverride = parseFloat(rcd.textContent) || 0;
+  // the whole-airframe drag the file sets, for each airframe the rocket flies as (files/drag-profile.js)
+  {
+    const drag = fileDrag(rocket);
+    for (const [i, sfx] of [
+      [1, ""],
+      [2, "2"],
+      [3, "3"],
+    ]) {
+      model.settings["cdOverride" + sfx] = drag.cd[i];
+      model.settings["cdCurve" + sfx] = drag.curve[i];
+    }
+  }
   // fin fillets: when every fin set has the same radius, it is the rocket-wide one the Whole rocket field shows;
   // fin sets that differ keep their own, as the file wrote them
   {

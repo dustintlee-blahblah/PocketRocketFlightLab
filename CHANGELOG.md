@@ -4,6 +4,33 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 349 (not yet released)
+
+**Drag**
+
+- **Staged rockets: a fixed Cd and an imported drag profile for each airframe the rocket flies as.** A staged rocket
+  flies as more than one airframe: the whole stack, then the sustainer alone (and, with three stages, the upper two
+  between them). Whole Rocket in the builder now has a drag section for each, in the order they fly, each with its own
+  Drag coefficient (Cd) override and its own Import drag profile. Each changes only its own part of the flight; any
+  left alone flies on the app's own drag model. Before, a fixed Cd was applied to the sustainer after separation only
+  (the field did not say so), and an imported profile was not used at all. The Results tab and the PDF report name
+  the airframes that flew on imported drag. A dropped booster's own descent still uses the app's model.
+- **Saved with the design file.** The sustainer's fixed Cd is OpenRocket's own override on the top stage, as before;
+  the stacks' fixed Cd and profiles are in the app's own element on the lower stages, which OpenRocket passes over.
+- **Cd overrides in another program's staged file are read as that program means them.** OpenRocket's override on the
+  rocket itself is every airframe's; on the top stage it is the sustainer's. One on a lower stage is that stage's own
+  share of the drag, which this app has no place for: it is passed over, with a note (it was taken as the whole
+  rocket's before).
+
+**Builder**
+
+- **The Cd field under Whole Rocket says which drag the flights use.** Calculated by the app's drag model (shown at
+  Mach 0.3, since it changes with speed); your own fixed value, used at every speed; or an imported drag profile, in
+  which case the field says so and still shows the app's own figure for comparison (it showed the profile's before).
+  With both an override and a profile, it says the override is not used. A line under the drag fields says when
+  Surface finish, Other drag and Boundary layer don't change the flight (a fixed Cd or a profile is the whole rocket's
+  drag).
+
 ## Build 348 (2026-11-27)
 
 **Drag**
