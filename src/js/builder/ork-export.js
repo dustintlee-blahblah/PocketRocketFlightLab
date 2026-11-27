@@ -258,7 +258,9 @@ export function bldToOrk(model, L, opts = {}) {
         si === 0 && bldOvOn(S, "cdOverride")
           ? `<overridecd>${n(S.cdOverride)}</overridecd><overridesubcomponentscd>true</overridesubcomponentscd>`
           : "";
-      return `<stage><name>${e(st.name)}</name><id>${st.id}</id>${known}${kcg}${cdo}${si > 0 ? `<separationevent>${e(st.sepEvent || "burnout")}</separationevent><separationdelay>${n(st.sepDelay || 0)}</separationdelay>` : ""}<subcomponents>${lay.bodies
+      // an imported drag profile (this app's own element: OpenRocket passes over it)
+      const curve = si === 0 && S.cdCurve ? `<prflcdcurve>${e(JSON.stringify(S.cdCurve))}</prflcdcurve>` : "";
+      return `<stage><name>${e(st.name)}</name><id>${st.id}</id>${known}${kcg}${cdo}${curve}${si > 0 ? `<separationevent>${e(st.sepEvent || "burnout")}</separationevent><separationdelay>${n(st.sepDelay || 0)}</separationdelay>` : ""}<subcomponents>${lay.bodies
         .filter((b) => b.si === si)
         .map(bodyXml)
         .join("")}</subcomponents></stage>`;

@@ -89,14 +89,18 @@ function wtSetup() {
   } catch (e) {
     An = 0;
   }
-  return { A, cg, atm, alt, An };
+  // an imported drag profile: the other curve to chart beside the one flown (this app's model when the profile is
+  // flown; the profile when it is switched off)
+  const c = !D.twoStage && D.cdCurve,
+    Aalt = c ? aero({ ...Dx, cdCurve: A.curve ? null : { ...c, use: true } }) : null;
+  return { A, cg, atm, alt, An, Aalt: Aalt && (A.curve || Aalt.curve) ? Aalt : null };
 }
 /**
  * Works out the coefficients across the Mach range.
  */
 function wtCompute() {
   const S = wtSetup(),
-    { A, atm, An } = S,
+    { A, atm, An, Aalt } = S,
     mmax = +document.getElementById("wtmax").value || 2,
     nu = atm.mu / atm.rho;
   const rows = machGrid(mmax).map((M) => {
@@ -108,6 +112,7 @@ function wtCompute() {
       M,
       v,
       Re: (v * A.L) / nu,
+      alt: Aalt ? cdParts(Aalt, v, atm, 0).cd : null,
       off,
       on: on.cd,
       cn: C.cn,
@@ -402,12 +407,17 @@ function wtCharts() {
     { M } = sel(),
     band = [0.8, 1.2],
     fx = (x, i) => `Mach ${x.toFixed(2)} · ${fmt(R[i].v, "speed")} ${uname("speed")}`,
-    ov = R.some((r) => r.off.override);
+    ov = R.some((r) => r.off.override),
+    imp = !!WT.A.curve,
+    cmp = R.some((r) => r.alt != null);
   lineChart(document.getElementById("wtc-cd"), {
     title: "Drag coefficient",
-    desc: ov
-      ? "The design file sets a fixed Cd, so it doesn't change with speed."
-      : "At zero angle of attack. Dashed: with the motor burning, its nozzle filling part of the base.",
+    desc: imp
+      ? "Flights use the imported drag profile. Dashed: with the motor burning, when the profile has that curve. The third line is this app’s own model, for comparison."
+      : ov
+        ? "The design file sets a fixed Cd, so it doesn't change with speed."
+        : "At zero angle of attack. Dashed: with the motor burning, its nozzle filling part of the base." +
+          (cmp ? " The third line is the imported drag profile, which flights are not using." : ""),
     x: X,
     xLabel: "Mach",
     yLabel: "Cd",
@@ -416,6 +426,9 @@ function wtCharts() {
     series: [
       { name: "Coasting", color: css("--accent"), values: R.map((r) => r.off.cd) },
       { name: "Motor burning", color: css("--cg"), dash: true, values: R.map((r) => r.on) },
+      ...(cmp
+        ? [{ name: imp ? "This app’s model" : "Imported profile", color: css("--warn"), values: R.map((r) => r.alt) }]
+        : []),
     ],
     vline: M,
     fmtX: fx,

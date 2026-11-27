@@ -4,7 +4,25 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
-## Build 348 (not yet released)
+## Build 348 (2026-11-27)
+
+**Drag**
+
+- **Import a drag profile.** Under Whole Rocket in the builder, below the drag coefficients, Import drag profile
+  brings in the whole rocket's Cd
+  against Mach number from RASAero II (Aero Plots, File, Export, To CSV File: its coasting and motor-burning curves),
+  from OpenRocket (a simulation's exported data with the Mach number and Drag coefficient columns: the drag over that
+  flight's ascent), or from a CFD run or spreadsheet (a table of Mach number and Cd, with an optional column for the
+  motor burning and an optional reference diameter). With Fly with this profile ticked, flights use it in place of the
+  app's own drag model, and the Results tab and the PDF report say so; the Wind Tunnel's Drag coefficient chart shows
+  both curves either way. The profile is saved with the design file (in the app's own element, which OpenRocket passes over).
+  Not used for staged rockets. It is the other program's answer at one condition, so it does not follow altitude as the
+  app's own model does, and the accuracy range beside the apogee does not describe it.
+
+**Builder**
+
+- **Fin fillet radius is with the fins.** The field moved from Whole Rocket to each fin set's editor. It is still one
+  value for every fin set on the rocket.
 
 **Export CAD**
 
@@ -16,6 +34,9 @@ version.
 
 **Checks**
 
+- New `tests/drag-profile.js` (45 checks, in Check): the three kinds of file and files to refuse; a flat profile flies
+  exactly as the same fixed Cd; the reference diameter, the switch, staged rockets; saved and read back; the Whole
+  Rocket block, the Wind Tunnel chart and the Results line; the fin fillet radius field's new place.
 - `tests/cad-busy.js` (now 9 checks) also covers a browser that can't unpack the library.
 
 ## Build 347 (2026-11-26)

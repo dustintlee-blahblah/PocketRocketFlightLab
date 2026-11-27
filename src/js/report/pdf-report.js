@@ -289,6 +289,14 @@ function buildReportPdf() {
     [st.staged ? "CP (sustainer alone)" : "CP", `${fmt(S.cp, "len")} ${uname("len")} from tip`],
     ["Surface finish", finishLabel],
     ["Rail guides", railLabel],
+    ...(RD.cdCurve && RD.cdCurve.use !== false && !RD.twoStage
+      ? [
+          [
+            "Drag",
+            `Imported profile: ${RD.cdCurve.src}${RD.cdCurve.name ? `, ${RD.cdCurve.name}` : ""} (not this app's drag model)`,
+          ],
+        ]
+      : []),
     [
       "Cd at Mach 0.3",
       RD.cdOverride > 0

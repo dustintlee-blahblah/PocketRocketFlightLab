@@ -49,6 +49,7 @@ import { renderTitle } from "../files/unsaved-changes.js";
 import { findMotor } from "../motors/clusters.js";
 import { motorStats } from "../motors/motor-files.js";
 import { drawFinsInto } from "../ui/charts.js";
+import { dragProfileHtml, wireDragProfile } from "../ui/drag-profile-ui.js";
 import { showTab } from "../ui/events.js";
 import { bldInfo, infoBtn } from "../ui/field-help.js";
 import { mdStock } from "../ui/motor-delay.js";
@@ -390,6 +391,11 @@ export function bldRenderEdit() {
           h += `</div><div class="bldh">${esc(label)}</div><div class="grid">`;
           continue;
         }
+        // the imported drag profile's block
+        if (key === "@") {
+          h += `</div>${dragProfileHtml()}<div class="grid">`;
+          continue;
+        }
         // a line of text among the fields
         if (key === "!") {
           h += `</div><p class="note bldfnote">${esc(label)}</p><div class="grid">`;
@@ -415,6 +421,7 @@ export function bldRenderEdit() {
     // the Recovery row shows the recovery configuration; Whole Rocket, everything else about the rocket
     el.innerHTML = f.rec ? block("Recovery", bldRootFields("rec")) : block("Whole rocket", bldRootFields("main"));
     bldWire(el, null, "root");
+    if (!f.rec) wireDragProfile(el);
     return;
   }
   if (f.stage) {
@@ -475,7 +482,9 @@ export function bldRenderEdit() {
                 ? bldLugKind(p) // a lug from a file that doesn't say: its type read from its size
                 : key === "w" && p.type === "lug"
                   ? (bldRailLug(p) || {}).w
-                  : p[key];
+                  : key === "finFillet"
+                    ? BLD.settings.finFillet // one radius for every fin set
+                    : p[key];
     h += bldFieldHtml(
       {
         key,
@@ -725,6 +734,8 @@ function bldWire(el, p, mode, si) {
         O = f[4];
         k = f[5];
       }
+      // the fin fillet radius is the rocket's, edited with a fin set
+      if (key === "finFillet") O = BLD.settings;
       let full = false;
       if (key === "ref") {
         p.ref = inp.value;

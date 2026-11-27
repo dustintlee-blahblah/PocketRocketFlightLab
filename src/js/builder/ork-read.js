@@ -15,6 +15,7 @@ import {
   bldSettings,
 } from "./model.js";
 import { finTeEdge } from "../core/units-and-fin-edges.js";
+import { readCdCurve } from "../files/drag-profile.js";
 import { unflipNoses } from "../files/openrocket-import.js";
 import { matchMotor } from "../files/rocksim-import.js";
 import { ORK_CFG, ORK_SIM } from "../files/save.js";
@@ -345,6 +346,7 @@ export function bldFromOrk(xml, info) {
     }
     const scd = kid(s, "overridecd");
     if (scd && !model.settings.cdOverride) model.settings.cdOverride = parseFloat(scd.textContent) || 0;
+    if (kid(s, "prflcdcurve") && !model.settings.cdCurve) model.settings.cdCurve = readCdCurve(txt(s, "prflcdcurve"));
     for (const c of subs(s)) {
       const t = c.tagName;
       if (!["nosecone", "bodytube", "transition"].includes(t)) {

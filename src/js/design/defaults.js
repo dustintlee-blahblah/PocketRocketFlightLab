@@ -66,6 +66,7 @@ export function defaultDesign() {
     bumps: [],
     otherCd: 0,
     cdOverride: 0,
+    cdCurve: null, // an imported drag profile (files/drag-profile.js)
     nozzleDia: 0,
     motorOverhang: 0.5 * IN,
     recovery: "single",

@@ -82,6 +82,44 @@ const FIN_TR_X = [-1.8, -1.6, -1.4, -1.2, -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.
     [0, 0.46, 0.78, 1.25, 2.01, 2.64, 3.07, 3.31, 3.29, 3.29, 3.24, 3.16, 3.1, 3.08, 3.07],
   ];
 /**
+ * A curve read at x: straight lines between its points, its end values outside them.
+ * @param {number[]} xs rising
+ * @param {number[]} ys
+ * @param {number} x
+ * @returns {number}
+ */
+function curveAt(xs, ys, x) {
+  const n = xs.length;
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[n - 1]) return ys[n - 1];
+  let lo = 0,
+    hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid] <= x) lo = mid;
+    else hi = mid;
+  }
+  return ys[lo] + ((ys[hi] - ys[lo]) * (x - xs[lo])) / (xs[hi] - xs[lo]);
+}
+/**
+ * The imported drag profile a design flies with, ready for cdParts(): null when it has none, it is switched off, or
+ * the rocket is staged (a profile is one airframe's).
+ * @param {object} D design (cdCurve: {m, off, on, refD, use})
+ * @param {number} aref this rocket's reference area, m²
+ * @returns {{m:number[], off:number[], on:number[]|null, k:number}|null} k: the profile's reference area over aref
+ */
+function dragCurveFor(D, aref) {
+  const c = D.cdCurve;
+  if (!c || c.use === false || D.twoStage || !Array.isArray(c.m) || c.m.length < 2 || !Array.isArray(c.off))
+    return null;
+  return {
+    m: c.m,
+    off: c.off,
+    on: Array.isArray(c.on) && c.on.length === c.m.length ? c.on : null,
+    k: c.refD > 0 && aref > 0 ? (Math.PI * c.refD * c.refD) / 4 / aref : 1,
+  };
+}
+/**
  * The chart above: pressure drag over (t/c)^(5/3) at a similarity Mach parameter and slenderness.
  * @param {number} xi (M² − 1)/(t/c)^(2/3); held at the chart's last value past 1
  * @param {number} as aspect ratio × (t/c)^(1/3); held at 3 past it
@@ -1046,6 +1084,7 @@ const aeroCache = new Map();
  */
 export function aero(D) {
   const key = JSON.stringify([
+    D.cdCurve && !D.twoStage ? [D.cdCurve.use !== false, D.cdCurve.refD, D.cdCurve.m, D.cdCurve.off, D.cdCurve.on] : 0,
     D.blMode,
     D.finCant,
     D.dragScale,
@@ -1322,6 +1361,8 @@ export function aero(D) {
     bumps,
     otherCd: D.otherCd || 0,
     override: D.cdOverride || 0,
+    // an imported drag profile to fly with (files/drag-profile.js), its Cd put on this reference area
+    curve: dragCurveFor(D, Math.PI * R * R),
     scale: D.dragScale > 0 ? D.dragScale : 1,
     fore,
     aft,
@@ -1656,6 +1697,21 @@ function finK(f, Mn, beta, cb2, front = true, rear = true) {
  * @returns {{cd:number, friction:number, pressure:number, base:number}} coefficients on A.Aref
  */
 export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
+  /* an imported drag profile (RASAero II, OpenRocket, a CFD table): the whole rocket's Cd read off its curve at the
+     Mach number, the motor-burning curve while it burns when the file has one. Held at its end values outside the
+     Mach numbers it covers. Scaled by any calibration to a real flight, like the fixed Cd below. */
+  if (A.curve) {
+    const c = A.curve,
+      y = nozzleArea > 0 && c.on ? c.on : c.off;
+    return {
+      cd: curveAt(c.m, y, Math.max(v, 0.01) / atm.a) * c.k * (A.scale || 1),
+      friction: 0,
+      pressure: 0,
+      base: 0,
+      override: true,
+      curve: true,
+    };
+  }
   // a fixed Cd for the whole rocket (from the design file): used as it is, scaled by any calibration to a real flight
   if (A.override > 0) return { cd: A.override * (A.scale || 1), friction: 0, pressure: 0, base: 0, override: true };
   v = Math.max(v, 0.01);

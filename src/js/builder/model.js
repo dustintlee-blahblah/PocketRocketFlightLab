@@ -345,7 +345,7 @@ export const BLD_APP_SETTINGS = [
  * @returns {object}
  */
 export function bldSettings() {
-  return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0 };
+  return { finish: null, dryInertia: 0, bDryInertia: 0, otherCd: 0, cdOverride: 0, cdCurve: null };
 }
 /**
  * A complete, flyable starting design: 2.6 in airframe, 29 mm mount, three fins, one parachute.

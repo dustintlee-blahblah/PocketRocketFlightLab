@@ -173,6 +173,9 @@ export function bldFields(p) {
         // a round on the front of a sharp section
         ...(p.edge === "beveled" || p.edge === "doublewedge" ? [["ler", "Leading-edge radius", "num", "small"]] : []),
         ["cant", "Cant angle", "num", "deg"],
+        // the fin fillets (OpenRocket's fillet radius on each fin set): one value for every fin set, kept in the
+        // rocket-wide settings and shown with each fin set; blank leaves a file's own
+        ["finFillet", "Fin fillet radius (every fin set)", "num", "len"],
         ...posF,
         ...mat(),
         ...kw,
@@ -382,8 +385,8 @@ export function bldRootFields(part) {
         ["natural", "Natural transition (very smooth, no joints near the nose)"],
       ],
     ],
-    // the fin fillets (OpenRocket's per-fin-set fillet radius, set once here for every fin set; blank leaves a file's own)
-    ["finFillet", "Fin fillet radius", "num", "len", BLD.settings],
+    // the imported drag profile's own block (ui/drag-profile-ui.js)
+    ...(part === "rec" ? [] : [["@", "dragprofile"]]),
     ...(part === "main" ? [] : bldRecFields()),
   ];
 }

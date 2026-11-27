@@ -91,6 +91,9 @@ jobs:
       - name: Flight loads (shear and bending against closed forms; the Results panel and the Wind Tunnel figure)
         run: node tests/flight-loads.js
 
+      - name: Imported drag profiles (RASAero II, OpenRocket and table files; flown, compared, saved with the design)
+        run: node tests/drag-profile.js
+
       - name: Export CAD shows its progress box (builds the STEP library first)
         run: |
           node tools/build-step-kernel.js

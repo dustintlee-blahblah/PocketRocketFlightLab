@@ -1,5 +1,6 @@
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { D } from "../design/defaults.js";
+import { readCdCurve } from "./drag-profile.js";
 import { orkEdge } from "./ork-airframe.js";
 import { orkFinishRs } from "./ork-parts.js";
 import { elKid, elSubs, elTxt } from "./ork-xml.js";
@@ -94,6 +95,7 @@ export function orkSustainer(rd, S, twoStage, motor) {
     nozzleDia: motor?.nozzle || 0,
     twoStage,
     cdOverride: ocd ? parseFloat(ocd.textContent) || 0 : 0,
+    cdCurve: readCdCurve((rd.rocket.getElementsByTagName("prflcdcurve")[0] || {}).textContent),
     refSource: "OpenRocket",
     mountSel: "file",
     bMountSel: "file",

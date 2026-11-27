@@ -107,6 +107,8 @@ import * as m93 from "./builder/step-export.js";
 import * as m94 from "./builder/step-ui.js";
 import * as m95 from "./physics/loads.js";
 import * as m96 from "./ui/flight-loads.js";
+import * as m97 from "./files/drag-profile.js";
+import * as m98 from "./ui/drag-profile-ui.js";
 
 const modules = [
   m0,
@@ -206,6 +208,8 @@ const modules = [
   m94,
   m95,
   m96,
+  m97,
+  m98,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

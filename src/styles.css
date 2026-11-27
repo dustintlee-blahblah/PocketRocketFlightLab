@@ -4252,3 +4252,11 @@ table.cmpt {
   height: auto;
   margin-top: 10px;
 }
+
+/* Imported drag profile (the builder's Whole Rocket editor) */
+.dragprof {
+  margin: 8px 0 14px;
+}
+.note.bad {
+  color: var(--bad);
+}

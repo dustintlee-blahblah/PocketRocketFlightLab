@@ -82,6 +82,7 @@ export function stackDesign(D) {
     lugs: custom ? [...(D.lugs || []), ...(D.bLugs || []).map((l) => ({ ...l, x: l.x + Ls }))] : D.lugs,
     bumps: [...(D.bumps || []), ...(D.bBumps || []).map((b) => ({ ...b, x: b.x + Ls }))],
     cdOverride: 0,
+    cdCurve: null,
   };
 }
 /**
@@ -123,6 +124,7 @@ export function boosterDesign(D) {
     bumps: D.bBumps || [],
     otherCd: 0,
     cdOverride: 0,
+    cdCurve: null,
     noseShape: "ogive:1",
     noseLen: 0,
   };

@@ -174,7 +174,7 @@ export function bldInfo(F) {
     mainRating:
       "The load the main chute and its harness (shock cord, swivel, quick links) are rated to hold: the weakest of them. The Recovery plan compares the main's opening load with it. Blank to leave it out.",
     finFillet:
-      "The radius of the glue fillet along each side of every fin where it meets the body. It is saved in the file as OpenRocket's fin fillet radius on each fin set, adds the fillets' weight, and goes into the STEP or STL file (Export CAD) as a rounded joint, which matters for CFD (a fillet changes the airflow at the fin root). 0 means no fillet. Leave it blank to keep whatever a file you opened gave each fin set.",
+      "The radius of the glue fillet along each side of every fin where it meets the body. One value for the whole rocket: changing it here changes it for every fin set. It is saved in the file as OpenRocket's fin fillet radius on each fin set, adds the fillets' weight, and goes into the STEP or STL file (Export CAD) as a rounded joint, which matters for CFD (a fillet changes the airflow at the fin root). 0 means no fillet. Leave it blank to keep whatever a file you opened gave each fin set.",
     blMode:
       "Turbulent from the nose is right for nearly all rockets, since nose tips, joints and lugs trip the airflow early.\n\nNatural transition lets the flow stay smooth (laminar) over the front of a very smooth, polished rocket, which lowers friction drag.",
     ignDelay: "Seconds between the booster burning out and the sustainer motor lighting.",

@@ -21,6 +21,7 @@ import { downloadsNS } from "../report/pdf-report.js";
 import { drawChart, drawProfile } from "./charts.js";
 import { profNoteRender, supRender } from "./donate.js";
 import { renderDragHints } from "./drag-hints.js";
+import { renderDragRef } from "./drag-profile-ui.js";
 import { renderLoads } from "./flight-loads.js";
 import { TGT_NAME } from "./motor-tab.js";
 import { renderRSO, renderWindTable, resultFlags } from "./rso-checklist.js";
@@ -78,6 +79,7 @@ export function renderResults() {
   document.getElementById("animpanel").hidden = !lastSim;
   document.getElementById("windpanel").hidden = !lastSim;
   renderLoads();
+  renderDragRef();
   if (!lastSim) {
     const rp = document.getElementById("rsopanel");
     if (rp) rp.hidden = true;
