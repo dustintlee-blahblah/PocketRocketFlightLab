@@ -33,6 +33,16 @@ version.
   about half its measured base drag below Mach 1 (as RM L50E19a's slab did); the sharp wing, too much drag at Mach
   1.0–1.2 (as its circular arc did). Accuracy figures, the 23 flights: 6.3% as before (bias +2.7%).
 
+**Files**
+
+- **Export for RASAero II names the motor as RASAero II's own list does.** The whole engine list of RASAero II
+  1.0.2.0 (887 motors, names only) is now in the app, and the export looks the motor up in it by its designation,
+  common name, propellant and delay instead of building a name by each maker's rule. Of the 1,127 motors in the
+  catalog, 889 now load in RASAero II with the motor set (532 before): Cesaroni 267 of 310 (43 before, as
+  "J140-WH_LB-P"), AeroTech 232 of 319, Hypertek all 47 ("I260-440CC172J"), and RATT Works, Roadrunner, Rocketvision
+  and West Coast Hybrids for the first time. A motor RASAero II has only with another propellant is never swapped in
+  (the Blackjack F13RCJ for a Blue Thunder F13-RCT); RASAero II then says the motor wasn't found, as before.
+
 ## Build 349 (2026-11-27)
 
 **Drag**

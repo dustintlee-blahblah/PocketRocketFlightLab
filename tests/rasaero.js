@@ -443,6 +443,12 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
         ["Ellis Mountain", "J228", "J228", ""],
         ["DEAP EX", "Q18000", "Q18000", ""],
         ["Klima", "D9", "D9", "composite"],
+        ["Cesaroni", "1211J140", "J140", "White"],
+        ["Cesaroni", "24E22-13A", "E22", "Smoky Sam"],
+        ["Hypertek", "440CC172J-I260", "I260", ""],
+        ["AMW", "1531K610", "K610", "Skidmark"],
+        ["AeroTech", "F13-RCT", "F13", "Blue Thunder"],
+        ["AeroTech", "J350W", "J350", "White Lightning"],
       ].map(([brand, name, cn, prop]) => {
         const { text } = designToCdx(D, L, { motor: { ...flightMotor(), brand, name, cn, prop } });
         return (/<SustainerEngine>([^<]*)</.exec(text) || [])[1] || "";
@@ -467,6 +473,12 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
         "J228  (EM)",
         "Q18000  (DEAP-EX)",
         "",
+        "J140-WH_LB-P  (CTI)",
+        "E22-SS-13A  (CTI)",
+        "I260-440CC172J  (HT)",
+        "K610-SK  (AMW/ProX)",
+        "F13  (AT)", // RASAero II has only the Blackjack F13RCJ: not this Blue Thunder motor
+        "J350W-L  (AT)",
       ].join("|"),
     );
     // (the Export box that writes these files is checked in tests/export-design.js)

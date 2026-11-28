@@ -10,6 +10,7 @@
  * come back with the file. Weights, balance points and motors belong to RASAero's flight simulations, which are not
  * written (its motor names are its own): they go in the file's comments, to enter there.
  */
+import { RASAERO_ENGINES } from "../../data/rasaero-engines.js";
 import { esc } from "../core/helpers.js";
 import { FT, IN, LB } from "../core/units-and-fin-edges.js";
 import { bodySegments, finGeom, finSetsOf } from "../physics/aerodynamics.js";
@@ -160,45 +161,130 @@ function cdxGuideXml(D, x0, x1, si, notes) {
   );
 }
 /* RASAero II's engine list names a motor by a designation, two spaces and its maker's code in brackets
-   ("H148R  (AT)", "I205  (CTI)"). The codes and the form each maker's designations take were read from the list in
-   RASAero II 1.0.2.0 on Nov 27, 2026 (a sample of it, not every motor) and from its own example files. The list is
-   not regular (Cesaroni is there as "I240", "I236BS" and "I242-WH-15A"; Hypertek as "J250" and "I260-440CC172J"), so
-   a name written here may not be in it: RASAero II then says the motor was not found and the rest of the file is
-   used as it is. Each maker: its code, and how the name is made from the motor
+   ("H148R  (AT)", "I242-WH-15A  (CTI)"). The whole list (RASAero II 1.0.2.0, 887 motors) is in data/rasaero-engines.js;
+   it is not regular (Cesaroni is there as "I240", "I236BS" and "I242-WH-15A"; Hypertek as "J250" and
+   "I260-440CC172J"), so the name is looked up in it: of the maker's names that are this motor's designation, or its
+   common name with nothing but letters and dashes after it, the one that best fits the motor's designation,
+   propellant and delay. A name with a different propellant ("F13RCJ" for an F13-RCT) is never taken. When none fits,
+   a name is made by the maker's rule below and RASAero II says the motor was not found and keeps the rest of the file.
+   Each maker: its codes in the list, and that rule
      name: the motor's own designation without a "HP-" in front or a delay after it (H148R, J607WC, I301W);
      cn: the common name (I205, D10);
      prop: the common name and the propellant's initials (AMW: I285GG, J500ST);
      dash: the common name, a dash and the propellant's two letters (Loki: H500-LW, I316-SP). */
 const CDX_MAKERS = {
-  AeroTech: ["AT", "name"],
-  AMW: ["AMW", "prop"],
-  Apogee: ["AP", "cn"],
-  Cesaroni: ["CTI", "cn"],
-  Contrail: ["Contrail", "cn"],
-  "DEAP EX": ["DEAP-EX", "cn"],
-  "Ellis Mountain": ["EM", "cn"],
-  Estes: ["ES", "name"],
-  Gorilla: ["GM", "name"],
-  Historical: ["Hist", "cn"],
-  Hypertek: ["HT", "cn"],
-  Kosdon: ["KBA", "name"],
-  Loki: ["LR", "dash"],
-  "Public Missiles": ["PML", "name"],
-  Quest: ["QU", "name"],
-  "Sky Ripper": ["SRS", "cn"],
+  AeroTech: [["AT"], "name"],
+  AMW: [["AMW", "AMW/ProX"], "prop"],
+  Apogee: [["AP"], "cn"],
+  Cesaroni: [["CTI"], "cn"],
+  Contrail: [["Contrail"], "cn"],
+  "DEAP EX": [["DEAP-EX"], "cn"],
+  "Ellis Mountain": [["EM"], "cn"],
+  Estes: [["ES"], "name"],
+  Gorilla: [["GM"], "name"],
+  Historical: [["Hist"], "cn"],
+  Hypertek: [["HT"], "cn"],
+  Kosdon: [["KBA"], "name"],
+  Loki: [["LR", "LR-EX"], "dash"],
+  "Public Missiles": [["PML"], "name"],
+  Quest: [["QU"], "name"],
+  "RATT Works": [["RTW"], "name"],
+  Roadrunner: [["RR"], "name"],
+  Rocketvision: [["RV"], "name"],
+  "Sky Ripper": [["SRS"], "cn"],
+  "West Coast Hybrids": [["WCH"], "name"],
 };
+// the two letters Cesaroni's and Loki's names carry for a propellant (I242-WH-15A, H500-LW)
+const CDX_PROP = {
+  "Blue Streak": "BS",
+  "C-Star": "CS",
+  Classic: "CL",
+  Green3: "GR",
+  Imax: "IM",
+  Mellow: "MY",
+  Pink: "PK",
+  "Red Lightning": "RL",
+  Skidmark: "SK",
+  "Smoky Sam": "SS",
+  Vmax: "VM",
+  White: "WH",
+  "White Thunder": "WT",
+  "Loki White": "LW",
+  "Loki Red": "LR",
+  "Loki Blue": "LB",
+  Spitfire: "SF",
+  Cocktail: "CT",
+};
+const CDX_PROP_CODES = new Set(Object.values(CDX_PROP));
+let cdxList = null;
+/**
+ * The motor's name in RASAero II's engine list, looked up in it.
+ * @param {string[]} codes the maker's codes in the list
+ * @param {string} name designation without "HP-"
+ * @param {string} cn common name
+ * @param {string} prop propellant
+ * @param {string} brand maker
+ * @returns {string} "" when no name in the list fits
+ */
+function cdxListed(codes, name, cn, prop, brand) {
+  if (!cdxList) {
+    cdxList = {};
+    for (const [k, v] of Object.entries(RASAERO_ENGINES)) cdxList[k] = v.split(" ");
+  }
+  const initials = (t) =>
+      t
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase())
+        .join(""),
+    pc = CDX_PROP[prop.split("/")[0]] || (brand === "AMW" && prop ? initials(prop) : ""),
+    delay = (/-(\d+A)$/.exec(name) || [])[1],
+    // Cesaroni's designations carry the total impulse in front and the delay after (348I204-13A)
+    core = name.replace(/^\d+(?=[A-Z])/, "").replace(/-\d+A$/, ""),
+    lead = (t) => (/^[A-Z]*/.exec(t.replace(/[^A-Z0-9]/g, "")) || [""])[0];
+  let best = "",
+    top = -Infinity;
+  for (const code of codes)
+    for (const d of cdxList[code] || []) {
+      const exact = d === name || d === core,
+        rest = d.slice(cn.length);
+      if (!exact && !(cn && d.startsWith(cn) && !/^[\d.]/.test(rest))) continue;
+      const own = rest.split(/[-_/]/).find((t) => CDX_PROP_CODES.has(t)) || (/^[A-Z]{2}$/.test(rest) ? rest : "");
+      if (!exact && pc && own && own !== pc) continue;
+      if (!exact && core.startsWith(cn)) {
+        // the letters after the common name are the propellant (F13RCJ: Blackjack, F13-RCT: Blue Thunder)
+        const a = lead(core.slice(cn.length)),
+          b = lead(rest);
+        if (a && b && !a.startsWith(b) && !b.startsWith(a)) continue;
+      }
+      let s = -d.length / 100;
+      if (d === name) s += 100;
+      if (d === core && core !== cn) s += 80;
+      if (d.startsWith(core)) s += 30;
+      if (name.startsWith(d) || core.startsWith(d)) s += 15;
+      if (pc && own === pc) s += 20;
+      if (delay && d.endsWith(delay)) s += 10;
+      if (d === cn) s += 5;
+      if (s > top) {
+        top = s;
+        best = `${d}  (${code})`;
+      }
+    }
+  return best;
+}
 /**
  * A motor's name in RASAero II's engine list.
  * @param {object|null} m motor
  * @returns {string} "" when its maker's code in RASAero II isn't known
  */
 function cdxEngineName(m) {
-  const [code, how] = (m && CDX_MAKERS[m.brand]) || [],
+  const [codes, how] = (m && CDX_MAKERS[m.brand]) || [],
     cn = String((m && m.cn) || "").trim(),
     name = String((m && m.name) || "")
       .trim()
       .replace(/^HP-/i, "");
-  if (!code) return "";
+  if (!codes) return "";
+  const listed = cdxListed(codes, name, cn, String(m.prop || ""), m.brand);
+  if (listed) return listed;
   let nm = cn;
   if (how === "name") nm = name.replace(/-.*$/, "") || cn;
   else if (how === "prop") {
@@ -212,7 +298,7 @@ function cdxEngineName(m) {
     const two = /([A-Z]{2})$/.exec(name);
     nm = cn && two ? `${cn}-${two[1]}` : cn;
   }
-  return nm ? `${nm}  (${code})` : "";
+  return nm ? `${nm}  (${codes[0]})` : "";
 }
 /**
  * A design as a RASAero II file.
