@@ -295,6 +295,19 @@ function buildReportPdf() {
           [
             "Drag",
             `Imported profile${flownProfiles(RD).length > 1 ? "s" : ""} (not this app's drag model): ${flownProfiles(RD)
+              .map(
+                (u) =>
+                  `${RD.twoStage ? `${u.phase}: ` : ""}${u.c.src}${u.c.name ? `, ${u.c.name}` : ""}${u.c.alt === true && u.c.re > 0 ? ", adjusted for altitude" : ""}`,
+              )
+              .join("; ")}`,
+          ],
+        ]
+      : []),
+    ...(flownProfiles(RD, "stab").length
+      ? [
+          [
+            "Stability",
+            `Imported center of pressure and normal force (not this app's): ${flownProfiles(RD, "stab")
               .map((u) => `${RD.twoStage ? `${u.phase}: ` : ""}${u.c.src}${u.c.name ? `, ${u.c.name}` : ""}`)
               .join("; ")}`,
           ],

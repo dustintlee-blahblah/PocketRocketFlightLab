@@ -59,7 +59,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
   <div class="sp-foot">
     <div class="sp-dev">Developed by Dustin Lee</div>
     <div class="sp-copy">© 2026 Dustin Lee · Free software, GNU GPLv3</div>
-    <div class="sp-copy">v1.0 · build <span id="spbuild">348</span></div>
+    <div class="sp-copy">v1.0 · build <span id="spbuild">349</span></div>
     <div class="sp-bar" aria-hidden="true"><i></i></div>
   </div>
 </div>
@@ -318,6 +318,7 @@ try{if(sessionStorage.getItem("rfs-active")!=="1")document.documentElement.class
           <button class="btn ghost" id="resetbtn">Reset Changes</button>
           <button class="btn ghost" id="recentbtn" type="button" aria-expanded="false" aria-controls="recentdrop" hidden>Open Recent</button>
           <button class="btn ghost" id="newdesign" type="button">Open New Design</button>
+          <button class="btn ghost" id="exportdesign" type="button" title="Save the open design as an OpenRocket, RASAero II or RockSim file">Export</button>
         </div>
       </div>
       <div class="recent" id="recentdrop" hidden><div class="rlist" id="recentlist2"></div><p class="exhead">Example rockets</p><div class="rlist" id="exlist2"></div></div>
@@ -492,6 +493,18 @@ Opening an OpenRocket or RockSim file sets it from the file's motor (a RASAero f
   <input type="text" id="savename" maxlength="80" autocomplete="off" style="width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink)">
   <div id="nameerr" class="note" style="color:var(--warn);min-height:1.2em;margin-top:4px" aria-live="polite"></div>
   <div class="row mrow"><button class="btn" id="nameok">Save</button><button class="btn ghost" id="namecancel">Cancel</button></div></div></div>
+<div class="modal" id="exportbox" role="dialog" aria-modal="true" aria-labelledby="exporttitle" hidden><div class="mbox">
+  <h2 id="exporttitle">Export</h2>
+  <p class="note" style="margin-top:0">The design open now, as a file for another program. The design here and its own file stay as they are.</p>
+  <div class="flchoices" id="exportfmts" role="radiogroup" aria-label="Format">
+    <button class="flchoice" type="button" role="radio" aria-checked="true" data-fmt="ork"><b>OpenRocket</b><span>An .ork file: every part, the motors and the launch conditions.</span></button>
+    <button class="flchoice" type="button" role="radio" aria-checked="false" data-fmt="cdx1"><b>RASAero II</b><span>A .CDX1 file: the outside shape, and a flight simulation with the weight, CG and motor. Run it there and bring its drag and stability back with Import drag profile.</span></button>
+    <button class="flchoice" type="button" role="radio" aria-checked="false" data-fmt="rkt"><b>RockSim</b><span>An .rkt file: every part with its weight and balance point, the motors, launch conditions, deployment and fixed Cd.</span></button>
+  </div>
+  <div class="fld" style="margin-top:12px"><div class="lh"><label for="exportname">File name</label></div>
+    <div class="in"><input type="text" id="exportname" maxlength="80" autocomplete="off"><span class="u" id="exportext">.ork</span></div></div>
+  <div id="exporterr" class="note" style="color:var(--warn);min-height:1.2em;margin-top:4px" aria-live="polite"></div>
+  <div class="row mrow"><button class="btn" id="exportok" type="button">Export</button><button class="btn ghost" id="exportcancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="recentconfirm" role="dialog" aria-modal="true" aria-labelledby="recenttxt" hidden><div class="mbox">
   <p id="recenttxt"></p>
   <div class="row mrow"><button class="btn" id="recentsave">Save changes</button><button class="btn ghost" id="recentdiscard">Discard changes</button><button class="btn ghost" id="recentcancel">Cancel</button></div></div></div>

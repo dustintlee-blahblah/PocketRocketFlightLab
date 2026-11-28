@@ -14,6 +14,8 @@
  *   - the block in the builder's Whole Rocket editor (import, the switch, remove, a bad file), the Wind Tunnel
  *     chart's third line, and the Results line;
  *   - the Whole Rocket Cd field's note for each case (calculated, overridden, a profile flown, both);
+ *   - a RASAero II file's center of pressure and normal force (read, flown on when asked, charted beside the app's
+ *     own, saved) and its Reynolds numbers (the drag adjusted for altitude; a file for another rocket noticed);
  *   - the fin fillet radius field, moved from Whole Rocket to each fin set's editor.
  *
  *   node build.js && node tests/drag-profile.js [--html other-build.html]
@@ -728,6 +730,273 @@ for (let i = 1; i <= 50; i++) ork += `${(20 + i).toFixed(2)},${(2300 - 40 * i).t
     "Cd field, profile kept but not flown: calculated from the design again",
     /^Calculated from the design by this app’s drag model/.test(cn.n) && cn.line.length === 0,
     cn,
+  );
+  await p.locator("#dragdel").click();
+  await p.waitForTimeout(400);
+
+  // ---- a RASAero II file's stability and Reynolds numbers (Nov 27, 2026): its center of pressure and normal force
+  // to fly on, its drag adjusted for altitude, and a file for another rocket noticed
+  const RE1 = (340.294 * 1.225) / 1.7894e-5; // Reynolds number per metre at Mach 1 in sea-level standard air
+  const Ld = await p.evaluate(() => D.length);
+  // the file's center of pressure (inches) and potential normal-force slope, which the reader should bring back
+  const cpIn = (M) => (Ld / 0.0254) * (0.62 + 0.02 * Math.min(M, 2)),
+    cnaOf = (M) => 9 + 2 * Math.min(M, 2);
+  const rasFile = (len) => {
+    let t =
+      "Mach,Alpha,CD,CD Power-Off,CD Power-On,CA Power-Off,CA Power-On,CL,CN,CN Potential,CN Viscous,CNalpha (0 to 4 deg) (per rad),CP,CP (0 to 4 deg),Reynolds Number\n";
+    for (let i = 1; i <= 600; i++) {
+      const M = i / 100;
+      for (const a of [0, 2, 4]) {
+        const rad = (a * Math.PI) / 180,
+          visc = M > 1 ? 30 * rad * rad : 0;
+        // the "CNalpha (0 to 4 deg)" and "CP (0 to 4 deg)" columns count the viscous lift: not what is read
+        t += `${M.toFixed(2)},${a},${cdOff(M)},${cdOff(M)},${cdOn(M)},${cdOff(M)},${cdOn(M)},0,${cnaOf(M) * rad + visc},${cnaOf(M) * rad},${visc},${cnaOf(M) + 3},${cpIn(M) - a},${cpIn(M) - 4},${M * RE1 * len}\n`;
+      }
+    }
+    return t;
+  };
+  const st1 = await p.evaluate((text) => parseDragProfile(text, "stab.csv"), rasFile(Ld));
+  const atPt = (c, y, M) => c[y][c.m.findIndex((v) => Math.abs(v - M) < 1e-9)];
+  ok(
+    "a RASAero II file's center of pressure and normal force are read beside its drag",
+    Array.isArray(st1.cp) && st1.cp.length === st1.m.length && st1.cna.length === st1.m.length && st1.m.length <= 160,
+    [st1.m.length, st1.cp && st1.cp.length],
+  );
+  ok(
+    "the center of pressure in metres (the file's inches), from the zero-angle rows",
+    near(atPt(st1, "cp", 6), cpIn(6) * 0.0254, 1e-3) && near(atPt(st1, "cp", 0.01), cpIn(0.01) * 0.0254, 1e-3),
+    [atPt(st1, "cp", 6), cpIn(6) * 0.0254],
+  );
+  ok(
+    "the normal-force slope from the potential column over the angle, not the 0-to-4-degree column",
+    near(atPt(st1, "cna", 6), cnaOf(6), 1e-3) && near(atPt(st1, "cna", 0.01), cnaOf(0.01), 1e-3),
+    [atPt(st1, "cna", 6), cnaOf(6)],
+  );
+  ok("its Reynolds number at Mach 1 kept", near(st1.re, RE1 * Ld, 1e-4), [st1.re, RE1 * Ld]);
+  ok("neither is used until asked for", st1.stab === false && st1.alt === false && st1.use === true, [
+    st1.stab,
+    st1.alt,
+  ]);
+  ok(
+    "a file without them (the first one here) has neither",
+    (await p.evaluate((t) => parseDragProfile(t, "a").cp, ras)) === undefined,
+  );
+
+  const stabAt = (settings) =>
+    p.evaluate(async (settings) => {
+      Object.assign(BLD.settings, { cdCurve: null, cdOverride: 0 }, settings);
+      delete BLD.settings.cdOverrideOn;
+      bldChanged(true);
+      await runNow();
+      const A = aero(D),
+        C = cnaPartsM(A, 1.5),
+        own = cnaPartsM(aero({ ...D, cdCurve: null }), 1.5),
+        N = normalForceAt(A, 1.5, 4),
+        No = normalForceAt(aero({ ...D, cdCurve: null }), 1.5, 4);
+      return {
+        cn: C.cn,
+        cp: C.cp,
+        sum: C.parts.reduce((t, q) => t + q.cn, 0),
+        mom: C.parts.reduce((t, q) => t + q.cn * q.x, 0),
+        finShare: C.cnFin / C.cn,
+        ownShare: own.cnFin / own.cn,
+        ownCn: own.cn,
+        ownCp: own.cp,
+        momFin: C.momFin,
+        finMom: C.parts.filter((q) => q.fin).reduce((t, q) => t + q.cn * q.x, 0),
+        cp0: cpOf(A),
+        curve: !!A.curve,
+        stab: !!A.stab,
+        alt: !!(A.curve && A.curve.alt),
+        apogee: lastSim.st.maxAlt,
+        // the body's lift across the flow at an angle is the app's own either way
+        cross: N.cn - C.cn * Math.sin((4 * Math.PI) / 180) * Math.cos((4 * Math.PI) / 180),
+        crossOwn: No.cn - own.cn * Math.sin((4 * Math.PI) / 180) * Math.cos((4 * Math.PI) / 180),
+        xml: bldToOrk(BLD, L),
+      };
+    }, settings);
+  const sOff = await stabAt({ cdCurve: st1 });
+  ok(
+    "imported but not asked for: this app's own stability",
+    !sOff.stab && near(sOff.cn, sOff.ownCn, 1e-12) && near(sOff.cp, sOff.ownCp, 1e-12) && sOff.curve,
+    [sOff.cn, sOff.ownCn],
+  );
+  const sOn = await stabAt({ cdCurve: { ...st1, stab: true } });
+  ok(
+    "asked for: the normal-force slope and center of pressure are the file's at that Mach number",
+    sOn.stab && near(sOn.cn, cnaOf(1.5), 2e-3) && near(sOn.cp, cpIn(1.5) * 0.0254, 1e-3),
+    [sOn.cn, cnaOf(1.5), sOn.cp, cpIn(1.5) * 0.0254],
+  );
+  ok(
+    "the parts still add up to them (slopes scaled alike, each moved the same distance)",
+    near(sOn.sum, sOn.cn, 1e-9) && near(sOn.mom, sOn.cn * sOn.cp, 1e-9) && near(sOn.momFin, sOn.finMom, 1e-9),
+    [sOn.sum, sOn.cn, sOn.mom, sOn.cn * sOn.cp],
+  );
+  ok("the fins' share of it is this app's", near(sOn.finShare, sOn.ownShare, 1e-9), [sOn.finShare, sOn.ownShare]);
+  ok("the body's lift across the flow at an angle stays this app's", near(sOn.cross, sOn.crossOwn, 1e-9), [
+    sOn.cross,
+    sOn.crossOwn,
+  ]);
+  ok("the static center of pressure moves with it", !near(sOn.cp0, sOff.cp0, 1e-4), [sOn.cp0, sOff.cp0]);
+  const sOnly = await stabAt({ cdCurve: { ...st1, use: false, stab: true } });
+  ok("its stability can be used without its drag", sOnly.stab && !sOnly.curve && near(sOnly.cp, sOn.cp, 1e-12), [
+    sOnly.stab,
+    sOnly.curve,
+  ]);
+  const keptSt = await p.evaluate(
+    (xml) => {
+      const pick = (c) => c && [c.cp.length, c.cna.length, c.re, c.stab, c.alt];
+      return [pick(parseOrk(xml).design.cdCurve), pick(bldFromOrk(xml).settings.cdCurve)];
+    },
+    (await stabAt({ cdCurve: { ...st1, stab: true, alt: true } })).xml,
+  );
+  ok(
+    "saved with the design and read back: the curves, the Reynolds number and both switches",
+    keptSt.every((x) => JSON.stringify(x) === JSON.stringify([st1.m.length, st1.m.length, st1.re, true, true])),
+    keptSt,
+  );
+  // the altitude adjustment: only for a file whose Reynolds numbers are this rocket's in sea-level air
+  const aFit = await stabAt({ cdCurve: { ...st1, alt: true } });
+  const aLong = await stabAt({ cdCurve: { ...st1, alt: true, re: st1.re * 1.2 } });
+  const aNone = await stabAt({ cdCurve: { ...st1, alt: true, re: undefined } });
+  ok("adjusted for altitude when asked and the file fits the rocket", aFit.alt);
+  ok("not when its Reynolds numbers are a rocket 20% longer's, or it has none", !aLong.alt && !aNone.alt, [
+    aLong.alt,
+    aNone.alt,
+  ]);
+  // this app's own drag in sea-level standard air, kept as a profile, then flown from a field 3,000 m up: with the
+  // adjustment it should fly as this app's own model does there, without it a little too high
+  const self = await p.evaluate(async (RE1) => {
+    const keep = { ...L };
+    const SEA = { T: 288.15, a: 340.294, rho: 1.225 },
+      A = aero({ ...D, cdCurve: null }),
+      An = Math.PI * 0.008 ** 2,
+      m = [],
+      off = [],
+      on = [];
+    for (let i = 1; i <= 100; i++) {
+      m.push(i / 50);
+      off.push(cdParts(A, (i / 50) * SEA.a, SEA).cd);
+      on.push(cdParts(A, (i / 50) * SEA.a, SEA, An).cd);
+    }
+    const c = { src: "RASAero II", name: "self", m, off, on, refD: 0, use: true, note: "", re: RE1 * D.length };
+    const fly = async (cdCurve, elev) => {
+      L.elev = elev;
+      L.pressure = 0;
+      BLD.settings.cdCurve = cdCurve;
+      bldChanged(true);
+      await runNow();
+      return lastSim.st.maxAlt;
+    };
+    const out = {
+      own: await fly(null, 3000),
+      plain: await fly(c, 3000),
+      adj: await fly({ ...c, alt: true }, 3000),
+    };
+    Object.assign(L, keep);
+    BLD.settings.cdCurve = null;
+    bldChanged(true);
+    return out;
+  }, RE1);
+  ok(
+    "a sea-level profile flown from 3,000 m: too high without the adjustment, this app's own flight with it",
+    self.plain > self.own * 1.002 && Math.abs(self.adj / self.own - 1) < 0.002,
+    [self.own, self.plain, self.adj],
+  );
+
+  // in the editor
+  fs.writeFileSync(path.join(tmp, "stab.csv"), rasFile(Ld));
+  fs.writeFileSync(path.join(tmp, "other.csv"), rasFile(Ld * 1.3));
+  await p.evaluate(() => showTab("rocket"));
+  await p.locator("#bldtree .bldrow.stage", { hasText: "Whole Rocket" }).first().click();
+  await p.waitForTimeout(300);
+  await p.setInputFiles("#dragfile", path.join(tmp, "stab.csv"));
+  await p.waitForTimeout(900);
+  const sui = () =>
+    p.evaluate(() => ({
+      info: (document.getElementById("draginfo") || {}).textContent || "",
+      stabBox: document.getElementById("dragstab") ? document.getElementById("dragstab").checked : null,
+      altBox: document.getElementById("dragalt") ? document.getElementById("dragalt").checked : null,
+      len: (document.getElementById("draglen") || {}).textContent || "",
+      stats: document.getElementById("bldstats").textContent,
+      cpLegend: document.getElementById("wtc-cp").textContent,
+      cnaLegend: document.getElementById("wtc-cna").textContent,
+      stab: !!aero(D).stab,
+      alt: !!(aero(D).curve && aero(D).curve.alt),
+    }));
+  const v0 = await sui();
+  ok(
+    "the block says the file has them, with both switches off",
+    /center of pressure and normal force\./.test(v0.info) && v0.stabBox === false && v0.altBox === false && !v0.stab,
+    v0.info,
+  );
+  ok(
+    "nothing about them on the charts or beside the CP yet",
+    !/RASAero II/.test(v0.stats) && !/This app’s model/.test(v0.cpLegend) && /Imported profile/.test(v0.cpLegend),
+    [v0.stats.slice(0, 200), v0.cpLegend.slice(0, 120)],
+  );
+  await p.locator("#dragstab").check();
+  await p.waitForTimeout(600);
+  const v1 = await sui();
+  ok("ticked: flown on the file's stability", v1.stab && v1.stabBox === true);
+  ok(
+    "the CP in the builder's summary says whose it is",
+    /CP [\d.]+ in \(RASAero II\)/.test(v1.stats),
+    v1.stats.slice(0, 260),
+  );
+  ok(
+    "the Wind Tunnel's CP and normal-force charts show this app's own beside it",
+    /This app’s model/.test(v1.cpLegend) &&
+      /This app’s model/.test(v1.cnaLegend) &&
+      /imported center of pressure/.test(v1.cpLegend),
+    [v1.cpLegend.slice(0, 160), v1.cnaLegend.slice(0, 160)],
+  );
+  await p.locator("#dragalt").check();
+  await p.waitForTimeout(600);
+  const v2 = await sui();
+  ok("Adjust its drag for altitude ticked: adjusted", v2.alt && v2.altBox === true);
+  await p.evaluate(async () => {
+    await runNow();
+    showTab("results");
+  });
+  await p.waitForTimeout(300);
+  const rs = await p.evaluate(() => document.getElementById("dragref").textContent);
+  ok(
+    "the Results tab says so for each",
+    /Its drag was adjusted for altitude\./.test(rs) &&
+      /center of pressure and normal force were RASAero II, stab\.csv’s, not this app’s/.test(rs),
+    rs,
+  );
+  await p.evaluate(() => showTab("rocket"));
+  await p.locator("#draguse").uncheck();
+  await p.waitForTimeout(600);
+  const v3 = await sui();
+  ok(
+    "drag unticked: its stability still used, the altitude switch greyed",
+    v3.stab && !v3.alt && (await p.locator("#dragalt").isDisabled()),
+  );
+  await p.evaluate(async () => {
+    await runNow();
+    showTab("results");
+  });
+  await p.waitForTimeout(300);
+  const rs2 = await p.evaluate(() => ({
+    t: document.getElementById("dragref").textContent,
+    h: document.getElementById("dragref").hidden,
+  }));
+  ok(
+    "Results then names the stability only",
+    !rs2.h && !/imported drag profile \(/.test(rs2.t) && /center of pressure/.test(rs2.t),
+    rs2,
+  );
+  await p.evaluate(() => showTab("rocket"));
+  await p.setInputFiles("#dragfile", path.join(tmp, "other.csv"));
+  await p.waitForTimeout(900);
+  const v4 = await sui();
+  ok(
+    "a file exported for a rocket 30% longer: said so, and no altitude switch",
+    /Reynolds numbers are for a rocket [\d.]+ in long; this rocket is [\d.]+ in/.test(v4.len) && v4.altBox === null,
+    v4.len,
   );
   await p.locator("#dragdel").click();
   await p.waitForTimeout(400);

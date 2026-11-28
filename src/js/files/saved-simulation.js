@@ -3,7 +3,7 @@
  */
 import { BLD, bldSel, bldSyncMotors, setBldSel } from "../builder/builder-ui.js";
 import { bldOffList } from "../builder/derive.js";
-import { BLD_APP_SETTINGS } from "../builder/model.js";
+import { BLD_APP_SETTINGS, bldOvOn } from "../builder/model.js";
 import { bldToOrk } from "../builder/ork-export.js";
 import { bldMergeOrk, rktPartId } from "../builder/ork-merge.js";
 import { bldProblems } from "../builder/ork-read.js";
@@ -12,7 +12,9 @@ import { store } from "../core/storage.js";
 import { finTeEdge } from "../core/units-and-fin-edges.js";
 import { boostId, D, firstId, L, motorId } from "../design/defaults.js";
 import { DESIGN_EXT, isOther, otherApp } from "./other-formats.js";
+import { designToCdx } from "./rasaero-export.js";
 import { recentPut, recentSaved, renderRecent } from "./recent.js";
+import { orkToRkt } from "./rocksim-export.js";
 import { ORK_CFG, setSource, SOURCE } from "./save.js";
 import { askName, askOverwrite, markClean, renderSavePanel } from "./unsaved-changes.js";
 import { isAndroidApp, zipDeflate, zipStore } from "./zip.js";
@@ -20,8 +22,10 @@ import { CAL_STORE, calGet, calKey } from "../flightlog/drag-calibration.js";
 import { flAll, flId, flKey, flList, flMotorName, flSaveAll, setFlNow } from "../flightlog/flight-log.js";
 import { zipData, zipEntries } from "../flightlog/xlsx.js";
 import { findMotor, flightBoost, flightMotor } from "../motors/clusters.js";
-import { simulate } from "../physics/simulate.js";
-import { isThree } from "../physics/staging.js";
+import { aero, cdParts } from "../physics/aerodynamics.js";
+import { atmosphere } from "../physics/atmosphere.js";
+import { nozzleEstimate, simulate } from "../physics/simulate.js";
+import { isThree, stackDesign, stackDesign3 } from "../physics/staging.js";
 import { BP_ORK, FIN_ORK, LAUNCH_ORK, STATE_ORK } from "../recovery/ejection-charge.js";
 import { bufToB64, downloadsNS } from "../report/pdf-report.js";
 import { siteCur } from "../ui/launch-sites.js";
@@ -394,11 +398,138 @@ function prCarryLog(oldFl, oldCal, move) {
     }
   }
 }
+/** The makers' names as RockSim's engine list has them (its Manufacturer filter), by this app's brand. */
+const RKT_MFG = {
+  AeroTech: "Aerotech",
+  Cesaroni: "Cesaroni Technology Inc.",
+  Estes: "Estes",
+  Quest: "Quest",
+  Loki: "Loki Research",
+  AMW: "Animal Motor Works",
+  Apogee: "Apogee",
+};
+/**
+ * What a RockSim file of the open design needs beside its parts (see orkToRkt): the fixed drag coefficients, the
+ * launch guide and a simulation with each stage's motor and the launch conditions.
+ * @returns {object}
+ */
+export function rktExportInfo() {
+  // a fixed Cd for each airframe that flies. RockSim has one switch for all of them, so where only some are fixed
+  // here, the others get this app's own figure at Mach 0.3
+  const St = BLD.settings,
+    keys = ["cdOverride", "cdOverride2", "cdOverride3"],
+    frames = [D, D.twoStage ? stackDesign(D) : null, isThree(D) ? stackDesign3(D) : null],
+    on = keys.map((k, i) => !!frames[i] && bldOvOn(St, k) && St[k] > 0),
+    atm = atmosphere(L, 0),
+    own = (Dx) => cdParts(aero({ ...Dx, cdCurve: null, cdOverride: 0 }), 0.3 * atm.a, atm).cd,
+    cd = on.some(Boolean) ? frames.map((Dx, i) => (!Dx ? 0 : on[i] ? St[keys[i]] : own(Dx))) : null;
+  const eng = (m, o) =>
+    m
+      ? [
+          {
+            // RockSim lists a motor under its full designation (H148R, not H148)
+            code: m.name || m.cn,
+            mfg: RKT_MFG[m.brand] || m.brand || m.mfr || "",
+            count: 1,
+            ignDelay: o.ign || 0,
+            // RockSim's ejection delay fires the motor's charge: on a booster that is what separates the stage above
+            // it (RockSim will not stage without one), on the top stage the recovery charge; below zero is plugged
+            ejDelay: !o.top ? 0 : D.deployMode === "motor" ? D.deployDelay || 0 : -1,
+            overhang: o.overhang || 0,
+          },
+        ]
+      : [];
+  const m = findMotor(motorId),
+    mb = D.twoStage ? findMotor(boostId) : null,
+    m1 = isThree(D) ? findMotor(firstId) : null;
+  return {
+    cd,
+    cdMixed: on.some(Boolean) && frames.some((Dx, i) => Dx && !on[i]),
+    rail: L.rail,
+    sim: {
+      name: "Pocket Rocket Flight Lab",
+      angle: L.angle,
+      wind: L.wind,
+      elev: L.elev,
+      tempC: L.tempC,
+      lat: L.lat,
+      humidity: L.humidity > 0 ? L.humidity : 0.5,
+      pressure: L.pressure,
+      turb: L.turb,
+      engines: [
+        eng(m, { top: true, ign: D.twoStage ? D.stageDelay : 0, overhang: D.motorOverhang }),
+        eng(mb, { ign: isThree(D) ? D.midDelay : 0, overhang: D.bMotorOverhang ?? D.motorOverhang }),
+        eng(m1, { overhang: D.s1 ? (D.s1.bMotorOverhang ?? D.motorOverhang) : 0 }),
+      ],
+    },
+  };
+}
+/**
+ * Export: the open design as a file for another program (OpenRocket, RASAero II or RockSim) under the name given. The
+ * open design and its own file are left as they are. Says what the format could not hold.
+ * @param {string} fmt "ork", "cdx1" or "rkt"
+ * @param {string} nm file name, without its ending
+ * @returns {Promise<boolean>} true if saved
+ */
+export async function exportDesign(fmt, nm) {
+  const msg = document.getElementById("savemsg");
+  msg.innerHTML = "";
+  if (!downloadsNS || !BLD) {
+    msg.textContent = "Saving files isn’t available in this view.";
+    return false;
+  }
+  // an OpenRocket file is the app's own save, written as a new file that doesn't become the open one
+  if (fmt === "ork") return saveDesignFile(true, { exportName: nm });
+  const probs = bldProblems(BLD);
+  if (probs.length) {
+    msg.innerHTML = `<div class="report err"><b>Fix these before exporting:</b><ul>${probs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+    return false;
+  }
+  const app = fmt === "rkt" ? "RockSim" : "RASAero II";
+  try {
+    bldSyncMotors();
+    let out;
+    if (fmt === "rkt") out = orkToRkt(bldToOrk(BLD, L), rktExportInfo());
+    else {
+      const noz = (m) => (m ? 2 * Math.sqrt(nozzleEstimate(m) / Math.PI) : 0),
+        m = flightMotor(),
+        mb = D.twoStage ? flightBoost() : null;
+      out = designToCdx(D, L, { name: BLD.name, motor: m, boost: mb, nozzle: noz(m), boostNozzle: noz(mb) });
+    }
+    const fname =
+        (String(nm || "rocket")
+          .replace(DESIGN_EXT, "")
+          .replace(/[\\/:*?"<>|]+/g, "-")
+          .trim() || "rocket") + (fmt === "rkt" ? ".rkt" : ".CDX1"),
+      bytes = new TextEncoder().encode(out.text),
+      // the web viewer can only hand out common file types, so the file comes wrapped in a .zip there
+      wrap = !isAndroidApp() && !(downloadsNS && downloadsNS.browser),
+      data = wrap ? zipStore([{ name: fname, data: bytes }]) : bytes,
+      saveName = wrap ? fname + ".zip" : fname;
+    const res = await downloadsNS.save({
+      filename: saveName,
+      data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+    });
+    const done = res.status === "saved" || res.status === "delivered";
+    msg.innerHTML =
+      `<div class="report"><b>${done ? `Exported ${esc(fname)}` : `${esc(fname)}: choose where to save it`}</b> for ${app}.` +
+      `${wrap ? ` It’s inside ${esc(saveName)}: unzip it to get the ${app} file.` : ""} The design open here is unchanged.` +
+      `<ul>${out.notes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+    return done;
+  } catch (e) {
+    msg.innerHTML =
+      e && e.code === "declined"
+        ? "Export cancelled."
+        : `<div class="report err">Couldn’t make the ${app} file: ${esc(e && e.message ? e.message : "something went wrong.")}</div>`;
+    return false;
+  }
+}
 /**
  * Save changes / Save as / Save a copy: writes the design into its file, a new .ork or a copy, with the run
  * as a saved simulation, and reports what was saved.
  * @param {boolean} asNew save as a new .ork
- * @param {{name:string, copyName:string}} [opts] the name for a first save, or for a copy
+ * @param {{name:string, copyName:string, exportName:string}} [opts] the name for a first save, for a copy, or (with
+ *   asNew) for an export, which leaves the open design and its file as they are
  * @returns {Promise<boolean>} true if saved
  */
 export async function saveDesignFile(asNew, opts = {}) {
@@ -464,7 +595,7 @@ export async function saveDesignFile(asNew, opts = {}) {
         ? clean(copy) + ".ork"
         : fromRkt
           ? clean(opts.name || SOURCE.name) + ".ork"
-          : clean(first ? opts.name : BLD.name) + ".ork";
+          : clean(opts.exportName || (first ? opts.name : BLD.name)) + ".ork";
     }
   } catch (e) {
     msg.innerHTML = `<div class="report err">${esc(e.message || String(e))}</div>`;
@@ -653,7 +784,7 @@ export async function saveDesignFile(asNew, opts = {}) {
       try {
         prCarryLog(oldFl, oldCal, !copy);
       } catch (_) {}
-      if (!asNew || !SOURCE) markClean();
+      if (!opts.exportName && (!asNew || !SOURCE)) markClean();
       // a copy gets its own entry in the recent files; the original's entry stays
       if (copy) {
         const id = "name:" + fname;
@@ -679,7 +810,9 @@ export async function saveDesignFile(asNew, opts = {}) {
             ? `Saved your changes over ${fname}.`
             : into
               ? `Saved your changes to ${fname}.`
-              : `Saved ${fname}.`;
+              : opts.exportName
+                ? `Exported ${fname} for OpenRocket. The design open here is unchanged.`
+                : `Saved ${fname}.`;
     const how =
       (wrap ? ` It’s inside ${saveName}: unzip it to get the OpenRocket file.` : "") +
       (res.status === "saved" || res.status === "delivered" ? simNote : "");

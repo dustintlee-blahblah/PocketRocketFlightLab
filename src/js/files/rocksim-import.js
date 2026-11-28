@@ -295,10 +295,35 @@ export function parseRkt(xml) {
   const stageCount = stageTags.length;
   if (stageCount < Math.max(1, num(design, "StageCount", 1)))
     notes.push("The file lists more stages than it has parts for; the empty stages were ignored.");
+  /* A staged rocket's weight overrides (UseKnownMass): each stage's own mass, and for the top stage its CG from the
+     nose tip. The lower stages' CGs ("alone") are not used: the file doesn't say where they are measured from. */
+  const stageKnown = (st) => {
+    if (stageTags.length < 2 || num(design, "UseKnownMass", 0) === 0) return "";
+    const n = st.replace("Parts", ""),
+      m = num(design, n + "Mass", 0),
+      cg = n === "Stage3" ? num(design, "Stage3CG", 0) : 0;
+    if (!(m > 0)) return "";
+    return (
+      `<overridemass>${m / 1000}</overridemass><overridesubcomponentsmass>true</overridesubcomponentsmass>` +
+      (cg > 0 ? `<overridecg>${cg / 1000}</overridecg><overridesubcomponentscg>true</overridesubcomponentscg>` : "")
+    );
+  };
+  /* A staged rocket's fixed drag coefficients (CalculateCD = 0; RockSim's Cd override tab): FixedCd is the sustainer
+     alone's, FixedCd2 the sustainer with one booster's, FixedCd3 all three stages'. Each goes to the airframe it is
+     for (the stacks' in this app's own element on the lower stages, as its own files have them). */
+  const stageCd = (st) => {
+    if (stageTags.length < 2 || num(design, "CalculateCD", 1) !== 0) return "";
+    const n = st.replace("Parts", "");
+    const cd = num(design, n === "Stage3" ? "FixedCd" : n === "Stage2" ? "FixedCd2" : "FixedCd3", 0);
+    if (!(cd > 0)) return "";
+    return n === "Stage3"
+      ? `<overridecd>${cd}</overridecd>`
+      : `<prflstackdrag>${xe(JSON.stringify({ cd }))}</prflstackdrag>`;
+  };
   const stageParts = stageTags.map((st) => {
       const e = kid(design, st);
       return e
-        ? `<stage><name>${st}</name><subcomponents>${[...e.children].map((c) => conv(c, true)).join("")}</subcomponents></stage>`
+        ? `<stage><name>${st}</name>${stageKnown(st)}${stageCd(st)}<subcomponents>${[...e.children].map((c) => conv(c, true)).join("")}</subcomponents></stage>`
         : "";
     }),
     stagesXml = stageParts.join("");
@@ -312,8 +337,14 @@ export function parseRkt(xml) {
     notes.push("Used the RockSim stage mass override.");
   }
   if (useKnown && stageCount === 1 && s3cg > 0) rocketOverride += `<overridecg>${s3cg / 1000}</overridecg>`;
+  if (useKnown && stageCount > 1 && ["Stage3Mass", "Stage2Mass", "Stage1Mass"].some((t) => num(design, t, 0) > 0))
+    notes.push("Used the RockSim stage mass overrides.");
   // RockSim's "use a fixed Cd" option: CalculateCD = 0, with FixedCd for the upper stage (or the whole rocket when there's one stage)
-  if (num(design, "CalculateCD", 1) === 0) {
+  if (num(design, "CalculateCD", 1) === 0 && stageCount > 1) {
+    notes.push(
+      "The file uses fixed drag coefficients instead of calculated ones: each airframe’s Cd override is set to the file’s (Whole Rocket on the Rocket tab).",
+    );
+  } else if (num(design, "CalculateCD", 1) === 0) {
     const fcd = num(design, "FixedCd", 0);
     if (fcd > 0) {
       rocketOverride += `<overridecd>${fcd}</overridecd>`;
@@ -476,7 +507,9 @@ export function parseRkt(xml) {
   /* RockSim's EjectionDelay: seconds after burnout (0 fires at burnout); a negative value (-1, -2) is a plugged motor, and
      RockSim then opens nothing (its own simulations of such motors come down ballistic). Its chutes open at the motor's
      ejection charge. */
-  if (motor) {
+  // (not when the file's own events open them at apogee, at an altitude or on a timer: those stand as read)
+  const ownEvents = [...deploys.values()].some((e) => e.type >= 2 && e.type <= 5);
+  if (motor && !ownEvents) {
     const ej = rktEj(motor.ej);
     r.design.deployMode = "motor";
     r.design.deployDelay = ej ?? 0;

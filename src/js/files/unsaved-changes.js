@@ -6,7 +6,7 @@ import { BLD, bldRender } from "../builder/builder-ui.js";
 import { boostId, D, defaultDesign, defaultLaunch, L, motorId } from "../design/defaults.js";
 import { DESIGN_EXT, isOther, otherApp } from "./other-formats.js";
 import { SAVE_IGNORE, SAVE_NOT, SOURCE } from "./save.js";
-import { saveDesignFile } from "./saved-simulation.js";
+import { exportDesign, saveDesignFile } from "./saved-simulation.js";
 import { isAndroidApp } from "./zip.js";
 import { DEFAULT_MOTOR } from "../motors/catalog-lookup.js";
 import { drawProfile } from "../ui/charts.js";
@@ -268,6 +268,51 @@ export function start() {
     });
     document.getElementById("namecancel").onclick = () => {
       box.hidden = true;
+    };
+  }
+  {
+    // Export: the open design as a file for another program, in the format and under the name chosen
+    const box = document.getElementById("exportbox"),
+      inp = document.getElementById("exportname"),
+      fmts = [...document.querySelectorAll("#exportfmts [data-fmt]")],
+      EXT = { ork: ".ork", cdx1: ".CDX1", rkt: ".rkt" };
+    let fmt = "ork";
+    const pick = (f) => {
+      fmt = f;
+      fmts.forEach((b) => b.setAttribute("aria-checked", String(b.dataset.fmt === f)));
+      document.getElementById("exportext").textContent = EXT[f];
+    };
+    fmts.forEach((b) => (b.onclick = () => pick(b.dataset.fmt)));
+    document.getElementById("exportdesign").onclick = () => {
+      pick("ork");
+      inp.value = ((SOURCE && SOURCE.name) || (BLD && BLD.name) || "rocket").replace(DESIGN_EXT, "").trim();
+      document.getElementById("exporterr").textContent = "";
+      box.hidden = false;
+      inp.focus();
+      inp.select();
+    };
+    const go = async () => {
+      const nm = inp.value.trim().replace(DESIGN_EXT, "");
+      if (!nm) {
+        document.getElementById("exporterr").textContent = "Type a file name.";
+        inp.focus();
+        return;
+      }
+      box.hidden = true;
+      await exportDesign(fmt, nm);
+    };
+    document.getElementById("exportok").onclick = go;
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        go();
+      } else if (e.key === "Escape") box.hidden = true;
+    });
+    document.getElementById("exportcancel").onclick = () => {
+      box.hidden = true;
+    };
+    box.onclick = (e) => {
+      if (e.target === box) box.hidden = true;
     };
   }
   renderSavePanel();

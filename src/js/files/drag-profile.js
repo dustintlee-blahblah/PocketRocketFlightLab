@@ -79,6 +79,8 @@ function thin(m, cols) {
  * @returns {{src:string, name:string, m:number[], off:number[], on:number[]|null, refD:number, use:boolean, note:string}}
  */
 function profile(rows, src, name, note = "") {
+  // a center of pressure and normal-force slope beside the drag (columns 3 and 4): kept when every row has them
+  const stabOk = (r) => isFinite(r[3]) && r[3] > 0 && isFinite(r[4]) && r[4] > 0;
   const ok = rows
     .filter((r) => isFinite(r[0]) && r[0] >= 0 && isFinite(r[1]) && r[1] > 0 && r[1] < 20)
     .sort((a, b) => a[0] - b[0]);
@@ -88,7 +90,13 @@ function profile(rows, src, name, note = "") {
     throw new Error("That file has fewer than two rows with a Mach number and a drag coefficient to read.");
   const hasOn = u.every((r) => isFinite(r[2]) && r[2] > 0),
     m = u.map((r) => r[0]),
-    idx = thin(m, hasOn ? [u.map((r) => r[1]), u.map((r) => r[2])] : [u.map((r) => r[1])]),
+    hasStab = u.every(stabOk),
+    idx = thin(m, [
+      u.map((r) => r[1]),
+      ...(hasOn ? [u.map((r) => r[2])] : []),
+      // to 0.5 mm of the center of pressure and 0.025 of the slope
+      ...(hasStab ? [u.map((r) => r[3]), u.map((r) => r[4] * 0.02)] : []),
+    ]),
     r4 = (v) => +v.toFixed(4);
   return {
     src,
@@ -99,6 +107,7 @@ function profile(rows, src, name, note = "") {
     refD: 0,
     use: true,
     note,
+    ...(hasStab ? { cp: idx.map((i) => r4(u[i][3])), cna: idx.map((i) => r4(u[i][4])), stab: false } : {}),
   };
 }
 /**
@@ -197,12 +206,41 @@ export function parseDragProfile(text, name = "") {
       cA = H.indexOf("alpha"),
       a0 = cA >= 0 ? Math.min(...body.map((r) => Math.abs(r[cA])).filter(isFinite)) : 0,
       rows = body.filter((r) => cA < 0 || Math.abs(Math.abs(r[cA]) - a0) < 1e-9);
-    return profile(
-      rows.map((r) => [r[cM], r[cOff], cOn >= 0 ? r[cOn] : NaN]),
+    /* Stability, when the file has it: the center of pressure of its zero-angle rows (inches from the nose tip, as
+       RASAero II works in), and the slope of its potential normal force (CN Potential over the angle, from the rows
+       at its smallest angle above zero; the "CNalpha (0 to 4 deg)" column also counts RASAero's viscous crossflow
+       lift, which this app adds itself at an angle). */
+    const cCp = H.indexOf("cp"),
+      cPot = H.indexOf("cn potential"),
+      cRe = H.findIndex((h) => /^reynolds/.test(h)),
+      a1 = cA >= 0 ? Math.min(...body.map((r) => Math.abs(r[cA])).filter((a) => isFinite(a) && a > a0 + 1e-9)) : NaN,
+      pot = new Map();
+    if (cPot >= 0 && isFinite(a1))
+      for (const r of body) if (Math.abs(Math.abs(r[cA]) - a1) < 1e-9) pot.set(r[cM], r[cPot] / ((a1 * Math.PI) / 180));
+    const out = profile(
+      rows.map((r) => [
+        r[cM],
+        r[cOff],
+        cOn >= 0 ? r[cOn] : NaN,
+        cCp >= 0 && a0 === 0 ? r[cCp] * 0.0254 : NaN,
+        pot.get(r[cM]) ?? NaN,
+      ]),
       "RASAero II",
       name,
       a0 > 0 ? `The file has no zero angle-of-attack rows: read at ${a0}°.` : "",
     );
+    // its Reynolds number at Mach 1 (the column rises in proportion to the Mach number): the middle one of the rows'
+    if (cRe >= 0) {
+      const per = rows
+        .filter((r) => r[cM] >= 0.1 && r[cRe] > 0)
+        .map((r) => r[cRe] / r[cM])
+        .sort((a, b) => a - b);
+      if (per.length) {
+        out.re = Math.round(per[per.length >> 1]);
+        out.alt = false;
+      }
+    }
+    return out;
   }
   let cM = H.findIndex((h) => /mach|^m$|^ma$/.test(h)),
     cOn = H.findIndex((h) => /c[ _]?d|drag/.test(h) && /on\b|burn|thrust|power(ed)?$/.test(h) && !/off/.test(h)),
@@ -247,6 +285,12 @@ export function readCdCurve(json) {
       refD: c.refD > 0 ? +c.refD : 0,
       use: c.use !== false,
       note: String(c.note || "").slice(0, 200),
+      // a center of pressure (m from the nose tip) and normal-force slope beside the drag, and whether to fly on them
+      ...(nums(c.cp) && nums(c.cna) && c.cp.length === c.m.length && c.cna.length === c.m.length
+        ? { cp: c.cp, cna: c.cna, stab: c.stab === true }
+        : {}),
+      // its Reynolds number at Mach 1, and whether to adjust the drag for altitude
+      ...(c.re > 0 && isFinite(c.re) ? { re: +c.re, alt: c.alt === true } : {}),
     };
   } catch (e) {
     return null;
@@ -323,10 +367,17 @@ export function dragPhases(stages) {
 /**
  * The imported profiles a design's flight uses, by airframe.
  * @param {object} D design
+ * @param {string} [what] "drag" (the default) or "stab": the ones whose center of pressure and normal force are used
  * @returns {{phase:string, slot:number, c:object}[]}
  */
-export function flownProfiles(D) {
+export function flownProfiles(D, what = "drag") {
   return dragPhases(D.twoStage ? (D.threeStage && D.s1 ? 3 : 2) : 1)
     .map((ph) => ({ ...ph, c: D["cdCurve" + ph.sfx] }))
-    .filter((x) => x.c && x.c.use !== false && Array.isArray(x.c.m) && x.c.m.length > 1);
+    .filter(
+      (x) =>
+        x.c &&
+        Array.isArray(x.c.m) &&
+        x.c.m.length > 1 &&
+        (what === "stab" ? x.c.stab === true && Array.isArray(x.c.cp) : x.c.use !== false),
+    );
 }

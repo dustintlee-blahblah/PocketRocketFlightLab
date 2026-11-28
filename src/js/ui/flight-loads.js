@@ -256,6 +256,7 @@ export function renderLoads() {
     (R.W.fromParts
       ? ""
       : "This design carries no parts’ weights (open it from its file or build it in the builder for those), so its weight is spread evenly about its CG. ") +
+    (A.stab ? "The side forces are this app’s own, part by part, not the imported center of pressure’s. " : "") +
     "Loads only: whether a tube, coupler or fin can carry them depends on its material and how it’s built. The rocket is taken as rigid and already at the angle.";
 }
 /** The last loads drawn, for the tests: {R, c, aoa}. */

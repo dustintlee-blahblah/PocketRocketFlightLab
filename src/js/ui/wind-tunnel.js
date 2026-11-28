@@ -93,23 +93,37 @@ function wtSetup() {
   // flown; the profile when it is switched off)
   const c = Dx.cdCurve,
     Aalt = c ? aero({ ...Dx, cdCurve: A.curve ? null : { ...c, use: true } }) : null;
-  return { A, cg, atm, alt, An, Aalt: Aalt && (A.curve || Aalt.curve) ? Aalt : null };
+  // and the other center of pressure and normal force, when the profile carries them
+  const Astab =
+    c && Array.isArray(c.cp) && Array.isArray(c.cna) ? aero({ ...Dx, cdCurve: { ...c, stab: !A.stab } }) : null;
+  return {
+    A,
+    cg,
+    atm,
+    alt,
+    An,
+    Aalt: Aalt && (A.curve || Aalt.curve) ? Aalt : null,
+    Astab: Astab && (A.stab || Astab.stab) ? Astab : null,
+  };
 }
 /**
  * Works out the coefficients across the Mach range.
  */
 function wtCompute() {
   const S = wtSetup(),
-    { A, atm, An, Aalt } = S,
+    { A, atm, An, Aalt, Astab } = S,
     mmax = +document.getElementById("wtmax").value || 2,
     nu = atm.mu / atm.rho;
   const rows = machGrid(mmax).map((M) => {
     const v = M * atm.a,
       off = cdParts(A, v, atm, 0),
       on = cdParts(A, v, atm, An),
-      C = cnaPartsM(A, M);
+      C = cnaPartsM(A, M),
+      C2 = Astab ? cnaPartsM(Astab, M) : null;
     return {
       M,
+      cnAlt: C2 ? C2.cn : null,
+      cpAlt: C2 ? C2.cp : null,
       v,
       Re: (v * A.L) / nu,
       alt: Aalt ? cdParts(Aalt, v, atm, 0).cd : null,
@@ -409,7 +423,9 @@ function wtCharts() {
     fx = (x, i) => `Mach ${x.toFixed(2)} · ${fmt(R[i].v, "speed")} ${uname("speed")}`,
     ov = R.some((r) => r.off.override),
     imp = !!WT.A.curve,
-    cmp = R.some((r) => r.alt != null);
+    cmp = R.some((r) => r.alt != null),
+    stabImp = !!WT.A.stab,
+    stabCmp = R.some((r) => r.cpAlt != null);
   lineChart(document.getElementById("wtc-cd"), {
     title: "Drag coefficient",
     desc: imp
@@ -451,7 +467,13 @@ function wtCharts() {
   });
   lineChart(document.getElementById("wtc-cna"), {
     title: "Normal-force slope CNα",
-    desc: "Per radian, at small angles of attack.",
+    desc:
+      "Per radian, at small angles of attack." +
+      (stabCmp
+        ? stabImp
+          ? " Flights use the imported normal force (the fins’ and body’s shares of it are this app’s split). The fourth line is this app’s own total."
+          : " The fourth line is the imported profile’s total, which flights are not using."
+        : ""),
     x: X,
     xLabel: "Mach",
     yLabel: "CNα (per rad)",
@@ -461,6 +483,15 @@ function wtCharts() {
       { name: "Total", color: css("--accent"), values: R.map((r) => r.cn) },
       { name: "Fins", color: css("--cg"), values: R.map((r) => r.cnFin) },
       { name: "Body", color: css("--good"), values: R.map((r) => r.cnBody) },
+      ...(stabCmp
+        ? [
+            {
+              name: stabImp ? "This app’s model" : "Imported profile",
+              color: css("--warn"),
+              values: R.map((r) => r.cnAlt),
+            },
+          ]
+        : []),
     ],
     vline: M,
     fmtX: fx,
@@ -471,14 +502,30 @@ function wtCharts() {
   lineChart(document.getElementById("wtc-cp"), {
     title: "Center of pressure",
     desc:
-      cg != null
+      (cg != null
         ? "From the nose tip. Dashed: the CG at liftoff with the motor in."
-        : "From the nose tip. Choose a motor to see the CG and stability.",
+        : "From the nose tip. Choose a motor to see the CG and stability.") +
+      (stabCmp
+        ? stabImp
+          ? " Flights use the imported center of pressure. The second line is this app’s own."
+          : " The second line is the imported profile’s, which flights are not using."
+        : ""),
     x: X,
     xLabel: "Mach",
     yLabel: `CP from tip (${uname("len")})`,
     band,
-    series: [{ name: "CP", color: css("--bad"), values: R.map((r) => toDisp(r.cp, "len")) }],
+    series: [
+      { name: "CP", color: css("--bad"), values: R.map((r) => toDisp(r.cp, "len")) },
+      ...(stabCmp
+        ? [
+            {
+              name: stabImp ? "This app’s model" : "Imported profile",
+              color: css("--warn"),
+              values: R.map((r) => toDisp(r.cpAlt, "len")),
+            },
+          ]
+        : []),
+    ],
     refY: cg != null ? toDisp(cg, "len") : null,
     refLabel: cg != null ? "CG" : null,
     vline: M,

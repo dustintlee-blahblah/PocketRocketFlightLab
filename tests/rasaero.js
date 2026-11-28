@@ -238,6 +238,240 @@ ${booster ? "<Booster1Engine>K550W  (AT)</Booster1Engine><Booster1LaunchWt>20</B
     near("another motor picked: CG without motor unchanged (m)", c.cg, b.cg);
     await p.close();
   }
+  // ---- the other way: a design written as a RASAero II file (Nov 27, 2026), read back by the reader above
+  {
+    const p = await browser.newPage({ viewport: { width: 412, height: 860 } });
+    p.on("pageerror", (e) => fails.push("pageerror: " + e.message));
+    await p.route(/^https?:/, (r) => r.abort());
+    await p.addInitScript(() => {
+      window.PR_EXPOSE = true;
+      window.PR_NO_ASK = true;
+      localStorage.setItem("rfs-disclaimer-v2", JSON.stringify({ accepted: true, version: "2026-11-02" }));
+      sessionStorage.setItem("rfs-splash", "1");
+    });
+    await p.goto("file://" + path.resolve(file));
+    await p.waitForFunction(() => typeof window.openExample === "function");
+    // write the open design, read the file back, and compare the outside shape
+    const round = (setup) =>
+      p.evaluate(async (setup) => {
+        const l = document.getElementById("legal");
+        if (l) l.hidden = true;
+        await openExample(setup.ex);
+        if (setup.stage) {
+          bldRender();
+          if (!document.querySelector('[data-stage="add"]')) document.querySelector(".bldaddtoggle").click();
+          document.querySelector('[data-stage="add"]').click();
+          setBoostId("a-5f4294d20002e9000000000d");
+          bldChanged(true);
+        }
+        if (setup.transition) {
+          const R = BLD.stages[0].parts.find((q) => q.type === "tube").od / 2;
+          BLD.stages[0].parts.push(bldNew("transition", R));
+          BLD.stages[0].parts.push(bldNew("tube", R * 0.7));
+          bldChanged(true);
+        }
+        if (setup.power) {
+          BLD.stages[0].parts.find((q) => q.type === "nose").shape = "power";
+          bldChanged(true);
+        }
+        const shape = () => {
+          const A = aero(D);
+          return {
+            L: D.length,
+            d: D.diameter,
+            two: !!D.twoStage,
+            bL: D.twoStage ? D.bLength : 0,
+            segs: bodySegments(D).map((g) => [g.kind, +g.len.toFixed(4), +(2 * g.r2).toFixed(4)]),
+            fins: finSetsOf(D).map((f) => [f.n, +f.a.toFixed(4), +f.s.toFixed(4), +f.xLead.toFixed(4), f.edge]),
+            area: finSetsOf(D).map((f) => finGeom(f).area),
+            cp: cpOf(A),
+            guides: (D.buttons || []).length,
+            dry: D.dryMass,
+            cg: D.cgEmpty,
+            bDry: D.twoStage ? D.bDryMass : 0,
+            motor: (flightMotor() || {}).name || "",
+            brand: (flightMotor() || {}).brand || "",
+            boost: D.twoStage ? (flightBoost() || {}).name || "" : "",
+            sep: [D.stageDelay || 0, D.sepDelay || 0],
+          };
+        };
+        const before = shape(),
+          { text, notes } = designToCdx(D, L, {
+            name: BLD.name,
+            motor: flightMotor(),
+            boost: D.twoStage ? flightBoost() : null,
+          });
+        const opened = await loadDesignXml(text, "back.CDX1", new TextEncoder().encode(text).buffer, {
+          pick: { kind: "saved" },
+        });
+        return { before, after: shape(), opened, notes, text };
+      }, setup);
+    for (const ex of [0, 1, 2, 3, 4]) {
+      const r = await round({ ex }),
+        t = `example ${ex} as a RASAero II file`;
+      same(`${t}: it is one, and this app opens it`, r.opened && /^<RASAeroDocument>/.test(r.text), true);
+      near(`${t}: length`, r.after.L, r.before.L, 1e-4);
+      near(`${t}: diameter`, r.after.d, r.before.d, 1e-4);
+      same(`${t}: the body's sections`, JSON.stringify(r.after.segs), JSON.stringify(r.before.segs));
+      same(
+        `${t}: the fins' count, root, span, place and edges`,
+        JSON.stringify(r.after.fins),
+        JSON.stringify(r.before.fins),
+      );
+      near(`${t}: the fins' area`, r.after.area[0], r.before.area[0], 1e-3);
+      near(`${t}: center of pressure`, r.after.cp, r.before.cp, 0.01);
+      // the flight simulation: written when the motor's maker has a known name in RASAero II's engine list (AeroTech,
+      // Cesaroni, Estes and the others in the exporter's table), with the launch weight and CG, and read back as the same rocket on the same motor
+      const known = ["AeroTech", "Cesaroni", "AMW", "Estes", "Apogee", "Quest", "Loki", "Gorilla", "Kosdon"].includes(
+          r.before.brand,
+        ),
+        sim = /<SimulationList><Simulation><SustainerEngine>([^<]+)<\/SustainerEngine>/.exec(r.text);
+      same(`${t}: a flight simulation is written when the motor's maker is known to RASAero II`, !!sim, known);
+      same(
+        `${t}: and the notes say which it was`,
+        (known ? /A flight simulation was written/ : /No flight simulation was written/).test(r.notes.join(" ")),
+        true,
+      );
+      if (sim) {
+        same(
+          `${t}: the engine as RASAero II names it`,
+          /^\S+ {2}\((AT|CTI|AMW|ES|AP|QU|LR|GM|KBA)\)$/.test(sim[1]),
+          true,
+        );
+        near(`${t}: read back, the weight without the motor`, r.after.dry, r.before.dry, 2e-3);
+        near(`${t}: read back, its CG`, r.after.cg, r.before.cg, 5e-3);
+        same(`${t}: read back, the motor`, r.after.motor, r.before.motor);
+      }
+      same(
+        `${t}: launch weight and CG are in its comments`,
+        /aunch weight [\d.]+ lb, CG [\d.]+ in from the nose tip/.test(r.text),
+        true,
+      );
+    }
+    const st = await round({ ex: 2, stage: true });
+    same(
+      "a two-stage rocket: written with a booster",
+      /<Booster>/.test(st.text) && /<UseBooster1>True/.test(st.text),
+      true,
+    );
+    // its simulation flies the booster (seen in RASAero II on Nov 27, 2026: both motors loaded, 1,427 ft): the
+    // booster's launch weight and CG there are the whole rocket's
+    same(
+      "a two-stage rocket: the simulation has both engines and flies the booster",
+      /<SustainerEngine>H148R {2}\(AT\)<.*<Booster1Engine>H128W {2}\(AT\)<.*<IncludeBooster1>True</.test(st.text),
+      true,
+    );
+    {
+      const g = (tag) => +(new RegExp(`<${tag}>([\\d.]+)<`).exec(st.text) || [])[1],
+        LBK = 0.45359237;
+      same(
+        "a two-stage rocket: the booster's launch weight is the whole rocket's",
+        g("Booster1LaunchWt") > g("SustainerLaunchWt") + st.before.bDry / LBK,
+        true,
+      );
+      same(
+        "a two-stage rocket: the whole rocket's CG is behind the sustainer's",
+        g("Booster1CG") > g("SustainerCG"),
+        true,
+      );
+      same("a two-stage rocket: read back as two stages", st.after.two, true);
+      near("a two-stage rocket: read back, the sustainer's weight", st.after.dry, st.before.dry, 2e-3);
+      near("a two-stage rocket: read back, the booster's weight", st.after.bDry, st.before.bDry, 5e-3);
+      same(
+        "a two-stage rocket: read back, both motors",
+        [st.after.motor, st.after.boost].join(),
+        [st.before.motor, st.before.boost].join(),
+      );
+    }
+    near("a two-stage rocket: the sustainer's length", st.after.L, st.before.L, 1e-4);
+    near(
+      "a two-stage rocket: the booster's length in the file (inches)",
+      +(/<Booster>.*?<Length>([\d.]+)</.exec(st.text) || [])[1],
+      st.before.bL / 0.0254,
+      1e-3,
+    );
+    same(
+      "a two-stage rocket: the booster starts where the sustainer ends",
+      (/<Booster>.*?<Location>([\d.]+)</.exec(st.text) || [])[1],
+      String(+(st.before.L / 0.0254).toFixed(4)),
+    );
+    // a transition as RASAero II writes one itself (seen Nov 27, 2026): Diameter is its rear diameter, as
+    // RearDiameter is, and its front is the part ahead's. Written with the front there, RASAero II stops with an error.
+    const trn = await round({ ex: 2, transition: true });
+    same(
+      "a transition: Diameter and RearDiameter are both its rear diameter",
+      /<Transition><PartType>Transition<\/PartType><Length>[\d.]+<\/Length><Diameter>([\d.]+)<\/Diameter><Location>[\d.]+<\/Location><RearDiameter>\1<\/RearDiameter>/.test(
+        trn.text,
+      ),
+      true,
+    );
+    same(
+      "a transition: read back with the same sections",
+      JSON.stringify(trn.after.segs),
+      JSON.stringify(trn.before.segs),
+    );
+    same(
+      "a two-stage rocket: the booster has the fields RASAero II's own files have",
+      /<ShoulderLength>0<\/ShoulderLength><Color>Black<\/Color><NozzleExitDiameter>[\d.]+<\/NozzleExitDiameter><BoattailLength>0</.test(
+        st.text,
+      ),
+      true,
+    );
+    same("pad pressure left to RASAero II's standard", /<Pressure>0<\/Pressure>/.test(st.text), true);
+    const pw = await round({ ex: 2, power: true });
+    same(
+      "a power-series nose: written as Power Law, and its exponent noted",
+      /<Shape>Power Law</.test(pw.text) && /exponent/.test(pw.notes.join(" ")),
+      true,
+    );
+    // motor names as RASAero II's engine list has them (each expected name was seen in that list, Nov 27, 2026, or
+    // is of the form its maker's names take there); a maker with no known code gets no simulation
+    const named = await p.evaluate(() =>
+      [
+        ["AeroTech", "HP-H45W", "H45", "White Lightning"],
+        ["AeroTech", "J570W", "J570", "White Lightning"],
+        ["AMW", "GG-54", "I285", "Green Gorilla"],
+        ["AMW", "K1075GG", "K1075", ""],
+        ["Loki", "HP-G69-SF", "G69", "Spitfire"],
+        ["Loki", "H500-LW", "H500", "Loki White"],
+        ["Loki", "J712LB", "J712", "Loki Blue"],
+        ["Gorilla", "J607WC", "J607", ""],
+        ["Kosdon", "I301W", "I301", "White Lightning"],
+        ["Cesaroni", "348I204-13A", "I240", "Imax"],
+        ["Estes", "A10T", "A10", ""],
+        ["Apogee", "C4", "C4", ""],
+        ["Ellis Mountain", "J228", "J228", ""],
+        ["DEAP EX", "Q18000", "Q18000", ""],
+        ["Klima", "D9", "D9", "composite"],
+      ].map(([brand, name, cn, prop]) => {
+        const { text } = designToCdx(D, L, { motor: { ...flightMotor(), brand, name, cn, prop } });
+        return (/<SustainerEngine>([^<]*)</.exec(text) || [])[1] || "";
+      }),
+    );
+    same(
+      "motor names as RASAero II lists them, maker by maker",
+      named.join("|"),
+      [
+        "H45W  (AT)",
+        "J570W  (AT)",
+        "I285GG  (AMW)",
+        "K1075GG  (AMW)",
+        "G69-SF  (LR)",
+        "H500-LW  (LR)",
+        "J712-LB  (LR)",
+        "J607WC  (GM)",
+        "I301W  (KBA)",
+        "I240  (CTI)",
+        "A10T  (ES)",
+        "C4  (AP)",
+        "J228  (EM)",
+        "Q18000  (DEAP-EX)",
+        "",
+      ].join("|"),
+    );
+    // (the Export box that writes these files is checked in tests/export-design.js)
+    await p.close();
+  }
   await browser.close();
   console.log(fails.length ? fails.join("\n") : "");
   console.log(`${checks} checks, ${fails.length} failed`);

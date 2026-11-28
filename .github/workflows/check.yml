@@ -94,6 +94,12 @@ jobs:
       - name: Imported drag profiles (RASAero II, OpenRocket and table files; flown, compared, saved with the design)
         run: node tests/drag-profile.js
 
+      - name: RASAero II files (a design read from one, and written as one and read back)
+        run: node tests/rasaero.js
+
+      - name: Export (the open design as an OpenRocket, RASAero II or RockSim file)
+        run: node tests/export-design.js
+
       - name: Export CAD shows its progress box (builds the STEP library first)
         run: |
           node tools/build-step-kernel.js

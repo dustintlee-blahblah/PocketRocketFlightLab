@@ -116,7 +116,47 @@ function dragCurveFor(D, aref) {
     off: c.off,
     on: Array.isArray(c.on) && c.on.length === c.m.length ? c.on : null,
     k: c.refD > 0 && aref > 0 ? (Math.PI * c.refD * c.refD) / 4 / aref : 1,
+    // adjusted for altitude (see cdParts): only a profile whose own Reynolds numbers say it was worked out for a
+    // rocket this long in sea-level standard air
+    alt: c.alt === true && profileAtSeaLevel(c, D.length),
   };
+}
+/** Sea-level standard air, where RASAero II works out its Aero Plots: what cdParts() reads of an atmosphere. */
+const SEA_LEVEL = { T: 288.15, a: 340.294, rho: 1.225 };
+/** Reynolds number per metre at Mach 1 in that air (speed of sound × density ÷ viscosity). */
+const RE_M_SEA = (340.294 * 1.225) / 1.7894e-5;
+/**
+ * The rocket length an imported profile's Reynolds numbers stand for, taking them as worked out in sea-level standard
+ * air on the rocket's whole length (as RASAero II's are).
+ * @param {object} c profile (re: its Reynolds number at Mach 1)
+ * @returns {number} m, 0 when the profile has no Reynolds numbers
+ */
+export function profileLength(c) {
+  return c && c.re > 0 ? c.re / RE_M_SEA : 0;
+}
+/**
+ * Whether a profile's Reynolds numbers are a rocket of this length's in sea-level standard air, within 2%.
+ * @param {object} c profile
+ * @param {number} L the rocket's length, m
+ * @returns {boolean}
+ */
+export function profileAtSeaLevel(c, L) {
+  const l = profileLength(c);
+  return l > 0 && L > 0 && Math.abs(l / L - 1) < 0.02;
+}
+/**
+ * The imported center of pressure and normal-force slope an airframe flies with, ready for cnaPartsM(): null when its
+ * profile has none or they are not switched on.
+ * @param {object} D design (cdCurve: {m, cp, cna, stab, refD})
+ * @param {number} aref this rocket's reference area, m²
+ * @returns {{m:number[], cp:number[], cna:number[], k:number}|null}
+ */
+function stabCurveFor(D, aref) {
+  const c = D.cdCurve,
+    n = c && Array.isArray(c.m) ? c.m.length : 0;
+  if (!c || c.stab !== true || n < 2 || !Array.isArray(c.cp) || !Array.isArray(c.cna)) return null;
+  if (c.cp.length !== n || c.cna.length !== n) return null;
+  return { m: c.m, cp: c.cp, cna: c.cna, k: c.refD > 0 && aref > 0 ? (Math.PI * c.refD * c.refD) / 4 / aref : 1 };
 }
 /**
  * The chart above: pressure drag over (t/c)^(5/3) at a similarity Mach parameter and slenderness.
@@ -1083,7 +1123,18 @@ const aeroCache = new Map();
  */
 export function aero(D) {
   const key = JSON.stringify([
-    D.cdCurve ? [D.cdCurve.use !== false, D.cdCurve.refD, D.cdCurve.m, D.cdCurve.off, D.cdCurve.on] : 0,
+    D.cdCurve
+      ? [
+          D.cdCurve.use !== false,
+          D.cdCurve.refD,
+          D.cdCurve.m,
+          D.cdCurve.off,
+          D.cdCurve.on,
+          D.cdCurve.alt === true,
+          D.cdCurve.re,
+          D.cdCurve.stab === true && [D.cdCurve.cp, D.cdCurve.cna],
+        ]
+      : 0,
     D.blMode,
     D.finCant,
     D.dragScale,
@@ -1362,6 +1413,10 @@ export function aero(D) {
     override: D.cdOverride || 0,
     // an imported drag profile to fly with (files/drag-profile.js), its Cd put on this reference area
     curve: dragCurveFor(D, Math.PI * R * R),
+    // an imported center of pressure and normal-force slope to fly with
+    stab: stabCurveFor(D, Math.PI * R * R),
+    // this app's own model of the same rocket, for what an imported profile leaves to it
+    own: () => aero({ ...D, cdCurve: null, cdOverride: 0 }),
     scale: D.dragScale > 0 ? D.dragScale : 1,
     fore,
     aft,
@@ -1701,9 +1756,26 @@ export function cdParts(A, v, atm, nozzleArea = 0, skinT = 0) {
      Mach numbers it covers. Scaled by any calibration to a real flight, like the fixed Cd below. */
   if (A.curve) {
     const c = A.curve,
-      y = nozzleArea > 0 && c.on ? c.on : c.off;
+      y = nozzleArea > 0 && c.on ? c.on : c.off,
+      M = Math.max(v, 0.01) / atm.a;
+    /* Adjusted for altitude (when asked): the profile is the drag in sea-level air. Higher up the air is thinner and
+       the Reynolds number lower, so skin friction is a larger coefficient; the rest of the drag (pressure, base)
+       follows the Mach number. Added: this app's own skin friction for the rocket in the air it is flying through,
+       less the same in sea-level air at the same Mach number. */
+    let dF = 0;
+    if (c.alt) {
+      const O = (A._own = A._own || A.own());
+      O._frRef = O._frRef || new Map();
+      const ref = (k) => {
+        if (!O._frRef.has(k)) O._frRef.set(k, cdParts(O, (k / 100) * SEA_LEVEL.a, SEA_LEVEL).friction);
+        return O._frRef.get(k);
+      };
+      const k0 = Math.floor(M * 100),
+        t = M * 100 - k0;
+      dF = cdParts(O, Math.max(v, 0.01), atm, 0, skinT).friction - (ref(k0) * (1 - t) + ref(k0 + 1) * t);
+    }
     return {
-      cd: curveAt(c.m, y, Math.max(v, 0.01) / atm.a) * c.k * (A.scale || 1),
+      cd: (curveAt(c.m, y, M) * c.k + dF) * (A.scale || 1),
       friction: 0,
       pressure: 0,
       base: 0,
@@ -2161,7 +2233,36 @@ function stripLiftRatio(M) {
   return sub(FIN_SUB_M) * (1 - w) + sup(FIN_SUP_M) * w;
 }
 /**
- * cnaParts() cached per design in 0.01-Mach steps.
+ * An imported center of pressure and normal-force slope (RASAero II's) in place of this app's own, at a Mach number.
+ * The totals are the imported ones; how they are shared among the parts is this app's own, every part's slope scaled
+ * alike and every part moved by the same distance, so what needs the parts (pitch damping, the fins' share) still has
+ * them. The body's lift across the flow at an angle is added by the callers as before.
+ * @param {object} A aerodynamic model (stab: the imported curves, or null)
+ * @param {object} r this app's own (cnaParts)
+ * @param {number} M Mach number
+ * @returns {object} r, or the same with the imported totals
+ */
+function importedCna(A, r, M) {
+  const c = A.stab;
+  if (!c || !(r.cn > 0)) return r;
+  const cn = curveAt(c.m, c.cna, M) * c.k,
+    cp = curveAt(c.m, c.cp, M);
+  if (!(cn > 0) || !(cp > 0)) return r;
+  const k = cn / r.cn,
+    dx = cp - r.cp;
+  return {
+    ...r,
+    parts: r.parts.map((p) => ({ ...p, cn: p.cn * k, x: p.x + dx })),
+    cn,
+    cp,
+    cnFin: r.cnFin * k,
+    momFin: (r.momFin + r.cnFin * dx) * k,
+    imported: true,
+  };
+}
+/**
+ * cnaParts() cached per design in 0.01-Mach steps (an imported center of pressure and normal-force slope in its place
+ * when the design flies with one).
  * @param {object} A aerodynamic model
  * @param {number} M Mach number
  * @returns {object} see cnaParts
@@ -2170,7 +2271,7 @@ export function cnaPartsM(A, M) {
   A._cnM = A._cnM || new Map();
   const key = Math.round(Math.max(M, 0) * 100);
   if (A._cnM.has(key)) return A._cnM.get(key);
-  const r = cnaParts(A, key / 100);
+  const r = importedCna(A, cnaParts(A, key / 100), key / 100);
   if (A._cnM.size > 800) A._cnM.clear();
   A._cnM.set(key, r);
   return r;
@@ -2493,6 +2594,11 @@ export function cpWithBodyLift(A, cn, cp) {
  * @returns {number} m from the nose tip
  */
 export function cpOf(A) {
+  // an imported center of pressure: its lowest-speed value, with the body's small-angle lift as below
+  if (A.stab) {
+    const C = cnaPartsM(A, A.stab.m[0]);
+    if (C.imported) return cpWithBodyLift(A, C.cn, C.cp);
+  }
   const d = 2 * A.R;
   let CN = 0,
     CNx = 0;

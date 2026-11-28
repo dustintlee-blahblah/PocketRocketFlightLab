@@ -4,7 +4,7 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
-## Build 349 (not yet released)
+## Build 349 (2026-11-27)
 
 **Drag**
 
@@ -21,6 +21,61 @@ version.
   rocket itself is every airframe's; on the top stage it is the sustainer's. One on a lower stage is that stage's own
   share of the drag, which this app has no place for: it is passed over, with a note (it was taken as the whole
   rocket's before).
+
+- **A RASAero II file's center of pressure and normal force can be flown too.** RASAero II's Aero Plots export carries
+  the center of pressure and the normal force against Mach number beside the drag. After importing it, tick Use its
+  center of pressure and normal force to fly, and to show stability, on those in place of the app's own (with or
+  without its drag). The builder's summary says whose CP it is, the Wind Tunnel's Center of pressure and Normal-force
+  charts show both, and the Results tab and the PDF report say so. The body's extra lift when the rocket is at an
+  angle, and how the force is shared along the rocket (Flight loads), stay the app's own. Off until ticked.
+- **Adjust an imported RASAero II drag profile for altitude.** A RASAero II export is the drag in sea-level air. Its
+  Reynolds number column says so, and for what length of rocket, so the app can tell that a file fits the rocket:
+  then Adjust its drag for altitude adds the app's own skin friction in the air the rocket is flying through, less the
+  same in sea-level air (the part of the drag that changes with height). Checked on the app's own model: its
+  sea-level drag kept as a profile and flown from 3,000 m flies 0.5 to 0.8% too high without the adjustment and within
+  0.1% with it. Not yet checked against a high-altitude flight worked out in RASAero II, so it is off until ticked.
+- **A file exported for another rocket is noticed.** When the Reynolds numbers in a RASAero II file are for a rocket
+  of a different length, the block says both lengths.
+
+**Files**
+
+- **Export: the open design as an OpenRocket, RASAero II or RockSim file.** A new Export button on the Rocket tab,
+  after Open New Design, asks for the format and a file name and saves the design open now for that program. The
+  design open in the app and its own file stay as they are. After saving, the page lists what the format could not
+  hold.
+  - **OpenRocket (.ork):** the app's own save, as a new file: every part, the motors and the launch conditions.
+  - **RASAero II (.CDX1):** the outside shape, to run there and bring its Aero Plots back with Import drag profile.
+    RASAero II holds less than this app (one nose, tubes, conical transitions, a boattail, one set of trapezoidal
+    fins and one pair of launch guides on a tube, a booster that is one tube): the rest is simplified or left out.
+    A flight simulation is written with it: each stage's launch weight and CG and its motor under RASAero II's own
+    name for it (sixteen makers, AeroTech, Cesaroni, Estes, Loki and AMW among them; for another maker's, no
+    simulation is written and the weight and CG to enter are in the file's comments). For a two-stage rocket the booster's weight and CG there are the whole
+    rocket's, as RASAero II wants them. RASAero II flies its own thrust curve for a motor of that name, which can differ
+    from this app's (its H128W has 156 N·s where this app's and OpenRocket's has 178); its list is not regular, and
+    if it has no motor of the name written it says so and nothing else is lost. Recovery is left to set there.
+  - **RockSim (.rkt):** every part with its weight and balance point (up to three stages, pods and tube fins
+    included), each parachute's deployment, a fixed Cd for each airframe, the launch guide, and a simulation, not
+    yet run, holding each stage's motor in its mount and the launch conditions. Rail buttons go as launch lugs of
+    their size, bevelled and double-wedge fins as airfoil; an imported drag profile, fin fillets and protuberance
+    drag are not in the format. A motor RockSim doesn't list under the same name has to be chosen again there (it
+    says which).
+  - **Checked in the programs themselves** (RockSim 11 and RASAero II, Nov 27). RockSim opens the files with the
+    right length, weight, CG and stages, the motors in their mounts, the deployment events and launch conditions,
+    and flies them. RASAero II opens single-stage, two-stage and transition designs and gives its CP. What that
+    turned up and fixed: RockSim's weight override is all or nothing, so every stage's weight is written once one
+    is overridden; a booster's motor needs an ejection delay for RockSim to stage; RockSim lists motors by full
+    designation (H148R); RASAero II's transition carries its rear diameter in both diameter fields (written with
+    the front diameter, RASAero II stopped with an error). RASAero II loads the simulation the export writes, with
+    both motors of a two-stage rocket, and flies it. OpenRocket 24.12 opens the OpenRocket export; it turned down
+    one thing, the size of a ring, bulkhead or coupler left to fit its tube, written as "auto" with a number after
+    it ("Invalid parameter encountered, ignoring"). Those are now written as OpenRocket writes them itself, the
+    word "auto" alone, in every saved design. The simulation data OpenRocket exports is read by Import drag
+    profile as it is.
+- **Reading RockSim files: a staged rocket's stage weights and fixed drag coefficients, and its own deployment
+  events.** With RockSim's Use known mass set, each stage's mass (and the top stage's CG) is taken for a staged
+  rocket too. A staged file's fixed Cd for each airframe goes to that airframe. Parachutes the file opens at apogee,
+  at an altitude or on a timer keep those events (they were all set to the motor's ejection charge when the
+  simulation had a motor).
 
 **Builder**
 

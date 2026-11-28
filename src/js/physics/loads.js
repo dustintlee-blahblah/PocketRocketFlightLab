@@ -93,7 +93,9 @@ export function massLine(D, m, burnt = 0) {
  *   the body in proportion to its width rather than at x
  */
 function sideForceParts(A, M, deg) {
-  const C = cnaPartsM(A, M),
+  // where each part's force acts is this app's own, also when the flight uses an imported center of pressure (that
+  // gives the total and where it acts, not how it is shared along the rocket)
+  const C = cnaPartsM(A.stab ? A.own() : A, M),
     al = (deg * Math.PI) / 180,
     sa = Math.sin(al),
     ca = Math.abs(Math.cos(al)),

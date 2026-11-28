@@ -109,6 +109,8 @@ import * as m95 from "./physics/loads.js";
 import * as m96 from "./ui/flight-loads.js";
 import * as m97 from "./files/drag-profile.js";
 import * as m98 from "./ui/drag-profile-ui.js";
+import * as m99 from "./files/rasaero-export.js";
+import * as m100 from "./files/rocksim-export.js";
 
 const modules = [
   m0,
@@ -210,6 +212,8 @@ const modules = [
   m96,
   m97,
   m98,
+  m99,
+  m100,
 ];
 for (const m of modules) if (typeof m.start === "function") m.start();
 

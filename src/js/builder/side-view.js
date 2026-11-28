@@ -11,6 +11,7 @@ import { stability } from "../physics/aerodynamics.js";
 import { noseR, noseRTip, noseTip } from "../physics/geometry.js";
 import { isThree, stackStability } from "../physics/staging.js";
 import { setupCanvas } from "../ui/charts.js";
+import { stabProfileFlown } from "../ui/drag-profile-ui.js";
 import { fmt, uname } from "../ui/units.js";
 /**
  * Clickable areas of the side view, from the last drawing.
@@ -582,6 +583,8 @@ export function bldDraw() {
     };
     mark(S.cgL, "cg");
     mark(S.cp, "cp");
+    // an imported center of pressure (the airframe that lifts off: the rocket, or the whole stack)
+    const cpSrc = stabProfileFlown(m1 ? 3 : two ? 2 : 1);
     const cls = (v) => (v >= 1.5 ? "good" : v >= 1 ? "warn" : "bad"),
       mname =
         (m1 ? `${m1.cn || m1.name} → ` : "") + (two && mb ? `${mb.cn || mb.name} → ${m.cn || m.name}` : m.cn || m.name);
@@ -590,7 +593,7 @@ export function bldDraw() {
     st.innerHTML =
       `<span>Length <b>${fmt(lay.length, "len", 1)} ${uname("len")}</b></span><span>Diameter <b>${fmt(2 * lay.maxR, "len")} ${uname("len")}</b></span>` +
       `<span>Weight <b>${fmt(dry, "mass")} ${uname("mass")}</b> empty, <b>${fmt(lift, "mass")} ${uname("mass")}</b> on ${esc(mname)}</span>` +
-      `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b></span>` +
+      `<span><i class="dotcg"></i>CG <b>${fmt(S.cgL, "len", 1)} ${uname("len")}</b> with motor</span><span><i class="dotcp"></i>CP <b>${fmt(S.cp, "len", 1)} ${uname("len")}</b>${cpSrc ? ` (${esc(cpSrc.src)})` : ""}</span>` +
       `<span class="bldsum${worst < 1 ? " bad" : ""}">${worst < 1 ? "Stability under 1 cal · " : ""}<em>Show details ▾</em></span>` +
       `<span class="bldmore ${cls(S.marginL)}">Stability <b>${S.marginL.toFixed(2)} cal</b> at liftoff (${S.pctL.toFixed(0)}% of length; uncertainty margin ${(S.marginL - S.unc).toFixed(1)}–${(S.marginL + S.unc).toFixed(1)}), <b>${S.marginB.toFixed(2)}</b> at burnout${two ? ` · sustainer alone ${SU.marginL.toFixed(2)}` : ""}</span>` +
       `<span class="bldmore ${cls(S.marginL10)}">Tilted into the airflow (liftoff): <b>${S.marginL5.toFixed(2)}</b> at 5°, <b>${S.marginL10.toFixed(2)} cal</b> at 10°</span>`;
