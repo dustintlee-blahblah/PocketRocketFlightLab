@@ -1479,6 +1479,68 @@ const MK_CASES = [
     pts: MK_M.map((M, i) => [M, +((MK_WINGS[k][1][i] * 200) / (Math.PI * 2.5 * 2.5)).toFixed(4)]),
   })),
 ];
+/* The same body with a tapered 4% wing, its trailing edge sharp or as thick as the wing (Morrow, Measurements of the
+   Effect of Trailing-Edge Thickness on the Zero-Lift Drag of Thin Low-Aspect-Ratio Wings, NACA TN 3550, 1955;
+   supersedes RM L50F26, 1950). Figure 2: two panels, root chord 14.07 in at the body (leading edge at station
+   28.85), tip chord 6.50 in, 17.000 in from the axis to the tip (14.5 in exposed), leading edge swept 23°: 298.4 in²
+   exposed (the report's 2.072 sq ft). Sections 4% thick: a circular arc back to 40% of the chord, then a straight line
+   to a trailing edge of thickness 0, 1/3, 2/3 or all of the maximum. The app holds a fin's thickness constant along
+   the span, so these are entered 4% of the mean chord thick (0.411 in): the sharp wing as an airfoil, the full-
+   thickness one as a beveled plate with a 4.11 in leading bevel and a square back (the 1/3 and 2/3 sections have no
+   form here). Figure 5: the drag the wing adds, interference included, on the exposed area, read off at 400 dpi
+   (±0.002 in the report, ±0.0005 more for the reading). Reynolds number from figure 3: 3.5 million on the 0.962 ft
+   mean chord at Mach 0.7 rising to 10.2 million at Mach 1.6. */
+const TN3550_M = [0.8, 0.85, 0.9, 0.95, 1.0, 1.02, 1.05, 1.1, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 1.5];
+const TN3550 = {
+  "full-thickness square back": [
+    { edge: "beveled", le: 4.114, teEdge: "square" },
+    [
+      0.0253, 0.0274, 0.0276, 0.0263, 0.0332, 0.0349, 0.0347, 0.0322, 0.0293, 0.0283, 0.0276, 0.0272, 0.0272, 0.0267,
+      0.0263,
+    ],
+  ],
+  "sharp trailing edge": [
+    { edge: "airfoil" },
+    [
+      0.0076, 0.0073, 0.0079, 0.0113, 0.0154, 0.0161, 0.0163, 0.0153, 0.0147, 0.0142, 0.0142, 0.0149, 0.0151, 0.0153,
+      0.016,
+    ],
+  ],
+};
+const tn3550Ork = (k) => {
+  const w = TN3550[k][0];
+  return partsOrk({
+    name: `TN 3550 ${k}`,
+    finish: "polished",
+    nose: { len: 17.5, shape: "ogive", param: 1 },
+    parts: [
+      {
+        t: "tube",
+        len: 46.44 - 17.5,
+        d: 5,
+        fins: { n: 2, cr: 14.07, ct: 6.5, s: 14.5, sw: 6.155, t: 0.411, ...w, aft: 46.44 - (28.85 + 14.07) },
+      },
+      {
+        t: "tube",
+        len: 55.06 - 46.44,
+        d: 5,
+        fins: { n: 4, cr: 8.38, ct: 1.38, s: 6.99, sw: 6.99, t: 0.091, edge: "rounded", teEdge: "square", aft: 0.24 },
+      },
+    ],
+  });
+};
+const TN3550_CASES = Object.keys(TN3550).map((k) => ({
+  id: `tn3550-${k.split(" ")[0]}`,
+  grade: 1,
+  title: `NACA TN 3550, tapered 4% wing with a ${k}, Mach 0.8–1.5: drag the wing adds`,
+  tier: "free flight",
+  role: "check",
+  quantity: "cdFins",
+  xml: tn3550Ork(k),
+  xmlBody: mkOrk(null),
+  rePerM: (3.5e6 + (6.7e6 / 0.9) * 0.3) / (0.962 * 0.3048),
+  pts: TN3550_M.map((M, i) => [M, +((TN3550[k][1][i] * 298.4) / (Math.PI * 2.5 * 2.5)).toFixed(4)]),
+}));
 /* An unswept 4.5% wing through Mach 1 on a large rocket-boosted model (Schult, Large-Scale Flight Measurements of
    Zero-Lift Drag at Mach Numbers From 0.8 to 1.6 of a Wing-Body Combination Having an Unswept 4.5-Percent-Thick Wing
    With Modified Hexagonal Sections, NACA RM L51A15, 1951). Figure 1 and the text: a fineness-10 parabolic body 130 in
@@ -1970,6 +2032,7 @@ const CASES = [
   },
   ...TN3697_CASES,
   TN3697_BODY_CASE,
+  ...TN3550_CASES,
   ...MK_CASES,
   L51A15_CASE,
   ...L55H02_CASES,

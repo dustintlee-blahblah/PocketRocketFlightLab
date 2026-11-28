@@ -2460,7 +2460,12 @@ function bodyCarry(A, f, rf, cnW, M) {
         ? 4 / (beta * Math.PI) // at a sonic leading edge the two forms meet
         : (8 * bm ** 1.5) / (Math.PI * beta * (bm + 1));
   const xPl = L > 0 ? Mx / L : cr / 2,
-    cnPl = bm > 1 && bm <= 1.0001 ? null : (f.n * pre * L) / A.Aref; // n/2 pairs of fins, two fins a pair
+    // pre·L is the lift one fin's pressure field puts on the body. The report doubles it for a wing's two panels and
+    // divides by that wing's lift alone; a set of n fins lifts as n/2 panels in the pitch plane (the same n/2 the
+    // fins' own slope carries: four fins are one wing). With n in place of n/2 (as it was until build 349) the
+    // planar value was twice the report's, which showed as a step of 15–19% in CNα where the rule below switches
+    // theories; the report's figure 5 has the two meeting there
+    cnPl = bm > 1 && bm <= 1.0001 ? null : ((f.n / 2) * pre * L) / A.Aref;
   // the report's rule: slender-body theory unless the fins' tips are clear of the strip
   const high = beta * AR * (1 + lam) * (1 / bm + 1) > 4,
     cn = high && cnPl != null ? cnPl : kb * cnW;

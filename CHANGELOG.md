@@ -4,6 +4,35 @@ What changed in each build of Pocket Rocket Flight Lab, newest first. Each build
 [release on GitHub](https://github.com/dustintlee-blahblah/PocketRocketFlightLab/releases) with its Android app and web
 version.
 
+## Build 350 (not yet released)
+
+**Stability**
+
+- **The fins' lift carried onto the body above Mach 1 was twice NACA Report 1307's.** The report's supersonic value
+  for the lift a fin's pressure field puts on the body is for one panel, doubled for a wing's two; the app took it
+  once for every fin instead of once for every pair. With it corrected, the jump in CNα and the CP where the report
+  switches between its two methods (Raven: +15% and 1.2 in aft between Mach 1.18 and 1.19; Qu8k: +19% at Mach 1.47)
+  is about 2%, and the normal-force slope on the supersonic check cases is 10.1% off on average instead of 15.9%
+  (Arcas at Mach 1.5 +24% to +7%; Aerobee 150A at Mach 2 +14% to +1%). The supersonic CP moves forward, the safe
+  direction: 1–6% of the length forward of the measured on those cases (the known body-lift gap, no longer
+  hidden). Stability margins above Mach 1 read lower than before; apogees don't change. A test now checks that
+  CNα has no step on four finned bodies.
+
+**Atmosphere**
+
+- **A hot or cold day at the pad is joined to the standard tropopause in a straight line**, as OpenRocket does,
+  instead of being carried through the whole troposphere. On a hot afternoon the old rule made the air above the
+  tropopause up to 13% denser than standard; the Air Force Reference Atmospheres put each month's mean within 5% of
+  standard there, and the new rule within 4% of them. Only flights above about 30,000 ft change, by a percent or
+  two, and the barometric-altimeter reading on hot or cold days by a few tenths. A loaded forecast is used as before.
+
+**Validation**
+
+- **NACA TN 3550's wings are check cases**: the same rocket models as RM L50E19a with a 4% wing, its trailing edge
+  sharp or as thick as the wing, Mach 0.8–1.5. The square back shows the app gives a square fin trailing edge
+  about half its measured base drag below Mach 1 (as RM L50E19a's slab did); the sharp wing, too much drag at Mach
+  1.0–1.2 (as its circular arc did). Accuracy figures, the 23 flights: 6.3% as before (bias +2.7%).
+
 ## Build 349 (2026-11-27)
 
 **Drag**

@@ -94,6 +94,22 @@ const stepOrk = (hd) =>
     { totalMass: 5, len: 0.5 },
   );
 
+// finned bodies for the fins-on-body check: [name, design, limit]. The fins sit at the body's aft end, so there is no
+// afterbody for their lift to land on: the planar value leaves that part out and slender-body theory cannot, which
+// leaves a real step in the report's own method on fins of little sweep (9% here); swept fins switch near Mach 1.1,
+// where the afterbody matters little, and the two values meet
+const CARRY = [
+  ["four 68° swept fins", { n: 4, cr: 7.5, ct: 1.5, sw: 6.5, s: 2.6 }, 0.04],
+  ["three 45° swept fins", { n: 3, cr: 6, ct: 3, sw: 4, s: 4 }, 0.04],
+  ["four 60° delta fins", { n: 4, cr: 8, ct: 0, sw: 8, s: 4.62 }, 0.04],
+  ["four rectangular fins (no afterbody)", { n: 4, cr: 4, ct: 4, sw: 0, s: 3 }, 0.1],
+].map(([name, f, lim]) => [
+  name,
+  ork({ name, finish: "smooth", nose: 12, body: 48, r: 2, t: 0.125, edge: "square", ...f }),
+  lim,
+]);
+const cases0 = { carry: CARRY };
+
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage();
@@ -151,6 +167,21 @@ const stepOrk = (hd) =>
         v,
         finWaveAt(wing(A / 2, A / 2), { kind: "bi", tc }, 1) / (100 * tc * tc),
       ]);
+      // Report 1307's two values for the lift fins put on the body meet where its rule switches between them
+      // (its figure 5): the largest step in a rocket's CNα between Mach numbers 0.01 apart, Mach 1.02 to 3
+      out.carry = cases.carry.map(([name, xml, lim]) => {
+        const { A } = model(xml);
+        let worst = 0,
+          at = 0,
+          prev = cnaPartsM(A, 1.02).cn;
+        for (let M = 1.03; M <= 3.0001; M += 0.01) {
+          const c = cnaPartsM(A, M).cn,
+            d = Math.abs(c - prev) / prev;
+          if (d > worst) [worst, at] = [d, M];
+          prev = c;
+        }
+        return [name, +at.toFixed(2), worst, lim];
+      });
       // exact linear theory (tools/exact-wing-wave-drag.py): [β, exact CD, calculated]
       const l51 = [
         [0, 0],
@@ -164,6 +195,7 @@ const stepOrk = (hd) =>
     },
     {
       cases: {
+        carry: cases0.carry,
         exact: [
           [0.6, 0.02914],
           [0.8, 0.02123],
@@ -236,5 +268,13 @@ const stepOrk = (hd) =>
     0.08,
     true,
   );
+  console.log(
+    "\nFins' lift on the body (Report 1307): largest step in CNα between Mach numbers 0.01 apart, Mach 1.02–3",
+  );
+  for (const [name, at, step, lim] of res.carry) {
+    const bad = step > lim;
+    if (bad) fail++;
+    console.log(`  ${name}: ${(100 * step).toFixed(1)}% at Mach ${at} (limit ${100 * lim}%)${bad ? "   FAIL" : ""}`);
+  }
   process.exitCode = fail ? 1 : 0;
 })();

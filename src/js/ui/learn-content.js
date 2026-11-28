@@ -280,9 +280,9 @@ export function learnChapters() {
     svgOpen(148, "Temperature against height in the standard atmosphere") +
       `<path d="M40 128 L285 128 M40 128 L40 10" stroke-opacity=".5"/>` +
       `<path stroke="var(--accent)" stroke-width="2.2" d="M180 128 L90 70 L90 52 L110 28 L150 12"/>` +
-      `<path d="M210 128 L120 70" stroke-dasharray="4 4"/>` +
-      `<g stroke="none" fill="currentColor"><text x="160" y="144" text-anchor="middle">temperature</text><text x="26" y="70" transform="rotate(-90 26 70)" text-anchor="middle">height</text><text x="96" y="64">11 km: tropopause</text><text x="196" y="112">a hot day, shifted</text></g>`,
-    "Standard layers, shifted to the field's temperature through the lowest 11 km and fading back to standard by 15 km.",
+      `<path d="M210 128 L90 70" stroke-dasharray="4 4"/>` +
+      `<g stroke="none" fill="currentColor"><text x="160" y="144" text-anchor="middle">temperature</text><text x="26" y="70" transform="rotate(-90 26 70)" text-anchor="middle">height</text><text x="96" y="64">11 km: tropopause</text><text x="196" y="112">a hot day</text></g>`,
+    "Standard layers; on a hot or cold day the field's temperature is joined to the standard tropopause at 11 km in a straight line.",
   );
   const B = APO_ACCURACY.bands,
     pctTxt = (x) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(1)}%`;
@@ -634,7 +634,7 @@ export function learnChapters() {
           [
             "Apogee, 23 flights, Mach 0.55 to 3.5 (check)",
             "Altimeters, GPS, accelerometers and tracking",
-            "6.3% (RASAero II: 5.2%)",
+            "6.3% (RASAero II: 5.0%)",
           ],
           ["Drag, Arcas sounding rocket, Mach 1.5 to 4.6 (check)", "NASA TN D-4014, wind tunnel", "5.5%"],
           ["Drag, fin-stabilized cone-cylinder, Mach 2.5 to 3.9 (check)", "NACA RM L55G28a, free flight", "1.2%"],
@@ -697,7 +697,7 @@ export function learnChapters() {
         `<li><b>Phases:</b> on the rail (guided until the rocket leaves it), free flight (tumbling if it goes unstable), and under drogue and main. Lower stages drop away and are flown down on their own.</li></ul>` +
         `<p class="eq">m dv/dt = T + m g + D + N + F<sub>Coriolis</sub>&nbsp;&nbsp;&nbsp; I dω/dt = M<sub>aero</sub> + M<sub>damping</sub></p>` +
         ATMFIG +
-        `<p><b>The atmosphere</b> is the U.S. Standard Atmosphere 1976 to 86 km, shifted to the field's own temperature and pressure. The shift holds through the troposphere and fades out between 11 and 15 km, where a season's warmth or cold is gone (U.S. Standard Atmosphere Supplements, 1966). Humidity lowers the density a little and raises the speed of sound (through the virtual temperature); viscosity follows Sutherland's law. A forecast's temperatures aloft replace the standard ones where they reach.</p>` +
+        `<p><b>The atmosphere</b> is the U.S. Standard Atmosphere 1976 to 86 km, from the field's own temperature and pressure. The field's temperature is joined to the standard tropopause (−56.5 °C at 11 km) in a straight line, as OpenRocket does: a hot or cold day is mostly the air near the ground, and the air aloft keeps close to its season's mean (the Air Force Reference Atmospheres for each month put the density from 8 to 30 km within a few percent of the standard). Humidity lowers the density a little and raises the speed of sound (through the virtual temperature); viscosity follows Sutherland's law. A forecast's temperatures aloft replace the standard ones where they reach.</p>` +
         `<p><b>Wind</b> grows with height (by a profile you pick, or the forecast's winds aloft), with gusts, and the rocket turns into it off the rail.</p>` +
         tryIt(
           "Results' charts show the flight as it was integrated, and Export CSV writes it out step by step for your own analysis.",

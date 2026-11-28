@@ -105,8 +105,8 @@ function atmProfile(L, fieldElev, fieldT, fieldP) {
 /**
  * The air at a height above the pad.
  *
- * Temperature: the measured or forecast profile where there is one, otherwise the standard layers shifted by the
- * field's temperature offset. Pressure: the field's measured pressure (or the standard pressure for its elevation),
+ * Temperature: the measured or forecast profile where there is one, otherwise the field's temperature joined in a
+ * straight line to the standard tropopause (216.65 K at 11 km) and the standard layers above. Pressure: the field's measured pressure (or the standard pressure for its elevation),
  * carried up hydrostatically. Density counts water vapor as a separate gas (Tetens' saturation pressure times the
  * relative humidity, thinning with a 2 km scale height); the speed of sound uses the virtual temperature.
  * Viscosity: Sutherland's law.
@@ -168,13 +168,22 @@ export function atmosphere(L, h) {
         : prof.p[k - 1] * Math.exp((-ISA_G * (H - H1)) / (ISA_R * T1));
   } else {
     /* standard layers from the field (or from the forecast's top level) up, shifted by the offset there. The shift
-       holds through the troposphere and fades out across the tropopause (offsetAt): each stretch between the
+       fades out (offsetAt) to the tropopause, or across it above a forecast: each stretch between the
        standard layers' bases and the fade's ends has a constant lapse rate, so the barometric formula carries the
        pressure up it. */
     const dTu = prof ? prof.dTtop : dT,
       Hs = prof ? prof.H[prof.H.length - 1] : H0,
-      f0 = Math.max(TROPO_FADE[0], Hs),
-      f1 = f0 + (TROPO_FADE[1] - TROPO_FADE[0]),
+      /* With no forecast, the pad's offset from the standard temperature fades out in a straight line to none at the
+         standard tropopause (11 km): the pad's temperature joined to the standard 216.65 K there, as OpenRocket's
+         ExtendedISAModel does. A hot or cold day at the pad is mostly the air near the ground; the air aloft keeps to
+         its season's mean. The Air Force Reference Atmospheres (AFGL Handbook of Geophysics, 1985, chapter 14, tables
+         14-2: October, 30°N and 45°N) put the density from 8 to 30 km within 0.5–4.5% of the standard; with the
+         offset held through the troposphere (as until build 350), an 80 °F pad at 3,750 ft gave air 13% denser than
+         the standard from 15 km up, and with this rule it is within 0.2–4.2% of the reference atmosphere. A forecast
+         keeps the offset at its top level through the troposphere, fading out from 11 to 15 km. */
+      lin = !prof && Hs < TROPO_FADE[0] - 500,
+      f0 = lin ? Hs : Math.max(TROPO_FADE[0], Hs),
+      f1 = lin ? TROPO_FADE[0] : f0 + (TROPO_FADE[1] - TROPO_FADE[0]),
       Tat = (x) => isaT(x) + dTu * offsetAt(x, f0, f1);
     let Hc = Hs;
     p = prof ? prof.p[prof.p.length - 1] : pg;
